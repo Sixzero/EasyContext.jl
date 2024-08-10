@@ -62,9 +62,9 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         JLD2.save(cache_file, cache)
         
         # Combine cached and new embeddings
-        all_embeddings = hcat(cached_embeddings..., new_embeddings)
+        all_embeddings = hcat(stack(cached_embeddings, dims=2), new_embeddings)
     else
-        all_embeddings = hcat(cached_embeddings...)
+        all_embeddings = stack(cached_embeddings, dims=2)
     end
     
     verbose && @info "Embedding complete. $(length(docs) - length(docs_to_embed)) docs from cache, $(length(docs_to_embed)) newly embedded."

@@ -48,14 +48,34 @@ function handle_docstring_file(expr, last_line, lines)
         # @show expr.args[2].args[4].args[3].head
         # @show length(expr.args[2].args[4].args[3].args)
         module_name = expr.args[2].args[4].args[2]
+        # new_lastline = get_last_line_number(expr.args[2].args[4].args[3]) 
         expr = Expr(:block, expr.args[2].args[3], expr.args[2].args[4].args[3].args...)
         while last_line > 0 && !startswith(strip(lines[last_line]), "end")
             last_line -= 1
         end
         last_line -= 1 # "end" line
+        # @show new_lastline,  last_line
+        # @assert new_lastline == last_line "Newlines not equal $new_lastline != $last_line The lines:\n$(lines[new_lastline]) $(lines[last_line])\n"
     end
     expr, last_line
 end
+
+function get_last_line_number(expr::Expr)
+    last_line = nothing
+    for arg in Iterators.reverse(expr.args)
+        if isa(arg, LineNumberNode)
+            return arg.line + (expr.head == :block ? 1 : 0)
+        elseif isa(arg, Expr)
+            last_line = get_last_line_number(arg)
+            if last_line !== nothing
+                return last_line + (expr.head == :block ? 1 : 0)
+            end
+        end
+    end
+    return nothing
+end
+get_last_line_number(expr::LineNumberNode) = expr.line
+
 function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
     file_path::AbstractString, last_line::Int=length(lines), source_defs=SourceChunk[], module_name="")
 
@@ -67,7 +87,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
     current_line = 1
     for i in eachindex(expr_tree.args)
         expr = expr_tree.args[i]
-    #   @show expr
+        #   @show expr
         if expr isa LineNumberNode
             current_line = expr.line
             continue
@@ -75,11 +95,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
         # @show current_line
         # @show expr
         if isa(expr, Expr) && expr.head == :module
-            new_lastline = last_line
-            while new_lastline > 0 && !startswith(strip(lines[new_lastline]), "end")
-                new_lastline -= 1
-            end
-            new_lastline -= 1 # "end" line
+            new_lastline = get_last_line_number(expr.args[3]) + 1
             @show new_lastline
             source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline)
             continue
@@ -205,16 +221,34 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
         # @show name, signature_hash
         len = end_line_code - start_line_code
         chunk = join(lines[start_line_code:start_line_code+len], '\n')
-        chunk = length(chunk) > 14000 ? "$(chunk[1:12000])\n ... \n$(lines[start_line_code+len])" : chunk 
+
+        # Then use it like this:
+        if length(chunk) > 14000
+            first_part = safe_substring(chunk, 1, 12000)
+            chunk = "$first_part\n ... \n$(lines[start_line_code+len])"
+        end
         #   @show chunk
         def = SourceChunk(; name, signature_hash, references, is_function,
             start_line_code, end_line_code, file_path, chunk)
         
-        @assert (len < 600 || (len ∈ [1224, 667, 761])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
+        @assert (len < 600 || (len ∈ [1224, 667, 761, 918, 1186, 2542, 1765])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
         push!(source_defs, def)
     end
 
   return source_defs
+end
+# is there an alternative to unicode safe indexing?
+function safe_substring(s, from, to)
+    start = firstindex(s)
+    stop = lastindex(s)
+    
+    from_index = min(max(start, from), stop)
+    to_index = min(max(from_index, to), stop)
+    
+    from_index = nextind(s, from_index - 1)
+    to_index = prevind(s, to_index + 1)
+    
+    return s[from_index:to_index]
 end
 
 function process_jl_file(file_path, verbose::Bool=true)

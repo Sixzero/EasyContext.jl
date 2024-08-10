@@ -10,7 +10,6 @@ function rephrase(rephraser::JuliacodeRephraser, question::AbstractString;
       model::String="claude", template::Symbol=:RAGRephraserByKeywords,
       cost_tracker=Threads.Atomic{Float64}(0.0), kwargs...)
   ## checks
-  @show aitemplates(template)
   placeholders = only(aitemplates(template)).variables # only one template should be found
   @assert (:query in placeholders) "Provided RAG Template $(template) is not suitable. It must have a placeholder: `query`."
 

@@ -7,12 +7,6 @@ using EasyContext
 using EasyContext: process_source_directory, SourceChunker
 using EasyContext: CachedBatchEmbedder
 
-USAGE_EXAMPLE = """
-You can leverage the following usage examples when relevant:
-```julia
-```
-"""
-
 save_dir = joinpath(@__DIR__, "test")
 # dirs = [find_package_path(pkgname) for pkgname in ["PromptingTools", "FilePaths", "Pkg"]]
 dirs = [find_package_path(pkgname) for (pkgname, pkginfo) in Pkg.installed()]
