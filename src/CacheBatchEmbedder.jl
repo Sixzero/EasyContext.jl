@@ -3,6 +3,9 @@ using Parameters
 using PromptingTools.Experimental.RAGTools: BatchEmbedder
 using PromptingTools: MODEL_EMBEDDING
 
+"""
+cache_prefix: The prefix addition to the file being saved.
+"""
 @kwdef struct CachedBatchEmbedder <: AbstractEmbedder
     embedder::BatchEmbedder = BatchEmbedder()
     cache_dir::String = let
@@ -11,19 +14,19 @@ using PromptingTools: MODEL_EMBEDDING
         isdir(default_cache_dir) || mkpath(default_cache_dir)
         default_cache_dir
     end
+    cache_prefix::String=""
+    model::AbstractString = MODEL_EMBEDDING
+    truncate_dimension::Union{Int, Nothing}=nothing
 end
-
 function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
         verbose::Bool = true,
-        model::AbstractString = MODEL_EMBEDDING,
-        truncate_dimension::Union{Int, Nothing} = nothing,
         cost_tracker = Threads.Atomic{Float64}(0.0),
         target_batch_size_length::Int = 80_000,
         ntasks::Int = 4 * Threads.nthreads(),
         kwargs...)
-    @show model
+    model, cache_prefix, truncate_dimension = embedder.model, embedder.cache_prefix, embedder.truncate_dimension
     # Create cache filename based on the model
-    cache_file = joinpath(embedder.cache_dir, "embeddings_$(model).jld2")
+    cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(model).jld2")
     
     # Load or create cache
     if isfile(cache_file)
@@ -62,7 +65,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         JLD2.save(cache_file, cache)
         
         # Combine cached and new embeddings
-        all_embeddings = hcat(stack(cached_embeddings, dims=2), new_embeddings)
+        all_embeddings = length(cached_embeddings)>0 ? hcat(stack(cached_embeddings, dims=2), new_embeddings) : new_embeddings
     else
         all_embeddings = stack(cached_embeddings, dims=2)
     end

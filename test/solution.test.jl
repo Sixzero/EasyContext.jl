@@ -5,41 +5,46 @@ const RAG = PromptingTools.Experimental.RAGTools
 using ExpressionExplorer
 using EasyContext
 using EasyContext: process_source_directory, SourceChunker
-using EasyContext: CachedBatchEmbedder
+using EasyContext: CachedBatchEmbedder, SimpleContextJoiner, ReduceRankGPTReranker
 
 save_dir = joinpath(@__DIR__, "test")
 # dirs = [find_package_path(pkgname) for pkgname in ["PromptingTools", "FilePaths", "Pkg"]]
 dirs = [find_package_path(pkgname) for (pkgname, pkginfo) in Pkg.installed()]
+# dirs = [find_package_path(pkginfo.name) for (pkgname, pkginfo) in Pkg.dependencies()]
 println.(dirs);
 #%%
-# dirs = [find_package_path(pkgname) for pkgname in ["Pkg"]]
-@show dirs
 src_dirs = [dir * "/src" for dir in dirs]
-@show src_dirs
 # defs = process_source_directory(dir; verbose=true);
 chunker = SourceChunker()
-indexer = RAG.SimpleIndexer(;chunker, embedder=CachedBatchEmbedder(), tagger=RAG.NoTagger())
-embedder_kwargs = (;model = "text-embedding-3-small", verbose=true)
+indexer = RAG.SimpleIndexer(;chunker, embedder=CachedBatchEmbedder(;model="text-embedding-3-small"), tagger=RAG.NoTagger())
+embedder_kwargs = (;model = indexer.embedder.model, verbose=true)
 index = RAG.build_index(indexer, src_dirs; verbose=true, embedder_kwargs);
-#%%# Create a parent Vector{String}
+#%%
+# using JLD2
+# @save "cache/index.jld2" index
+#%% # Create a parent Vector{String}
 kwargs = (;
     retriever_kwargs = (;
-        top_k = 100,
-        top_n = 5,
-        rephraser_kwargs = (; template=:RAGRephraserByKeywordsV2, model = "claude",),
+        top_k = 300,
+        top_n = 10,
+        rephraser_kwargs = (; template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true),
         embedder_kwargs = (; model = "text-embedding-3-small"), # needs to be the same as the index model
     ),
     generator_kwargs = (;
         answerer_kwargs = (; model = "claude", template=:RAGAnsweringFromContextClaude),
+        # answerer_kwargs = (; model = "dscode", template=:RAGAnsweringFromContextClaude),
         # answerer_kwargs = (; model = "gpt4om", template=:RAGAnsweringFromContextClaude),
-    ),
+    ),  
 )
 
 reranker = RAG.CohereReranker()  # or RankGPTReranker(), or FlashRanker(model)
+reranker = ReduceRankGPTReranker(;batch_size=30, model="gpt4om")  # or RankGPTReranker(), or FlashRanker(model)
 # retriever = RAG.AdvancedRetriever(; reranker)
-retriever = RAG.AdvancedRetriever(;finder=RAG.CosineSimilarity(), reranker, rephraser=JuliacodeRephraser())
-rag_conf = RAG.RAGConfig(; retriever)
-# PT.load_templates!("../EasyContext.jl/templates")
+retriever = RAG.AdvancedRetriever(;finder=RAG.CosineSimilarity(), reranker, rephraser=JuliacodeRephraser(), )
+rag_conf = RAG.RAGConfig(; retriever, generator=RAG.SimpleGenerator(contexter=SimpleContextJoiner()))
+PT.remove_templates!()
+PT.load_templates!("../EasyContext.jl/templates")
+
 
 #%%
 question = """
