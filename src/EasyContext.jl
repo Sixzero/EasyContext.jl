@@ -14,4 +14,7 @@ include("FullFileChunker.jl")
 include("PkgLister.jl")
 export find_package_path
 
+include("Main.jl")
+include("AISHExtension.jl")
+
 end # module EasyContext

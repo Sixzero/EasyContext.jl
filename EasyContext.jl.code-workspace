@@ -1,0 +1,28 @@
+{
+	"folders": [
+		{
+			"path": "../EasyContext.jl"
+		},
+		{
+			"path": "../LLMBenchmarks.jl"
+		},
+		{
+			"path": "../AISH.jl"
+		},
+		{
+			"path": "../Anthropic.jl"
+		},
+		{
+			"path": "../PromptingTools.jl"
+		},
+		{
+			"path": "../AIHelpMe.jl"
+		},
+		{
+			"path": "../julia-awesomeness/PkgManager.jl"
+		}
+	],
+	"settings": {
+		"julia.NumThreads": 8
+	}
+}

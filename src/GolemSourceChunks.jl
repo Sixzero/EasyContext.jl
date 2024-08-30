@@ -3,243 +3,174 @@ import PromptingTools.Experimental.RAGTools: find_tags, get_embeddings, ChunkEmb
 import PromptingTools.Experimental.RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
 using JuliaSyntax
+using Pkg
 
 include("GolemUtils.jl")
-# TODO: add coverage info to guide test generation
-# generate coverage, extract from coverage (same locations), remove coverage
-@kwdef struct SourceChunk
-  name::Symbol
-  signature_hash::Union{UInt64,Nothing} = nothing
-  # all symbols in the function body
-  references::Vector{Symbol} = Symbol[]
-  start_line_code::Int
-  end_line_code::Int
-  start_line_docs::Int = 0
-  end_line_docs::Int = 0
-  file_path::String
-  is_function::Bool = false
-  chunk::Union{String,Nothing} = nothing
-end
-struct SourceChunker <: AbstractChunker end
+include("GolemJuliaChunker.jl")
+include("GolemPythonChunker.jl")
 
-file_path_lineno(def::SourceChunk) = "$(def.file_path):$(def.start_line_code)"
-file_path(def::SourceChunk) = def.file_path
-name_with_signature(def::SourceChunk) = "$(def.name):$(def.signature_hash)"
+struct GolemSourceChunker <: AbstractChunker end
 
-function empty_line(line::AbstractString)
-  stripped = strip(line)
-  return isempty(stripped) || startswith(stripped, "#")
-end
+function get_chunks(chunker::GolemSourceChunker,
+        files_or_packages::Vector{<:AbstractString};
+        sources::AbstractVector{<:AbstractString} = files_or_packages,
+        verbose::Bool = true)
 
-## Meta.parseall(read("/Users/simljx/Documents/PromptingTools/src/precompilation.jl", String))
-
-function handle_single_module_file(expr, last_line, lines)
-    if expr.head == :toplevel && length(expr.args) == 2 && expr.args[2].head == :module
-        @info "We unwrap toplevel and module"
-        expr = expr.args[2].args[3] # unwrap toplevel
-        module_name = expr.args[2]
-    end
-    expr, last_line
-end 
-""" ugly. it got developed based on what issue we came accross, this function fullfills the tests, but basically it unwraps the module behind the docstring."""
-function handle_docstring_file(expr, last_line, lines)
-    if expr.head == :toplevel && length(expr.args) >= 2 && expr.args[2] isa Expr && expr.args[2].head == :macrocall && expr.args[2].args[1] isa GlobalRef && expr.args[2].args[1].name == Symbol("@doc") && expr.args[2].args[4] isa Expr && expr.args[2].args[4].head == :module
-        @info "We unwrap docstring file"
-        # @show expr.args[2].args[3]
-        # @show expr.args[2].args[4].args[2]
-        # @show expr.args[2].args[4].args[3].head
-        # @show length(expr.args[2].args[4].args[3].args)
-        module_name = expr.args[2].args[4].args[2]
-        # new_lastline = get_last_line_number(expr.args[2].args[4].args[3]) 
-        expr = Expr(:block, expr.args[2].args[3], expr.args[2].args[4].args[3].args...)
-        while last_line > 0 && !startswith(strip(lines[last_line]), "end")
-            last_line -= 1
-        end
-        last_line -= 1 # "end" line
-        # @show new_lastline,  last_line
-        # @assert new_lastline == last_line "Newlines not equal $new_lastline != $last_line The lines:\n$(lines[new_lastline]) $(lines[last_line])\n"
-    end
-    expr, last_line
-end
-
-function get_last_line_number(expr::Expr)
-    last_line = nothing
-    for arg in Iterators.reverse(expr.args)
-        if isa(arg, LineNumberNode)
-            return arg.line + (expr.head == :block ? 1 : 0)
-        elseif isa(arg, Expr)
-            last_line = get_last_line_number(arg)
-            if last_line !== nothing
-                return last_line + (expr.head == :block ? 1 : 0)
-            end
-        end
-    end
-    return nothing
-end
-get_last_line_number(expr::LineNumberNode) = expr.line
-function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
-    file_path::AbstractString, last_line::Int=length(lines), source_defs=SourceChunk[], module_name="")
-
-    expr_tree, last_line = handle_single_module_file(expr_tree, last_line, lines)
-    expr_tree, last_line = handle_docstring_file(expr_tree, last_line, lines)
-    
-    current_line = 1
-    for i in eachindex(expr_tree.args)
-        expr = expr_tree.args[i]
-        if expr isa LineNumberNode
-            current_line = expr.line
-            continue
-        end
-        if isa(expr, Expr) && expr.head == :module
-            new_lastline = get_last_line_number(expr.args[3]) + 1
-            @show new_lastline
-            source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline)
-            continue
-        end
-        
-        start_line_code = current_line
-        next_expr_index = findnext(x -> x isa LineNumberNode, expr_tree.args, i + 1)
-        end_line_code = !isnothing(next_expr_index) ? expr_tree.args[next_expr_index].line - 1 : last_line
-        end_line_code = max(end_line_code, current_line)
-        
-        while empty_line(lines[end_line_code])
-            end_line_code == start_line_code && break
-            end_line_code -= 1
-        end
-
-        if !isa(expr, Expr)
-            if isa(expr, String)
-                signature_hash = hash(expr)
-                chunk = join(lines[(start_line_code):(end_line_code)], '\n')
-                def = SourceChunk(; name=:Documentation, signature_hash, references=Symbol[], is_function=false, start_line_code, end_line_code, file_path, chunk)
-                push!(source_defs, def)
-                continue
-            end
-            @warn "Unknown type: $(typeof(expr))"
-            continue
-        end
-
-        name::Symbol, signature_hash = :unknown, nothing
-        is_function = false
-        references = Symbol[]
-        
-        if expr.head == :function || is_function_assignment(expr)
-            name = get_function_name(expr)
-            signature_hash = hash(string(expr))
-            is_function = true
-        elseif expr.head == :macrocall && !isempty(expr.args)
-            if expr.args[1] == Symbol("@kwdef") || (expr.args[1] isa Expr && !isempty(expr.args[1].args) && expr.args[1].args[end] == Symbol("@kwdef"))
-                if length(expr.args) >= 3 && expr.args[3] isa Expr
-                    name = get_struct_name(expr.args[3])
-                    signature_hash = hash(string(expr.args[3]))
-                else
-                    @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
-                end
-            elseif expr.args[1] == Symbol("@enum")
-                if length(expr.args) >= 3
-                    name = Symbol("$(expr.args[3])")
-                    references = Symbol[]
-                else
-                    @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
-                end
-            elseif expr.args[1] == GlobalRef(Core, Symbol("@doc"))
-                if length(expr.args) >= 4 && expr.args[4] isa Expr
-                    name = get_function_name(expr.args[4])
-                    signature_hash = hash(string(expr.args[4]))
-                    if expr.args[4].head == :function || is_function_assignment(expr.args[4])
-                        is_function = true
-                    end
-                else
-                    @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
-                end
-            end
-        else
-            name = get_expression_name(expr)
-            signature_hash = hash(string(expr))
-        end
-        
-        len = end_line_code - start_line_code
-        chunk = join(lines[start_line_code:start_line_code+len], '\n')
-
-        if length(chunk) > 14000
-            first_part = safe_substring(chunk, 1, 12000)
-            chunk = "$first_part\n ... \n$(lines[start_line_code+len])"
-        end
-        
-        def = SourceChunk(; name, signature_hash, is_function,
-            start_line_code, end_line_code, file_path, chunk)
-        
-        @assert (len < 600 || (len ∈ [1224, 667, 761, 918, 1186, 2542, 1765])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
-        push!(source_defs, def)
-    end
-
-    return source_defs
-end
-
-# is there an alternative to unicode safe indexing?
-function safe_substring(s, from, to)
-    start = firstindex(s)
-    stop = lastindex(s)
-    
-    from_index = min(max(start, from), stop)
-    to_index = min(max(from_index, to), stop)
-    
-    from_index = nextind(s, from_index - 1)
-    to_index = prevind(s, to_index + 1)
-    
-    return s[from_index:to_index]
-end
-
-function process_jl_file(file_path, verbose::Bool=true)
-    verbose && @info "Processing file: $file_path"
-    s = read(file_path, String)
-    # @time expr2 = parsestmt(JuliaSyntax.SyntaxNode, "begin\n"*s*"\nend", filename=file_path)
-    # @show typeof(expr2)
-    expr = Meta.parseall(s)       
-    lines = split(s, '\n')
-    defs = source_explorer(expr, lines; file_path)
-    defs
-end
-function process_source_directory(dir::AbstractString; verbose::Bool=true)
-  dir = expanduser(dir)
-  @assert isdir(dir) "Directory does not exist: $dir"
-  definitions = SourceChunk[]
-  for (dir, _, files) in walkdir(dir)
-      for file in files
-          ## only Julia files
-          if !endswith(file, ".jl")
-              continue
-          end
-          file_path = joinpath(dir, file)
-          defs = process_jl_file(file_path, verbose)
-        #   @assert length(definitions)<30
-          append!(definitions, defs)
-      end
-  end
-  return definitions
-end
-function get_chunks(chunker::SourceChunker,
-        files_or_docs::Vector{<:AbstractString};
-        sources::AbstractVector{<:AbstractString} = files_or_docs,
-        verbose::Bool = true,)
-
-    ## Check that all items must be existing files or strings
-    @assert (length(sources)==length(files_or_docs)) "Length of `sources` must match length of `files_or_docs`"
+    @assert (length(sources) == length(files_or_packages)) "Length of `sources` must match length of `files_or_packages`"
 
     output_chunks = Vector{SubString{String}}()
     output_sources = Vector{eltype(sources)}()
 
-    # Do chunking first
-    for i in eachindex(files_or_docs, sources)
-      defs = process_source_directory(files_or_docs[i])
-      chunks = ["$(def.file_path):$(def.start_line_code)\n" *  def.chunk for def in defs]
-
-      @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
-    
-      sources = file_path_lineno.(defs)
-      append!(output_chunks, chunks)
-      append!(output_sources, sources)
+    for i in eachindex(files_or_packages, sources)
+        item = files_or_packages[i]
+        
+        if isfile(item)
+            # Process individual file
+            process_file(chunker, item, sources[i], output_chunks, output_sources, verbose)
+        else
+            # Assume it's a package name
+            process_package(chunker, item, output_chunks, output_sources, verbose)
+        end
     end
 
     return output_chunks, output_sources
 end
+
+function process_file(chunker::GolemSourceChunker, file_path::AbstractString, source::AbstractString, 
+                      output_chunks::Vector{SubString{String}}, output_sources::Vector, verbose::Bool)
+    if endswith(lowercase(file_path), ".jl")
+        julia_chunker = JuliaSourceChunker()
+        chunks, src = get_chunks(julia_chunker, [file_path]; sources=[source], verbose=verbose)
+    elseif endswith(lowercase(file_path), ".py")
+        python_chunker = PythonSourceChunker()
+        chunks, src = get_chunks(python_chunker, [file_path]; sources=[source], verbose=verbose)
+    else
+        @warn "Unsupported file type: $file_path"
+        return
+    end
+
+    append!(output_chunks, chunks)
+    append!(output_sources, src)
+end
+
+function process_package(chunker::GolemSourceChunker, package_name::AbstractString, 
+                         output_chunks::Vector{SubString{String}}, output_sources::Vector, verbose::Bool)
+    # Check if the input contains path separators
+    if occursin(r"/|\\\\", package_name)
+        verbose && @info "Skipping '$package_name' as it contains path separators and is likely not a package name."
+        return
+    end
+    # Try as Julia package first
+    julia_files = process_julia_package(package_name, verbose)
+    
+    if !isempty(julia_files)
+        verbose && @info "Processing Julia package: $package_name"
+        for (file, modules) in julia_files
+            process_julia_file(chunker, file, modules, output_chunks, output_sources, verbose)
+        end
+    else
+        # If not a Julia package, try as Python package
+        python_files = get_python_package_files(package_name)
+        
+        if !isempty(python_files)
+            verbose && @info "Processing Python package: $package_name"
+            for file in python_files
+                process_file(chunker, file, file, output_chunks, output_sources, verbose)
+            end
+        else
+            @warn "Unable to process $package_name as either a Julia or Python package"
+        end
+    end
+end
+
+function process_julia_package(package_name::String, verbose::Bool)
+    # First, check if the package is installed in the current project
+    pkg_path = nothing
+    if haskey(Pkg.project().dependencies, package_name)
+        pkg_info = Pkg.project().dependencies[package_name]
+        pkg_path = pkg_info.path
+        if isnothing(pkg_path)
+            pkg_path = joinpath(Pkg.devdir(), package_name)
+        end
+    else
+        # If not in the current project, check if it's installed system-wide
+        pkg_path = try
+            dirname(dirname(Base.find_package(package_name)))
+        catch
+            nothing
+        end
+    end
+    
+    if isnothing(pkg_path) || !isdir(pkg_path)
+        @warn "Package $package_name not found or not a valid directory"
+        return Dict{String, Vector{String}}()
+    end
+    
+    # Find the main entry point of the package (usually src/PackageName.jl)
+    main_file = joinpath(pkg_path, "src", "$package_name.jl")
+    if !isfile(main_file)
+        @warn "Main file for package $package_name not found at $main_file"
+        return Dict{String, Vector{String}}()
+    end
+    
+    # Process the main file and its includes
+    return process_julia_file_recursively(main_file, [package_name])
+end
+
+function process_julia_file_recursively(file_path::String, module_stack::Vector{String})
+    result = Dict{String, Vector{String}}()
+    result[file_path] = copy(module_stack)
+    
+    open(file_path, "r") do file
+        for line in eachline(file)
+            if startswith(strip(line), "include(")
+                included_file = match(r"include\([\"'](.*?)[\"']\)", line).captures[1]
+                included_path = joinpath(dirname(file_path), included_file)
+                merge!(result, process_julia_file_recursively(included_path, module_stack))
+            elseif startswith(strip(line), "module ")
+                module_name = match(r"module\s+(\w+)", line).captures[1]
+                push!(module_stack, module_name)
+                # Process the rest of the file with the updated module stack
+                merge!(result, process_julia_file_recursively(file_path, module_stack))
+                pop!(module_stack)
+                break  # Stop processing this file after the module definition
+            end
+        end
+    end
+    
+    return result
+end
+
+function process_julia_file(chunker::GolemSourceChunker, file_path::String, modules::Vector{String}, 
+                            output_chunks::Vector{SubString{String}}, output_sources::Vector, verbose::Bool)
+    julia_chunker = JuliaSourceChunker()
+    chunks, _ = get_chunks(julia_chunker, [file_path]; sources=[file_path], verbose=verbose)
+    
+    module_info = join(modules, ".")
+    for chunk in chunks
+        push!(output_chunks, chunk)
+        push!(output_sources, "$file_path [Module: $module_info]")
+    end
+end
+
+function get_python_package_files(package_name::String)
+    try
+        # This assumes the Python package is installed and importable
+        cmd = `python -c "import $(package_name), os, sys; print(os.path.dirname(sys.modules['$(package_name)'].__file__))"`
+        pkg_path = strip(read(cmd, String))
+        
+        python_files = String[]
+        for (root, _, files) in walkdir(pkg_path)
+            for file in files
+                if endswith(file, ".py")
+                    push!(python_files, joinpath(root, file))
+                end
+            end
+        end
+        return python_files
+    catch e
+        @warn "Error processing Python package $package_name: $e"
+        return String[]
+    end
+end
+

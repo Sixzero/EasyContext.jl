@@ -6,10 +6,10 @@ const PT = PromptingTools
 
 Base.@kwdef struct ReduceRankGPTReranker <: AbstractReranker 
   batch_size::Int=20
-  api_key::AbstractString=PT.OPENAI_API_KEY
   model::AbstractString=PT.MODEL_CHAT
   max_tokens::Int=4096
   temperature::Float64=0.0
+  verbose::Bool=true
 end
 """
     rerank(
@@ -41,10 +41,11 @@ function RAG.rerank(
   candidates::AbstractCandidateChunks;
   top_n::Int = length(candidates.scores),
   cost_tracker = Threads.Atomic{Float64}(0.0),
-  verbose::Bool = false,
   kwargs...
 )
-  batch_size, model, api_key, max_tokens, temperature = reranker.batch_size, reranker.model, reranker.api_key, reranker.max_tokens, reranker.temperature
+  
+  batch_size, model, max_tokens, temperature, verbose = reranker.batch_size, reranker.model, reranker.max_tokens, reranker.temperature, reranker.verbose
+
   documents = index[candidates, :chunks]
   total_docs = length(documents)
   batch_size < top_n * 2 && @warn "Batch_size $batch_size should be at least twice bigger than top_n $top_n"
@@ -54,7 +55,7 @@ function RAG.rerank(
   # Rerank function for each batch
   function rerank_batch(doc_batch)
       prompt = create_rankgpt_prompt(question, doc_batch, top_n)
-      response = aigenerate(prompt; model=model, api_key=api_key, max_tokens=max_tokens, temperature=temperature)
+      response = aigenerate(prompt; model=model, max_tokens=max_tokens, temperature=temperature, verbose=false)
       
       # Parse the response to get rankings
       rankings = extract_ranking(response.content)
@@ -73,7 +74,7 @@ function RAG.rerank(
       
       batch_rankings = asyncmap(batches) do batch_indices
           rankings = rerank_batch(documents[batch_indices])
-          @info "We found $(length(rankings)) rankings from batch $(length(batch_indices))"
+          # @info "We found $(length(rankings)) rankings from batch $(length(batch_indices))"
           return batch_indices[rankings]
       end
       
@@ -90,7 +91,7 @@ function RAG.rerank(
   reranked_positions = [candidates.positions[i] for i in final_top_n]
   reranked_scores = [1.0 / i for i in 1:length(final_top_n)]
   
-  verbose && @info "Reranking completed. Total cost: $(cost_tracker[]) tokens"
+  verbose && @info "Reranking completed. Total cost: \$$(cost_tracker[])"
   
   # Return the reranked candidates
   if candidates isa MultiCandidateChunks
@@ -108,9 +109,10 @@ function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:Abs
   Given the question: "$question"
   Rank the following documents based on their relevance to the question. 
   Output only the rankings as a comma-separated list of indices, where 1 is the most relevant. At max select top_$top_n docs, but less is also okay, you can also return nothing [] if nothing is relevant. 
+  Only write numbers between: 1 and $(length(documents)).
   If a selected file/function uses a function we probably need, then also it is preferred to include it in the ranking.
   Documents:
-  $(join(["$i. $doc" for (i, doc) in enumerate(documents)], "\n"))
+  $(join(["$i.\n$doc" for (i, doc) in enumerate(documents)], "\n"))
   Rankings:
   """
   return prompt
