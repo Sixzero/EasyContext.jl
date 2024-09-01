@@ -38,9 +38,11 @@ function parse_and_evaluate_script(script_content)
           # Extract the Julia code
           julia_code = strip(script_content[start_index:end_index])
           
-          # Evaluate the cleaned script in a new module to avoid polluting the global namespace
+          # Escape unescaped $ symbols
+          escaped_code = replace(julia_code, r"(?<!\\)\$" => raw"\$")
+
           mod = Module()
-          expr = Meta.parse(string("begin\n", julia_code, "\nend"))
+          expr = Meta.parse(string("begin\n", escaped_code, "\nend"))
           Base.eval(mod, expr)
           
           # Extract the variables we're interested in

@@ -3,6 +3,7 @@ using PromptingTools.Experimental.RAGTools
 using LinearAlgebra, SparseArrays
 using PromptingTools.Experimental.RAGTools: SimpleIndexer
 using Pkg
+using AISH: get_project_files
 
 # Module-level variables to store the RAG configuration and index
 const GLOBAL_RAG_CONFIG = Ref{Union{Nothing, Tuple}}(nothing)
@@ -21,46 +22,45 @@ function list_project_files(root_dir::String=".")
     return files
 end
 
-function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rag_conf=nothing, kwargs=nothing)
-    if isnothing(rag_conf) || isnothing(kwargs)
-        rag_conf, kwargs = get_rag_config()
+function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rag_conf=nothing, rephraser_kwargs=nothing)
+    if isnothing(rag_conf)
+        rag_conf, _ = get_rag_config()
     end
-    
-    result = RAG.retrieve(rag_conf.retriever, file_index, question; 
-        rephraser_kwargs = (; template=:RAGRephraserByKeywordsV2, model = "claude", verbose=true, ),
+    reranker = ReduceRankGPTReranker(;batch_size=30, model="gpt4om")
+    retriever = RAG.SimpleRetriever(;
+        finder=RAG.CosineSimilarity(), 
+        reranker
+    )
+    embedder_model, = file_index.extras
+    result = RAG.retrieve(retriever, file_index, question; 
+        # rephraser_kwargs = (; template=:RAGRephraserByKeywordsV2, model = "claude", verbose =true, ),
         top_k, top_n,
-        embedder_kwargs = (; model = "text-embedding-3-large"), 
+        embedder_kwargs = (; model = embedder_model), 
         return_all=true
     )
     
-    # Extract unique file paths from the retrieved chunks
-    relevant_files = unique(result.sources)
     
-    return relevant_files
+    return result
 end
 
 function get_file_index(files::Vector{String}; verbose::Bool=true)
     chunker = FullFileChunker()
-    indexer = RAG.SimpleIndexer(;
-        chunker, 
-        embedder=CachedBatchEmbedder(;model="text-embedding-3-large"), 
-        tagger=RAG.NoTagger()
-    )
-    RAG.build_index(indexer, files; verbose=verbose, embedder_kwargs=(model=indexer.embedder.model, verbose=verbose))
+    indexer = RAG.SimpleIndexer(;chunker, embedder=CachedBatchEmbedder(;model="text-embedding-3-large"), tagger=RAG.NoTagger())
+    RAG.build_index(indexer, files; verbose=verbose, embedder_kwargs=(model=indexer.embedder.model, verbose=verbose), extras=[indexer.embedder.model])
 end
 
 function get_relevant_project_files(question::String, project_path::String="."; kwargs...)
-  files = list_project_files(project_path)
+  files = get_project_files(project_path)
   get_relevant_files(question, files; kwargs...)
 end
 
-function get_relevant_files(question::String, files::Vector{String}; top_k::Int=100, top_n=5, verbose::Bool=true)
+function get_relevant_files(question::String, files::Vector{String}; top_k::Int=100, top_n=10, rephraser_kwargs=nothing, verbose::Bool=true)
     file_index = get_file_index(files; verbose=verbose)
     # Select relevant files
-    relevant_sources = select_relevant_files(question, file_index; top_k=top_k, top_n=top_n)
+    retrieve_result = select_relevant_files(question, file_index; top_k, top_n, rephraser_kwargs)
     
     # Remove linenumbers, and only return the unique filepaths
-    relevant_files = unique([split(source, ":")[1] for source in relevant_sources])
+    relevant_files = unique([split(source, ":")[1] for source in retrieve_result.sources])
     
     # Print the number of relevant files in green
     printstyled("Number of relevant files selected: ", color=:green, bold=true)
@@ -69,7 +69,7 @@ function get_relevant_files(question::String, files::Vector{String}; top_k::Int=
         printstyled("  $path\n", color=:cyan)
     end
     
-    return relevant_files, file_index
+    return relevant_files, retrieve_result, file_index
 end
 function build_installed_package_index(; verbose::Bool=true, force_rebuild::Bool=false)
     !isnothing(GLOBAL_INDEX[]) && !force_rebuild && return GLOBAL_INDEX[]

@@ -23,11 +23,11 @@ function RAG.get_chunks(chunker::FullFileChunker,
 
     # Split the content using recursive_splitter
     chunks = recursive_splitter(doc_raw, chunker.separators; max_length=chunker.max_length)
-
+    chunks_with_sources = ["# $(source)\n$(chunk)" for chunk in chunks]
     # Calculate line numbers for each chunk
     line_numbers = calculate_line_numbers(chunks, doc_raw, )
 
-    append!(output_chunks, chunks)
+    append!(output_chunks, chunks_with_sources)
     append!(output_sources, ["$(source):$(start_line)-$(end_line)" for (start_line, end_line) in line_numbers])
   end
   return output_chunks, output_sources

@@ -105,14 +105,20 @@ end
 # Helper function to create the RankGPT prompt
 function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:AbstractString}, top_n::Int)
   top_n = min(top_n, length(documents))
+  document_context = join(["$i. $doc" for (i, doc) in enumerate(documents)], "\n")
+  # document_context_short = join(["$i.\n$(doc[1:15])..." for (i, doc) in enumerate(documents)], "\n")
   prompt = """
-  Given the question: "$question"
+  Question:
+  "$question"
+  
+  Instruction
   Rank the following documents based on their relevance to the question. 
-  Output only the rankings as a comma-separated list of indices, where 1 is the most relevant. At max select top_$top_n docs, but less is also okay, you can also return nothing [] if nothing is relevant. 
-  Only write numbers between: 1 and $(length(documents)).
+  Output only the rankings as a comma-separated list of indices, where 1 is the most relevant. At max select the top_$(top_n) docs, less is also okay, you can also return nothing [] if nothing is relevant. 
+  Only write numbers between: 1-$(length(documents)).
   If a selected file/function uses a function we probably need, then also it is preferred to include it in the ranking.
+
   Documents:
-  $(join(["$i.\n$doc" for (i, doc) in enumerate(documents)], "\n"))
+  $document_context
   Rankings:
   """
   return prompt
