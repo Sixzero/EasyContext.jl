@@ -34,7 +34,7 @@ This is the latest version of the codebase. Chats and later messages can only ho
 """
 end
 
-AISH.create_conversation!(ctx::EasyContextCreator, ai_state, question) = begin
+AISH.adjust_conversation!(ctx::EasyContextCreator, ai_state, question) = begin
   conv = curr_conv(ai_state)
   
   # Create tasks for asynchronous execution
@@ -51,12 +51,9 @@ AISH.create_conversation!(ctx::EasyContextCreator, ai_state, question) = begin
   
   cut_history!(conv, keep=ctx.keep)
   
-  new_user_msg = Message(timestamp=now(), role=:user, content="""## User message:
+  new_user_msg = """## User message:
   $(question)
   
   ## Additional context:
-  $(context_msg)""")
-  push!(conv.messages, new_user_msg)
-
-  save_user_message(ai_state, new_user_msg)
+  $(context_msg)"""
 end
