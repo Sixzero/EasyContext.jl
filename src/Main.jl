@@ -9,18 +9,6 @@ using AISH: get_project_files
 const GLOBAL_RAG_CONFIG = Ref{Union{Nothing, Tuple}}(nothing)
 const GLOBAL_INDEX = Ref{Union{Nothing, Any}}(nothing)
 
-function list_project_files(root_dir::String=".")
-    files = String[]
-    for (root, _, files_in_dir) in walkdir(root_dir)
-        for filepath in files_in_dir
-          # is file ends with .jl
-          if endswith(filepath, ".jl")
-            push!(files, joinpath(root, filepath))
-          end
-        end
-    end
-    return files
-end
 
 function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rag_conf=nothing, rephraser_kwargs=nothing)
     if isnothing(rag_conf)
@@ -54,7 +42,7 @@ function get_relevant_project_files(question::String, project_path::String="."; 
   get_relevant_files(question, files; kwargs...)
 end
 
-function get_relevant_files(question::String, files::Vector{String}; top_k::Int=100, top_n=10, rephraser_kwargs=nothing, verbose::Bool=true)
+function get_relevant_files(question::String, files::Vector{String}; top_k::Int=100, top_n=10, rephraser_kwargs=nothing, verbose::Bool=true, suppress_output::Bool=false)
     file_index = get_file_index(files; verbose=verbose)
     # Select relevant files
     retrieve_result = select_relevant_files(question, file_index; top_k, top_n, rephraser_kwargs)
@@ -62,13 +50,15 @@ function get_relevant_files(question::String, files::Vector{String}; top_k::Int=
     # Remove linenumbers, and only return the unique filepaths
     relevant_files = unique([split(source, ":")[1] for source in retrieve_result.sources])
     
-    # Print the number of relevant files in green
-    printstyled("Number of relevant files selected: ", color=:green, bold=true)
-    printstyled(length(relevant_files), "\n", color=:green)
-    for path in relevant_files
-        printstyled("  $path\n", color=:cyan)
+    if !suppress_output
+        # Print the number of relevant files in green
+        printstyled("Number of relevant files selected: ", color=:green, bold=true)
+        printstyled(length(relevant_files), "\n", color=:green)
+        for path in relevant_files
+            printstyled("  $path\n", color=:cyan)
+        end
     end
-    
+
     return relevant_files, retrieve_result, file_index
 end
 function build_installed_package_index(; verbose::Bool=true, force_rebuild::Bool=false)
@@ -137,7 +127,7 @@ function get_rag_config(;
     return rag_conf, kwargs
 end
 
-function get_context(question::String; index=nothing, rag_conf=nothing, force_rebuild=false)
+function get_context(question::String; index=nothing, rag_conf=nothing, force_rebuild=false, suppress_output=false)
     if isnothing(index)
         index = GLOBAL_INDEX[]
         if force_rebuild || isnothing(index)
@@ -145,24 +135,34 @@ function get_context(question::String; index=nothing, rag_conf=nothing, force_re
         end
     end
     
-    if isnothing(rag_conf) || isnothing(kwargs)
-        rag_conf, kwargs = get_rag_config()
-    end
-    
-    result = RAG.retrieve(rag_conf.retriever, index, question; 
-        return_all=true,
-        kwargs.retriever_kwargs...
+    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
+    rephraser = RAG.HyDERephraser()
+    rephraser = RAG.NoRephraser()
+    reranker = RAG.CohereReranker()
+    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
+    retriever = RAG.AdvancedRetriever(;
+        finder=RAG.CosineSimilarity(), 
+        reranker, 
+        rephraser,
     )
     
-    RAG.build_context!(rag_conf.generator.contexter, index, result)
+    result = RAG.retrieve(retriever, index, question; 
+        return_all=true,
+        embedder_kwargs = (; model = "text-embedding-3-small"),
+        top_n=6,
+    )
     
-    # Print the number of context sources in green
-    printstyled("Number of context sources: ", color=:green, bold=true)
-    printstyled(length(result.sources), "\n", color=:green)
+    RAG.build_context!(SimpleContextJoiner(), index, result)
     
-    # Print the context sources in a styled manner
-    for (index, source) in enumerate(result.sources)
-        printstyled("  $source\n", color=:cyan)
+    if !suppress_output
+        # Print the number of context sources in green
+        printstyled("Number of context sources: ", color=:green, bold=true)
+        printstyled(length(result.sources), "\n", color=:green)
+        
+        # Print the context sources in a styled manner
+        for (index, source) in enumerate(result.sources)
+            printstyled("  $source\n", color=:cyan)
+        end
     end
     
     return result
@@ -190,5 +190,5 @@ function get_answer(question::String; index=nothing, rag_conf=nothing, force_reb
     return msg
 end
 
-export build_package_index, get_rag_config, get_context, get_answer, list_project_files, get_relevant_project_files, get_file_index
+export build_package_index, get_rag_config, get_context, get_answer, get_relevant_project_files, get_file_index
 

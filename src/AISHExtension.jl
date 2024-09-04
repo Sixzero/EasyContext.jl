@@ -7,6 +7,11 @@ import AISH
   keep::Int=10
 end
 
+function AISH.get_cache_setting(::EasyContextCreator)
+    return nothing
+end
+
+
 get_context_for_question(question) = begin
   result = get_context(question)
   join(result.context, "\n")

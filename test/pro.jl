@@ -1,5 +1,6 @@
 using EasyContext: EasyContextCreator
-using AISH: initialize_ai_state, process_question, main
+using AISH: initialize_ai_state, process_question, main, start
+
 main(;contexter=EasyContextCreator())
 
 #%%
