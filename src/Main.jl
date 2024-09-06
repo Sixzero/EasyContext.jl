@@ -13,10 +13,7 @@ const GLOBAL_RAG_CONFIG = Ref{Union{Nothing, Tuple}}(nothing)
 const GLOBAL_INDEX = Ref{Union{Nothing, RAG.AbstractChunkIndex}}(nothing)
 const GLOBAL_BM25_INDEX = Ref{Union{Nothing, RAG.AbstractChunkIndex}}(nothing)
 
-function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rag_conf=nothing, rephraser_kwargs=nothing)
-    if isnothing(rag_conf)
-        rag_conf, _ = get_rag_config()
-    end
+function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rephraser_kwargs=nothing)
     reranker = ReduceRankGPTReranker(;batch_size=30, model="gpt4om")
     retriever = RAG.SimpleRetriever(;
         finder=RAG.CosineSimilarity(), 
@@ -142,6 +139,20 @@ function get_rag_config(;
     return rag_conf, kwargs
 end
 
+function build_multi_index(; verbose::Bool=true, force_rebuild::Bool=false)
+    
+    # Build or load embedding-based index
+    embedding_index = build_installed_package_index(; verbose, force_rebuild)
+    
+    # Build or load BM25-based index
+    bm25_index = build_installed_package_index_bm25(; verbose, force_rebuild)
+    
+    # Create MultiIndex
+    multi_index = RAG.MultiIndex([embedding_index, bm25_index])
+    
+    return multi_index
+end
+
 function get_context_embedding(question::String; index=nothing, rag_conf=nothing, force_rebuild=false, suppress_output=false)
     if isnothing(index)
         index = GLOBAL_INDEX[]
@@ -199,12 +210,10 @@ function get_context_bm25(question::String; index=nothing, force_rebuild=false, 
     # Create a BM25Similarity finder
     finder = RAG.BM25Similarity()
 
+    reranker = RAG.CohereReranker()
+    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
     # Create a SimpleBM25Retriever
-    retriever = RAG.SimpleBM25Retriever(
-        processor=processor,
-        finder=finder,
-        reranker=RAG.CohereReranker()
-    )
+    retriever = RAG.SimpleBM25Retriever(;processor=processor, finder=finder, reranker)
 
     # Perform retrieval
     result = RAG.retrieve(retriever, index, question; 
@@ -227,15 +236,6 @@ function get_context_bm25(question::String; index=nothing, force_rebuild=false, 
     end
     
     return result
-end
-
-# Update the main get_context function to use BM25 by default
-function get_context(question::String; use_bm25::Bool=true, kwargs...)
-    if use_bm25
-        return get_context_bm25(question; kwargs...)
-    else
-        return get_context_embedding(question; kwargs...)
-    end
 end
 
 # New function to build BM25 index
@@ -278,12 +278,74 @@ function build_installed_package_index_bm25(; verbose::Bool=true, force_rebuild:
     return index
 end
 
+"""
+    get_context(question::String; index=nothing, force_rebuild=false, suppress_output=false)
+
+Retrieve context for a given question using a multi-index approach.
+
+# Arguments
+- `question::String`: The question to retrieve context for.
+- `index=nothing`: An optional pre-built index to use. If not provided, one will be built or loaded.
+- `force_rebuild=false`: Whether to force rebuilding the index even if a cached version exists.
+- `suppress_output=false`: Whether to suppress printing of retrieval results.
+
+# Returns
+The retrieval result containing relevant context.
+"""
+function get_context(question::String; index=nothing, force_rebuild=false, suppress_output=false)
+    if isnothing(index)
+        index = build_multi_index(; force_rebuild)
+    end
+    
+    # Create a KeywordsProcessor for BM25
+    processor = RAG.KeywordsProcessor()
+
+    # Create finders for both embedding and BM25
+    embedding_finder = RAG.CosineSimilarity()
+    bm25_finder = RAG.BM25Similarity()
+
+    # Create a MultiFinder
+    multi_finder = RAG.MultiFinder([embedding_finder, bm25_finder])
+
+    # Create a reranker (you can choose between CohereReranker or ReduceRankGPTReranker)
+    reranker = RAG.CohereReranker()
+    # reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
+
+    # Create a retriever that can handle MultiIndex
+    retriever = RAG.AdvancedRetriever(
+        processor=processor,
+        finder=multi_finder,
+        reranker=reranker
+    )
+
+    # Perform retrieval
+    result = RAG.retrieve(retriever, index, question; 
+        return_all=true,
+        top_k=100,
+        top_n=10,
+    )
+    
+    RAG.build_context!(SimpleContextJoiner(), index, result)
+    
+    if !suppress_output
+        # Print the number of context sources in green
+        printstyled("Number of context sources: ", color=:green, bold=true)
+        printstyled(length(result.sources), "\n", color=:green)
+        
+        # Print the context sources in a styled manner
+        for (index, source) in enumerate(result.sources)
+            printstyled("  $source\n", color=:cyan)
+        end
+    end
+    
+    return result
+end
 
 function get_answer(question::String; index=nothing, rag_conf=nothing, force_rebuild=false)
     if isnothing(index)
         index = GLOBAL_INDEX[]
         if force_rebuild || isnothing(index)
-            index = build_installed_package_index(; force_rebuild)
+        index = build_multi_index(; force_rebuild)
         end
     end
     

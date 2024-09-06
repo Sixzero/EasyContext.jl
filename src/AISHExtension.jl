@@ -7,7 +7,7 @@ import AISH
   keep::Int=10
 end
 
-function AISH.get_cache_setting(::EasyContextCreator)
+function AISH.get_cache_setting(::EasyContextCreator, conv)
     return nothing
 end
 

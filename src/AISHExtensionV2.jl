@@ -10,7 +10,7 @@ import AISH
     message_counter::Int = 0
 end
 
-function AISH.get_cache_setting(::EasyContextCreatorV2)
+function AISH.get_cache_setting(::EasyContextCreatorV2, conv)
     return :all
 end
 
