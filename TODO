@@ -1,1 +1,2 @@
 - Use Jina embedder. 
+- get_context should not return the concatenated context, because of unique filtering.

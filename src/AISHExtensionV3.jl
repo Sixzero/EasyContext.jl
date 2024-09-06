@@ -18,7 +18,7 @@ end
             CodebaseContextV2(),
             ShellContext(),
             # GoogleContext(),
-            JuliaPackageContext(),
+            # JuliaPackageContext(),
         ]
     )
 end
