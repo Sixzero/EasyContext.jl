@@ -9,6 +9,7 @@ EasyContext.jl is a Julia package that enhances the context-aware capabilities o
 - **Advanced Retrieval**: Implements sophisticated retrieval methods, including cosine similarity and BM25.
 - **Context-Aware Processing**: Provides context processors for different types of information sources, such as codebase files and Julia packages.
 - **Customizable RAG Pipeline**: Offers a configurable RAG system with interchangeable components for indexing, retrieval, and generation.
+- **Parallel Context Processing**: Uses `AsyncContextJoiner` for efficient, concurrent context retrieval from multiple sources.
 
 ## Installation
 
@@ -21,23 +22,57 @@ Pkg.add("EasyContext")
 
 ## Usage
 
-Here's a basic example of how to use EasyContext.jl:
+Here's an example of how to use EasyContext.jl with various context processors:
 
 ```julia
 using EasyContext
 using PromptingTools
 
-# Initialize the RAG configuration
-rag_conf, rag_kwargs = get_rag_config()
+# Initialize the AsyncContextJoiner with multiple processors
+joiner = AsyncContextJoiner(
+    processors=[
+        CodebaseContextV2(),
+        ShellContext(),
+        JuliaPackageContext(),
+    ],
+    keep=10,
+    max_messages=16
+)
 
-# Build or load the index
-index = build_installed_package_index()
+# Create an EasyContextCreatorV3 instance
+creator = EasyContextCreatorV3(joiner=joiner)
 
-# Use the RAG system to answer a question
+# Prepare AI state (you might need to adjust this based on your specific setup)
+ai_state = AIState()
+
+# Define a question
 question = "How do I use DifferentialEquations.jl to solve an ODE?"
-result = get_answer(question; index=index, rag_conf=rag_conf)
 
-println(result.content)
+# Get context from multiple sources concurrently
+context = get_context(joiner, creator, question, ai_state, Dict())
+
+println("Combined context from multiple sources:")
+println(context)
+
+# If you want to use individual context processors:
+
+# Get context from codebase
+codebase_context = get_context(CodebaseContextV2(), question, ai_state, Dict())
+println("Codebase context:")
+println(codebase_context)
+
+# Get context from Julia packages
+package_context = get_context(JuliaPackageContext(), question, ai_state, Dict())
+println("Julia package context:")
+println(package_context)
+
+# Get context from shell
+shell_context = get_context(ShellContext(), question, ai_state, Dict())
+println("Shell context:")
+println(shell_context)
+
+# Use the context in your RAG pipeline
+# ... (implement your RAG logic here)
 ```
 
 ## Main Components
@@ -46,7 +81,8 @@ println(result.content)
 2. **FullFileChunker**: A chunker that processes entire files as single chunks.
 3. **GolemSourceChunker**: A specialized chunker for Julia source code.
 4. **ReduceRankGPTReranker**: A reranker that uses GPT models to improve retrieval results.
-5. **Various Context Processors**: Including CodebaseContext, ShellContext, and JuliaPackageContext.
+5. **AsyncContextJoiner**: A component that runs multiple context processors in parallel.
+6. **Various Context Processors**: Including CodebaseContext, ShellContext, and JuliaPackageContext.
 
 ## Advanced Features
 
