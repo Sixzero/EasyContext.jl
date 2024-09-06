@@ -1,0 +1,56 @@
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .title { font: bold 24px sans-serif; }
+        .component { font: bold 14px sans-serif; }
+        .description { font: 12px sans-serif; }
+    </style>
+    
+    <rect width="100%" height="100%" fill="#f0f0f0"/>
+    
+    <text x="400" y="30" text-anchor="middle" class="title">EasyContext.jl System Architecture</text>
+    
+    <!-- AsyncContextJoiner -->
+    <rect x="300" y="60" width="200" height="80" fill="#FFB3BA" stroke="black"/>
+    <text x="400" y="90" text-anchor="middle" class="component">AsyncContextJoiner</text>
+    <text x="400" y="110" text-anchor="middle" class="description">Parallel Context Processing</text>
+    
+    <!-- Context Processors -->
+    <rect x="50" y="200" width="150" height="60" fill="#BAFFC9" stroke="black"/>
+    <text x="125" y="230" text-anchor="middle" class="component">CodebaseContext</text>
+    
+    <rect x="250" y="200" width="150" height="60" fill="#BAE1FF" stroke="black"/>
+    <text x="325" y="230" text-anchor="middle" class="component">ShellContext</text>
+    
+    <rect x="450" y="200" width="150" height="60" fill="#FFFFBA" stroke="black"/>
+    <text x="525" y="230" text-anchor="middle" class="component">JuliaPackageContext</text>
+    
+    <!-- Indexing and Retrieval -->
+    <rect x="50" y="320" width="200" height="80" fill="#FFD1DC" stroke="black"/>
+    <text x="150" y="350" text-anchor="middle" class="component">Indexing</text>
+    <text x="150" y="370" text-anchor="middle" class="description">JinaEmbedder, FullFileChunker</text>
+    
+    <rect x="300" y="320" width="200" height="80" fill="#E6E6FA" stroke="black"/>
+    <text x="400" y="350" text-anchor="middle" class="component">Retrieval</text>
+    <text x="400" y="370" text-anchor="middle" class="description">Cosine Similarity, BM25</text>
+    
+    <!-- RAG Pipeline -->
+    <rect x="550" y="320" width="200" height="80" fill="#DDA0DD" stroke="black"/>
+    <text x="650" y="350" text-anchor="middle" class="component">RAG Pipeline</text>
+    <text x="650" y="370" text-anchor="middle" class="description">Customizable Components</text>
+    
+    <!-- Arrows -->
+    <line x1="400" y1="140" x2="125" y2="200" stroke="black" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <line x1="400" y1="140" x2="325" y2="200" stroke="black" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <line x1="400" y1="140" x2="525" y2="200" stroke="black" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <line x1="125" y1="260" x2="150" y2="320" stroke="black" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <line x1="325" y1="260" x2="400" y2="320" stroke="black" stroke-width="2" marker-end="url(#arrowhead)"/>
+    <line x1="525" y1="260" x2="650" y2="320" stroke="black" stroke-width="2" marker-end="url(#arrowhead)"/>
+    
+    <!-- Arrowhead definition -->
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="0" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" />
+        </marker>
+    </defs>
+</svg>
