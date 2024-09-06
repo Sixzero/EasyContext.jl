@@ -3,30 +3,19 @@ using AISH: AbstractContextCreator, start, main, cut_history!, get_project_files
 using AISH: curr_conv, SYSTEM_PROMPT, Message, save_user_message, format_shell_results
 import AISH
 
-# Context Processors
-abstract type AbstractContextProcessor end
-
-function get_context(p::AbstractContextProcessor, question::String, ai_state, shell_results)
-    @warn "get_context not implemented for this processor: $p"
-    return ""
-end
-
-function AISH.cut_history!(p::AbstractContextProcessor, keep::Int)
-    @warn "cut_history! not implemented for this processor: $p"
-end
-
-@kwdef mutable struct CodebaseContextProcessor <: AbstractContextProcessor
-    tracked_files::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
-    call_counter::Int = 0
-end
+include("CodebaseContextProcessor.jl")
 
 @kwdef mutable struct ShellContextProcessor <: AbstractContextProcessor
     call_counter::Int = 0
 end
 
+function AISH.cut_history!(processor::ShellContextProcessor, keep::Int)
+    # ShellContextProcessor doesn't store any history
+    processor.call_counter = 0
+end
+
 @kwdef mutable struct JuliaPackageContextProcessor <: AbstractContextProcessor
     tracked_sources::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
-    call_counter::Int = 0
 end
 
 # Async Joiner
@@ -38,9 +27,9 @@ end
 @kwdef mutable struct EasyContextCreatorV3 <: AbstractContextCreator
     joiner::AsyncContextJoiner = AsyncContextJoiner(
         processors=[
-            CodebaseContextProcessor(),
+            CodebaseContextProcessorV2(),
             ShellContextProcessor(),
-            JuliaPackageContextProcessor(),
+            # JuliaPackageContextProcessor(),
         ]
     )
 end
@@ -49,67 +38,6 @@ function AISH.get_cache_setting(::EasyContextCreatorV3)
     return :all
 end
 
-# Implement context processors
-function get_context(processor::CodebaseContextProcessor, question::String, ai_state, shell_results)
-    processor.call_counter += 1
-    conv = curr_conv(ai_state)
-    all_files = get_project_files(conv.rel_project_paths)
-    selected_files, _ = get_relevant_files(question, all_files; suppress_output=true)
-    
-    new_files = String[]
-    updated_files = String[]
-    unchanged_files = String[]
-    new_contents = String[]
-    updated_contents = String[]
-    
-    # First, check all tracked files for updates
-    for (file, (_, old_content)) in processor.tracked_files
-        current_content = format_file_content(file)
-        if old_content != current_content
-            push!(updated_files, file)
-            push!(updated_contents, current_content)
-            processor.tracked_files[file] = (processor.call_counter, current_content)
-        end
-    end
-    
-    # Then, process selected files
-    for file in selected_files
-        if !haskey(processor.tracked_files, file)
-            formatted_content = format_file_content(file)
-            push!(new_files, file)
-            push!(new_contents, formatted_content)
-            processor.tracked_files[file] = (processor.call_counter, formatted_content)
-        elseif file ∉ updated_files
-            push!(unchanged_files, file)
-        end
-    end
-    
-    # Print file information
-    printstyled("Number of files selected: ", color=:green, bold=true)
-    printstyled(length(new_files) + length(updated_files) + length(unchanged_files), "\n", color=:green)
-    
-    for file in new_files
-        printstyled("  [NEW] $file\n", color=:blue)
-    end
-    for file in updated_files
-        printstyled("  [UPDATED] $file\n", color=:yellow)
-    end
-    for file in unchanged_files
-        printstyled("  [UNCHANGED] $file\n", color=:light_black)
-    end
-
-    new_files_content = isempty(new_files) ? "" : """
-    ## Files:
-    $(join(new_contents, "\n\n"))
-    """
-    
-    updated_files_content = isempty(updated_files) ? "" : """
-    ## Files with newer version:
-    $(join(updated_contents, "\n\n"))
-    """
-
-    return new_files_content * "\n" * updated_files_content
-end
 
 function get_context(processor::ShellContextProcessor, question::String, ai_state, shell_results)
     processor.call_counter += 1
@@ -154,15 +82,6 @@ function get_context(processor::JuliaPackageContextProcessor, question::String, 
     $(join(context, "\n"))
     """
     return context_msg
-end
-
-function AISH.cut_history!(processor::CodebaseContextProcessor, keep::Int)
-    oldest_kept_message = max(1, processor.call_counter - 2 * keep + 1)
-    for (filepath, (msg_num, _)) in processor.tracked_files
-        if msg_num < oldest_kept_message
-            delete!(processor.tracked_files, filepath)
-        end
-    end
 end
 
 function AISH.cut_history!(processor::JuliaPackageContextProcessor, keep::Int)

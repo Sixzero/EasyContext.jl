@@ -9,7 +9,7 @@ include("CacheBatchEmbedder.jl")
 include("ContextJoiner.jl")
 include("ReduceRerankGPT.jl")
 include("FullFileChunker.jl")
-
+include("CodebaseContextProcessor.jl")
 
 include("PkgLister.jl")
 export find_package_path
@@ -21,3 +21,4 @@ include("AISHExtensionV2.jl")
 include("AISHExtensionV3.jl")
 
 end # module EasyContext
+
