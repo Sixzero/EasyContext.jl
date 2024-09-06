@@ -1,8 +1,13 @@
-using EasyContext: EasyContextCreator
+using EasyContext: EasyContextCreator, EasyContextCreatorV2, EasyContextCreatorV3
 using AISH: initialize_ai_state, process_question, main, start
 
-main(;contexter=EasyContextCreator())
+# main(;contexter=EasyContextCreator())
+main(;contexter=EasyContextCreatorV2())
+# main(;contexter=EasyContextCreatorV3())
 
+#%%
+using EasyContext: build_installed_package_index
+index = build_installed_package_index(; force_rebuild=true)
 #%%
 using AISH: initialize_ai_state, process_question
 using EasyContext: EasyContextCreator

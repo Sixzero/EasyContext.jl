@@ -7,67 +7,72 @@ using JuliaSyntax
 const RAG = PromptingTools.Experimental.RAGTools
 
 @kwdef struct JuliaSourceChunk
-  name::Symbol
-  signature_hash::Union{UInt64,Nothing} = nothing
-  references::Vector{Symbol} = Symbol[]
-  start_line_code::Int
-  end_line_code::Int
-  start_line_docs::Int = 0
-  end_line_docs::Int = 0
-  file_path::String
-  is_function::Bool = false
-  chunk::Union{String,Nothing} = nothing
+    name::Symbol
+    signature_hash::Union{UInt64,Nothing} = nothing
+    references::Vector{Symbol} = Symbol[]
+    start_line_code::Int
+    end_line_code::Int
+    start_line_docs::Int = 0
+    end_line_docs::Int = 0
+    file_path::String
+    is_function::Bool = false
+    chunk::Union{String,Nothing} = nothing
+    module_stack::Vector{String} = String[]
 end
 
-struct JuliaSourceChunker <: AbstractChunker end
+@kwdef struct JuliaSourceChunker <: AbstractChunker
+    include_module_info::Bool=true
+end
 
 file_path_lineno(def::JuliaSourceChunk) = "$(def.file_path):$(def.start_line_code)"
 file_path(def::JuliaSourceChunk) = def.file_path
 name_with_signature(def::JuliaSourceChunk) = "$(def.name):$(def.signature_hash)"
 
-# Include the existing Julia-specific functions from GolemSourceChunks.jl here
-# Such as empty_line, handle_single_module_file, handle_docstring_file, get_last_line_number, source_explorer, etc.
-
 function RAG.get_chunks(chunker::JuliaSourceChunker,
         files_or_docs::Vector{<:AbstractString};
         sources::AbstractVector{<:AbstractString} = files_or_docs,
-        verbose::Bool = true,)
+        verbose::Bool = true, modules::Vector{String}=String[])
 
-    @assert (length(sources)==length(files_or_docs)) "Length of `sources` must match length of `files_or_docs`"
+    @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
 
     output_chunks = Vector{SubString{String}}()
     output_sources = Vector{eltype(sources)}()
 
-    for i in eachindex(files_or_docs, sources)
-      defs = process_jl_file(files_or_docs[i], verbose)
-      chunks = ["$(def.file_path):$(def.start_line_code)\n" *  def.chunk for def in defs]
-
-      @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
+    for (file, source) in zip(files_or_docs, sources)
+        defs = process_jl_file(file, modules, verbose)
+        chunks = [create_chunk(def, chunker.include_module_info) for def in defs]
+        # chunks .|> println
+        
+        @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
     
-      sources = file_path_lineno.(defs)
-      append!(output_chunks, chunks)
-      append!(output_sources, sources)
+        append!(output_chunks, chunks)
+        append!(output_sources, ["$(file_path_lineno(def)) $(join(def.module_stack, "."))" for def in defs])
     end
 
     return output_chunks, output_sources
 end
 
-# Include the process_jl_file and process_source_directory functions here
-function process_jl_file(file_path, verbose::Bool=true)
+function create_chunk(def::JuliaSourceChunk, include_module_info::Bool)
+    header = "$(def.file_path):$(def.start_line_code)"
+    module_info = include_module_info ? " \n# module $(isempty(def.module_stack) ? "Main" : join(def.module_stack, "."))" : ""
+    return "$header$module_info\n$(def.chunk)"
+end
+
+function process_jl_file(file_path, modules::Vector{String}, verbose::Bool=true)
   verbose && @info "Processing file: $file_path"
   s = read(file_path, String)
   # @time expr2 = parsestmt(JuliaSyntax.SyntaxNode, "begin\n"*s*"\nend", filename=file_path)
   # @show typeof(expr2)
   expr = Meta.parseall(s)       
   lines = split(s, '\n')
-  defs = source_explorer(expr, lines; file_path)
+  defs = source_explorer(expr, lines; file_path=convert_path_to_tilde(file_path), module_stack=modules)
   defs
 end
 
 function process_source_directory(dir::AbstractString; verbose::Bool=true)
   dir = expanduser(dir)
   @assert isdir(dir) "Directory does not exist: $dir"
-  definitions = SourceChunk[]
+  definitions = JuliaSourceChunk[]
   for (dir, _, files) in walkdir(dir)
       for file in files
           ## only Julia files
@@ -135,7 +140,7 @@ function get_last_line_number(expr::Expr)
 end
 get_last_line_number(expr::LineNumberNode) = expr.line
 function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
-    file_path::AbstractString, last_line::Int=length(lines), source_defs=SourceChunk[], module_name="")
+    file_path::AbstractString, last_line::Int=length(lines), source_defs=JuliaSourceChunk[], module_stack=String[])
 
     expr_tree, last_line = handle_single_module_file(expr_tree, last_line, lines)
     expr_tree, last_line = handle_docstring_file(expr_tree, last_line, lines)
@@ -148,9 +153,11 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
             continue
         end
         if isa(expr, Expr) && expr.head == :module
+            new_module_name = string(expr.args[2])
+            new_module_stack = [module_stack; new_module_name]
             new_lastline = get_last_line_number(expr.args[3]) + 1
             @show new_lastline
-            source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline)
+            source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline, module_stack=new_module_stack)
             continue
         end
         
@@ -168,7 +175,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
             if isa(expr, String)
                 signature_hash = hash(expr)
                 chunk = join(lines[(start_line_code):(end_line_code)], '\n')
-                def = SourceChunk(; name=:Documentation, signature_hash, references=Symbol[], is_function=false, start_line_code, end_line_code, file_path, chunk)
+                def = JuliaSourceChunk(; name=:Documentation, signature_hash, references=Symbol[], is_function=false, start_line_code, end_line_code, file_path, chunk)
                 push!(source_defs, def)
                 continue
             end
@@ -223,10 +230,10 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
             chunk = "$first_part\n ... \n$(lines[start_line_code+len])"
         end
         
-        def = SourceChunk(; name, signature_hash, is_function,
-            start_line_code, end_line_code, file_path, chunk)
+        def = JuliaSourceChunk(; name, signature_hash, is_function,
+            start_line_code, end_line_code, file_path, chunk, module_stack)
         
-        @assert (len < 600 || (len ∈ [1224, 667, 761, 918, 1186, 2542, 1765])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
+        @assert (len < 600 || (len ∈ [1224, 667, 761, 736, 918, 1186, 2542, 1765])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
         push!(source_defs, def)
     end
 

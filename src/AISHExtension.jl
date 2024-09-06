@@ -1,6 +1,6 @@
 using Dates
 using AISH: AbstractContextCreator, start, main, cut_history!, get_project_files, format_file_content
-using AISH: curr_conv, SYSTEM_PROMPT, Message, save_user_message
+using AISH: curr_conv, SYSTEM_PROMPT, Message, format_shell_results
 import AISH
 
 @kwdef struct EasyContextCreator <: AbstractContextCreator
@@ -34,7 +34,7 @@ This is the latest version of the codebase. Chats and later messages can only ho
 """
 end
 
-AISH.adjust_conversation!(ctx::EasyContextCreator, ai_state, question) = begin
+AISH.prepare_user_message!(ctx::EasyContextCreator, ai_state, question, shell_results) = begin
   conv = curr_conv(ai_state)
   
   # Create tasks for asynchronous execution
@@ -51,7 +51,11 @@ AISH.adjust_conversation!(ctx::EasyContextCreator, ai_state, question) = begin
   
   cut_history!(conv, keep=ctx.keep)
   
-  new_user_msg = """## User message:
+  formatted_results = format_shell_results(shell_results)
+  new_user_msg = """
+  $formatted_results
+
+  ## User message:
   $(question)
   
   ## Additional context:

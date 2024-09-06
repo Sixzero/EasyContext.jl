@@ -4,11 +4,14 @@ using LinearAlgebra, SparseArrays
 using PromptingTools.Experimental.RAGTools: SimpleIndexer
 using Pkg
 using AISH: get_project_files
+using JLD2
+using Snowball
+import PromptingTools.Experimental.RAGTools as RAG
 
 # Module-level variables to store the RAG configuration and index
 const GLOBAL_RAG_CONFIG = Ref{Union{Nothing, Tuple}}(nothing)
-const GLOBAL_INDEX = Ref{Union{Nothing, Any}}(nothing)
-
+const GLOBAL_INDEX = Ref{Union{Nothing, RAG.AbstractChunkIndex}}(nothing)
+const GLOBAL_BM25_INDEX = Ref{Union{Nothing, RAG.AbstractChunkIndex}}(nothing)
 
 function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rag_conf=nothing, rephraser_kwargs=nothing)
     if isnothing(rag_conf)
@@ -62,19 +65,26 @@ function get_relevant_files(question::String, files::Vector{String}; top_k::Int=
     return relevant_files, retrieve_result, file_index
 end
 function build_installed_package_index(; verbose::Bool=true, force_rebuild::Bool=false)
-    !isnothing(GLOBAL_INDEX[]) && !force_rebuild && return GLOBAL_INDEX[]
-    pkgnames = collect(keys(Pkg.installed()))
-    # pkgnames = collect(keys(Pkg.dependencies()))
-
-    build_package_index(pkgnames; verbose=verbose, force_rebuild=force_rebuild)
-end
-
-function build_package_index(pkgnames::Vector{String}; verbose::Bool=true, force_rebuild::Bool=false)
-    !isnothing(GLOBAL_INDEX[]) && !force_rebuild && return GLOBAL_INDEX[]
-
-    dirs = [find_package_path(pkgname) for (pkgname, pkginfo) in Pkg.installed()]
-    src_dirs = [dir * "/src" for dir in dirs if !isnothing(dir)]
+    CACHE_DIR = let
+        dir = joinpath(dirname(@__DIR__), "cache")
+        isdir(dir) || mkpath(dir)
+        dir
+    end
+    cache_file = joinpath(CACHE_DIR, "installed_package_index.jld2")
     
+    !isnothing(GLOBAL_INDEX[]) && !force_rebuild && return GLOBAL_INDEX[]
+    if !force_rebuild && isfile(cache_file)
+        return JLD2.load(cache_file, "index")
+    end
+    
+    # Get installed packages
+    installed_packages = Pkg.installed()
+    
+    # Get all dependencies (which include PackageInfo)
+    all_dependencies = Pkg.dependencies()
+    
+    # Filter dependencies to only include installed packages
+    pkg_infos = [info for (uuid, info) in all_dependencies if info.name in keys(installed_packages)]
     
     chunker = GolemSourceChunker()
     indexer = RAG.SimpleIndexer(;
@@ -82,8 +92,13 @@ function build_package_index(pkgnames::Vector{String}; verbose::Bool=true, force
         embedder=CachedBatchEmbedder(;model="text-embedding-3-small"), 
         tagger=RAG.NoTagger()
     )
+
+    index = RAG.build_index(indexer, pkg_infos; verbose, embedder_kwargs=(model=indexer.embedder.model, verbose))
     
-    GLOBAL_INDEX[] = RAG.build_index(indexer, src_dirs; verbose=verbose, embedder_kwargs=(model=indexer.embedder.model, verbose=verbose))
+    # Save the index to cache
+    JLD2.save(cache_file, "index", index)
+    
+    GLOBAL_INDEX[] = index
 end
 
 function get_rag_config(;
@@ -127,7 +142,7 @@ function get_rag_config(;
     return rag_conf, kwargs
 end
 
-function get_context(question::String; index=nothing, rag_conf=nothing, force_rebuild=false, suppress_output=false)
+function get_context_embedding(question::String; index=nothing, rag_conf=nothing, force_rebuild=false, suppress_output=false)
     if isnothing(index)
         index = GLOBAL_INDEX[]
         if force_rebuild || isnothing(index)
@@ -139,7 +154,7 @@ function get_context(question::String; index=nothing, rag_conf=nothing, force_re
     rephraser = RAG.HyDERephraser()
     rephraser = RAG.NoRephraser()
     reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
+    # reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
     retriever = RAG.AdvancedRetriever(;
         finder=RAG.CosineSimilarity(), 
         reranker, 
@@ -149,7 +164,8 @@ function get_context(question::String; index=nothing, rag_conf=nothing, force_re
     result = RAG.retrieve(retriever, index, question; 
         return_all=true,
         embedder_kwargs = (; model = "text-embedding-3-small"),
-        top_n=6,
+        top_k=100,
+        top_n=10,
     )
     
     RAG.build_context!(SimpleContextJoiner(), index, result)
@@ -166,6 +182,100 @@ function get_context(question::String; index=nothing, rag_conf=nothing, force_re
     end
     
     return result
+end
+
+# New BM25-based get_context function
+function get_context_bm25(question::String; index=nothing, force_rebuild=false, suppress_output=false)
+    if isnothing(index)
+        index = GLOBAL_BM25_INDEX[]
+        if force_rebuild || isnothing(index)
+            index = build_installed_package_index_bm25(; force_rebuild)
+        end
+    end
+    
+    # Create a KeywordsProcessor
+    processor = RAG.KeywordsProcessor()
+
+    # Create a BM25Similarity finder
+    finder = RAG.BM25Similarity()
+
+    # Create a SimpleBM25Retriever
+    retriever = RAG.SimpleBM25Retriever(
+        processor=processor,
+        finder=finder,
+        reranker=RAG.CohereReranker()
+    )
+
+    # Perform retrieval
+    result = RAG.retrieve(retriever, index, question; 
+        return_all=true,
+        top_k=100,
+        top_n=10,
+    )
+    
+    RAG.build_context!(SimpleContextJoiner(), index, result)
+    
+    if !suppress_output
+        # Print the number of context sources in green
+        printstyled("Number of context sources: ", color=:green, bold=true)
+        printstyled(length(result.sources), "\n", color=:green)
+        
+        # Print the context sources in a styled manner
+        for (index, source) in enumerate(result.sources)
+            printstyled("  $source\n", color=:cyan)
+        end
+    end
+    
+    return result
+end
+
+# Update the main get_context function to use BM25 by default
+function get_context(question::String; use_bm25::Bool=true, kwargs...)
+    if use_bm25
+        return get_context_bm25(question; kwargs...)
+    else
+        return get_context_embedding(question; kwargs...)
+    end
+end
+
+# New function to build BM25 index
+function build_installed_package_index_bm25(; verbose::Bool=true, force_rebuild::Bool=false)
+    CACHE_DIR = let
+        dir = joinpath(dirname(@__DIR__), "cache")
+        isdir(dir) || mkpath(dir)
+        dir
+    end
+    cache_file = joinpath(CACHE_DIR, "installed_package_index_bm25.jld2")
+    
+    if !force_rebuild && isfile(cache_file)
+        return JLD2.load(cache_file, "index")
+    end
+    
+    # Get installed packages
+    installed_packages = Pkg.installed()
+    
+    # Get all dependencies (which include PackageInfo)
+    all_dependencies = Pkg.dependencies()
+    
+    # Filter dependencies to only include installed packages
+    pkg_infos = [info for (uuid, info) in all_dependencies if info.name in keys(installed_packages)]
+    
+    # Create a KeywordsProcessor
+    processor = RAG.KeywordsProcessor()
+
+    # Create a KeywordsIndexer
+    indexer = RAG.KeywordsIndexer(
+        chunker=GolemSourceChunker(),
+        processor=processor
+    )
+
+    index = RAG.build_index(indexer, pkg_infos; verbose)
+    
+    # Save the index to cache
+    JLD2.save(cache_file, "index", index)
+    
+    GLOBAL_BM25_INDEX[] = index
+    return index
 end
 
 
