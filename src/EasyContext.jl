@@ -14,10 +14,10 @@ include("PkgLister.jl")
 export find_package_path
 
 include("MainUtils.jl")
-include("Main.jl")
 include("AISHExtension.jl")
 include("AISHExtensionV2.jl")
 include("AISHExtensionV3.jl")
+include("Main.jl")
 
 end # module EasyContext
 

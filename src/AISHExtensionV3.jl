@@ -6,12 +6,28 @@ import AISH
 include("contexts/ContextProcessors.jl")
 
 # Async Joiner
+"""
+    AsyncContextJoiner
+
+A structure that manages multiple context processors and their execution.
+
+Fields:
+- `processors::Vector{AbstractContextProcessor}`: List of context processors
+"""
 @kwdef mutable struct AsyncContextJoiner
     processors::Vector{AbstractContextProcessor}
-    keep::Int = 10 # the max length history should be kept
-    max_messages::Int = 16 # the threshold for triggering a cut
 end
 
+"""
+    EasyContextCreatorV3 <: AbstractContextCreator
+
+Main structure for EasyContext V3, managing context creation and processing.
+
+Fields:
+- `joiner::AsyncContextJoiner`: Manages multiple context processors
+- `keep::Int`: Maximum number of messages to keep in history
+- `max_messages::Int`: Threshold for triggering a history cut
+"""
 @kwdef mutable struct EasyContextCreatorV3 <: AbstractContextCreator
     joiner::AsyncContextJoiner = AsyncContextJoiner(
         processors=[
@@ -21,13 +37,30 @@ end
             # JuliaPackageContext(),
         ]
     )
+    keep::Int = 10
+    max_messages::Int = 16
 end
 
+"""
+    AISH.get_cache_setting(creator::EasyContextCreatorV3, conv)
+
+Determine caching settings based on conversation length.
+
+Returns:
+- `:all` if conversation length is below threshold
+- `nothing` otherwise
+"""
 function AISH.get_cache_setting(creator::EasyContextCreatorV3, conv)
-    if length(conv.messages) >= creator.joiner.max_messages - 2
+    if length(conv.messages) >= creator.max_messages - 2
         return nothing  # or :no_cache
     end
     return :all
+end
+
+function AISH.cut_history!(joiner::AsyncContextJoiner, keep::Int)
+    for processor in joiner.processors
+        cut_history!(processor, keep)
+    end
 end
 
 # Async Joiner implementation
@@ -42,15 +75,6 @@ function get_context(joiner::AsyncContextJoiner, creator::EasyContextCreatorV3, 
     # Join the results
     joined_context = join(filter(!isempty, results), "\n\n")
     
-    # Cut history after processing contexts
-    conv = curr_conv(ai_state)
-    if length(conv.messages) >= joiner.max_messages
-        for processor in joiner.processors
-            cut_history!(processor, joiner.keep)
-        end
-        cut_history!(conv, keep=joiner.keep)
-    end
-
     # Increment call_counter for all processors
     for processor in joiner.processors
         if hasproperty(processor, :call_counter)
@@ -64,6 +88,12 @@ end
 # Main prepare_user_message! function
 function AISH.prepare_user_message!(ctx::EasyContextCreatorV3, ai_state, question, shell_results)
     conv = curr_conv(ai_state)
+    
+    # Check and cut history if necessary
+    if length(conv.messages) >= ctx.max_messages
+        cut_history!(ctx.joiner, ctx.keep)
+        cut_history!(conv, keep=ctx.keep)
+    end
     
     # Use the AsyncContextJoiner to process and join contexts
     context = get_context(ctx.joiner, ctx, question, ai_state, shell_results)

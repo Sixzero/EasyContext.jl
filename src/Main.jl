@@ -195,8 +195,31 @@ function get_context_embedding(question::String; index=nothing, rag_conf=nothing
     return result
 end
 
+struct BM25JuliaPackageContextProcessor <: AbstractContextProcessor
+    processor::RAG.KeywordsProcessor
+    finder::RAG.BM25Similarity
+    reranker::Union{RAG.CohereReranker, ReduceRankGPTReranker}
+end
+
+function BM25JuliaPackageContextProcessor(;
+    reranker_type::Symbol = :cohere,
+    batch_size::Int = 50,
+    model::String = "gpt4om"
+)
+    processor = RAG.KeywordsProcessor()
+    finder = RAG.BM25Similarity()
+    reranker = if reranker_type == :cohere
+        RAG.CohereReranker()
+    else
+        ReduceRankGPTReranker(; batch_size = batch_size, model = model)
+    end
+    BM25JuliaPackageContextProcessor(processor, finder, reranker)
+end
+
 # New BM25-based get_context function
-function get_context_bm25(question::String; index=nothing, force_rebuild=false, suppress_output=false)
+function get_context(
+    context_processor::BM25JuliaPackageContextProcessor,
+	question::String; index=nothing, force_rebuild=false, suppress_output=false)
     if isnothing(index)
         index = GLOBAL_BM25_INDEX[]
         if force_rebuild || isnothing(index)
@@ -314,7 +337,7 @@ function get_context(question::String; index=nothing, force_rebuild=false, suppr
     # Create a retriever that can handle MultiIndex
     retriever = RAG.AdvancedRetriever(
         processor=processor,
-        finder=multi_finder,
+        finder=finder.finder,
         reranker=reranker
     )
 
@@ -342,24 +365,20 @@ function get_context(question::String; index=nothing, force_rebuild=false, suppr
 end
 
 function get_answer(question::String; index=nothing, rag_conf=nothing, force_rebuild=false)
-    if isnothing(index)
-        index = GLOBAL_INDEX[]
-        if force_rebuild || isnothing(index)
-        index = build_multi_index(; force_rebuild)
-        end
-    end
-    
     if isnothing(rag_conf)
         rag_conf, rag_kwargs = get_rag_config()
     end
     
-    msg = RAG.airag(rag_conf, index; 
-        question, 
-        return_all=true, 
-        rag_kwargs...
+    # Get context
+    result = get_context(question; index, rag_conf, force_rebuild)
+    
+    # Generate the response
+    generator_kwargs = get(rag_kwargs, :generator_kwargs, NamedTuple())
+    result = RAG.generate!(rag_conf.generator, result.index, result; 
+        generator_kwargs...
     )
     
-    return msg
+    return result
 end
 
 export build_package_index, get_rag_config, get_context, get_answer, get_relevant_project_files, get_file_index
