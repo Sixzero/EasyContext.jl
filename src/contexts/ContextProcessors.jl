@@ -4,6 +4,17 @@ import AISH
 
 abstract type AbstractContextProcessor end
 
+# Include ContextNode definition
+include("ContextNode.jl")
+# Include other context processors
+include("CodebaseUtils.jl")
+include("EmbedderUtils.jl")
+include("EmbeddingContext.jl")
+include("CodebaseContext.jl")
+include("ShellContext.jl")
+include("JuliaPackageContext.jl")
+include("GoogleContext.jl")
+
 # Utility functions for context processors
 function print_context_updates(new_items::Vector{String}, updated_items::Vector{String}, unchanged_items::Vector{String}; item_type::String="files")
     printstyled("Number of $item_type selected: ", color=:green, bold=true)
@@ -51,10 +62,4 @@ function process_selected_files(processor, selected_files)
     
     return new_files, updated_files, unchanged_files, new_contents, updated_contents
 end
-
-# Include other context processors
-include("CodebaseContext.jl")
-include("ShellContext.jl")
-include("JuliaPackageContext.jl")
-include("GoogleContext.jl")
 

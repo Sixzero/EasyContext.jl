@@ -4,6 +4,7 @@ end
 
 function get_context(processor::ShellContext, question::String, ai_state, shell_results)
     processor.call_counter += 1
+    
     return format_shell_results(shell_results)
 end
 

@@ -1,43 +1,40 @@
 @kwdef mutable struct JuliaPackageContext <: AbstractContextProcessor
-    tracked_sources::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
-    call_counter::Int = 0
+    context_node::ContextNode = ContextNode(title="Existing functions in other libraries")
+    package_scope::Symbol = :installed  # :installed, :dependencies, or :all
+    multi_index_context::MultiIndexContext = MultiIndexContext()
+    force_rebuild::Bool = false
+    verbose::Bool = true
 end
 
-function get_context(processor::JuliaPackageContext, question::String, ai_state, shell_results)
-    processor.call_counter += 1
-    result = get_context(question; suppress_output=true)
-    new_sources = String[]
-    unchanged_sources = String[]
-    context = String[]
-    
-    for (i, source) in enumerate(result.sources)
-        if !haskey(processor.tracked_sources, source)
-            push!(new_sources, source)
-            push!(context, "$(i). $(result.context[i])")
-            processor.tracked_sources[source] = (processor.call_counter, result.context[i])
-        elseif processor.tracked_sources[source][2] != result.context[i]
-            push!(new_sources, source)
-            push!(context, "$(i). $(result.context[i])")
-            processor.tracked_sources[source] = (processor.call_counter, result.context[i])
-        else
-            push!(unchanged_sources, source)
-        end
+function get_context(processor::JuliaPackageContext, question::String, ai_state=nothing, shell_results=nothing)
+    # Initialize or rebuild the index if necessary
+    if isnothing(processor.multi_index_context.index) || processor.force_rebuild
+        pkg_infos = get_package_infos(processor.package_scope)
+        index, finders = build_index(processor.multi_index_context.index_builder, pkg_infos)
+        processor.multi_index_context.index = index
     end
     
-    print_context_updates(new_sources, String[], unchanged_sources; item_type="context sources")
+    # Use the MultiIndexContext to get relevant information
+    result = get_context(processor.multi_index_context, question; force_rebuild=processor.force_rebuild, suppress_output=!processor.verbose)
     
-    context_msg = isempty(context) ? "" : """
-    Existing functions in other libraries:
-    $(join(context, "\n"))
-    """
-    return context_msg
+    add_or_update_source!(processor.context_node, result.sources, result.contexts)
+    
+    return processor.context_node
+end
+
+function get_package_infos(scope::Symbol)
+    installed_packages = Pkg.installed()
+    all_dependencies = Pkg.dependencies()
+    
+    if scope == :installed
+        return [info for (uuid, info) in all_dependencies if info.name in keys(installed_packages)]
+    elseif scope ∈ (:dependencies, :all)
+        return collect(values(all_dependencies))
+    else
+        error("Invalid package scope: $scope")
+    end
 end
 
 function AISH.cut_history!(processor::JuliaPackageContext, keep::Int)
-    oldest_kept_message = max(1, processor.call_counter - 2 * keep + 1)
-    for (source, (msg_num, _)) in processor.tracked_sources
-        if msg_num < oldest_kept_message
-            delete!(processor.tracked_sources, source)
-        end
-    end
+    cut_history!(processor.context_node, keep)
 end

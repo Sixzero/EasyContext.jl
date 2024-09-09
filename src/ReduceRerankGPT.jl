@@ -54,16 +54,22 @@ function RAG.rerank(
   
   # Rerank function for each batch
   function rerank_batch(doc_batch)
-      prompt = create_rankgpt_prompt(question, doc_batch, top_n)
-      response = aigenerate(prompt; model=model, max_tokens=max_tokens, temperature=temperature, verbose=false)
+      max_retries = 2
+      for attempt in 1:max_retries
+          prompt = create_rankgpt_prompt(question, doc_batch, top_n)
+          response = aigenerate(prompt; model=model, max_tokens=max_tokens, temperature=temperature, verbose=false)
+
+          rankings = extract_ranking(response.content)
+          if all(1 .<= rankings .<= length(doc_batch))
+              Threads.atomic_add!(cost_tracker, response.cost)
+              return rankings
+          end
+          
+          attempt < max_retries && @warn "Invalid rankings (attempt $attempt). Retrying..."
+      end
       
-      # Parse the response to get rankings
-      rankings = extract_ranking(response.content)
-      @assert all(rankings .>= 1) "Not every index is larger than 1! Prompt:$prompt\nResp: $(response.content)"
-      # Update cost tracker
-      Threads.atomic_add!(cost_tracker, response.cost)
-      
-      return rankings
+      @error "Failed to get valid rankings after $max_retries attempts."
+      return 1:length(doc_batch)  # Return sequential ranking as fallback
   end
   
   remaining_docs = collect(1:total_docs)
@@ -84,7 +90,7 @@ function RAG.rerank(
       verbose && @info "Reduced to $(length(remaining_docs)) documents"
   end
 
-    # Final ranking of the remaining documents
+  # Final ranking of the remaining documents
   final_rankings = rerank_batch(documents[remaining_docs])
   final_top_n = remaining_docs[final_rankings][1:min(top_n, length(final_rankings))]
   
@@ -105,21 +111,25 @@ end
 # Helper function to create the RankGPT prompt
 function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:AbstractString}, top_n::Int)
   top_n = min(top_n, length(documents))
-  document_context = join(["$i. $doc" for (i, doc) in enumerate(documents)], "\n")
-  # document_context_short = join(["$i.\n$(doc[1:15])..." for (i, doc) in enumerate(documents)], "\n")
+  document_context = join(["<doc id=\"$i\">$doc</doc>" for (i, doc) in enumerate(documents)], "\n")
   prompt = """
-  Question:
-  "$question"
-  
-  Instruction
-  Rank the following documents based on their relevance to the question. 
-  Output only the rankings as a comma-separated list of indices, where 1 is the most relevant. At max select the top_$(top_n) docs, less is also okay, you can also return nothing [] if nothing is relevant. 
-  Only write numbers between: 1-$(length(documents)).
-  If a selected file/function uses a function we probably need, then also it is preferred to include it in the ranking.
+  <question>$question</question>
 
-  Documents:
+  <instruction>
+  Rank the following documents based on their relevance to the question. 
+  Output only the rankings as a comma-separated list of document ids, where the 1st is the most relevant.
+  At max select the top_$(top_n) docs, fewer is also okay. You can return an empty list [] if nothing is relevant.
+  Only use document ids between 1 and $(length(documents)).
+  If a selected document uses a function we probably need, it's preferred to include it in the ranking.
+  </instruction>
+
+  <documents>
   $document_context
-  Rankings:
+  </documents>
+
+  <output_format>
+  Rankings: [comma-separated list of document ids]
+  </output_format>
   """
   return prompt
 end

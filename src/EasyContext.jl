@@ -17,7 +17,6 @@ include("MainUtils.jl")
 include("AISHExtension.jl")
 include("AISHExtensionV2.jl")
 include("AISHExtensionV3.jl")
-include("Main.jl")
 
 end # module EasyContext
 

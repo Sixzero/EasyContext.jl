@@ -72,8 +72,8 @@ function get_context(joiner::AsyncContextJoiner, creator::EasyContextCreatorV3, 
     
     results = fetch.(tasks)
     
-    # Join the results
-    joined_context = join(filter(!isempty, results), "\n\n")
+    # Join the results with formatting
+    joined_context = join([format_context_node(result) for result in results], "\n\n")
     
     # Increment call_counter for all processors
     for processor in joiner.processors
@@ -100,9 +100,9 @@ function AISH.prepare_user_message!(ctx::EasyContextCreatorV3, ai_state, questio
     
     codebase_ctx = """
     The codebase you are working on will be in user messages. 
-    Before the files there will be "## Files:" and "## Files with newer version:" sections.
+    File contents will be wrapped in <Files> and <Files UPDATED> tags.
 
-    If a code has been updated or got some change they will be mentioned in the Files with newer version section, and always this will represent the newest version of their file content. If something is not like you proposed and is not mentioned in the "Files with newer version" is probably because the change was partially accepted or not accepted, we might need to rethink our idea.
+    If a code has been updated or got some change they will be mentioned in the <Files UPDATED> section, and always this will represent the newest version of their file content. If something is not like you proposed and is not mentioned in the <Files UPDATED> section, it's probably because the change was partially accepted or not accepted, we might need to rethink our idea.
     """
     # Create system message (without file contents)
     if conv.system_message.content != SYSTEM_PROMPT(;ctx=codebase_ctx)
@@ -116,6 +116,6 @@ function AISH.prepare_user_message!(ctx::EasyContextCreatorV3, ai_state, questio
     $question
     """
     
-    new_msg
+    return new_msg
 end
 
