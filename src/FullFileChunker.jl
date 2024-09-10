@@ -32,8 +32,8 @@ function RAG.get_chunks(chunker::FullFileChunker,
         chunks = recursive_splitter(doc_raw, chunker.separators; max_length=chunker.max_length)
 
         
-        if length(chunks_with_overlap) == 1
-            push!(output_chunks, chunks[1])
+        if length(chunks) == 1
+            push!(output_chunks, get_chunk_standard_format(source, chunks[1]))
             push!(output_sources, source)
         else
             chunks_with_overlap = chunks # apply_overlap(chunks, chunker.overlap_lines)
@@ -41,9 +41,9 @@ function RAG.get_chunks(chunker::FullFileChunker,
             
             for (chunk, (start_line, end_line)) in zip(chunks_with_overlap, line_numbers)
                 chunk_source = "$(source):$(start_line)-$(end_line)"
-                chunk_with_source = "# $(chunk_source)\n$(chunk)"
-                push!(output_chunks, chunk_with_source)
+                chunk_with_source = get_chunk_standard_format(chunk_source, chunk)
                 push!(output_sources, chunk_source)
+                push!(output_chunks, chunk_with_source)
             end
         end
     end
