@@ -3,7 +3,6 @@ using AISH: AbstractContextCreator, start, main, cut_history!, get_project_files
 using AISH: curr_conv, SYSTEM_PROMPT, Message, save_user_message, format_shell_results
 import AISH
 
-include("contexts/ContextProcessors.jl")
 
 # Async Joiner
 """
