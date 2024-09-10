@@ -9,7 +9,7 @@ struct FullFileChunker <: AbstractChunker
 end
 
 function FullFileChunker(; 
-    separators=["\n\n", ". ", "\n", " "], 
+    separators=["\n"], 
     max_length=10000, 
     overlap_lines=10
 )
@@ -29,21 +29,23 @@ function RAG.get_chunks(chunker::FullFileChunker,
         doc_raw, source = RAG.load_text(chunker, files_or_docs[i]; source = sources[i])
         isempty(doc_raw) && (@warn("Missing content $(files_or_docs[i])"); continue)
 
-        # Split the content using recursive_splitter
         chunks = recursive_splitter(doc_raw, chunker.separators; max_length=chunker.max_length)
-        
-        # Apply overlap if the file was split
-        if length(chunks) > 1
-            original_line_numbers = calculate_line_numbers(chunks, doc_raw)
-            chunks = apply_overlap(chunks, chunker.overlap_lines)
-            adjusted_line_numbers = adjust_line_numbers(original_line_numbers, chunker.overlap_lines, count('\n', doc_raw) + 1)
-            append!(output_sources, ["$(source):$(start_line)-$(end_line)" for (start_line, end_line) in adjusted_line_numbers])
-        else
-            append!(output_sources, [source for _ in chunks])
-        end
 
-        chunks_with_sources = ["# $(source)\n$(chunk)" for chunk in chunks]
-        append!(output_chunks, chunks_with_sources)
+        
+        if length(chunks_with_overlap) == 1
+            push!(output_chunks, chunks[1])
+            push!(output_sources, source)
+        else
+            chunks_with_overlap = chunks # apply_overlap(chunks, chunker.overlap_lines)
+            line_numbers = calculate_line_numbers(chunks_with_overlap, doc_raw)
+            
+            for (chunk, (start_line, end_line)) in zip(chunks_with_overlap, line_numbers)
+                chunk_source = "$(source):$(start_line)-$(end_line)"
+                chunk_with_source = "# $(chunk_source)\n$(chunk)"
+                push!(output_chunks, chunk_with_source)
+                push!(output_sources, chunk_source)
+            end
+        end
     end
     return output_chunks, output_sources
 end
@@ -73,36 +75,36 @@ function apply_overlap(chunks::Vector{String}, overlap_lines::Int)
     return overlapped_chunks
 end
 
+function calculate_line_numbers(chunks::Vector{String}, doc_raw::String)
+    line_numbers = Vector{Tuple{Int, Int}}()
+    total_lines = count('\n', doc_raw) + 1
+    current_line = 1
+    
+    for chunk in chunks
+        chunk_lines = count('\n', chunk) + 1
+        end_line = min(current_line + chunk_lines - 1, total_lines)
+        push!(line_numbers, (current_line, end_line))
+        current_line = end_line + 1
+    end
+    
+    return line_numbers
+end
+
 function RAG.load_text(chunker::FullFileChunker, input::AbstractString;
                     source::AbstractString = input, kwargs...)
     @assert isfile(input) "Path $input does not exist"
     return read(input, String), source
 end
 
-function calculate_line_numbers(chunks::Vector{String}, doc_raw)
-    line_numbers = Vector{Tuple{Int, Int}}()
-    start_line = 1
+function reproduce_chunk(chunker::FullFileChunker, source::AbstractString)
+    file_path, line_range = split(source, ':')
+    start_line, end_line = parse.(Int, split(line_range, '-'))
     
-    for chunk in chunks
-        chunk_lines = split(chunk, '\n')
-        end_line = start_line + length(chunk_lines) - 1
-        push!(line_numbers, (start_line, end_line))
-        length(chunk_lines) > 0 && (start_line = end_line + 1)
-    end
+    doc_raw = read(file_path, String)
+    lines = split(doc_raw, '\n')
+    chunk = join(lines[start_line:end_line], '\n')
     
-    return line_numbers
-end
-
-function adjust_line_numbers(original_line_numbers::Vector{Tuple{Int, Int}}, overlap_lines::Int, total_lines::Int)
-    adjusted_line_numbers = Vector{Tuple{Int, Int}}()
-    
-    for (i, (start_line, end_line)) in enumerate(original_line_numbers)
-        adjusted_start = max(1, start_line - (i > 1 ? overlap_lines : 0))
-        adjusted_end = min(total_lines, end_line + (i < length(original_line_numbers) ? overlap_lines : 0))
-        push!(adjusted_line_numbers, (adjusted_start, adjusted_end))
-    end
-    
-    return adjusted_line_numbers
+    return chunk
 end
 
 struct NoSimilarityCheck <: RAG.AbstractSimilarityFinder end

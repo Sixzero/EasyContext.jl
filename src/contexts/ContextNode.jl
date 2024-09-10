@@ -24,8 +24,6 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
                 push!(updated_sources, source)
                 push!(node.updated_sources, source)
                 node.tracked_sources[source] = (node.call_counter, new_context)
-            else
-                push!(unchanged_sources, source)
             end
         end
     end
@@ -34,12 +32,16 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
     for (source, context) in zip(sources, contexts)
         if !haskey(node.tracked_sources, source)
             push!(new_sources, source)
-        elseif node.tracked_sources[source][2] != context
-            push!(updated_sources, source)
+            node.tracked_sources[source] = (node.call_counter, context)
         else
-            push!(unchanged_sources, source)
+            current_content = get_updated_content(source)
+            if current_content != context
+                push!(updated_sources, source)
+                node.tracked_sources[source] = (node.call_counter, current_content)
+            else
+                push!(unchanged_sources, source)
+            end
         end
-        node.tracked_sources[source] = (node.call_counter, context)
     end
     node.new_sources = new_sources
     node.updated_sources = updated_sources
@@ -101,11 +103,12 @@ function get_updated_content(source::String)
         
         # Read specific lines from the file
         lines = readlines(file_path)
-        return join(lines[start_line:min(end_line, end)], "\n")
+        content = join(lines[start_line:min(end_line, end)], "\n")
     else
+        content = read(file_path, String)
         # Read the entire file content
-        return read(file_path, String)
     end
+    return get_chunk_standard_format(source, content)
 end
 
 function AISH.cut_history!(node::ContextNode, keep::Int)

@@ -34,6 +34,7 @@ Fields:
             ShellContext(),
             # GoogleContext(),
             # JuliaPackageContext(),
+            # PythonPackageContext(),
         ]
     )
     keep::Int = 10

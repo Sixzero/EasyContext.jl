@@ -93,8 +93,6 @@ function empty_line(line::AbstractString)
   return isempty(stripped) || startswith(stripped, "#")
 end
 
-## Meta.parseall(read("/Users/simljx/Documents/PromptingTools/src/precompilation.jl", String))
-
 function handle_single_module_file(expr, last_line, lines)
     if expr.head == :toplevel && length(expr.args) == 2 && expr.args[2].head == :module
         @info "We unwrap toplevel and module"

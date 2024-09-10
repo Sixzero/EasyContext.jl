@@ -13,6 +13,7 @@ include("EmbeddingContext.jl")
 include("CodebaseContext.jl")
 include("ShellContext.jl")
 include("JuliaPackageContext.jl")
+include("PythonPackageContext.jl")
 include("GoogleContext.jl")
 
 # Utility functions for context processors
@@ -63,3 +64,4 @@ function process_selected_files(processor, selected_files)
     return new_files, updated_files, unchanged_files, new_contents, updated_contents
 end
 
+get_chunk_standard_format(source, content) = "# $source\n$content" 
