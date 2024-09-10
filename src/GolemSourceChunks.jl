@@ -25,6 +25,7 @@ function RAG.get_chunks(chunker::GolemSourceChunker,
 
     output_chunks = Vector{SubString{String}}()
     output_sources = Vector{eltype(sources)}()
+    extras = Vector{Dict{Symbol, String}}()
 
     for (i, item) in enumerate(items)
         if item isa AbstractString && isfile(item)
@@ -41,7 +42,7 @@ function RAG.get_chunks(chunker::GolemSourceChunker,
     # Convert paths to use tilde notation
     output_sources = [convert_path_to_tilde(source) for source in output_sources]
 
-    return output_chunks, output_sources
+    return output_chunks, output_sources, extras
 end
 
 function process_file(chunker::GolemSourceChunker, file_path::AbstractString, source::AbstractString, 

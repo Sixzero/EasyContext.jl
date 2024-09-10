@@ -1,9 +1,11 @@
 @kwdef mutable struct ContextNode
-    title::String
+    title::String = "Docs"
+    element::String = "Doc"
+    attributes::Dict{String, String} = Dict{String, String}()
     tracked_sources::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
     call_counter::Int = 0
-    updated_sources::Set{String} = Set{String}()
-    new_sources::Set{String} = Set{String}()
+    updated_sources::Vector{String} = String[]
+    new_sources::Vector{String} = String[]
 end
 
 function add_or_update_source!(node::ContextNode, sources::Vector{String}, contexts::Vector{String})
@@ -45,25 +47,42 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
 end
 
 function format_context_node(node::ContextNode)
-    new_context = join([ctx for (source, (_, ctx)) in node.tracked_sources if source in node.new_sources], "\n")
-    updated_context = join([ctx for (source, (_, ctx)) in node.tracked_sources if source in node.updated_sources], "\n")
+    new_files = format_files(node, node.new_sources, "NEW")
+    updated_files = format_files(node, node.updated_sources, "UPDATED")
     
-    new_output = isempty(new_context) ? "" : """
-    <$(node.title) NEW>
-    $new_context
-    </$(node.title) NEW>
-    """
-    
-    updated_output = isempty(updated_context) ? "" : """
-    <$(node.title) UPDATED>
-    $updated_context
-    </$(node.title) UPDATED>
-    """
+    output = ""
+    if !isempty(new_files)
+        output *= """
+        <$(node.title) NEW>
+        $new_files
+        </$(node.title)>
+        """
+    end
+    if !isempty(updated_files)
+        output *= """
+        <$(node.title) UPDATED>
+        $updated_files
+        </$(node.title)>
+        """
+    end
     
     empty!(node.new_sources)
     empty!(node.updated_sources)
     
-    return new_output * "\n" * updated_output
+    return output
+end
+
+function format_files(node::ContextNode, sources::Vector{String}, tag::String)
+    formatted_files = ""
+    for source in sources
+        content = node.tracked_sources[source][2]
+        formatted_files *= """
+        <$(node.element)>
+        $content
+        </$(node.element)>
+        """
+    end
+    return formatted_files
 end
 
 function format_context_node(str::String)
@@ -77,12 +96,12 @@ function get_updated_content(source::String)
     file_path = parts[1]
     
     if length(parts) > 1
-        line_range = parse.(Int, split(parts[2], '-'))
+        line_range = Base.parse.(Int, split(parts[2], '-'))
         start_line, end_line = length(line_range) == 1 ? (line_range[1], line_range[1]) : (line_range[1], line_range[2])
         
         # Read specific lines from the file
         lines = readlines(file_path)
-        return join(lines[start_line:end_line], "\n")
+        return join(lines[start_line:min(end_line, end)], "\n")
     else
         # Read the entire file content
         return read(file_path, String)

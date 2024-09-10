@@ -1,5 +1,5 @@
 @kwdef mutable struct JuliaPackageContext <: AbstractContextProcessor
-    context_node::ContextNode = ContextNode(title="Existing functions in other libraries")
+    context_node::ContextNode = ContextNode(title="FunctionsRelevant", element="Func")
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
     multi_index_context::MultiIndexContext = MultiIndexContext()
     force_rebuild::Bool = false
@@ -17,7 +17,7 @@ function get_context(processor::JuliaPackageContext, question::String, ai_state=
     # Use the MultiIndexContext to get relevant information
     result = get_context(processor.multi_index_context, question; force_rebuild=processor.force_rebuild, suppress_output=!processor.verbose)
     
-    add_or_update_source!(processor.context_node, result.sources, result.contexts)
+    add_or_update_source!(processor.context_node, result.sources, result.context)
     
     return processor.context_node
 end

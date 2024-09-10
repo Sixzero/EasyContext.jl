@@ -37,7 +37,7 @@ function get_context(processor::CodebaseContext, question::String, ai_state, she
     return new_files_content * "\n" * updated_files_content
 end
 
-function get_context(processor::CodebaseContextV2, question::String, ai_state, shell_results)
+function get_context(processor::CodebaseContextV2, question::String, ai_state, shell_results=nothing)
     processor.call_counter += 1
     push!(processor.past_questions, question)
     if length(processor.past_questions) > processor.max_past_questions

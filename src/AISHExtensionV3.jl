@@ -100,7 +100,7 @@ function AISH.prepare_user_message!(ctx::EasyContextCreatorV3, ai_state, questio
     
     codebase_ctx = """
     The codebase you are working on will be in user messages. 
-    File contents will be wrapped in <Files> and <Files UPDATED> tags.
+    File contents will be wrapped in <Files NEW> and <Files UPDATED> tags.
 
     If a code has been updated or got some change they will be mentioned in the <Files UPDATED> section, and always this will represent the newest version of their file content. If something is not like you proposed and is not mentioned in the <Files UPDATED> section, it's probably because the change was partially accepted or not accepted, we might need to rethink our idea.
     """
@@ -111,9 +111,13 @@ function AISH.prepare_user_message!(ctx::EasyContextCreatorV3, ai_state, questio
     end
 
     new_msg = """
+    <Context>
     $context
-    ## User question:
+    </Context>
+
+    <UserQuestion>
     $question
+    </UserQuestion>
     """
     
     return new_msg

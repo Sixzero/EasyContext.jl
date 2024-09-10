@@ -65,7 +65,7 @@ function apply_overlap(chunks::Vector{String}, overlap_lines::Int)
             # Add overlap to next chunk
             next_chunk_lines = split(chunks[i+1], '\n')
             overlap_end = min(length(chunk_lines), overlap_lines)
-            chunk = join(vcat(chunk_lines, next_chunk_lines[1:overlap_end]), '\n')
+            chunk = join(vcat(chunk_lines, next_chunk_lines[1:min(overlap_end, end)]), '\n')
         end
         
         push!(overlapped_chunks, chunk)

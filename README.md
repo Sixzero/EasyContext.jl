@@ -1,4 +1,3 @@
-meld ./README.md <(cat <<'EOF'
 # EasyContext.jl
 
 EasyContext.jl is a Julia package that enhances the context-aware capabilities of AI-powered applications. It provides tools for efficient document indexing, embedding, and retrieval, making it easier to build robust Retrieval-Augmented Generation (RAG) systems.
@@ -9,6 +8,7 @@ EasyContext.jl is a Julia package that enhances the context-aware capabilities o
 - **Efficient Indexing**: Utilizes various indexing strategies for quick and relevant information retrieval.
 - **Advanced Retrieval**: Implements sophisticated retrieval methods, including cosine similarity and BM25.
 - **Context-Aware Processing**: Provides context processors for different types of information sources, such as codebase files and Julia packages.
+- **Integration with Julia Ecosystem**: Seamlessly indexes and retrieves information from installed Julia packages.
 - **Customizable RAG Pipeline**: Offers a configurable RAG system with interchangeable components for indexing, retrieval, and generation.
 - **Parallel Context Processing**: Uses `AsyncContextJoiner` for efficient, concurrent context retrieval from multiple sources.
 
