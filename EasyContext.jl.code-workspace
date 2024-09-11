@@ -4,9 +4,6 @@
 			"path": "../EasyContext.jl"
 		},
 		{
-			"path": "../LLMBenchmarks.jl"
-		},
-		{
 			"path": "../AISH.jl"
 		},
 		{
@@ -17,6 +14,9 @@
 		},
 		{
 			"path": "../AIHelpMe.jl"
+		},
+		{
+			"path": "../LLMBenchmarks.jl"
 		},
 		{
 			"path": "../julia-awesomeness/PkgManager.jl"

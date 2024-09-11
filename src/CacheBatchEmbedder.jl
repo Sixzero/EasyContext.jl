@@ -65,9 +65,16 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         JLD2.save(cache_file, cache)
         
         # Combine cached and new embeddings
-        all_embeddings = length(cached_embeddings)>0 ? hcat(stack(cached_embeddings, dims=2), new_embeddings) : new_embeddings
+        all_embeddings = length(cached_embeddings) > 0 ? hcat(stack(cached_embeddings, dims=2), new_embeddings) : new_embeddings
     else
-        all_embeddings = stack(cached_embeddings, dims=2)
+        if isempty(cached_embeddings)
+            @warn "No embeddings found in cache and no new documents to embed. Returning empty matrix."
+            # Return an empty matrix of the correct type
+            # Assuming Float32 as the embedding type, adjust if necessary
+            all_embeddings = Matrix{Float32}(undef, 0, 0)
+        else
+            all_embeddings = stack(cached_embeddings, dims=2)
+        end
     end
     
     verbose && @info "Embedding complete. $(length(docs) - length(docs_to_embed)) docs from cache, $(length(docs_to_embed)) newly embedded."
