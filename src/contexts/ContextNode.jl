@@ -20,7 +20,7 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
     for (source, (_, old_context)) in node.tracked_sources
         if source ∉ sources
             new_context = get_updated_content(source)
-            if new_context != old_context
+            if new_context !== nothing && new_context != old_context
                 push!(updated_sources, source)
                 push!(node.updated_sources, source)
                 node.tracked_sources[source] = (node.call_counter, new_context)
@@ -35,7 +35,7 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
             node.tracked_sources[source] = (node.call_counter, context)
         else
             current_content = get_updated_content(source)
-            if current_content != context
+            if current_content !== nothing && current_content != context
                 push!(updated_sources, source)
                 node.tracked_sources[source] = (node.call_counter, current_content)
             else
@@ -98,12 +98,19 @@ function get_updated_content(source::String)
     file_path = parts[1]
     
     if length(parts) > 1
-        line_range = Base.parse.(Int, split(parts[2], '-'))
-        start_line, end_line = length(line_range) == 1 ? (line_range[1], line_range[1]) : (line_range[1], line_range[2])
-        
-        # Read specific lines from the file
-        lines = readlines(file_path)
-        content = join(lines[start_line:min(end_line, end)], "\n")
+        numbers = split(split(parts[2], ' ')[1], '-')
+        if length(numbers)>1
+
+            line_range = Base.parse.(Int, split(split(parts[2], ' ')[1], '-'))
+            start_line, end_line = length(line_range) == 1 ? (line_range[1], line_range[1]) : (line_range[1], line_range[2])
+            
+            # Read specific lines from the file
+            lines = readlines(file_path)
+            content = join(lines[start_line:min(end_line, end)], "\n")
+        else 
+            # @info "No way to parse the source file: $source"
+            return nothing
+        end
     else
         content = read(file_path, String)
         # Read the entire file content

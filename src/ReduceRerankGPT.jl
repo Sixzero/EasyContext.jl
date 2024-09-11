@@ -101,7 +101,7 @@ function RAG.rerank(
   
   # Return the reranked candidates
   if candidates isa MultiCandidateChunks
-      reranked_ids = [candidates.ids[i] for i in final_top_n]
+      reranked_ids = [candidates.index_ids[i] for i in final_top_n]
       return MultiCandidateChunks(reranked_ids, reranked_positions, reranked_scores)
   else
       return CandidateChunks(candidates.index_id, reranked_positions, reranked_scores)

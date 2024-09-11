@@ -1,21 +1,12 @@
 @kwdef mutable struct JuliaPackageContext <: AbstractContextProcessor
     context_node::ContextNode = ContextNode(title="FunctionsRelevant", element="Func")
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
-    multi_index_context::MultiIndexContext = MultiIndexContext()
-    force_rebuild::Bool = false
-    verbose::Bool = true
+    index_builder::AbstractIndexBuilder = MultiIndexBuilder()
 end
 
-function get_context(processor::JuliaPackageContext, question::String, ai_state=nothing, shell_results=nothing)
-    # Initialize or rebuild the index if necessary
-    if isnothing(processor.multi_index_context.index) || processor.force_rebuild
-        pkg_infos = get_package_infos(processor.package_scope)
-        index, finders = build_index(processor.multi_index_context.index_builder, pkg_infos)
-        processor.multi_index_context.index = index
-    end
-    
-    # Use the MultiIndexContext to get relevant information
-    result = get_context(processor.multi_index_context, question; force_rebuild=processor.force_rebuild, suppress_output=!processor.verbose)
+function get_context(context::JuliaPackageContext, question::String, ai_state=nothing, shell_results=nothing)
+    pkg_infos = get_package_infos(context.package_scope)
+    result = get_context(context.index_builder, question; data=pkg_infos)
     
     add_or_update_source!(processor.context_node, result.sources, result.context)
     
