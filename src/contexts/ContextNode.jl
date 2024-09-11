@@ -18,30 +18,20 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
 
     # Check all existing tracked sources for content changes
     for (source, (_, old_context)) in node.tracked_sources
-        if source ∉ sources
-            new_context = get_updated_content(source)
-            if new_context !== nothing && new_context != old_context
-                push!(updated_sources, source)
-                push!(node.updated_sources, source)
-                node.tracked_sources[source] = (node.call_counter, new_context)
-            end
+        new_context = get_updated_content(source)
+        if new_context !== nothing && new_context != old_context
+            push!(updated_sources, source)
+            node.tracked_sources[source] = (node.call_counter, new_context)
+        elseif source ∈ sources
+            push!(unchanged_sources, source)
         end
     end
 
     # Process new and explicitly updated sources
     for (source, context) in zip(sources, contexts)
-        if !haskey(node.tracked_sources, source)
-            push!(new_sources, source)
-            node.tracked_sources[source] = (node.call_counter, context)
-        else
-            current_content = get_updated_content(source)
-            if current_content !== nothing && current_content != context
-                push!(updated_sources, source)
-                node.tracked_sources[source] = (node.call_counter, current_content)
-            else
-                push!(unchanged_sources, source)
-            end
-        end
+        haskey(node.tracked_sources, source) && continue
+        push!(new_sources, source)
+        node.tracked_sources[source] = (node.call_counter, context)
     end
     node.new_sources = new_sources
     node.updated_sources = updated_sources
@@ -96,7 +86,6 @@ function get_updated_content(source::String)
     # Extract file path and line numbers if present
     parts = split(source, ':')
     file_path = parts[1]
-    
     if length(parts) > 1
         numbers = split(split(parts[2], ' ')[1], '-')
         if length(numbers)>1
@@ -121,5 +110,4 @@ end
 function AISH.cut_history!(node::ContextNode, keep::Int)
     oldest_kept_call = max(1, node.call_counter - keep)
     filter!(pair -> pair.second[1] >= oldest_kept_call, node.tracked_sources)
-    intersect!(node.updated_sources, keys(node.tracked_sources))
 end
