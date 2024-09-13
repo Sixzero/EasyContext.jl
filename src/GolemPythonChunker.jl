@@ -66,12 +66,12 @@ function process_py_file(file_path, import_paths::Vector{String}, verbose::Bool=
     verbose && @info "Processing Python file: $file_path"
     s = read(file_path, String)
     lines = split(s, '\n')
-    defs = source_explorer(lines; file_path=convert_path_to_tilde(file_path), import_path=import_paths)
+    defs = source_explorer(lines; file_path=convert_path_to_tilde(file_path), import_path=import_paths, verbose)
     defs
 end
 
 function source_explorer(lines::AbstractVector{<:AbstractString};
-    file_path::AbstractString, source_defs=PythonSourceChunk[], import_path=String[])
+    file_path::AbstractString, source_defs=PythonSourceChunk[], import_path=String[], verbose=false)
 
     current_line = 1
     total_lines = length(lines)

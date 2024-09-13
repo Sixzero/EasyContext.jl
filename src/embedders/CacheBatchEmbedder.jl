@@ -1,32 +1,37 @@
 using SHA, JLD2
 using Parameters
-using PromptingTools.Experimental.RAGTools: BatchEmbedder
+using PromptingTools.Experimental.RAGTools: AbstractEmbedder
 using PromptingTools: MODEL_EMBEDDING
 
 """
 cache_prefix: The prefix addition to the file being saved.
 """
 @kwdef struct CachedBatchEmbedder <: AbstractEmbedder
-    embedder::BatchEmbedder = BatchEmbedder()
+    embedder::AbstractEmbedder = OpenAIBatchEmbedder()
     cache_dir::String = let
         current_file = @__FILE__
-        default_cache_dir = joinpath(dirname(dirname(current_file)), "cache")
+        default_cache_dir = joinpath(dirname(dirname(dirname(current_file))), "cache")
         isdir(default_cache_dir) || mkpath(default_cache_dir)
         default_cache_dir
     end
     cache_prefix::String=""
-    model::AbstractString = MODEL_EMBEDDING
     truncate_dimension::Union{Int, Nothing}=nothing
 end
+
+get_model_name(embedder::CachedBatchEmbedder) = get_model_name(embedder.embedder)
+
 function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
         verbose::Bool = true,
         cost_tracker = Threads.Atomic{Float64}(0.0),
         target_batch_size_length::Int = 80_000,
         ntasks::Int = 4 * Threads.nthreads(),
         kwargs...)
-    model, cache_prefix, truncate_dimension = embedder.model, embedder.cache_prefix, embedder.truncate_dimension
-    # Create cache filename based on the model
-    cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(model).jld2")
+    model = get_model_name(embedder.embedder)
+    embedder_type = typeof(embedder.embedder).name.name  # Gets the name of the embedder type
+    cache_prefix, truncate_dimension = embedder.cache_prefix, embedder.truncate_dimension
+    
+    # Create cache filename based on the model and embedder type
+    cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(embedder_type)_$(model).jld2")
     
     # Load or create cache
     if isfile(cache_file)
@@ -55,6 +60,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         new_embeddings = get_embeddings(embedder.embedder, docs_to_embed;
             verbose, model, truncate_dimension, cost_tracker,
             target_batch_size_length, ntasks, kwargs...)
+        @show size(new_embeddings)
         
         # Update cache
         for (doc_hash, embedding) in zip(doc_hashes, eachcol(new_embeddings))

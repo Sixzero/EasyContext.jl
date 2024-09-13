@@ -128,7 +128,7 @@ function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:Abs
   </documents>
 
   <output_format>
-  Rankings: [comma-separated list of document ids]
+  [Rankings, comma-separated list of document ids]
   </output_format>
   """
   return prompt

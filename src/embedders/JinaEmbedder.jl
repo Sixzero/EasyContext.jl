@@ -1,10 +1,12 @@
+
 using HTTP
 using JSON3
 using PromptingTools
-using PromptingTools.Experimental.RAGTools: AbstractEmbedder, get_embeddings
+using PromptingTools.Experimental.RAGTools: get_embeddings
+using ProgressMeter
 
 """
-    JinaEmbedder <: AbstractEmbedder
+    JinaEmbedder <: AbstractEasyEmbedder
 
 A struct for embedding documents using Jina AI's embedding models.
 
@@ -18,13 +20,15 @@ Supports two model options:
 - `model::String`: The name of the embedding model to use.
 - `dimensions::Union{Int, Nothing}`: The number of dimensions for the embedding (required for ColBERT model).
 - `input_type::String`: The type of input (e.g., "document" or "query", required for ColBERT model).
+- `rate_limiter::RateLimiter`: A rate limiter to manage API request rates.
 """
-@kwdef mutable struct JinaEmbedder <: AbstractEmbedder
+@kwdef mutable struct JinaEmbedder <: AbstractEasyEmbedder
     api_url::String = "https://api.jina.ai/v1/embeddings"
     api_key::String = get(ENV, "JINA_API_KEY", "")
     model::String = "jina-embeddings-v2-base-code"
     dimensions::Union{Int, Nothing} = nothing
     input_type::String = "document"
+    rate_limiter::RateLimiter = RateLimiter()
 end
 
 function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};
@@ -37,33 +41,50 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
         "Authorization" => "Bearer $(embedder.api_key)"
     ]
 
-    payload = Dict(
-        "model" => embedder.model,
-        "normalized" => true,
-        "embedding_type" => "float",
-        "input" => docs
-    )
+    function process_batch(batch)
+        payload = Dict(
+            "model" => embedder.model,
+            "normalized" => true,
+            "embedding_type" => "float",
+            "input" => batch
+        )
 
-    if embedder.model == "jina-colbert-v2"
-        embedder.api_url = "https://api.jina.ai/v1/multi-vector"
-        payload["dimensions"] = embedder.dimensions
-        payload["input_type"] = embedder.input_type
-    end
-
-    response = HTTP.post(embedder.api_url, headers, JSON3.write(payload))
-
-    if response.status == 200
-        result = JSON3.read(String(response.body))
-        embeddings = [e["embedding"] for e in result["data"]]
-        
-        if verbose
-            @info "Embedding complete for $(length(docs)) documents using $(embedder.model)."
+        if embedder.model == "jina-colbert-v2"
+            embedder.api_url = "https://api.jina.ai/v1/multi-vector"
+            payload["dimensions"] = embedder.dimensions
+            payload["input_type"] = embedder.input_type
         end
 
-        return embeddings
-    else
-        error("Failed to get embeddings. Status code: $(response.status)")
+        response = HTTP.post(embedder.api_url, headers, JSON3.write(payload))
+
+        if response.status == 200
+            result = JSON3.read(String(response.body))
+            return [e["embedding"] for e in result["data"]]
+        else
+            error("Failed to get embeddings for batch. Status code: $(response.status)")
+        end
     end
+
+    process_batch_limited = with_rate_limiter(process_batch, embedder.rate_limiter)
+
+    batch_size = 1024 # 2048 is the max, but it caused error (maybe for really large requests)
+    batches = [docs[i:min(i + batch_size - 1, end)] for i in 1:batch_size:length(docs)]
+
+    progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
+    embeddings = asyncmap(batches) do batch
+        result = process_batch_limited(batch)
+        result = stack(result, dims=2)
+        @show size(result)
+        next!(progress)
+        return result
+    end
+    all_embeddings = reduce(vcat, embeddings)
+
+    if verbose
+        @info "Embedding complete for $(length(docs)) documents using $(embedder.model)."
+    end
+
+    return all_embeddings
 end
 
 # Extend aiembed for JinaEmbedder

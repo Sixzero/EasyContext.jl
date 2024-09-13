@@ -1,9 +1,9 @@
 using EasyContext: EasyContextCreator, EasyContextCreatorV2, EasyContextCreatorV3
-using AISH: initialize_ai_state, process_question, main, start
+using AISH: initialize_ai_state, process_question, main, start, SimpleContexter
 
-# main(;contexter=EasyContextCreator())
-main(;contexter=EasyContextCreatorV2())
-# main(;contexter=EasyContextCreatorV3())
+# main(;contexter=SimpleContexter())
+# main(;contexter=EasyContextCreatorV2())
+main(;contexter=EasyContextCreatorV3())
 
 #%%
 using EasyContext: build_installed_package_index

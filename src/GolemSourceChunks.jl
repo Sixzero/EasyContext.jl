@@ -5,6 +5,7 @@ import ExpressionExplorer
 using JuliaSyntax
 import JuliaSyntax: @K_str, kind
 using Pkg
+using ProgressMeter
 
 include("GolemUtils.jl")
 include("GolemJuliaChunker.jl")
@@ -27,6 +28,8 @@ function RAG.get_chunks(chunker::GolemSourceChunker,
     output_sources = Vector{eltype(sources)}()
     extras = Vector{Dict{Symbol, String}}()
 
+    progress = Progress(length(items), desc="Processing items: ", showspeed=true)
+    
     for (i, item) in enumerate(items)
         if item isa AbstractString && isfile(item)
             # Process individual file
@@ -37,6 +40,7 @@ function RAG.get_chunks(chunker::GolemSourceChunker,
         else
             @warn "Unsupported item type: $(typeof(item))"
         end
+        next!(progress)
     end
 
     # Convert paths to use tilde notation

@@ -31,7 +31,7 @@ name_with_signature(def::JuliaSourceChunk) = "$(def.name):$(def.signature_hash)"
 function RAG.get_chunks(chunker::JuliaSourceChunker,
         files_or_docs::Vector{<:AbstractString};
         sources::AbstractVector{<:AbstractString} = files_or_docs,
-        verbose::Bool = true, modules::Vector{String}=String[])
+        verbose::Bool = false, modules::Vector{String}=String[])
 
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
 
@@ -58,14 +58,14 @@ function create_chunk(def::JuliaSourceChunk, include_module_info::Bool)
     return "$header$module_info\n$(def.chunk)"
 end
 
-function process_jl_file(file_path, modules::Vector{String}, verbose::Bool=true)
-  verbose && @info "Processing file: $file_path"
+function process_jl_file(file_path, modules::Vector{String}, verbose::Bool=false)
+#   verbose && @info "Processing file: $file_path"
   s = read(file_path, String)
   # @time expr2 = parsestmt(JuliaSyntax.SyntaxNode, "begin\n"*s*"\nend", filename=file_path)
   # @show typeof(expr2)
   expr = Meta.parseall(s)       
   lines = split(s, '\n')
-  defs = source_explorer(expr, lines; file_path=convert_path_to_tilde(file_path), module_stack=modules)
+  defs = source_explorer(expr, lines; file_path=convert_path_to_tilde(file_path), module_stack=modules, verbose)
   defs
 end
 
@@ -93,9 +93,9 @@ function empty_line(line::AbstractString)
   return isempty(stripped) || startswith(stripped, "#")
 end
 
-function handle_single_module_file(expr, last_line, lines)
+function handle_single_module_file(expr, last_line, lines, verbose=false)
     if expr.head == :toplevel && length(expr.args) == 2 && expr.args[2].head == :module
-        @info "We unwrap toplevel and module"
+        verbose && @info "We unwrap toplevel and module"
         expr = expr.args[2].args[3] # unwrap toplevel
         module_name = expr.args[2]
     end
@@ -138,9 +138,9 @@ function get_last_line_number(expr::Expr)
 end
 get_last_line_number(expr::LineNumberNode) = expr.line
 function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
-    file_path::AbstractString, last_line::Int=length(lines), source_defs=JuliaSourceChunk[], module_stack=String[])
+    file_path::AbstractString, last_line::Int=length(lines), source_defs=JuliaSourceChunk[], module_stack=String[], verbose=false)
 
-    expr_tree, last_line = handle_single_module_file(expr_tree, last_line, lines)
+    expr_tree, last_line = handle_single_module_file(expr_tree, last_line, lines, verbose)
     expr_tree, last_line = handle_docstring_file(expr_tree, last_line, lines)
     
     current_line = 1
@@ -154,8 +154,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
             new_module_name = string(expr.args[2])
             new_module_stack = [module_stack; new_module_name]
             new_lastline = get_last_line_number(expr.args[3]) + 1
-            @show new_lastline
-            source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline, module_stack=new_module_stack)
+            source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline, module_stack=new_module_stack, verbose)
             continue
         end
         
@@ -195,14 +194,14 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
                     name = get_struct_name(expr.args[3])
                     signature_hash = hash(string(expr.args[3]))
                 else
-                    @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
+                    verbose && @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
                 end
             elseif expr.args[1] == Symbol("@enum")
                 if length(expr.args) >= 3
                     name = Symbol("$(expr.args[3])")
                     references = Symbol[]
                 else
-                    @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
+                    verbose && @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
                 end
             elseif expr.args[1] == GlobalRef(Core, Symbol("@doc"))
                 if length(expr.args) >= 4 && expr.args[4] isa Expr
@@ -212,7 +211,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
                         is_function = true
                     end
                 else
-                    @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
+                    verbose && @warn "Unknown expression type: $(expr.head) & $(expr.args[1])"
                 end
             end
         else

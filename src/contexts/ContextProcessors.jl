@@ -4,18 +4,20 @@ import AISH
 
 abstract type AbstractContextProcessor end
 
+
 # Include ContextNode definition
 include("ContextNode.jl")
 # Include other context processors
 include("CodebaseUtils.jl")
 include("EmbedderUtils.jl")
-include("EmbeddingContext.jl")
+include("AllProjectContext.jl")
 include("CodebaseContext.jl")
 include("CodebaseContextV2.jl")
-include("ShellContext.jl")
+include("EmbeddingContext.jl")
+include("GoogleContext.jl")
 include("JuliaPackageContext.jl")
 include("PythonPackageContext.jl")
-include("GoogleContext.jl")
+include("ShellContext.jl")
 
 # Utility functions for context processors
 function print_context_updates(new_items::Vector{String}, updated_items::Vector{String}, unchanged_items::Vector{String}; item_type::String="files")

@@ -5,7 +5,11 @@ export JuliacodeRephraser
 
 include("GolemSourceChunks.jl")
 include("Rephrase.v1.jl")
-include("CacheBatchEmbedder.jl")
+include("RateLimiterStruct.jl")
+include("embedders/EmbedderUtils.jl")
+include("embedders/CacheBatchEmbedder.jl")
+include("embedders/OpenAIBatchEmbedder.jl")
+include("embedders/JinaEmbedder.jl")
 include("ContextJoiner.jl")
 include("ReduceRerankGPT.jl")
 include("FullFileChunker.jl")

@@ -30,15 +30,16 @@ Fields:
 @kwdef mutable struct EasyContextCreatorV3 <: AbstractContextCreator
     joiner::AsyncContextJoiner = AsyncContextJoiner(
         processors=[
-            CodebaseContextV2(),
             ShellContext(),
+            AllProjectContext(),
+            # CodebaseContextV2(),
             # GoogleContext(),
             # JuliaPackageContext(),
             # PythonPackageContext(),
         ]
     )
-    keep::Int = 10
-    max_messages::Int = 16
+    keep::Int = 9
+    max_messages::Int = 17
 end
 
 """
@@ -112,7 +113,7 @@ function AISH.prepare_user_message!(ctx::EasyContextCreatorV3, ai_state, questio
 
     new_msg = """
     $context
-
+    
     <UserQuestion>
     $question
     </UserQuestion>

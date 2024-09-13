@@ -19,8 +19,9 @@ end
 
 function get_file_index(files::Vector{String}; verbose::Bool=true)
     chunker = FullFileChunker()
-    indexer = RAG.SimpleIndexer(;chunker, embedder=CachedBatchEmbedder(;model="text-embedding-3-large"), tagger=RAG.NoTagger())
-    RAG.build_index(indexer, files; verbose=verbose, embedder_kwargs=(model=indexer.embedder.model, verbose=verbose), extras=[indexer.embedder.model])
+    embedder = CachedBatchEmbedder(embedder=OpenAIBatchEmbedder(;model="text-embedding-3-large"))
+    indexer = RAG.SimpleIndexer(;chunker, embedder, tagger=RAG.NoTagger())
+    RAG.build_index(indexer, files; verbose=verbose, embedder_kwargs=(model=embedder.embedder.model, verbose=verbose), extras=[embedder.embedder.model])
 end
 
 function get_relevant_project_files(question::String, project_path::String="."; kwargs...)
