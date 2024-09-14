@@ -26,65 +26,46 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         target_batch_size_length::Int = 80_000,
         ntasks::Int = 4 * Threads.nthreads(),
         kwargs...)
+    if isempty(docs)
+        verbose && @info "No documents to embed."
+        return Matrix{Float32}(undef, 0, 0)
+    end
     model = get_model_name(embedder.embedder)
-    embedder_type = typeof(embedder.embedder).name.name  # Gets the name of the embedder type
+    embedder_type = typeof(embedder.embedder).name.name
     cache_prefix, truncate_dimension = embedder.cache_prefix, embedder.truncate_dimension
     
-    # Create cache filename based on the model and embedder type
     cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(embedder_type)_$(model).jld2")
+    cache = isfile(cache_file) ? JLD2.load(cache_file) : Dict{String, Vector{Float32}}()
     
-    # Load or create cache
-    if isfile(cache_file)
-        cache = JLD2.load(cache_file)
-    else
-        cache = Dict{String, Vector{Float32}}()
-    end
+    doc_hashes = [bytes2hex(sha256(doc)) for doc in docs]
+    to_embed_indices = findall(i -> !haskey(cache, doc_hashes[i]), eachindex(docs))
     
-    # Identify which docs need embedding
-    docs_to_embed = String[]
-    doc_hashes = String[]
-    cached_embeddings = Vector{Float32}[]
-    
-    for doc in docs
-        doc_hash = bytes2hex(sha256(doc))
-        if haskey(cache, doc_hash)
-            push!(cached_embeddings, cache[doc_hash])
-        else
-            push!(docs_to_embed, doc)
-            push!(doc_hashes, doc_hash)
-        end
-    end
-    
-    # Embed uncached docs
-    if !isempty(docs_to_embed)
+    if !isempty(to_embed_indices)
+        docs_to_embed = docs[to_embed_indices]
         new_embeddings = get_embeddings(embedder.embedder, docs_to_embed;
             verbose, model, truncate_dimension, cost_tracker,
             target_batch_size_length, ntasks, kwargs...)
-        @show size(new_embeddings)
         
-        # Update cache
-        for (doc_hash, embedding) in zip(doc_hashes, eachcol(new_embeddings))
-            cache[doc_hash] = embedding
+        for (new_idx, doc_idx) in enumerate(to_embed_indices)
+            cache[doc_hashes[doc_idx]] = new_embeddings[:, new_idx]
         end
         
-        # Save updated cache
         JLD2.save(cache_file, cache)
-        
-        # Combine cached and new embeddings
-        all_embeddings = length(cached_embeddings) > 0 ? hcat(stack(cached_embeddings, dims=2), new_embeddings) : new_embeddings
-    else
-        if isempty(cached_embeddings)
-            @warn "No embeddings found in cache and no new documents to embed. Returning empty matrix."
-            # Return an empty matrix of the correct type
-            # Assuming Float32 as the embedding type, adjust if necessary
-            all_embeddings = Matrix{Float32}(undef, 0, 0)
-        else
-            all_embeddings = stack(cached_embeddings, dims=2)
-        end
     end
     
-    verbose && @info "Embedding complete. $(length(docs) - length(docs_to_embed)) docs from cache, $(length(docs_to_embed)) newly embedded."
-    verbose && @info "Total cost: \$$(round(cost_tracker[], digits=3))"
+    # Create all_embeddings after potentially updating the cache
+    embedding_dim = length(first(values(cache)))
+    all_embeddings = zeros(Float32, embedding_dim, length(docs))
+    
+    for (i, hash) in enumerate(doc_hashes)
+        all_embeddings[:, i] = cache[hash]
+    end
+    
+    if verbose
+        cached_count = length(docs) - length(to_embed_indices)
+        @info "Embedding complete. $cached_count docs from cache, $(length(to_embed_indices)) newly embedded."
+        @info "Total cost: \$$(round(cost_tracker[], digits=3))"
+    end
    
     return all_embeddings
 end

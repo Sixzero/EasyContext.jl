@@ -3,6 +3,18 @@ using PromptingTools.Experimental.RAGTools
 import AISH
 
 abstract type AbstractContextProcessor end
+abstract type AbstractIndexBuilder end
+
+# Struct definitions
+struct SourceChunk
+    sources::Vector{String}
+    contexts::Vector{String}
+end
+
+struct RAGResult
+    chunk::SourceChunk
+    question::String
+end
 
 
 # Include ContextNode definition

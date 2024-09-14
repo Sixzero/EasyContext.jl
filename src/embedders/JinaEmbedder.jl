@@ -71,14 +71,13 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
     batches = [docs[i:min(i + batch_size - 1, end)] for i in 1:batch_size:length(docs)]
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
-    embeddings = asyncmap(batches) do batch
+    embeddings = asyncmap(batches, ntasks=4) do batch
         result = process_batch_limited(batch)
         result = stack(result, dims=2)
-        @show size(result)
         next!(progress)
         return result
     end
-    all_embeddings = reduce(vcat, embeddings)
+    all_embeddings = reduce(hcat, embeddings)
 
     if verbose
         @info "Embedding complete for $(length(docs)) documents using $(embedder.model)."

@@ -21,7 +21,7 @@ end
 function RAG.get_chunks(chunker::GolemSourceChunker,
         items::Vector{<:Any};
         sources::AbstractVector{<:AbstractString} = String[],
-        verbose::Bool = true)
+        verbose::Bool = false)
     @assert isempty(sources) || length(sources) == length(items) "Length of `sources` must match length of `items` if provided"
 
     output_chunks = Vector{SubString{String}}()

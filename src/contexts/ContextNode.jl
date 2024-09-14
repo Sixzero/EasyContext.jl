@@ -8,7 +8,12 @@
     new_sources::Vector{String} = String[]
 end
 
-function add_or_update_source!(node::ContextNode, sources::Vector{String}, contexts::Vector{String})
+function (node::ContextNode)(result::RAGResult)
+    add_or_update_source!(node, result.chunk.sources, result.chunk.contexts)
+    return format_context_node(node)
+end
+
+function add_or_update_source!(node::ContextNode, sources::Vector{String}, contexts::Vector{<:AbstractString})
     @assert length(sources) == length(contexts) "Number of sources and contexts must match"
     
     node.call_counter += 1
@@ -111,3 +116,4 @@ function AISH.cut_history!(node::ContextNode, keep::Int)
     oldest_kept_call = max(1, node.call_counter - keep)
     filter!(pair -> pair.second[1] >= oldest_kept_call, node.tracked_sources)
 end
+

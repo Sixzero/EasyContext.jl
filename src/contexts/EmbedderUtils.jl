@@ -7,19 +7,16 @@ using AISH: get_project_files
 using JLD2
 using Snowball
 import PromptingTools.Experimental.RAGTools as RAG
-
+import Base: *
 
 # Module-level constants
 const CACHE_DIR = let
-    dir = joinpath(dirname(@__DIR__), "cache")
+    dir = joinpath(dirname(dirname(@__DIR__)), "cache")
     isdir(dir) || mkpath(dir)
     dir
 end
 
-# Abstract types
-abstract type AbstractIndexBuilder end
 
-# Revised struct definitions
 @kwdef mutable struct EmbeddingIndexBuilder <: AbstractIndexBuilder
     chunker::RAG.AbstractChunker = GolemSourceChunker()
     embedder::RAG.AbstractEmbedder = CachedBatchEmbedder()
@@ -47,7 +44,6 @@ end
     cache::Union{Nothing, RAG.AbstractChunkIndex} = nothing
 end
 
-
 @kwdef mutable struct MultiIndexBuilder <: AbstractIndexBuilder
     builders::Vector{<:AbstractIndexBuilder}=[
         EmbeddingIndexBuilder(),
@@ -55,34 +51,130 @@ end
         # JinaEmbeddingIndexBuilder()
     ]
     cache::Union{Nothing, RAG.MultiIndex} = nothing
+    top_k::Int=200
 end
 
+function get_index(builder::BM25IndexBuilder, result::RAGResult; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
+    hash_str = hash("$(result.chunk.sources)")
+    cache_file = joinpath(CACHE_DIR, "bm25_index_$(hash_str).jld2")
 
-@kwdef struct EmbeddingContextProcessor <: AbstractContextProcessor
-    index::Union{Nothing, RAG.AbstractChunkIndex} = nothing
-    index_builder::EmbeddingIndexBuilder = EmbeddingIndexBuilder()
-    force_rebuild::Bool = false
-    suppress_output::Bool = true
+    if !isnothing(builder.cache)
+        return builder.cache
+    elseif isfile(cache_file)
+        builder.cache = JLD2.load(cache_file, "index")
+        return builder.cache
+    else isnothing(builder.cache)
+        
+        chunks, sources = result.chunk.contexts, result.chunk.sources
+        processor=RAG.KeywordsProcessor()
+        tagger=RAG.NoTagger()
+        ## Tokenize and DTM
+        dtm = RAG.get_keywords(processor, chunks;
+            # verbose = verbose,
+            cost_tracker)
+
+        ## Extract tags
+        tags_extracted = RAG.get_tags(tagger, chunks;
+            verbose = verbose,
+            cost_tracker)
+        # Build the sparse matrix and the vocabulary
+        tags, tags_vocab = RAG.build_tags(tagger, tags_extracted)
+
+        verbose && @info "Index built! (cost: \$$(round(cost_tracker[], digits=3)))"
+        
+        index_id = gensym("ChunkKeywordsIndex")
+        builder.cache = RAG.ChunkKeywordsIndex(; id = index_id, chunkdata = dtm, tags, tags_vocab, chunks, sources)
+        JLD2.save(cache_file, "index", builder.cache)
+    end
+    return builder.cache
 end
 
-@kwdef struct BM25ContextProcessor <: AbstractContextProcessor
-    index::Union{Nothing, RAG.AbstractChunkIndex} = nothing
-    index_builder::BM25IndexBuilder = BM25IndexBuilder()
-    force_rebuild::Bool = false
-    suppress_output::Bool = true
+function get_index(builder::EmbeddingIndexBuilder, result::RAGResult; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+    hash_str = hash("$(result.chunk.sources)")
+    cache_file = joinpath(CACHE_DIR, "embedding_index_$(hash_str).jld2")
+
+    if !isnothing(builder.cache)
+        return builder.cache
+    elseif isfile(cache_file)
+        builder.cache = JLD2.load(cache_file, "index")
+        return builder.cache
+    else
+        chunks, sources = result.chunk.contexts, result.chunk.sources
+        embedder = builder.embedder
+        tagger = builder.tagger
+
+        embeddings = RAG.get_embeddings(embedder, chunks;
+            verbose = verbose,
+            cost_tracker)
+
+        tags_extracted = RAG.get_tags(tagger, chunks;
+            verbose = verbose,
+            cost_tracker)
+        tags, tags_vocab = RAG.build_tags(tagger, tags_extracted)
+
+        verbose && @info "Index built! (cost: $(round(cost_tracker[], digits=3)))"
+
+        index_id = gensym("ChunkEmbeddingsIndex")
+        builder.cache = RAG.ChunkEmbeddingsIndex(; id = index_id, embeddings, tags, tags_vocab, chunks, sources)
+        JLD2.save(cache_file, "index", builder.cache)
+    end
+    return builder.cache
 end
 
-@kwdef mutable struct MultiIndexContext <: AbstractContextProcessor
-    index::Union{Nothing, RAG.MultiIndex} = nothing
-    index_builder::MultiIndexBuilder = MultiIndexBuilder(
-        builders=[
-            EmbeddingIndexBuilder(),
-            BM25IndexBuilder(),
-            JinaEmbeddingIndexBuilder()
-        ]
+function (builder::BM25IndexBuilder)(result::RAGResult)
+    index = get_index(builder, result)
+    finder = RAG.CosineSimilarity()
+    retriever = RAG.AdvancedRetriever(
+        finder=finder,
+        reranker=RAG.NoReranker(),
+        rephraser=RAG.NoRephraser(),
     )
+    retrieved = RAG.retrieve(retriever, index, result.question; top_k=100, return_all=true)
+    
+    res = RAGResult(SourceChunk(retrieved.sources, retrieved.context), result.question)
+    return res
 end
 
+function get_index(builder::MultiIndexBuilder, result::RAGResult; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+    if !isnothing(builder.cache)
+        return builder.cache
+    else
+        indices = [get_index(b, result; cost_tracker, verbose) for b in builder.builders]
+        builder.cache = RAG.MultiIndex(indices)
+    end
+    return builder.cache
+end
+
+function (builder::MultiIndexBuilder)(result::RAGResult)
+    if isnothing(builder.cache) || length(result.chunk.contexts) != length(builder.cache.indices)
+        builder.cache = RAG.MultiIndex([get_index(b, result) for b in builder.builders])
+    end
+
+    finders = [get_finder(b) for b in builder.builders]
+    multi_finder = RAG.MultiFinder(finders)
+
+    retriever = RAG.AdvancedRetriever(
+        processor=RAG.KeywordsProcessor(),
+        finder=multi_finder,
+        reranker=RAG.NoReranker(),
+        rephraser=RAG.NoRephraser(),
+    )
+
+    retrieved = RAG.retrieve(retriever, builder.cache, result.question; top_k=builder.top_k, return_all=true)
+
+    new_chunk = SourceChunk(retrieved.sources, retrieved.context)
+    return RAGResult(new_chunk, result.question)
+end
+
+get_embedder(builder::EmbeddingIndexBuilder) = builder.embedder
+get_embedder(builder::JinaEmbeddingIndexBuilder) = get_embedder(builder.embedder)
+get_embedder(embedder::JinaEmbedder) = embedder
+get_embedder(embedder::BatchEmbedder) = embedder
+get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)
+
+function *(a::AbstractIndexBuilder, b::Union{AbstractIndexBuilder, AbstractReranker})
+    return x -> b(a(x))
+end
 
 # Index building functions
 function build_index(builder::EmbeddingIndexBuilder, data::Vector{T}; force_rebuild::Bool=false, verbose::Bool=true) where T
@@ -174,18 +266,6 @@ function build_index(builder::MultiIndexBuilder, data::Vector{T}; force_rebuild:
     return multi_index, finders
 end
 
-function get_finder(builder::EmbeddingIndexBuilder)
-    RAG.CosineSimilarity()
-end
-
-function get_finder(builder::BM25IndexBuilder)
-    RAG.BM25Similarity()
-end
-
-function get_finder(builder::JinaEmbeddingIndexBuilder)
-    RAG.CosineSimilarity()
-end
-
 function build_multi_index(; verbose::Bool=true, force_rebuild::Bool=false, use_async::Bool=true)
     builders = [
         EmbeddingIndexBuilder(force_rebuild=force_rebuild, verbose=verbose),
@@ -200,196 +280,18 @@ function build_multi_index(; verbose::Bool=true, force_rebuild::Bool=false, use_
     return multi_index
 end
 
-# Context processing functions
-function get_context(builder::EmbeddingIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
-    index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
-
-    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
-    rephraser = RAG.NoRephraser() # RAG.HyDERephraser()
-    # reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
-    retriever = RAG.AdvancedRetriever(;
-        finder=RAG.CosineSimilarity(),
-        reranker,
-        rephraser,
-    )
-
-    result = RAG.retrieve(retriever, index, question;
-        return_all=true,
-        embedder_kwargs = (; model = "text-embedding-3-small"),
-        top_k=200,
-        top_n=10,
-    )
-
-    RAG.build_context!(SimpleContextJoiner(), index, result)
-
-    !suppress_output && print_context_results(result)
-
-    return result
+function get_finder(builder::EmbeddingIndexBuilder)
+    RAG.CosineSimilarity()
 end
 
-function get_context(builder::BM25IndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
-    index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
-
-    processor = RAG.KeywordsProcessor()
-    finder = RAG.BM25Similarity()
-    reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
-    # Create a SimpleBM25Retriever
-    retriever = RAG.SimpleBM25Retriever(;processor=processor, finder=finder, reranker)
-
-    result = RAG.retrieve(retriever, index, question;
-        return_all=true,
-        top_k=200,
-        top_n=10,
-    )
-
-    RAG.build_context!(SimpleContextJoiner(), index, result)
-
-    !suppress_output && print_context_results(result)
-
-    return result
+function get_finder(builder::BM25IndexBuilder)
+    RAG.BM25Similarity()
 end
 
-function get_context(builder::JinaEmbeddingIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
-    index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
-
-    rephraser = RAG.NoRephraser()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
-    retriever = RAG.AdvancedRetriever(;
-        finder=RAG.CosineSimilarity(),
-        reranker,
-        rephraser,
-    )
-
-    result = RAG.retrieve(retriever, index, question;
-        return_all=true,
-        embedder_kwargs = (; model = "jina-embeddings-v2-base-code"),
-        top_k=200,
-        top_n=10,
-    )
-
-    RAG.build_context!(SimpleContextJoiner(), index, result)
-
-    !suppress_output && print_context_results(result)
-
-    return result
+function get_finder(builder::JinaEmbeddingIndexBuilder)
+    RAG.CosineSimilarity()
 end
 
-function get_context(builder::MultiIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
-    index, finders = isnothing(data) ? (builder.cache, map(get_finder, builder.builders)) : build_index(builder, data; force_rebuild=force_rebuild)
-
-    processor = RAG.KeywordsProcessor()
-
-    # Create a MultiFinder
-    # multi_finder = RAG.MultiFinder([get_finder(b) for b in context.index_builder.builders])
-    multi_finder = RAG.MultiFinder(finders)
-
-    # Create a reranker (you can choose between CohereReranker or ReduceRankGPTReranker)
-    # reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
-
-    retriever = RAG.AdvancedRetriever(
-        processor=processor,
-        finder=multi_finder,
-        reranker=reranker,
-        rephraser = RAG.NoRephraser()
-    )
-
-    result = RAG.retrieve(retriever, index, question;
-        return_all=true,
-        top_k=300,
-        top_n=10,
-    )
-
-    RAG.build_context!(SimpleContextJoiner(), index, result)
-
-    !suppress_output && print_context_results(result)
-
-    return result
-end
-
-# Utility functions
-function get_package_infos()
-    installed_packages = Pkg.installed()
-    all_dependencies = Pkg.dependencies()
-    [info for (uuid, info) in all_dependencies if info.name in keys(installed_packages)]
-end
-
-function print_context_results(result)
-    printstyled("Number of context sources: ", color=:green, bold=true)
-    printstyled(length(result.sources), "\n", color=:green)
-
-    for (index, source) in enumerate(result.sources)
-        printstyled("  $source\n", color=:cyan)
-    end
-end
-
-function get_answer(question::String;
-    index=nothing,
-    force_rebuild=false,
-    model="claude",
-    template=:RAGAnsweringFromContextClaude,
-    top_k=100,
-    top_n=10
-)
-    result = get_context(question; index, force_rebuild, top_k=top_k, top_n=top_n)
-
-    # Create the generator with keyword arguments
-    generator = RAG.SimpleGenerator(
-        contexter=SimpleContextJoiner(),
-        answerer_kwargs=(
-            model=model,
-            template=template
-        )
-    )
-
-    # Generate the response
-    result = RAG.generate!(generator, result.index, result)
-
-    return result
-end
-
-function get_rag_config(;
-    batch_size::Int=50,
-    top_k::Int=300,
-    top_n::Int=10,
-    force_rebuild::Bool=false
-)
-
-    !isnothing(GLOBAL_RAG_CONFIG[]) && !force_rebuild && return GLOBAL_RAG_CONFIG[]
-
-    # Use a relative path to load the EasyContext templates
-    template_path = joinpath(@__DIR__, "..", "templates")
-    if !(template_path in PromptingTools.TEMPLATE_PATH)
-        PromptingTools.load_templates!(template_path)
-    end
-
-    rephraser=JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
-    reranker = ReduceRankGPTReranker(;batch_size=batch_size, model="gpt4om")
-    retriever = RAG.AdvancedRetriever(;
-        finder=RAG.CosineSimilarity(),
-        reranker,
-        rephraser
-    )
-
-    rag_conf = RAG.RAGConfig(;
-        retriever,
-        generator=RAG.SimpleGenerator(contexter=SimpleContextJoiner())
-    )
-
-    kwargs = (;
-        retriever_kwargs = (;
-            top_k, top_n, embedder_kwargs = (; model = "text-embedding-3-small"),
-        ),
-        generator_kwargs = (;
-            answerer_kwargs = (; model = "claude",template=:RAGAnsweringFromContextClaude),
-        ),
-    )
-
-    GLOBAL_RAG_CONFIG[] = (rag_conf, kwargs)
-    return rag_conf, kwargs
-end
 
 # Exports
 export build_index, build_multi_index, get_context, get_answer
