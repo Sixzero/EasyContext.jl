@@ -8,7 +8,7 @@ import AISH
 end
 
 @kwdef mutable struct PythonPackageContext <: AbstractContextProcessor
-    context_node::ContextNode = ContextNode(title="PythonPackages", element="Pkg")
+    context_node::ContextNode = ContextNode(tag="PythonPackages", element="Pkg")
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
     index_builder::AbstractIndexBuilder = MultiIndexBuilder()
     packages::Vector{PythonPkgInfo} = PythonPkgInfo[]

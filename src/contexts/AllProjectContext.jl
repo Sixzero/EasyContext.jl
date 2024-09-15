@@ -3,7 +3,7 @@ using PromptingTools.Experimental.RAGTools
 import AISH
 
 @kwdef mutable struct AllProjectContext <: AbstractContextProcessor
-    context_node::ContextNode = ContextNode(title="AllProject", element="File")
+    context_node::ContextNode = ContextNode(tag="AllProject", element="File")
     call_counter::Int = 0
     past_questions::Vector{String} = String[]
     max_past_questions::Int = 4

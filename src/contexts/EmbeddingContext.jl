@@ -198,11 +198,11 @@ struct CohereRerankPro <: AbstractReranker
     top_n::Int
 end
 
-function (reranker::CohereRerankPro)(result::RAGResult)
+function (reranker::CohereRerankPro)(result::RAGContext)
     reranked_indices = RAG.rerank(RAG.CohereReranker(model=reranker.model), result.question, result.chunk.contexts; top_n=reranker.top_n)
     new_sources = result.chunk.sources[reranked_indices]
     new_contexts = result.chunk.contexts[reranked_indices]
-    return RAGResult(SourceChunk(new_sources, new_contexts), result.question)
+    return RAGContext(SourceChunk(new_sources, new_contexts), result.question)
 end
 
 struct RerankGPTPro <: AbstractReranker
@@ -211,10 +211,10 @@ struct RerankGPTPro <: AbstractReranker
     top_n::Int
 end
 
-function (reranker::RerankGPTPro)(result::RAGResult)
+function (reranker::RerankGPTPro)(result::RAGContext)
     reranked_indices = RAG.rerank(ReduceRankGPTReranker(batch_size=reranker.batch_size, model=reranker.model), 
                                   result.chunk.contexts, result.question; top_n=reranker.top_n)
     new_sources = result.chunk.sources[reranked_indices]
     new_contexts = result.chunk.contexts[reranked_indices]
-    return RAGResult(SourceChunk(new_sources, new_contexts), result.question)
+    return RAGContext(SourceChunk(new_sources, new_contexts), result.question)
 end

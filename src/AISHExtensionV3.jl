@@ -31,8 +31,8 @@ Fields:
     joiner::AsyncContextJoiner = AsyncContextJoiner(
         processors=[
             ShellContext(),
-            AllProjectContext(),
-            # CodebaseContextV2(),
+            # AllProjectContext(),
+            CodebaseContextV2(),
             # GoogleContext(),
             # JuliaPackageContext(),
             # PythonPackageContext(),

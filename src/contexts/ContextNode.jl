@@ -1,5 +1,5 @@
 @kwdef mutable struct ContextNode
-    title::String = "Docs"
+    tag::String = "Docs"
     element::String = "Doc"
     attributes::Dict{String, String} = Dict{String, String}()
     tracked_sources::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
@@ -50,16 +50,16 @@ function format_context_node(node::ContextNode)
     output = ""
     if !isempty(new_files)
         output *= """
-        <$(node.title) NEW>
+        <$(node.tag) NEW>
         $new_files
-        </$(node.title)>
+        </$(node.tag)>
         """
     end
     if !isempty(updated_files)
         output *= """
-        <$(node.title) UPDATED>
+        <$(node.tag) UPDATED>
         $updated_files
-        </$(node.title)>
+        </$(node.tag)>
         """
     end
     
@@ -114,6 +114,8 @@ end
 
 function AISH.cut_history!(node::ContextNode, keep::Int)
     oldest_kept_call = max(1, node.call_counter - keep)
+    # @show oldest_kept_call
+    # @show [map(k -> (k, node.tracked_sources[k][1]), collect(keys(node.tracked_sources)))...]
     filter!(pair -> pair.second[1] >= oldest_kept_call, node.tracked_sources)
 end
 
