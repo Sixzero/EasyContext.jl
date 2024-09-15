@@ -5,17 +5,6 @@ import AISH
 abstract type AbstractContextProcessor end
 abstract type AbstractIndexBuilder end
 
-# Struct definitions
-struct SourceChunk
-    sources::Vector{String}
-    contexts::Vector{String}
-end
-
-struct RAGResult
-    chunk::SourceChunk
-    question::String
-end
-
 
 # Include ContextNode definition
 include("ContextNode.jl")
@@ -25,6 +14,8 @@ include("EmbedderUtils.jl")
 include("AllProjectContext.jl")
 include("CodebaseContext.jl")
 include("CodebaseContextV2.jl")
+include("CodebaseContextV3.jl")
+include("QuestionAccumulator.jl")
 include("EmbeddingContext.jl")
 include("GoogleContext.jl")
 include("JuliaPackageContext.jl")

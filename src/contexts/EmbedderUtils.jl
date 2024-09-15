@@ -54,7 +54,7 @@ end
     top_k::Int=200
 end
 
-function get_index(builder::BM25IndexBuilder, result::RAGResult; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
+function get_index(builder::BM25IndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
     hash_str = hash("$(result.chunk.sources)")
     cache_file = joinpath(CACHE_DIR, "bm25_index_$(hash_str).jld2")
 
@@ -89,7 +89,7 @@ function get_index(builder::BM25IndexBuilder, result::RAGResult; cost_tracker = 
     return builder.cache
 end
 
-function get_index(builder::EmbeddingIndexBuilder, result::RAGResult; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+function get_index(builder::EmbeddingIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
     hash_str = hash("$(result.chunk.sources)")
     cache_file = joinpath(CACHE_DIR, "embedding_index_$(hash_str).jld2")
 
@@ -121,7 +121,7 @@ function get_index(builder::EmbeddingIndexBuilder, result::RAGResult; cost_track
     return builder.cache
 end
 
-function (builder::BM25IndexBuilder)(result::RAGResult)
+function (builder::EmbeddingIndexBuilder)(result::RAGContext)
     index = get_index(builder, result)
     finder = RAG.CosineSimilarity()
     retriever = RAG.AdvancedRetriever(
@@ -129,13 +129,27 @@ function (builder::BM25IndexBuilder)(result::RAGResult)
         reranker=RAG.NoReranker(),
         rephraser=RAG.NoRephraser(),
     )
+    retrieved = RAG.retrieve(retriever, index, result.question; top_k=100, top_n=100, return_all=true)
+    
+    res = RAGContext(SourceChunk(retrieved.sources, retrieved.context), result.question)
+    return res
+
+end
+function (builder::BM25IndexBuilder)(result::RAGContext)
+    index = get_index(builder, result)
+    finder = RAG.BM25Similarity()
+    retriever = RAG.AdvancedRetriever(
+        finder=finder,
+        reranker=RAG.NoReranker(),
+        rephraser=RAG.NoRephraser(),
+    )
     retrieved = RAG.retrieve(retriever, index, result.question; top_k=100, return_all=true)
     
-    res = RAGResult(SourceChunk(retrieved.sources, retrieved.context), result.question)
+    res = RAGContext(SourceChunk(retrieved.sources, retrieved.context), result.question)
     return res
 end
 
-function get_index(builder::MultiIndexBuilder, result::RAGResult; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+function get_index(builder::MultiIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
     if !isnothing(builder.cache)
         return builder.cache
     else
@@ -145,7 +159,7 @@ function get_index(builder::MultiIndexBuilder, result::RAGResult; cost_tracker =
     return builder.cache
 end
 
-function (builder::MultiIndexBuilder)(result::RAGResult)
+function (builder::MultiIndexBuilder)(result::RAGContext)
     if isnothing(builder.cache) || length(result.chunk.contexts) != length(builder.cache.indices)
         builder.cache = RAG.MultiIndex([get_index(b, result) for b in builder.builders])
     end
@@ -163,7 +177,7 @@ function (builder::MultiIndexBuilder)(result::RAGResult)
     retrieved = RAG.retrieve(retriever, builder.cache, result.question; top_k=builder.top_k, return_all=true)
 
     new_chunk = SourceChunk(retrieved.sources, retrieved.context)
-    return RAGResult(new_chunk, result.question)
+    return RAGContext(new_chunk, result.question)
 end
 
 get_embedder(builder::EmbeddingIndexBuilder) = builder.embedder

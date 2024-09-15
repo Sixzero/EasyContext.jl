@@ -104,7 +104,7 @@ end
 """ ugly. it got developed based on what issue we came accross, this function fullfills the tests, but basically it unwraps the module behind the docstring."""
 function handle_docstring_file(expr, last_line, lines)
     if expr.head == :toplevel && length(expr.args) >= 2 && expr.args[2] isa Expr && expr.args[2].head == :macrocall && expr.args[2].args[1] isa GlobalRef && expr.args[2].args[1].name == Symbol("@doc") && expr.args[2].args[4] isa Expr && expr.args[2].args[4].head == :module
-        @info "We unwrap docstring file"
+        # @info "We unwrap docstring file"
         # @show expr.args[2].args[3]
         # @show expr.args[2].args[4].args[2]
         # @show expr.args[2].args[4].args[3].head
@@ -176,7 +176,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
                 push!(source_defs, def)
                 continue
             end
-            @warn "Unknown type: $(typeof(expr))"
+            verbose && @warn "Unknown type: $(typeof(expr))"
             continue
         end
 

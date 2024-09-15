@@ -8,12 +8,12 @@
     new_sources::Vector{String} = String[]
 end
 
-function (node::ContextNode)(result::RAGResult)
+function (node::ContextNode)(result::RAGContext)
     add_or_update_source!(node, result.chunk.sources, result.chunk.contexts)
     return format_context_node(node)
 end
 
-function add_or_update_source!(node::ContextNode, sources::Vector{String}, contexts::Vector{<:AbstractString})
+function add_or_update_source!(node::ContextNode, sources::Vector{String}, contexts::Vector{<:AbstractString}; verbose=true)
     @assert length(sources) == length(contexts) "Number of sources and contexts must match"
     
     node.call_counter += 1
@@ -40,7 +40,7 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
     end
     node.new_sources = new_sources
     node.updated_sources = updated_sources
-    print_context_updates(new_sources, updated_sources, unchanged_sources; item_type="sources")
+    verbose && print_context_updates(new_sources, updated_sources, unchanged_sources; item_type="sources")
 end
 
 function format_context_node(node::ContextNode)
