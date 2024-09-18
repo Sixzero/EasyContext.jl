@@ -1,13 +1,11 @@
-module AISHExtensionV4
 
 using AISH
 using Dates
-using ..EasyContext
 using PromptingTools.Experimental.RAGTools
 import PromptingTools.Experimental.RAGTools as RAG
-import AISH: AbstractContextCreator, prepare_user_message!, get_cache_setting
+import AISH: AbstractContextCreator, prepare_user_message!, get_cache_setting, genid
 
-export get_context, cut_history!, AISHExtensionV4, Pipe, get_processor_description, generate_codebase_ctx
+export get_context, cut_history!, EasyContextCreatorV4, Pipe, get_processor_description, generate_codebase_ctx
 
 # Define the Pipe struct
 struct Pipe
@@ -25,22 +23,23 @@ end
 # List of ctx processor pipelines
 @kwdef struct PipedContextProcessor
     processors::Vector{Pipe}=[
-        Pipe([ShellContext(), ContextNode(tag="ShellRunResults", element="sh_output")]),
+        Pipe([ShellContext()]),
         Pipe([
-            QuestionAccumulator(),
+            QuestionAccumulatorProcessor(),
             CodebaseContextV3(),
+            ReduceRankGPTReranker(;batch_size=30, model="gpt4om"),
             ContextNode(tag="Codebase", element="File"),
         ]),
         Pipe([
             JuliaPackageContext(),
             EmbeddingIndexBuilder(),
-            ReduceRankGPTReranker(),
+            ReduceRankGPTReranker(; batch_size=40),
             ContextNode(tag="Functions", element="Function")
         ])
     ]
 end
 
-@kwdef mutable struct AISHExtensionV4 <: AbstractContextCreator
+@kwdef mutable struct EasyContextCreatorV4 <: AbstractContextCreator
     processor::PipedContextProcessor=PipedContextProcessor()
     keep::Int = 9
     max_messages::Int = 17
@@ -53,7 +52,7 @@ function get_processor_description(processor::Any, context_node::Union{ContextNo
     return "$(processor) results will be wrapped in <$(context_node.tag)> and </$(context_node.tag)> tags, with individual elements wrapped in <$(context_node.element)> and </$(context_node.element)> tags."
 end
 
-function get_processor_description(::QuestionAccumulator, context_node::Union{ContextNode, Nothing}=nothing)
+function get_processor_description(::QuestionAccumulatorProcessor, context_node::Union{ContextNode, Nothing}=nothing)
     return ""
 end
 
@@ -114,7 +113,7 @@ function get_context(pcp::PipedContextProcessor, question::String, ai_state=noth
     return pcp(question, ai_state, shell_results)
 end
 
-function cut_history!(pcp::PipedContextProcessor, keep::Int)
+function AISH.cut_history!(pcp::PipedContextProcessor, keep::Int)
     for pipe in pcp.processors
         for processor in pipe.processors
             if applicable(AISH.cut_history!, processor, keep)
@@ -124,14 +123,14 @@ function cut_history!(pcp::PipedContextProcessor, keep::Int)
     end
 end
 
-function get_cache_setting(creator::AISHExtensionV4, conv)
+function get_cache_setting(creator::EasyContextCreatorV4, conv)
     if length(conv.messages) >= creator.max_messages - 2
         return nothing
     end
     return :all
 end
 
-function prepare_user_message!(ctx::AISHExtensionV4, ai_state, question, shell_results)
+function prepare_user_message!(ctx::EasyContextCreatorV4, ai_state, question, shell_results)
     conv = AISH.curr_conv(ai_state)
     
     # Check and cut history if necessary
@@ -158,7 +157,7 @@ function prepare_user_message!(ctx::AISHExtensionV4, ai_state, question, shell_r
     
     # Update system message if necessary
     if conv.system_message.content != AISH.SYSTEM_PROMPT(;ctx=codebase_ctx)
-        conv.system_message = AISH.Message(timestamp=now(), role=:system, content=AISH.SYSTEM_PROMPT(;ctx=codebase_ctx))
+        conv.system_message = AISH.Message(id=genid() ,timestamp=now(), role=:system, content=AISH.SYSTEM_PROMPT(;ctx=codebase_ctx))
         @info "System message updated!"
     end
 
@@ -173,6 +172,3 @@ function prepare_user_message!(ctx::AISHExtensionV4, ai_state, question, shell_r
     
     return new_msg
 end
-
-end # module
-

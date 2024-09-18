@@ -2,7 +2,7 @@
     call_counter::Int = 0
 end
 
-function (processor::ShellContext)(result::RAGContext, ai_state=nothing, shell_results=nothing)
+function (processor::ShellContext)(result, ai_state=nothing, shell_results=nothing)
     processor.call_counter += 1
     
     if isnothing(shell_results)

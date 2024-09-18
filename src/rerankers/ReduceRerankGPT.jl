@@ -5,7 +5,7 @@ const RAG = RAGTools
 const PT = PromptingTools
 
 Base.@kwdef struct ReduceRankGPTReranker <: AbstractReranker 
-    batch_size::Int=20
+    batch_size::Int=30
     model::AbstractString=PT.MODEL_CHAT
     max_tokens::Int=4096
     temperature::Float64=0.0
