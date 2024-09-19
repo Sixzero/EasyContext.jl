@@ -353,7 +353,6 @@ question = "Could you please implement me with ReplMaker or ReplMaker.jl an AI c
 println(msg)
 #%%
 using EasyContext: JinaEmbedder, get_embeddings
-using Boilerplate
     qqs = [question for i  in 1:4000]
     @show length.(qqs)
     res = get_embeddings(JinaEmbedder(), qqs)
