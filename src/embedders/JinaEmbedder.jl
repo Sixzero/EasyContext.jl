@@ -112,17 +112,6 @@ function PromptingTools.aiembed(embedder::JinaEmbedder,
     return msg
 end
 
-# Helper function to create a JinaEmbedder instance
-function create_jina_embedder(;
-    api_url::String = "https://api.jina.ai/v1/embeddings",
-    api_key::String = get(ENV, "JINA_API_KEY", ""),
-    model::String = "jina-embeddings-v2-base-code",
-    dimensions::Union{Int, Nothing} = nothing,
-    input_type::String = "document"
-)
-    JinaEmbedder(; api_url, api_key, model, dimensions, input_type)
-end
-
 # Add this at the end of the file
 function create_jina_embedder(;
     model::String = "jina-embeddings-v2-base-code",

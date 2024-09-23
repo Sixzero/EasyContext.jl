@@ -17,6 +17,11 @@ include("CacheBatchEmbedder.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
+get_embedder_uniq_id(embedder::AbstractEasyEmbedder) = begin
+  embedder_type = typeof(get_embedder(embedder)).name.name
+  model_name = get_model_name(embedder)
+  return "$(embedder_type)_$(model_name)"
+end
 
 # Module-level constants
 const CACHE_DIR = let
@@ -28,7 +33,8 @@ end
 @kwdef mutable struct EmbeddingIndexBuilder <: AbstractIndexBuilder
     embedder::RAG.AbstractEmbedder = CachedBatchEmbedder(;embedder=OpenAIBatchEmbedder(; model="text-embedding-3-small"))
     cache::Union{Nothing, RAG.AbstractChunkIndex} = nothing
-    top_k::Int = 300  # Updated from top_n to top_k
+    top_k::Int = 300
+    force_rebuild::Bool = false
 end
 
 @kwdef mutable struct BM25IndexBuilder <: AbstractIndexBuilder
@@ -73,12 +79,12 @@ function get_index(builder::BM25IndexBuilder, result::RAGContext; cost_tracker =
 end
 
 function get_index(builder::EmbeddingIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    hash_str = hash("$(result.chunk.sources)")
+    hash_str = hash("$(result.chunk.sources)_$(get_model_name(builder.embedder))")
     cache_file = joinpath(CACHE_DIR, "embedding_index_$(hash_str).jld2")
 
     if !isnothing(builder.cache)
         return builder.cache
-    elseif isfile(cache_file)
+    elseif isfile(cache_file) && !builder.force_rebuild
         builder.cache = JLD2.load(cache_file, "index")
         return builder.cache
     else
@@ -86,13 +92,14 @@ function get_index(builder::EmbeddingIndexBuilder, result::RAGContext; cost_trac
         embedder = builder.embedder
 
         embeddings = RAG.get_embeddings(embedder, chunks;
-            verbose = verbose,
-            cost_tracker)
-
+        verbose = verbose,
+        cost_tracker)
+        
         verbose && @info "Index built! (cost: $(round(cost_tracker[], digits=3)))"
 
         index_id = gensym("ChunkEmbeddingsIndex")
         builder.cache = RAG.ChunkEmbeddingsIndex(; id = index_id, embeddings, chunks, sources)
+        @info "Successfully built embedding index! Size: $(size(embeddings))"
         JLD2.save(cache_file, "index", builder.cache)
     end
     return builder.cache

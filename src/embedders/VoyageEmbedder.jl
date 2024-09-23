@@ -13,14 +13,14 @@ A struct for embedding documents using Voyage AI's embedding models.
 - `api_url::String`: The API endpoint URL.
 - `api_key::String`: The API key for authentication.
 - `model::String`: The name of the embedding model to use.
-- `input_type::String`: The type of input (e.g., "document" or "query").
+- `input_type::Union{String, Nothing}`: The type of input (e.g., "document" or "query").
 - `rate_limiter::RateLimiter`: A rate limiter to manage API request rates.
 """
 @kwdef mutable struct VoyageEmbedder <: AbstractEasyEmbedder
     api_url::String = "https://api.voyageai.com/v1/embeddings"
     api_key::String = get(ENV, "VOYAGE_API_KEY", "")
-    model::String = "voyage-code-2" # or voyage-3
-    input_type::String = "document"
+    model::String = "voyage-code-2"
+    input_type::Union{String, Nothing} = nothing
     rate_limiter::RateLimiter = RateLimiter()
 end
 
@@ -37,15 +37,19 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     function process_batch(batch)
         payload = Dict(
             "model" => embedder.model,
-            "input_type" => embedder.input_type,
-            "input" => batch
+            "input" => batch,
+            "truncation" => false
         )
+        
+        if !isnothing(embedder.input_type)
+            payload["input_type"] = embedder.input_type
+        end
 
         response = HTTP.post(embedder.api_url, headers, JSON3.write(payload))
 
         if response.status == 200
             result = JSON3.read(String(response.body))
-            return [e["embedding"] for e in result["data"]]
+            return [e["embedding"] for e in result["data"]], result["usage"]["total_tokens"]
         else
             error("Failed to get embeddings for batch. Status code: $(response.status)")
         end
@@ -53,23 +57,24 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
 
     process_batch_limited = with_rate_limiter(process_batch, embedder.rate_limiter)
 
-    batch_size = 128 # Voyage AI's max batch size
-    batches = [docs[i:min(i + batch_size - 1, end)] for i in 1:batch_size:length(docs)]
+    max_batch_size = 128  # Voyage AI's max batch size
+    batches = [docs[i:min(i + max_batch_size - 1, end)] for i in 1:max_batch_size:length(docs)]
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
-    embeddings = asyncmap(batches, ntasks=4) do batch
-        result = process_batch_limited(batch)
-        result = stack(result, dims=2)
+    results = asyncmap(batches, ntasks=4) do batch
+        embeddings, tokens = process_batch_limited(batch)
         next!(progress)
-        return result
+        return embeddings, tokens
     end
-    all_embeddings = reduce(hcat, embeddings)
+
+    all_embeddings = reduce(vcat, first.(results))
+    total_tokens = sum(last.(results))
 
     if verbose
-        @info "Embedding complete for $(length(docs)) documents using $(embedder.model)."
+        @info "Embedding complete for $(length(docs)) documents using $(embedder.model). Total tokens: $total_tokens"
     end
 
-    return all_embeddings
+    return hcat(all_embeddings...), total_tokens
 end
 
 # Extend aiembed for VoyageEmbedder
@@ -81,15 +86,15 @@ function PromptingTools.aiembed(embedder::VoyageEmbedder,
 
     docs = doc_or_docs isa AbstractString ? [doc_or_docs] : doc_or_docs
 
-    time = @elapsed embeddings = get_embeddings(embedder, docs; verbose=verbose, kwargs...)
+    time = @elapsed embeddings, total_tokens = get_embeddings(embedder, docs; verbose=verbose, kwargs...)
 
-    content = mapreduce(postprocess, hcat, embeddings)
+    content = mapreduce(postprocess, hcat, eachcol(embeddings))
 
     msg = PromptingTools.DataMessage(;
         content = content,
         status = 200,
         cost = 0.0,  # Voyage AI doesn't provide cost information
-        tokens = (0, 0),  # Voyage AI doesn't provide token count
+        tokens = (total_tokens, 0),
         elapsed = time
     )
 
@@ -98,21 +103,11 @@ function PromptingTools.aiembed(embedder::VoyageEmbedder,
     return msg
 end
 
-# Helper function to create a VoyageEmbedder instance
-function create_voyage_embedder(;
-    api_url::String = "https://api.voyageai.com/v1/embeddings",
-    api_key::String = get(ENV, "VOYAGE_API_KEY", ""),
-    model::String = "voyage-code-2",
-    input_type::String = "document"
-)
-    VoyageEmbedder(; api_url, api_key, model, input_type)
-end
-
 # Add this at the end of the file
 function create_voyage_embedder(;
-    model::String = "voyage-code-2",
+    model::String = "voyage-code-2", # or voyage-3
     top_k::Int = 300,
-    input_type::String = "document"
+    input_type::Union{String, Nothing} = nothing
 )
     voyage_embedder = VoyageEmbedder(; model=model, input_type=input_type)
     embedder = CachedBatchEmbedder(;embedder=voyage_embedder)
