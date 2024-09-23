@@ -71,30 +71,6 @@ function get_context(builder::BM25IndexBuilder, question::String; data::Union{No
     return result
 end
 
-function get_context(builder::JinaEmbeddingIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
-    index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
-
-    rephraser = RAG.NoRephraser()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
-    retriever = RAG.AdvancedRetriever(;
-        finder=RAG.CosineSimilarity(),
-        embedder=builder.embedder,
-        reranker,
-        rephraser,
-    )
-
-    result = RAG.retrieve(retriever, index, question;
-        return_all=true,
-        embedder_kwargs = (; model = "jina-embeddings-v2-base-code"),
-        top_k=100,
-        top_n=10,
-    )
-
-    RAG.build_context!(SimpleContextJoiner(), index, result)
-
-    return result
-end
-
 function get_context(builder::MultiIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
     index, finders = isnothing(data) ? (builder.cache, map(get_finder, builder.builders)) : build_index(builder, data; force_rebuild=force_rebuild)
 
