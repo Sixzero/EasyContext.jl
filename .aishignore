@@ -1,3 +1,3 @@
-test/edgecases
-test/pro.jl
-test/*
+playground/edgecases
+playground/pro.jl
+playground/*
