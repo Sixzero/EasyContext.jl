@@ -5,7 +5,7 @@
     last_pkg_hash::String = ""
 end
 
-function (context::JuliaPackageContext)(question::String)
+function (context::JuliaPackageContext)(question::String, args...)
     chunks, sources = get_cached_chunks(context)
     return RAGContext(SourceChunk(sources, chunks), question)
 end

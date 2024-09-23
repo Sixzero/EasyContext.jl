@@ -6,12 +6,10 @@ include("RateLimiterStruct.jl")
 include("chunkers/GolemSourceChunks.jl")
 include("chunkers/FullFileChunker.jl")
 include("embedders/EmbedderUtils.jl")
-include("embedders/CacheBatchEmbedder.jl")
-include("embedders/OpenAIBatchEmbedder.jl")
-include("embedders/JinaEmbedder.jl")
 include("ContextJoiner.jl")
 include("rerankers/ReduceRerankGPT.jl")
 
+include("ai_repl.jl")
 include("PkgLister.jl")
 export find_package_path
 
@@ -21,6 +19,8 @@ include("AISHExtension.jl")
 include("AISHExtensionV2.jl")
 include("AISHExtensionV3.jl")
 include("AISHExtensionV4.jl")
+
+include("precompile_scripts.jl")
 
 end # module EasyContext
 

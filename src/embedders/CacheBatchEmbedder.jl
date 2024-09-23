@@ -17,8 +17,8 @@ cache_prefix: The prefix addition to the file being saved.
     cache_prefix::String=""
     truncate_dimension::Union{Int, Nothing}=nothing
 end
-
-get_model_name(embedder::CachedBatchEmbedder) = get_model_name(embedder.embedder)
+get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)
+get_model_name(embedder::CachedBatchEmbedder) = get_model_name(get_embedder(embedder))
 
 function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
         verbose::Bool = true,
@@ -30,8 +30,8 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         verbose && @info "No documents to embed."
         return Matrix{Float32}(undef, 0, 0)
     end
-    model = get_model_name(embedder.embedder)
-    embedder_type = typeof(embedder.embedder).name.name
+    model = get_model_name(embedder)
+    embedder_type = typeof(get_embedder(embedder)).name.name
     cache_prefix, truncate_dimension = embedder.cache_prefix, embedder.truncate_dimension
     
     cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(embedder_type)_$(model).jld2")

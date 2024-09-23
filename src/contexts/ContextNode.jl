@@ -8,7 +8,7 @@
     new_sources::Vector{String} = String[]
 end
 
-function (node::ContextNode)(result::RAGContext)
+function (node::ContextNode)(result::RAGContext, args...)
     add_or_update_source!(node, result.chunk.sources, result.chunk.contexts)
     return format_context_node(node)
 end

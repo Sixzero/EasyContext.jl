@@ -1,4 +1,3 @@
-
 using HTTP
 using JSON3
 using PromptingTools
@@ -6,32 +5,26 @@ using PromptingTools.Experimental.RAGTools: get_embeddings
 using ProgressMeter
 
 """
-    JinaEmbedder <: AbstractEasyEmbedder
+    VoyageEmbedder <: AbstractEasyEmbedder
 
-A struct for embedding documents using Jina AI's embedding models.
-
-Supports two model options:
-1. "jina-embeddings-v2-base-code" (default): A general-purpose embedding model.
-2. "jina-colbert-v2": A ColBERT-based embedding model for dense retrieval tasks.
+A struct for embedding documents using Voyage AI's embedding models.
 
 # Fields
 - `api_url::String`: The API endpoint URL.
 - `api_key::String`: The API key for authentication.
 - `model::String`: The name of the embedding model to use.
-- `dimensions::Union{Int, Nothing}`: The number of dimensions for the embedding (required for ColBERT model).
-- `input_type::String`: The type of input (e.g., "document" or "query", required for ColBERT model).
+- `input_type::String`: The type of input (e.g., "document" or "query").
 - `rate_limiter::RateLimiter`: A rate limiter to manage API request rates.
 """
-@kwdef mutable struct JinaEmbedder <: AbstractEasyEmbedder
-    api_url::String = "https://api.jina.ai/v1/embeddings"
-    api_key::String = get(ENV, "JINA_API_KEY", "")
-    model::String = "jina-embeddings-v2-base-code"
-    dimensions::Union{Int, Nothing} = nothing
+@kwdef mutable struct VoyageEmbedder <: AbstractEasyEmbedder
+    api_url::String = "https://api.voyageai.com/v1/embeddings"
+    api_key::String = get(ENV, "VOYAGE_API_KEY", "")
+    model::String = "voyage-code-2" # or voyage-3
     input_type::String = "document"
     rate_limiter::RateLimiter = RateLimiter()
 end
 
-function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};
+function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:AbstractString};
     verbose::Bool = true,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     kwargs...)
@@ -44,16 +37,9 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
     function process_batch(batch)
         payload = Dict(
             "model" => embedder.model,
-            "normalized" => true,
-            "embedding_type" => "float",
+            "input_type" => embedder.input_type,
             "input" => batch
         )
-
-        if embedder.model == "jina-colbert-v2"
-            embedder.api_url = "https://api.jina.ai/v1/multi-vector"
-            payload["dimensions"] = embedder.dimensions
-            payload["input_type"] = embedder.input_type
-        end
 
         response = HTTP.post(embedder.api_url, headers, JSON3.write(payload))
 
@@ -67,7 +53,7 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
 
     process_batch_limited = with_rate_limiter(process_batch, embedder.rate_limiter)
 
-    batch_size = 1024 # 2048 is the max, but it caused error (maybe for really large requests)
+    batch_size = 128 # Voyage AI's max batch size
     batches = [docs[i:min(i + batch_size - 1, end)] for i in 1:batch_size:length(docs)]
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
@@ -86,8 +72,8 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
     return all_embeddings
 end
 
-# Extend aiembed for JinaEmbedder
-function PromptingTools.aiembed(embedder::JinaEmbedder,
+# Extend aiembed for VoyageEmbedder
+function PromptingTools.aiembed(embedder::VoyageEmbedder,
     doc_or_docs::Union{AbstractString, AbstractVector{<:AbstractString}},
     postprocess::F = identity;
     verbose::Bool = true,
@@ -102,8 +88,8 @@ function PromptingTools.aiembed(embedder::JinaEmbedder,
     msg = PromptingTools.DataMessage(;
         content = content,
         status = 200,
-        cost = 0.0,  # Jina doesn't provide cost information
-        tokens = (0, 0),  # Jina doesn't provide token count
+        cost = 0.0,  # Voyage AI doesn't provide cost information
+        tokens = (0, 0),  # Voyage AI doesn't provide token count
         elapsed = time
     )
 
@@ -112,28 +98,26 @@ function PromptingTools.aiembed(embedder::JinaEmbedder,
     return msg
 end
 
-# Helper function to create a JinaEmbedder instance
-function create_jina_embedder(;
-    api_url::String = "https://api.jina.ai/v1/embeddings",
-    api_key::String = get(ENV, "JINA_API_KEY", ""),
-    model::String = "jina-embeddings-v2-base-code",
-    dimensions::Union{Int, Nothing} = nothing,
+# Helper function to create a VoyageEmbedder instance
+function create_voyage_embedder(;
+    api_url::String = "https://api.voyageai.com/v1/embeddings",
+    api_key::String = get(ENV, "VOYAGE_API_KEY", ""),
+    model::String = "voyage-code-2",
     input_type::String = "document"
 )
-    JinaEmbedder(; api_url, api_key, model, dimensions, input_type)
+    VoyageEmbedder(; api_url, api_key, model, input_type)
 end
 
 # Add this at the end of the file
-function create_jina_embedder(;
-    model::String = "jina-embeddings-v2-base-code",
+function create_voyage_embedder(;
+    model::String = "voyage-code-2",
     top_k::Int = 300,
-    dimensions::Union{Int, Nothing} = nothing,
     input_type::String = "document"
 )
-    jina_embedder = JinaEmbedder(; model=model, dimensions=dimensions, input_type=input_type)
-    embedder = CachedBatchEmbedder(;embedder=jina_embedder)
+    voyage_embedder = VoyageEmbedder(; model=model, input_type=input_type)
+    embedder = CachedBatchEmbedder(;embedder=voyage_embedder)
     EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
 end
 
-export create_jina_embedder
+export create_voyage_embedder
 

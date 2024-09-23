@@ -1,13 +1,14 @@
-using AISH: get_project_files, format_file_content
+using AISH: format_file_content
 using PromptingTools.Experimental.RAGTools
 import AISH
 
 @kwdef mutable struct CodebaseContextV3 <: AbstractContextProcessor
     chunker::RAG.AbstractChunker = FullFileChunker()
     project_paths::Vector{String} = String[]
+    file_selector::AbstractFileSelector = DefaultFileSelector()
 end
 
-function (context::CodebaseContextV3)(input::Union{String, RAGContext})
+function (context::CodebaseContextV3)(input::Union{String, RAGContext}, args...)
     question = input isa RAGContext ? input.question : input
     chunks, sources = get_chunked_files(context)
     
@@ -15,7 +16,7 @@ function (context::CodebaseContextV3)(input::Union{String, RAGContext})
 end
 
 function get_chunked_files(context::CodebaseContextV3)
-    all_files = get_project_files(context.project_paths)
+    all_files = vcat([get_files_in_path(context.file_selector, path) for path in context.project_paths]...)
     chunks, sources = RAGTools.get_chunks(context.chunker, all_files)
     return chunks, sources
 end

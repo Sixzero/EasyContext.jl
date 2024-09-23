@@ -13,7 +13,7 @@ Base.@kwdef struct ReduceRankGPTReranker <: AbstractReranker
     top_n::Int=10
 end
 
-function (reranker::ReduceRankGPTReranker)(result::RAGContext)
+function (reranker::ReduceRankGPTReranker)(result::RAGContext, args...)
     reranked = rerank(reranker, result.chunk.sources, result.chunk.contexts, result.question)
     return RAGContext(SourceChunk(reranked.sources, reranked.contexts), result.question)
 end

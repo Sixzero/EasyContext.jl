@@ -13,9 +13,9 @@ struct Pipe
 end
 
 # Define a functor for Pipe
-function (pipe::Pipe)(input)
+function (pipe::Pipe)(input, ai_state, shell_results)
     for processor in pipe.processors
-        input = processor(input)
+        input = processor(input, ai_state, shell_results)
     end
     return input
 end
@@ -27,15 +27,16 @@ end
         Pipe([
             QuestionAccumulatorProcessor(),
             CodebaseContextV3(),
+            # EmbeddingIndexBuilder(top_n=50),
             ReduceRankGPTReranker(;batch_size=30, model="gpt4om"),
             ContextNode(tag="Codebase", element="File"),
         ]),
-        Pipe([
-            JuliaPackageContext(),
-            EmbeddingIndexBuilder(),
-            ReduceRankGPTReranker(; batch_size=40),
-            ContextNode(tag="Functions", element="Function")
-        ])
+        # Pipe([
+        #     JuliaPackageContext(),
+        #     EmbeddingIndexBuilder(),
+        #     ReduceRankGPTReranker(; batch_size=40),
+        #     ContextNode(tag="Functions", element="Function")
+        # ]),
     ]
 end
 
@@ -101,11 +102,8 @@ function generate_codebase_ctx(pcp::PipedContextProcessor)
 end
 
 function (pcp::PipedContextProcessor)(question::String, ai_state=nothing, shell_results=nothing)
-    context = ""
-    for pipe in pcp.processors
-        res = pipe(question)
-        context *= res
-    end
+    contexts = asyncmap(pipe -> pipe(question, ai_state, shell_results), pcp.processors)
+    context = join(contexts, "\n")
     return context::String
 end
 
@@ -125,6 +123,7 @@ end
 
 function get_cache_setting(creator::EasyContextCreatorV4, conv)
     if length(conv.messages) >= creator.max_messages - 2
+        @info "We do not cache, because next message is a cut!"
         return nothing
     end
     return :all

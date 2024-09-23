@@ -1,4 +1,13 @@
 const RAG = PromptingTools.Experimental.RAGTools
+using AISH: get_project_files
+
+abstract type AbstractFileSelector end
+
+struct DefaultFileSelector <: AbstractFileSelector end
+
+function get_files_in_path(selector::DefaultFileSelector, path::String)
+    get_project_files(path)
+end
 
 function select_relevant_files(question::String, file_index; top_k::Int=100, top_n=5, rephraser_kwargs=nothing)
     reranker = ReduceRankGPTReranker(;batch_size=30, model="gpt4om")
@@ -24,8 +33,8 @@ function get_file_index(files::Vector{String}; verbose::Bool=true)
     RAG.build_index(indexer, files; verbose=verbose, embedder_kwargs=(model=embedder.embedder.model, verbose=verbose), extras=[embedder.embedder.model])
 end
 
-function get_relevant_project_files(question::String, project_path::String="."; kwargs...)
-    files = get_project_files(project_path)
+function get_relevant_project_files(question::String, project_path::String="."; file_selector::AbstractFileSelector=DefaultFileSelector(), kwargs...)
+    files = get_project_files(file_selector, project_path)
     get_relevant_files(question, files; kwargs...)
 end
 

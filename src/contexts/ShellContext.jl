@@ -6,7 +6,7 @@ function (processor::ShellContext)(result, ai_state=nothing, shell_results=nothi
     processor.call_counter += 1
     
     if isnothing(shell_results)
-        return "No shell results from last message."
+        @assert false "No shell results from last message."
     end
     
     formatted_results = format_shell_results(shell_results)

@@ -3,14 +3,12 @@ using PromptingTools.Experimental.RAGTools
 import AISH
 
 abstract type AbstractContextProcessor end
-abstract type AbstractIndexBuilder end
 
 
 # Include ContextNode definition
 include("ContextNode.jl")
 # Include other context processors
 include("CodebaseUtils.jl")
-include("EmbedderUtils.jl")
 include("AllProjectContext.jl")
 include("CodebaseContext.jl")
 include("CodebaseContextV2.jl")

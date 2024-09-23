@@ -7,7 +7,7 @@ Base.@kwdef struct CohereRerankerPro <: AbstractReranker
     top_n::Int = 10
 end
 
-function (reranker::CohereRerankerPro)(result::RAGContext)
+function (reranker::CohereRerankerPro)(result::RAGContext, args...)
     reranked = rerank(reranker, result.chunk.sources, result.chunk.contexts, result.question)
     return RAGContext(SourceChunk(reranked.sources, reranked.contexts), result.question)
 end
