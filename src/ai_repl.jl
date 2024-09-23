@@ -8,6 +8,9 @@ function create_ai_repl(state::AIState)
     function ai_parser(input::String)
         if !isempty(strip(input))
             println("\nProcessing your request...")
+            user_msg = prepare_user_message!(ai_state.contexter, ai_state, user_question, shell_results)
+            add_n_save_user_message!(ai_state, user_msg)
+    
             _, shell_results = streaming_process_question(state, input, shell_results)
         end
         return
