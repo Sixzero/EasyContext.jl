@@ -1,6 +1,4 @@
-using AISH: get_project_files
 using PromptingTools.Experimental.RAGTools
-import AISH
 
 @kwdef mutable struct AllProjectContext <: AbstractContextProcessor
     context_node::ContextNode = ContextNode(tag="AllProject", element="File")
@@ -27,6 +25,3 @@ function get_context(processor::AllProjectContext, question::String, ai_state, s
     return processor.context_node
 end
 
-function AISH.cut_history!(processor::AllProjectContext, keep::Int)
-    cut_history!(processor.context_node, keep)
-end

@@ -1,4 +1,4 @@
-using AISH: AIState, streaming_process_question
+# using AISH: AIState, streaming_process_question
 using REPL
 using ReplMaker
 using REPL.LineEdit

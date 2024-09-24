@@ -23,7 +23,7 @@ end
 
 @kwdef mutable struct StreamingLLMProcessor
     model::String
-    extractor::ShellScriptExtractor = ShellScriptExtractor()
+    extractor::CodeBlockExtractor = CodeBlockExtractor()
     state::AISH.AIState
 end
 
@@ -40,7 +40,7 @@ function (slp::StreamingLLMProcessor)(input)
     return msg, user_meta, ai_meta
 end
 
-function on_text(chunk::String, extractor::ShellScriptExtractor)
+function on_text(chunk::String, extractor::CodeBlockExtractor)
     print(chunk)
     extract_and_preprocess_shell_scripts(chunk, extractor)
 end
@@ -49,7 +49,7 @@ end
     project_paths::Vector{String} = String[]
     state::NamedTuple = (;)
     conversation_processor::ConversationProcessor
-    shell_extractor::ShellScriptExtractor
+    shell_extractor::CodeBlockExtractor
     shell_context::ContextNode = ContextNode(tag="ShellRunResults", element="sh_script")
     codebase_context::ContextNode = ContextNode(tag="Codebase", element="File")
     package_context::ContextNode = ContextNode(tag="Functions", element="Function")
@@ -60,7 +60,7 @@ function (model::ProModel)(question::AbstractString)
     context_tasks = Dict(
         :shell => @async begin
             shell_results = ShellContext()(question, model.state.ai_state, model.shell_extractor)
-            add_shell_results_to_context(model.shell_context, shell_results)
+            format_shell_results_to_context(model.shell_context, shell_results)
         end,
         :codebase => @async begin
             question_acc = QuestionAccumulatorProcessor()(question)
@@ -109,20 +109,3 @@ end
 function saveAiMsg(cp::ConversationProcessor, msg::AbstractString)
     AISH.add_n_save_ai_message!(cp.ai_state, msg)
 end
-
-function add_shell_results_to_context(node::ContextNode, shell_commands::AbstractDict{String, String})
-    for (code, output) in shell_commands
-        shortened_code = get_shortened_code(code)
-        content = """
-        <sh_script shortened>
-        $shortened_code
-        </sh_script>
-        <sh_output>
-        $output
-        </sh_output>
-        """
-        add_or_update_source!(node, [code], [content])
-    end
-    return format_context_node(node)
-end
-

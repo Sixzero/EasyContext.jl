@@ -1,6 +1,4 @@
-using AISH: format_file_content
 using PromptingTools.Experimental.RAGTools
-import AISH
 
 @kwdef mutable struct CodebaseContextV3 <: AbstractContextProcessor
     chunker::RAG.AbstractChunker = FullFileChunker()
@@ -25,6 +23,6 @@ function get_context(context::CodebaseContextV3, question::String, ai_state=noth
     return context(question)
 end
 
-function AISH.cut_history!(context::CodebaseContextV3, keep::Int)
+function cut_history!(context::CodebaseContextV3, keep::Int)
     # No history to cut in this context
 end

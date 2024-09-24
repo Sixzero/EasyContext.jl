@@ -61,6 +61,6 @@ function get_package_infos(scope::Symbol)
     end
 end
 
-function AISH.cut_history!(processor::JuliaPackageContext, keep::Int)
+function cut_history!(processor::JuliaPackageContext, keep::Int)
     # Implement if needed
 end

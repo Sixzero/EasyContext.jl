@@ -1,5 +1,4 @@
 const RAG = PromptingTools.Experimental.RAGTools
-using AISH: get_project_files
 
 abstract type AbstractFileSelector end
 

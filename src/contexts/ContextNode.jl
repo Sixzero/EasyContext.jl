@@ -112,7 +112,7 @@ function get_updated_content(source::String)
     return get_chunk_standard_format(source, content)
 end
 
-function AISH.cut_history!(node::ContextNode, keep::Int)
+function cut_history!(node::ContextNode, keep::Int)
     oldest_kept_call = max(1, node.call_counter - keep)
     # @show oldest_kept_call
     # @show [map(k -> (k, node.tracked_sources[k][1]), collect(keys(node.tracked_sources)))...]

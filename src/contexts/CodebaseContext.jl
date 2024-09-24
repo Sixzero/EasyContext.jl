@@ -1,6 +1,4 @@
-using AISH: get_project_files, format_file_content
 using PromptingTools.Experimental.RAGTools
-import AISH
 
 @kwdef mutable struct CodebaseContext <: AbstractContextProcessor
     tracked_files::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
@@ -30,7 +28,7 @@ function get_context(processor::CodebaseContext, question::String, ai_state, she
     return new_files_content * "\n" * updated_files_content
 end
 
-function AISH.cut_history!(processor::CodebaseContext, keep::Int)
+function cut_history!(processor::CodebaseContext, keep::Int)
     oldest_kept_message = max(1, processor.call_counter - 2 * keep + 1)
     for (filepath, (msg_num, _)) in processor.tracked_files
         if msg_num < oldest_kept_message

@@ -1,6 +1,4 @@
-using AISH: get_project_files, format_file_content
 using PromptingTools.Experimental.RAGTools
-import AISH
 
 abstract type AbstractContextProcessor end
 
@@ -8,6 +6,7 @@ abstract type AbstractContextProcessor end
 # Include ContextNode definition
 include("ContextNode.jl")
 # Include other context processors
+include("GetProjectFiles.jl")
 include("CodebaseUtils.jl")
 include("AllProjectContext.jl")
 include("CodebaseContext.jl")
@@ -19,6 +18,14 @@ include("GoogleContext.jl")
 include("JuliaPackageContext.jl")
 include("PythonPackageContext.jl")
 include("ShellContext.jl")
+
+include("processors.jl")
+include("processor_codeblockextractor.jl")
+include("processor_workspace.jl")
+include("processor_conversation.jl")
+include("processor_LLM.jl")
+include("processor_persistable.jl")
+
 
 # Utility functions for context processors
 function print_context_updates(new_items::Vector{String}, updated_items::Vector{String}, unchanged_items::Vector{String}; item_type::String="files")
@@ -36,36 +43,36 @@ function print_context_updates(new_items::Vector{String}, updated_items::Vector{
     end
 end
 
-function process_selected_files(processor, selected_files)
-    new_files = String[]
-    updated_files = String[]
-    unchanged_files = String[]
-    new_contents = String[]
-    updated_contents = String[]
+# function process_selected_files(processor, selected_files)
+#     new_files = String[]
+#     updated_files = String[]
+#     unchanged_files = String[]
+#     new_contents = String[]
+#     updated_contents = String[]
     
-    # First, check all tracked files for updates
-    for (file, (_, old_content)) in processor.tracked_files
-        current_content = format_file_content(file)
-        if old_content != current_content
-            push!(updated_files, file)
-            push!(updated_contents, current_content)
-            processor.tracked_files[file] = (processor.call_counter, current_content)
-        end
-    end
+#     # First, check all tracked files for updates
+#     for (file, (_, old_content)) in processor.tracked_files
+#         current_content = format_file_content(file)
+#         if old_content != current_content
+#             push!(updated_files, file)
+#             push!(updated_contents, current_content)
+#             processor.tracked_files[file] = (processor.call_counter, current_content)
+#         end
+#     end
     
-    # Then, process selected files
-    for file in selected_files
-        if !haskey(processor.tracked_files, file)
-            formatted_content = format_file_content(file)
-            push!(new_files, file)
-            push!(new_contents, formatted_content)
-            processor.tracked_files[file] = (processor.call_counter, formatted_content)
-        elseif file ∉ updated_files
-            push!(unchanged_files, file)
-        end
-    end
+#     # Then, process selected files
+#     for file in selected_files
+#         if !haskey(processor.tracked_files, file)
+#             formatted_content = format_file_content(file)
+#             push!(new_files, file)
+#             push!(new_contents, formatted_content)
+#             processor.tracked_files[file] = (processor.call_counter, formatted_content)
+#         elseif file ∉ updated_files
+#             push!(unchanged_files, file)
+#         end
+#     end
     
-    return new_files, updated_files, unchanged_files, new_contents, updated_contents
-end
+#     return new_files, updated_files, unchanged_files, new_contents, updated_contents
+# end
 
 get_chunk_standard_format(source, content) = "# $source\n$content"

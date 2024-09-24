@@ -1,6 +1,4 @@
-using AISH: get_project_files, format_file_content
 using PromptingTools.Experimental.RAGTools
-import AISH
 
 @kwdef mutable struct CodebaseContextV2 <: AbstractContextProcessor
     context_node::ContextNode = ContextNode(tag="Codebase", element="File")
@@ -31,7 +29,7 @@ function get_context(processor::CodebaseContextV2, question::String, ai_state, s
 end
 
 
-function AISH.cut_history!(processor::CodebaseContextV2, keep::Int)
+function cut_history!(processor::CodebaseContextV2, keep::Int)
     cut_history!(processor.context_node, keep)
     # We don't need to cut past_questions here as it's already limited by max_past_questions
 end

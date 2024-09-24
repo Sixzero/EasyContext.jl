@@ -2,7 +2,7 @@
     call_counter::Int = 0
 end
 
-function (processor::ShellContext)(result, ai_state=nothing, shell_results=nothing)
+function (processor::ShellContext)(result, shell_results=nothing)
     processor.call_counter += 1
     
     if isnothing(shell_results)
@@ -13,13 +13,13 @@ function (processor::ShellContext)(result, ai_state=nothing, shell_results=nothi
     
     return formatted_results
 end
-function get_context(processor::ShellContext, question::String, ai_state, shell_results)
+function get_context(processor::ShellContext, question::String, shell_results)
     processor.call_counter += 1
     
     return format_shell_results(shell_results)
 end
 
-function AISH.cut_history!(processor::ShellContext, keep::Int)
+function cut_history!(processor::ShellContext, keep::Int)
     # ShellContextProcessor doesn't store any history
     processor.call_counter = 0
 end

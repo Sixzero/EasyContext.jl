@@ -2,7 +2,6 @@ using PromptingTools
 using PromptingTools.Experimental.RAGTools
 using LinearAlgebra, SparseArrays
 using PromptingTools.Experimental.RAGTools: SimpleIndexer, AbstractEmbedder
-using AISH: get_project_files
 using JLD2, Snowball, Pkg
 import PromptingTools.Experimental.RAGTools as RAG
 import Base: *

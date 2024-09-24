@@ -26,8 +26,7 @@ function RAG.get_chunks(chunker::MockFullFileChunker, files::Vector{<:AbstractSt
 end
 
 # Override the actual functions with our mocks
-import AISH
-AISH.get_project_files(paths) = mock_get_project_files(paths)
+get_project_files(paths) = mock_get_project_files(paths)
 
 @testset "CodebaseContextV3 Tests" begin
     @testset "Constructor" begin
@@ -76,7 +75,7 @@ AISH.get_project_files(paths) = mock_get_project_files(paths)
     @testset "cut_history!" begin
         ctx = CodebaseContextV3(chunker=MockFullFileChunker())
         # This should not throw an error
-        @test_nowarn AISH.cut_history!(ctx, 5)
+        @test_nowarn cut_history!(ctx, 5)
     end
 end
 ;

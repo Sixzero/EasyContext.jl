@@ -1,5 +1,4 @@
 using PromptingTools.Experimental.RAGTools
-import AISH
 
 @kwdef struct PythonPkgInfo
     name::String
@@ -50,7 +49,7 @@ function get_package_description(package_name::String)
     return "Description not available"
 end
 
-function AISH.cut_history!(processor::PythonPackageContext, keep::Int)
+function cut_history!(processor::PythonPackageContext, keep::Int)
     cut_history!(processor.context_node, keep)
 end
 

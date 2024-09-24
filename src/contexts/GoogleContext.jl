@@ -30,6 +30,6 @@ function get_context(processor::GoogleContext, question::String, ai_state=nothin
     return formatted_results
 end
 
-function AISH.cut_history!(processor::GoogleContext, keep::Int)
+function cut_history!(processor::GoogleContext, keep::Int)
     # Reset the call counter when cutting history
 end
