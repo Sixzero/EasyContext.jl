@@ -4,7 +4,6 @@ using DataStructures
 using BoilerplateCvikli: @async_showerr
 
 include("core.jl")
-include("Context.jl")
 include("ContextStructs.jl")
 include("Rephrase.v1.jl")
 include("RateLimiterStruct.jl")
