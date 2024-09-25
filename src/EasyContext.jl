@@ -30,6 +30,7 @@ export find_package_path
 
 include("MainUtils.jl")
 include("contexts/ContextProcessors.jl")
+include("transform/transformations.jl")
 # include("AISHExtension.jl")
 # include("AISHExtensionV2.jl")
 # include("AISHExtensionV3.jl")

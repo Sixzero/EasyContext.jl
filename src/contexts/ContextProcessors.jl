@@ -21,15 +21,12 @@ include("JuliaPackageContext.jl")
 include("PythonPackageContext.jl")
 include("ShellContext.jl")
 
-include("readline.jl")
 include("LLM_apply_changes.jl")
-include("processors.jl")
 include("processor_codeblockextractor.jl")
 include("processor_workspace.jl")
 include("processor_conversation.jl")
 include("processor_LLM.jl")
 include("processor_persistable.jl")
-include("CodeRunner.jl")
 include("spinner.jl")
 
 

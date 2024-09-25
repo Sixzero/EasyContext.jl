@@ -1,14 +1,14 @@
 
 
 @kwdef mutable struct ConversationProcessor
-	conv::ConversationInfo
+	conv::ToSolve
 	max_history::Int = 10
 end
 
 Anthropic.ai_stream_safe(conv::ConversationProcessor; model, system_msg=conv().system_message, max_tokens::Int=MAX_TOKEN, printout=true, cache=nothing) = ai_stream_safe(conv(); system_msg, model, max_tokens, printout, cache)
 
 ConversationProcessorr(;sys_msggg::String) = ConversationProcessor(
-	conv=ConversationInfo(system_message=Message(id=genid(), timestamp=now(UTC), role=:system, content=sys_msggg)),
+	conv=ToSolve(system_message=Message(id=genid(), timestamp=now(UTC), role=:system, content=sys_msggg)),
 	max_history=10)
 (conv::ConversationProcessor)() = conv.conv
 

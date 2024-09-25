@@ -44,18 +44,18 @@ function add_or_update_source!(node::ContextNode, sources::Vector{String}, conte
 end
 
 function format_context_node(node::ContextNode)
-    new_files = format_files(node, node.new_sources, "NEW")
-    updated_files = format_files(node, node.updated_sources, "UPDATED")
+    new_files     = format_files(node, node.new_sources)
+    updated_files = format_files(node, node.updated_sources)
     
     output = ""
-    if !isempty(new_files)
+    if !is_really_empty(new_files)
         output *= """
         <$(node.tag) NEW>
         $new_files
         </$(node.tag)>
         """
     end
-    if !isempty(updated_files)
+    if !is_really_empty(updated_files)
         output *= """
         <$(node.tag) UPDATED>
         $updated_files
@@ -69,7 +69,7 @@ function format_context_node(node::ContextNode)
     return output
 end
 
-function format_files(node::ContextNode, sources::Vector{String}, tag::String)
+function format_files(node::ContextNode, sources::Vector{String})
     formatted_files = ""
     for source in sources
         content = node.tracked_sources[source][2]
