@@ -1,27 +1,12 @@
 
 
-@kwdef mutable struct ConversationInfo
-	id::String=genid()
-	timestamp::DateTime=now(UTC)
-	sentence::String=""
-	system_message::Union{Message,Nothing}=nothing
-	messages::Vector{Message}=[]
-end
-
-function cut_history!(conv::ConversationInfo; keep=13)
-    length(conv.messages) <= keep && return conv.messages
-    
-    start_index = max(1, length(conv.messages) - keep + 1)
-    start_index += (conv.messages[start_index].role == :assistant)
-    
-    conv.messages = conv.messages[start_index:end]
-end
-
-
 @kwdef mutable struct ConversationProcessor
 	conv::ConversationInfo
 	max_history::Int = 10
 end
+
+Anthropic.ai_stream_safe(conv::ConversationProcessor; model, system_msg=conv().system_message, max_tokens::Int=MAX_TOKEN, printout=true, cache=nothing) = ai_stream_safe(conv(); system_msg, model, max_tokens, printout, cache)
+
 ConversationProcessorr(;sys_msggg::String) = ConversationProcessor(
 	conv=ConversationInfo(system_message=Message(id=genid(), timestamp=now(UTC), role=:system, content=sys_msggg)),
 	max_history=10)
@@ -34,6 +19,10 @@ save!(conv::ConversationProcessor, msg::Message) =  begin
 			cut_history!(conv(), keep=conv.max_history)
 	end
 	return msg
+end
+
+save_error!(conv::ConversationProcessor, msg_content::String) =  begin
+	
 end
 
 
@@ -63,14 +52,7 @@ add_error_message!(conv::ConversationProcessor, error_content::String) = begin
 		add_user_message!(conv(), error_content)
 	end
 end
-update_message_by_idx(conv::ConversationProcessor, idx::Int, new_content::String) = ((conv().messages[idx].content = new_content); conv().messages[idx])
-update_message_by_id(conv::ConversationProcessor, message_id::String, new_content::String) = begin
-	idx = get_message_by_id(conv(), message_id)
-	isnothing(idx) && @assert false "message with the specified id: $id wasnt found! " 
-	update_message_by_idx(conv(), idx, new_content)
-end
 
-get_message_by_id(conv::ConversationProcessor, message_id::String) = findfirst(msg -> msg.id == message_id, conv().messages)
 
 
 to_dict(conv::ConversationProcessor)                = to_dict(conv())

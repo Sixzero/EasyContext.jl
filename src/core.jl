@@ -1,8 +1,13 @@
+abstract type AbstractContextCreator end
 
-using Dates
-using UUIDs
 
-genid() = string(UUIDs.uuid4()) 
+function get_cache_setting(::AbstractContextCreator, conv)
+	printstyled("WARNING: get_cache_setting not implemented for this contexter type. Defaulting to no caching.\n", color=:red)
+	return nothing
+end
+
+
+
 
 @kwdef mutable struct Message
 	id::String=genid()
@@ -62,7 +67,7 @@ process_create_command(file_path::String, content::String) = begin
 	"cat > $(file_path) <<'$delimiter'\n$(content)\n$delimiter"
 end
 
-preprocess(cb::CodeBlock) = (cb.content = cb.type==:MODIFY ? improve_command_LLM(cb) : cb.pre_content; cb)
+preprocess(cb::CodeBlock) = (cb.content = cb.type==:MODIFY ? LLM_apply_changes(cb) : cb.pre_content; cb)
 
 to_dict(cb::CodeBlock)= Dict(
 	"id"          => cb.id,
@@ -87,3 +92,31 @@ function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
 	end
 end
 
+
+
+
+@kwdef mutable struct ConversationInfo
+	id::String=genid()
+	timestamp::DateTime=now(UTC)
+	sentence::String=""
+	system_message::Union{Message,Nothing}=nothing
+	messages::Vector{Message}=[]
+end
+
+
+function cut_history!(conv::ConversationInfo; keep=13)
+	length(conv.messages) <= keep && return conv.messages
+	
+	start_index = max(1, length(conv.messages) - keep + 1)
+	start_index += (conv.messages[start_index].role == :assistant)
+	
+	conv.messages = conv.messages[start_index:end]
+end
+
+update_message_by_idx(conv::ConversationInfo, idx::Int, new_content::String) = ((conv.messages[idx].content = new_content); conv.messages[idx])
+update_message_by_id(conv::ConversationInfo, message_id::String, new_content::String) = begin
+	idx = get_message_by_id(conv, message_id)
+	isnothing(idx) && @assert false "message with the specified id: $id wasnt found! " 
+	update_message_by_idx(conv, idx, new_content)
+end
+get_message_by_id(conv::ConversationInfo, message_id::String) = findfirst(msg -> msg.id == message_id, conv.messages)

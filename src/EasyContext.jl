@@ -3,7 +3,16 @@ module EasyContext
 using DataStructures
 using BoilerplateCvikli: @async_showerr
 
+using Anthropic
+using Anthropic: format_meta_info
+
+using Dates
+using UUIDs
+
+include("utils.jl")
 include("core.jl")
+include("AI_prompt.jl")
+include("anthropic_extension.jl")
 include("ContextStructs.jl")
 include("Rephrase.v1.jl")
 include("RateLimiterStruct.jl")
@@ -27,4 +36,5 @@ include("contexts/ContextProcessors.jl")
 include("precompile_scripts.jl")
 
 end # module EasyContext
+
 

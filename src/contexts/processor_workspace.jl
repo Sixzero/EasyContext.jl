@@ -1,3 +1,4 @@
+include("token_counter.jl")
 
 @kwdef mutable struct Workspace
 	project_paths::Vector{String}=String[]

@@ -19,13 +19,27 @@ include("JuliaPackageContext.jl")
 include("PythonPackageContext.jl")
 include("ShellContext.jl")
 
+include("readline.jl")
+include("LLM_apply_changes.jl")
 include("processors.jl")
 include("processor_codeblockextractor.jl")
 include("processor_workspace.jl")
 include("processor_conversation.jl")
 include("processor_LLM.jl")
 include("processor_persistable.jl")
+include("spinner.jl")
 
+
+function get_processor_description(processor::Symbol, context_node=nothing)
+    processor_msg = processor == :ShellResults ? "Shell command results are" :
+                    processor == :CodebaseContext ? "Codebase context is" :
+                    processor == :JuliaPackageContext ? "Julia package context functions are" :
+                    ""
+    @assert processor_msg != "" "Unknown processor"
+
+    return "$(processor_msg) wrapped in <$(context_node.tag)> and </$(context_node.tag)> tags, with individual elements wrapped in <$(context_node.element)> and </$(context_node.element)> tags."
+end
+  
 
 # Utility functions for context processors
 function print_context_updates(new_items::Vector{String}, updated_items::Vector{String}, unchanged_items::Vector{String}; item_type::String="files")

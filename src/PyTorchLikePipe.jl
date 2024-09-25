@@ -2,7 +2,7 @@ using AISH
 using Dates
 using PromptingTools.Experimental.RAGTools
 import PromptingTools.Experimental.RAGTools as RAG
-import AISH: AbstractContextCreator, prepare_user_message!, get_cache_setting, genid
+import AISH: prepare_user_message!, get_cache_setting, genid
 
 export ProModel, AbstractPyTorchLikeForward
 

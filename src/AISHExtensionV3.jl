@@ -1,6 +1,6 @@
 using Dates
-using AISH: AbstractContextCreator, start, main, cut_history!, get_project_files, format_file_content
-using AISH: curr_conv, SYSTEM_PROMPT, Message, save_user_message, format_shell_results
+using AISH: start, main, cut_history!, get_project_files, format_file_content
+using AISH: curr_conv, SYSTEM_PROMPT, Message, save_user_message
 import AISH
 
 

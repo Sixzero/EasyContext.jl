@@ -1,6 +1,6 @@
 using Dates
-using AISH: AbstractContextCreator, start, main, cut_history!, get_project_files, format_file_content
-using AISH: curr_conv, SYSTEM_PROMPT, Message, format_shell_results
+using AISH: start, main, cut_history!, get_project_files, format_file_content
+using AISH: curr_conv, SYSTEM_PROMPT, Message
 import AISH
 
 @kwdef struct EasyContextCreator <: AbstractContextCreator
@@ -51,7 +51,7 @@ AISH.prepare_user_message!(ctx::EasyContextCreator, ai_state, question, shell_re
   
   cut_history!(conv, keep=ctx.keep)
   
-  formatted_results = format_shell_results(shell_results)
+  formatted_results = format_shell_results_to_context(shell_results)
   new_user_msg = """
   $formatted_results
 

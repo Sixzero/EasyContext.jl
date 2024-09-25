@@ -1,5 +1,5 @@
 using Dates
-using AISH: AbstractContextCreator, start, main, cut_history!, get_project_files, format_file_content
+using AISH: start, main, cut_history!, get_project_files, format_file_content
 using AISH: curr_conv, SYSTEM_PROMPT, Message, save_user_message
 import AISH
 
@@ -139,7 +139,7 @@ AISH.prepare_user_message!(ctx::EasyContextCreatorV2, ai_state, question, shell_
         conv.system_message = Message(timestamp=now(), role=:system, content=SYSTEM_PROMPT(;ctx=codebase_ctx))
         @info "System message updated!"
     end
-    formatted_results = format_shell_results(shell_results)
+    formatted_results = format_shell_results_to_context(shell_results)
 
     # Prepare the content for the user message
     new_files_content = isempty(new_files) ? "" : """
