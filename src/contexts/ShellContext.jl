@@ -23,19 +23,3 @@ function cut_history!(processor::ShellContext, keep::Int)
     # ShellContextProcessor doesn't store any history
     processor.call_counter = 0
 end
-
-function format_shell_results_to_context(shell_commands::AbstractDict{String, CodeBlock})
-	inner = join(["""<sh_script shortened>
-    $(get_shortened_code(codestr(code)))
-    </sh_script>
-    <sh_output>
-    $(codeblock.results[end])
-    </sh_output>
-    """ for (code, codeblock) in shell_commands], "\n")
-	content = """
-	<ShellRunResults>
-	$inner
-	</ShellRunResults>
-	"""
-	return content
-end

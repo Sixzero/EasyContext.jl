@@ -4,7 +4,10 @@ abstract type AbstractContextProcessor end
 
 
 # Include ContextNode definition
+include("core.jl")
 include("ContextNode.jl")
+include("execute.jl")
+include("CodeRunner.jl")
 # Include other context processors
 include("GetProjectFiles.jl")
 include("CodebaseUtils.jl")

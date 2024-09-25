@@ -9,6 +9,4 @@ is_really_empty(user_question) = isempty(strip(user_question))
 
 genid() = string(UUIDs.uuid4()) 
 
-get_system() = strip(read(`uname -a`, String))
-get_shell() = strip(read(`$(ENV["SHELL"]) --version`, String))
 
