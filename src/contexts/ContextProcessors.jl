@@ -7,7 +7,6 @@ abstract type AbstractContextProcessor end
 include("core.jl")
 include("ContextNode.jl")
 include("execute.jl")
-include("CodeRunner.jl")
 # Include other context processors
 include("GetProjectFiles.jl")
 include("CodebaseUtils.jl")
@@ -30,6 +29,7 @@ include("processor_workspace.jl")
 include("processor_conversation.jl")
 include("processor_LLM.jl")
 include("processor_persistable.jl")
+include("CodeRunner.jl")
 include("spinner.jl")
 
 
