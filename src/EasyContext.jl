@@ -25,6 +25,7 @@ include("embedders/EmbedderUtils.jl")
 include("ContextJoiner.jl")
 include("file_io/custom_format.jl")
 include("rerankers/ReduceRerankGPT.jl")
+include("action/loading_spinner.jl")
 
 # include("ai_repl.jl")
 include("PkgLister.jl")

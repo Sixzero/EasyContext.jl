@@ -10,6 +10,7 @@ Anthropic.ai_stream_safe(conv::ConversationProcessor; model, system_msg=conv().s
 ConversationProcessorr(;sys_msg::String) = ConversationProcessor(
 	conv=Conversation(system_message=Message(id=genid(), timestamp=now(UTC), role=:system, content=sys_msg)),
 	max_history=10)
+	
 (conv::ConversationProcessor)() = conv.conv
 
 
