@@ -1,6 +1,7 @@
 
-@kwdef mutable struct CodeBlock
-	id::String = ""  # We'll set this in the constructor
+abstract type BLOCK end
+
+@kwdef mutable struct CodeBlock <: BLOCK
 	type::Symbol = :NOTHING
 	language::String
 	file_path::String
@@ -17,7 +18,6 @@ end
 
 
 to_dict(cb::CodeBlock)= Dict(
-	"id"          => cb.id,
 	"type"        => cb.type,
 	"language"    => cb.language,
 	"file_path"   => cb.file_path,
@@ -70,3 +70,24 @@ function format_shell_results_to_context(shell_commands::AbstractDict{String, Co
 	"""
 	return content
 end
+
+
+
+@kwdef mutable struct WebCodeBlock <: BLOCK
+	id::String = ""  # We'll set this in the constructor
+	type::Symbol = :NOTHING
+	language::String
+	file_path::String
+	pre_content::String
+	content::String = ""
+	run_results::Vector{String} = []
+end
+
+to_dict(cb::WebCodeBlock)= Dict(
+	"id"          => cb.id,
+	"type"        => cb.type,
+	"language"    => cb.language,
+	"file_path"   => cb.file_path,
+	"pre_content" => cb.pre_content,
+	"content"     => cb.content,
+	"run_results" => cb.run_results)

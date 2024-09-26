@@ -10,9 +10,11 @@ using Dates
 using UUIDs
 
 include("utils.jl")
-include("core/Message.jl")
-include("core/CodeBlock.jl")
-include("core/Conversation.jl")
+include("protocol/SourceContent.jl")
+include("protocol/Message.jl")
+include("protocol/CodeBlock.jl")
+include("protocol/Conversation.jl")
+include("protocol/History.jl")
 include("anthropic_extension.jl")
 include("ContextStructs.jl")
 include("Rephrase.v1.jl")

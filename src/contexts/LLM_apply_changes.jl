@@ -2,7 +2,14 @@
 using PromptingTools
 using Random
 
-preprocess(cb::CodeBlock) = 
+LLM_conditonal_apply_changes(cb::CodeBlock) = begin
+    cb.content = (if cb.type==:MODIFY
+        original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
+        ai_generated_content
+    else
+        cb.pre_content
+    end)
+end
 
 LLM_apply_changes_to_file(cb::CodeBlock) = begin
     !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
@@ -12,18 +19,6 @@ LLM_apply_changes_to_file(cb::CodeBlock) = begin
     original_content, ai_generated_content
 end
 
-LLM_conditonal_apply_changes(cb::CodeBlock) = begin
-    cb.content = (if cb.type==:MODIFY
-        LLM_apply_changes(cb)
-    else
-        cb.pre_content
-    end)
-end
-LLM_apply_changes(cb::CodeBlock) = begin
-    original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
-    ai_generated_content
-    return ai_generated_content
-end
 
 function apply_changes_to_file(original_content::AbstractString, changes_content::AbstractString)
     prompt = """

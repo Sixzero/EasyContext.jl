@@ -1,22 +1,19 @@
 
 @kwdef mutable struct QuestionAccumulatorProcessor
     questions::Vector{String}=String[]
-    max_questions::Int=5
+    max_questions::Int=4
 end
 
-function (qa::QuestionAccumulatorProcessor)(question::String, args...)
+function (qa::QuestionAccumulatorProcessor)(question::String)
     push!(qa.questions, question)
-    if length(qa.questions) > qa.max_questions
-        popfirst!(qa.questions)
-    end
+    length(qa.questions) > qa.max_questions && popfirst!(qa.questions)
     
     if length(qa.questions) > 1
-        history = join([string(i, ". ", q) for (i, q) in enumerate(qa.questions[1:end-1])], "\n")
+        history = join(["$i. $msg" for (i, msg) in enumerate(qa.questions[1:end-1])], "\n")
         return """
         <PastQuestions>
         $history
         </PastQuestions>
-
         <CurrentQuestion>
         $(length(qa.questions)). $(qa.questions[end])
         </CurrentQuestion>
