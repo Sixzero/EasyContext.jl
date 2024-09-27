@@ -11,6 +11,15 @@ CreateWorkspace(project_paths::Vector{String}=String[]) = begin
     Workspace(project_paths, rel_project_paths, common_path)
 end
 
+function (ws::Workspace)(context::Context, args...)
+
+	all_files::Vector{String} = vcat(String[get_project_files(path) for path in ws.project_paths]...)
+	chunks, sources = RAGTools.get_chunks(context.chunker, all_files)
+	return chunks, sources
+end
+
+
+
 set_project_path(path::String) = path !== "" && (cd(path); println("Project path initialized: $(path)"))
 set_project_path(w::Workspace) = set_project_path(w.common_path)
 set_project_path(w::Workspace, paths) = begin
@@ -20,7 +29,7 @@ end
 
 
 function find_common_path_and_relatives(paths)
-	isempty(paths) && return "", String[]
+	isempty(paths)   && return "",          String[]
 	length(paths)==1 && return abspath(paths[1]), ["."]
 	
 	abs_paths = abspath.(paths)
