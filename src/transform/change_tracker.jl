@@ -1,26 +1,58 @@
 
-const ChangeTracker = Dict{String, Tuple{Symbol, String}}
+const ChangeTracker = Dict{String, Symbol}
 
 function (tracker::ChangeTracker)(src_content::Context)
-	# Check for new and updated sources
-	for (source, content) in src_content
-		!haskey(tracker, source) && ((tracker[source] = (:NEW, content)); continue)
-
-		new_content = get_updated_content(source)
-		if content == new_content
-			tracker[source] = (:UNCHANGED, content)
-		else
-			tracker[source] = (:UPDATED, new_content)
-		end
-	end
-	
 	existing_keys = keys(src_content)
 	filter!(pair -> pair.first in existing_keys, tracker)
-	return tracker
+
+	for (source, content) in src_content
+		!haskey(tracker, source) && ((tracker[source] = :NEW); continue)
+		new_content = get_updated_content(source)
+		tracker[source] = content == new_content ? :UNCHANGED : :UPDATED
+	end
+	return tracker, src_content
+end
+
+function parse_source(source::String)
+	parts = split(source, ':')
+	length(parts) == 1 && return parts[1], nothing
+	start_line, end_line = parse.(Int, split(parts[2], '-'))
+	return parts[1], (start_line, end_line)
 end
 
 function get_updated_content(source::String)
 	file_path, line_range = parse_source(source)
 	!isfile(file_path) && (@warn "File not found: $file_path"; return nothing)
-	return isnothing(line_range) ? read(file_path, String) : join(lines[start_line:min(end_line, length(lines))], "\n")
+	return isnothing(line_range) ? read(file_path, String) : join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
+end
+
+
+
+to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = format_tag(tag, element, scr_state, src_cont)
+format_tag(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = begin
+	output = ""
+	new_files = format_element(element, scr_state, src_cont, :NEW)
+	if !is_really_empty(new_files)
+		output *= """
+		<$tag NEW>
+		$new_files
+		</$tag>
+		"""
+	end
+	updated_files = format_element(element, scr_state, src_cont, :UPDATED)
+	if !is_really_empty(updated_files)
+		output *= """
+		<$tag UPDATED>
+		$updated_files
+		</$tag>
+		"""
+	end
+	output
+end
+format_element(element::String, scr_state::ChangeTracker, src_cont::Context, state::Symbol) = begin
+	join(["""
+<$element>
+$content
+</$element>
+""" for (src,content) in src_cont if scr_state[src] == state], '\n')
 end

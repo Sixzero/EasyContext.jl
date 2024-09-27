@@ -10,29 +10,6 @@ CreateWorkspace(project_paths::Vector{String}=String[]) = begin
 		common_path, rel_project_paths = find_common_path_and_relatives(project_paths)
     Workspace(project_paths, rel_project_paths, common_path)
 end
-format_element(contents) = begin
-	join(["""
-<$element>
-$content
-</$element>
-""" for content in contents], '\n')
-end
-workspace_ctx_2_string() = begin
-		if !is_really_empty(new_files)
-			output *= """
-			<$(node.tag) NEW>
-			$new_files
-			</$(node.tag)>
-			"""
-	end
-	if !is_really_empty(updated_files)
-			output *= """
-			<$(node.tag) UPDATED>
-			$updated_files
-			</$(node.tag)>
-			"""
-	end
-end
 
 set_project_path(path::String) = path !== "" && (cd(path); println("Project path initialized: $(path)"))
 set_project_path(w::Workspace) = set_project_path(w.common_path)

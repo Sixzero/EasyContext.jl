@@ -4,6 +4,7 @@ abstract type AbstractContextProcessor end
 
 
 # Include ContextNode definition
+include("CTX.jl")
 include("core.jl")
 include("ContextNode.jl")
 # Include other context processors
