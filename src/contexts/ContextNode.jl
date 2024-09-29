@@ -87,30 +87,30 @@ function format_context_node(str::String)
     return str
 end
 
-function get_updated_content(source::String)
-    # Extract file path and line numbers if present
-    parts = split(source, ':')
-    file_path = parts[1]
-    if length(parts) > 1
-        numbers = split(split(parts[2], ' ')[1], '-')
-        if length(numbers)>1
+# function get_updated_content(source::String)
+#     # Extract file path and line numbers if present
+#     parts = split(source, ':')
+#     file_path = parts[1]
+#     if length(parts) > 1
+#         numbers = split(split(parts[2], ' ')[1], '-')
+#         if length(numbers)>1
 
-            line_range = Base.parse.(Int, split(split(parts[2], ' ')[1], '-'))
-            start_line, end_line = length(line_range) == 1 ? (line_range[1], line_range[1]) : (line_range[1], line_range[2])
+#             line_range = Base.parse.(Int, split(split(parts[2], ' ')[1], '-'))
+#             start_line, end_line = length(line_range) == 1 ? (line_range[1], line_range[1]) : (line_range[1], line_range[2])
             
-            # Read specific lines from the file
-            lines = readlines(file_path)
-            content = join(lines[start_line:min(end_line, end)], "\n")
-        else 
-            # @info "No way to parse the source file: $source"
-            return nothing
-        end
-    else
-        content = read(file_path, String)
-        # Read the entire file content
-    end
-    return get_chunk_standard_format(source, content)
-end
+#             # Read specific lines from the file
+#             lines = readlines(file_path)
+#             content = join(lines[start_line:min(end_line, end)], "\n")
+#         else 
+#             # @info "No way to parse the source file: $source"
+#             return nothing
+#         end
+#     else
+#         content = read(file_path, String)
+#         # Read the entire file content
+#     end
+#     return get_chunk_standard_format(source, content)
+# end
 
 function cut_history!(node::ContextNode, keep::Int)
     oldest_kept_call = max(1, node.call_counter - keep)

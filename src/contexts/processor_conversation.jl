@@ -8,7 +8,7 @@ end
 Anthropic.ai_stream_safe(conv::ConversationProcessor; model, system_msg=conv().system_message, max_tokens::Int=MAX_TOKEN, printout=true, cache=nothing) = ai_stream_safe(conv(); system_msg, model, max_tokens, printout, cache)
 
 ConversationProcessorr(;sys_msg::String) = ConversationProcessor(
-	conv=Conversation(system_message=Message(id=genid(), timestamp=now(UTC), role=:system, content=sys_msg)),
+	conv=Conversation(system_message=Message(timestamp=now(UTC), role=:system, content=sys_msg), messages=Message[]),
 	max_history=10)
 	
 (conv::ConversationProcessor)() = conv.conv

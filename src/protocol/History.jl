@@ -1,6 +1,6 @@
 
 @kwdef mutable struct History
-	conversations::Dict{String,ConversationProcessor}=Dict()
+	conversations::Dict{String,Conversation}=Dict()
 	selected_conv_id::String=""
 end
 
@@ -21,7 +21,7 @@ end
 function generate_new_conversation(history::History, sys_msg)
     prev_id = history.selected_conv_id
     new_id = genid()
-    history.conversations[new_id] = ConversationProcessor(id=new_id)
+    history.conversations[new_id] = Conversation(id=new_id)
     if !isempty(prev_id)
         history.conversations[new_id].common_path      =history.conversations[prev_id].common_path
         history.conversations[new_id].rel_project_paths=history.conversations[prev_id].rel_project_paths
@@ -37,7 +37,7 @@ load(history::History, persistable) = get_all_conversations_without_messages(his
 function get_all_conversations_without_messages(history::History)
 	for file in get_all_conversations_file()    
 			conv_info = parse_conversation_filename(file)
-			history.conversations[conv_info.id] = ConversationProcessor(
+			history.conversations[conv_info.id] = Conversation(
 					timestamp=conv_info.timestamp,
 					to_solve=conv_info.to_solve,
 					id=conv_info.id

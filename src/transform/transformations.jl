@@ -1,6 +1,7 @@
 
 include("context_combiner.jl")
 include("code_runner.jl")
+include("change_tracker.jl")
 
 include("readline.jl")
 include("execute.jl")

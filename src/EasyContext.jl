@@ -9,22 +9,29 @@ using Anthropic: format_meta_info
 using Dates
 using UUIDs
 
+using PromptingTools
+
 include("utils.jl")
-include("protocol/SourceContent.jl")
+include("ContextStructs.jl")
+include("protocol/CTX.jl")
 include("protocol/Message.jl")
 include("protocol/CodeBlock.jl")
 include("protocol/Conversation.jl")
 include("protocol/History.jl")
 include("anthropic_extension.jl")
-include("ContextStructs.jl")
 include("Rephrase.v1.jl")
 include("RateLimiterStruct.jl")
+include("chunkers/StandardChunkFormat.jl")
 include("chunkers/GolemSourceChunks.jl")
+include("chunkers/FullFileChunkerOld.jl")
 include("chunkers/FullFileChunker.jl")
 include("embedders/EmbedderUtils.jl")
 include("ContextJoiner.jl")
+include("filters/AgeTracker.jl")
 include("file_io/custom_format.jl")
 include("rerankers/ReduceRerankGPT.jl")
+include("contexts/Contexts.jl")
+include("loader/workspace.jl")
 include("action/loading_spinner.jl")
 
 # include("ai_repl.jl")
@@ -32,7 +39,6 @@ include("PkgLister.jl")
 export find_package_path
 
 include("MainUtils.jl")
-include("contexts/ContextProcessors.jl")
 include("transform/transformations.jl")
 # include("AISHExtension.jl")
 # include("AISHExtensionV2.jl")

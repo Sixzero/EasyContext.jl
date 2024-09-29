@@ -8,7 +8,7 @@ function (tracker::ChangeTracker)(src_content::Context)
 	for (source, content) in src_content
 		!haskey(tracker, source) && ((tracker[source] = :NEW); continue)
 		new_content = get_updated_content(source)
-		tracker[source] = content == new_content ? :UNCHANGED : :UPDATED
+		tracker[source] = content == get_chunk_standard_format(source, new_content) ? :UNCHANGED : :UPDATED
 	end
 	return tracker, src_content
 end
@@ -27,6 +27,21 @@ function get_updated_content(source::String)
 end
 
 
+
+to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)
+to_string(tag::String, element::String, shell_results::AbstractDict{String, CodeBlock}) = begin
+	return """
+	<$tag>
+	$(join(["""<$element shortened>
+    $(get_shortened_code(codestr(codeblock)))
+    </$element>
+    <$(SHELL_RUN_RESULT)>
+    $(codeblock.results[end])
+    </$(SHELL_RUN_RESULT)>
+    """ for (code, codeblock) in shell_results], "\n"))
+	</$tag>
+	"""
+end
 
 to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = format_tag(tag, element, scr_state, src_cont)
 format_tag(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = begin

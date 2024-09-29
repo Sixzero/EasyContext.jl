@@ -2,7 +2,7 @@
 abstract type CONV end
 
 @kwdef mutable struct Conversation{M <: MSG} <: CONV
-	system_message::Union{M,Nothing}=nothing
+	system_message::M
 	messages::Vector{M}=[]
 end
 
@@ -94,7 +94,7 @@ end
 	id::String=genid()
 	timestamp::DateTime=now(UTC)
 	to_solve::String=""
-	system_message::Union{M,Nothing}=nothing
-	messages::Vector{M}=[]
+	system_message::WebMessage
+	messages::Vector{WebMessage}=[]
 end
 

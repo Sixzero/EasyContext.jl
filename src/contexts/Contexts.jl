@@ -4,8 +4,8 @@ abstract type AbstractContextProcessor end
 
 
 # Include ContextNode definition
-include("CTX.jl")
 include("core.jl")
+include("CTX_wrapper.jl")
 include("ContextNode.jl")
 # Include other context processors
 include("GetProjectFiles.jl")
@@ -85,4 +85,3 @@ end
 #     return new_files, updated_files, unchanged_files, new_contents, updated_contents
 # end
 
-get_chunk_standard_format(source, content) = "# $source\n$content"

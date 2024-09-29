@@ -11,10 +11,6 @@ abstract type BLOCK end
 end
 
 # Constructor to set the id based on pre_content hash
-function CodeBlock(type::Symbol, language::String, file_path::String, pre_content::String, content::String = "", run_results::Vector{String} = [])
-	id = bytes2hex(sha256(pre_content))
-	CodeBlock(id, type, language, file_path, pre_content, content, run_results)
-end
 
 
 to_dict(cb::CodeBlock)= Dict(
@@ -74,13 +70,17 @@ end
 
 
 @kwdef mutable struct WebCodeBlock <: BLOCK
-	id::String = ""  # We'll set this in the constructor
+	id::String  # We'll set this in the constructor
 	type::Symbol = :NOTHING
 	language::String
 	file_path::String
 	pre_content::String
 	content::String = ""
 	run_results::Vector{String} = []
+end
+function WebCodeBlock(type::Symbol, language::String, file_path::String, pre_content::String, content::String = "", run_results::Vector{String} = [])
+	id = bytes2hex(sha256(pre_content))
+	WebCodeBlock(id, type, language, file_path, pre_content, content, run_results)
 end
 
 to_dict(cb::WebCodeBlock)= Dict(
