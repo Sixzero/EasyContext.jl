@@ -6,7 +6,7 @@ include("token_counter.jl")
 	common_path::String=""
 end
 
-CreateWorkspace(project_paths::Vector{String}=String[]) = begin
+WorkspaceLoader(project_paths::Vector{String}=String[]) = begin
 		common_path, rel_project_paths = find_common_path_and_relatives(project_paths)
 		common_path !== "" && (cd(common_path); println("Project path initialized: $(common_path)"))
     Workspace(project_paths, rel_project_paths, common_path)

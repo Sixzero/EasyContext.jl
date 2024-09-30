@@ -7,11 +7,33 @@ function (tracker::ChangeTracker)(src_content::Context)
 
 	for (source, content) in src_content
 		!haskey(tracker, source) && ((tracker[source] = :NEW); continue)
-		new_content = get_updated_content(source)
-		tracker[source] = content == get_chunk_standard_format(source, new_content) ? :UNCHANGED : :UPDATED
+		new_content = get_chunk_standard_format(source, get_updated_content(source))
+		tracker[source] = content == new_content ? :UNCHANGED : :UPDATED
 	end
+	print_context_updates(tracker; deleted=[k for k in existing_keys if !(k in keys(tracker))], item_type="sources")
 	return tracker, src_content
 end
+
+const colors = Dict{Symbol, Symbol}(
+	:NEW=>:blue,
+	:UPDATED=>:yellow,
+	:UNCHANGED=>:light_black,
+)
+
+function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
+	printstyled("Number of $item_type selected: ", color=:green, bold=true)
+	printstyled(length(tracker) , "\n", color=:green)
+	
+	for (item,s) in tracker
+		printstyled("  [$s] $item\n", color=colors[s])
+	end
+	for item in deleted
+			printstyled("  [DELETED] $item\n", color=:red)
+	end
+end
+
+
+
 
 function parse_source(source::String)
 	parts = split(source, ':')
@@ -23,14 +45,16 @@ end
 function get_updated_content(source::String)
 	file_path, line_range = parse_source(source)
 	!isfile(file_path) && (@warn "File not found: $file_path"; return nothing)
+	isnothing(line_range) && return read(file_path, String)
 	lines = readlines(file_path)
-	return isnothing(line_range) ? join(lines, "\n") : join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
+	@assert join(lines, "\n") == read(file_path,String)
+	return  join(lines[line_range[1]:min(line_range[2], length(lines))], "\n") # TODO unittest because we cut the last enter somehow!?
 end
 
 
 to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)
 to_string(tag::String, element::String, shell_results::AbstractDict{String, CodeBlock}) = begin
-	return """
+	return isempty(shell_results) ? "" : """
 	<$tag>
 	$(join(["""<$element shortened>
     $(get_shortened_code(codestr(codeblock)))

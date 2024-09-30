@@ -1,7 +1,7 @@
 
-const Context = Dict{String, String}
+const Context = OrderedDict{String, String}
 
-(ctx::Context)(new_ctx::Context) = merge(ctx, new_ctx)
+(ctx::Context)(new_ctx::Context) = merge!(ctx, new_ctx)
 
 SHELL_TAG         = "ShellRunResults"
 SHELL_ELEMENT     = "sh_script"
