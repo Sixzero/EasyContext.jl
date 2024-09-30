@@ -9,6 +9,7 @@ LLM_conditonal_apply_changes(cb::CodeBlock) = begin
     else
         cb.pre_content
     end)
+    cb
 end
 
 LLM_apply_changes_to_file(cb::CodeBlock) = begin

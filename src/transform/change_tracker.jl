@@ -23,7 +23,8 @@ end
 function get_updated_content(source::String)
 	file_path, line_range = parse_source(source)
 	!isfile(file_path) && (@warn "File not found: $file_path"; return nothing)
-	return isnothing(line_range) ? read(file_path, String) : join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
+	lines = readlines(file_path)
+	return isnothing(line_range) ? join(lines, "\n") : join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
 end
 
 

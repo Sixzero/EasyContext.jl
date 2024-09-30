@@ -3,7 +3,6 @@ import PromptingTools.Experimental.RAGTools: find_tags, get_embeddings, ChunkEmb
 import PromptingTools.Experimental.RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
 import PromptingTools
-using JuliaSyntax
 const RAG = PromptingTools.Experimental.RAGTools
 
 @kwdef struct PythonSourceChunk

@@ -12,10 +12,32 @@ function readline_multi()
     return String(take!(buffer))
 end
 
+function readline_multi_interactive()
+    buffer = IOBuffer()
+    newlines = 0
+    while true
+        char = read(stdin, Char)
+        write(buffer, char)
+        print(char)
+        if char in ('\n', '\r')
+            newlines += 1
+            newlines == 2 && return String(take!(buffer))
+        else
+            newlines = 0
+        end
+    end
+end
+
+
 function readline_improved()
     dialog()
     print("\e[1m")  # bold text
-    res = readline_multi()
+    if isinteractive()
+        res = readline_multi_interactive()
+    else
+        res = readline_multi()
+    end
+    clearline()
     clearline()
     print("\e[0m")  # reset text style
     return res

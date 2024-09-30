@@ -2,7 +2,7 @@ import PromptingTools.Experimental.RAGTools: get_chunks, AbstractEmbedder
 import PromptingTools.Experimental.RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkIndex, find_tags
 import PromptingTools.Experimental.RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
-using JuliaSyntax
+import JuliaSyntax
 import JuliaSyntax: @K_str, kind
 using Pkg
 using ProgressMeter

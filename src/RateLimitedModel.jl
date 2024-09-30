@@ -26,7 +26,7 @@ function retry_on_rate_limit(f; max_retries=5, verbose=1, base_wait_time=1.0, ms
                             @warn "There is no retry-after header. Retrying in 30 seconds."
                             30
                         else
-                            parse(Float64, last(e.response.headers[idx])) / 1000
+                            Base.parse(Float64, last(e.response.headers[idx])) / 1000
                         end
                         @warn "Rate limit exceeded. Retrying in $retry_after seconds."
                         sleep(retry_after)
