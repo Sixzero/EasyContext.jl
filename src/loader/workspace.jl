@@ -1,7 +1,7 @@
 include("token_counter.jl")
 
 @kwdef mutable struct Workspace
-	project_paths::Vector{String}=String[]
+	project_paths::Vector{String}
 	rel_project_paths::Vector{String}=String[]
 	common_path::String=""
 end
@@ -11,11 +11,10 @@ CreateWorkspace(project_paths::Vector{String}=String[]) = begin
     Workspace(project_paths, rel_project_paths, common_path)
 end
 
-function (ws::Workspace)(context::Context, args...)
-
-	all_files::Vector{String} = vcat(String[get_project_files(path) for path in ws.project_paths]...)
-	chunks, sources = RAGTools.get_chunks(context.chunker, all_files)
-	return chunks, sources
+(ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws.project_paths)...)
+function (ws::Workspace)(chunker)
+	chunks, sources = RAGTools.get_chunks(chunker, ws())
+	return CTX_unwrapp(sources, chunks)
 end
 
 

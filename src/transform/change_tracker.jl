@@ -27,7 +27,6 @@ function get_updated_content(source::String)
 end
 
 
-
 to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)
 to_string(tag::String, element::String, shell_results::AbstractDict{String, CodeBlock}) = begin
 	return """

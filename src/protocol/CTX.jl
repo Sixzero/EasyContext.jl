@@ -1,6 +1,8 @@
 
 const Context = Dict{String, String}
 
+(ctx::Context)(new_ctx::Context) = merge(ctx, new_ctx)
+
 SHELL_TAG         = "ShellRunResults"
 SHELL_ELEMENT     = "sh_script"
 SHELL_RUN_RESULT  = "sh_run_result"

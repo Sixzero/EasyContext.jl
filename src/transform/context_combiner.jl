@@ -4,14 +4,11 @@
 
 
 
-function context_combiner!(user_question, context_shell, context_codebase)
+function context_combiner!(user_question, contexts...)
 	"""
-	$(context_shell)
-
-	$(context_codebase)
-
+	$(join(contexts, "\n"))
 	<Question>
-	$(user_question)
+	$user_question
 	</Question>
 	"""
 end
