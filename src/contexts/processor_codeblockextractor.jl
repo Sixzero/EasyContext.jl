@@ -10,7 +10,6 @@ end
 
 
 function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeBlockExtractor; mock=false, preprocess=(v)-> v)
-    # @show extractor
     extractor.full_content *= new_content
     lines = split(extractor.full_content[nextind(extractor.full_content, extractor.last_processed_index[]):end], '\n')
     current_command = String[]

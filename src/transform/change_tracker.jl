@@ -36,7 +36,7 @@ to_string(tag::String, element::String, shell_results::AbstractDict{String, Code
     $(get_shortened_code(codestr(codeblock)))
     </$element>
     <$(SHELL_RUN_RESULT)>
-    $(codeblock.results[end])
+    $(codeblock.run_results[end])
     </$(SHELL_RUN_RESULT)>
     """ for (code, codeblock) in shell_results], "\n"))
 	</$tag>

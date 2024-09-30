@@ -20,7 +20,7 @@ end
 function cmd_all_info(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
   err, process = "", nothing
   try
-    process = run(pipeline(ignorestatus(cmd), stdout=output, stderr=error), wait=false)
+    process = run(pipeline(ignorestatus(cmd), stdout=output, stderr=error)) # TODO , wait=true wait to false when it isn't meld or cat... but async stuffs has to be handled in that case!
   catch e
     err = "$e"
   end
