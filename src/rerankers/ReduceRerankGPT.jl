@@ -13,20 +13,21 @@ Base.@kwdef struct ReduceRankGPTReranker <: AbstractReranker
     top_n::Int=10
 end
 
-function (reranker::ReduceRankGPTReranker)(result::RAGContext, args...)
-    reranked = rerank(reranker, result.chunk.sources, result.chunk.contexts, result.question)
-    return RAGContext(SourceChunk(reranked.sources, reranked.contexts), result.question)
+function (reranker::ReduceRankGPTReranker)(chunks::OrderedDict{<:AbstractString, <:AbstractString}, query::AbstractString)
+    reranked = rerank(reranker, chunks, query)
+    return reranked
 end
 
 function rerank(
     reranker::ReduceRankGPTReranker,
-    sources::AbstractVector{<:AbstractString},
-    chunks::AbstractVector{<:AbstractString},
-    question::AbstractString;
+    chunks::OrderedDict{<:AbstractString, <:AbstractString},
+    query::AbstractString;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Bool = reranker.verbose
 )
+    sources = collect(keys(chunks))
+    contents = collect(values(chunks))
     total_docs = length(chunks)
     batch_size = reranker.batch_size
     batch_size < top_n * 2 && @warn "Batch_size $batch_size should be at least twice bigger than top_n $top_n"
@@ -36,7 +37,7 @@ function rerank(
     function rerank_batch(doc_batch)
         max_retries = 2
         for attempt in 1:max_retries
-            prompt = create_rankgpt_prompt(question, doc_batch, top_n)
+            prompt = create_rankgpt_prompt(query, doc_batch, top_n)
             response = aigenerate(prompt; model=reranker.model, max_tokens=reranker.max_tokens, temperature=reranker.temperature, verbose=false)
 
             rankings = extract_ranking(response.content)
@@ -61,7 +62,7 @@ function rerank(
         batches = [remaining_docs[i:min(i+batch_size-1, end)] for i in 1:batch_size:length(remaining_docs)]
         
         batch_rankings = asyncmap(batches) do batch_indices
-            rankings = rerank_batch(chunks[batch_indices])
+            rankings = rerank_batch(contents[batch_indices])
             return batch_indices[rankings]
         end
         is_last_multibatch = length(batches) > 1
@@ -74,15 +75,15 @@ function rerank(
     if is_last_multibatch
         # We will do a final rerank, to let the model have full context in the last decision.
         @info "Final rerank to get the top $top_n documents."
-    # Final ranking of the remaining documents
-        final_rankings = rerank_batch(chunks[remaining_docs])
+        # Final ranking of the remaining documents
+        final_rankings = rerank_batch(contents[remaining_docs])
         remaining_docs = remaining_docs[final_rankings]
         push!(doc_counts, length(remaining_docs))
     end
     final_top_n = remaining_docs[1:min(top_n, length(remaining_docs))]
     
     reranked_sources = sources[final_top_n]
-    reranked_chunks = chunks[final_top_n]
+    reranked_chunks = contents[final_top_n]
     
     if verbose
         doc_count_str = join(doc_counts, " > ")
@@ -90,7 +91,7 @@ function rerank(
         println("RankGPT document reduction: $doc_count_str Total cost: \$$(total_cost)")
     end
     
-    return (sources=reranked_sources, contexts=reranked_chunks)
+    return OrderedDict(zip(reranked_sources, reranked_chunks))
 end
 
 # Maintain compatibility with the existing RAG.rerank method

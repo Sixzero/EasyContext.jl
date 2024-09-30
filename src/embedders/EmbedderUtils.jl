@@ -78,8 +78,8 @@ function get_index(builder::BM25IndexBuilder, result::RAGContext; cost_tracker =
     return builder.cache
 end
 
-function get_index(builder::EmbeddingIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    hash_str = hash("$(result.chunk.sources)_$(get_model_name(builder.embedder))")
+function get_index(builder::EmbeddingIndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+    hash_str = hash("$(keys(chunks))_$(get_model_name(builder.embedder))")
     cache_file = joinpath(CACHE_DIR, "embedding_index_$(hash_str).jld2")
 
     if !isnothing(builder.cache)
@@ -88,17 +88,16 @@ function get_index(builder::EmbeddingIndexBuilder, result::RAGContext; cost_trac
         builder.cache = JLD2.load(cache_file, "index")
         return builder.cache
     else
-        chunks, sources = result.chunk.contexts, result.chunk.sources
         embedder = builder.embedder
 
-        embeddings = RAG.get_embeddings(embedder, chunks;
+        embeddings = RAG.get_embeddings(embedder, collect(values(chunks));
         verbose = verbose,
         cost_tracker)
         
         verbose && @info "Index built! (cost: $(round(cost_tracker[], digits=3)))"
 
         index_id = gensym("ChunkEmbeddingsIndex")
-        builder.cache = RAG.ChunkEmbeddingsIndex(; id = index_id, embeddings, chunks, sources)
+        builder.cache = RAG.ChunkEmbeddingsIndex(; id = index_id, embeddings, chunks=collect(values(chunks)), sources=collect(keys(chunks)))
         @info "Successfully built embedding index! Size: $(size(embeddings))"
         JLD2.save(cache_file, "index", builder.cache)
     end
@@ -115,19 +114,17 @@ function get_index(builder::MultiIndexBuilder, result::RAGContext; cost_tracker 
     return builder.cache
 end
 
-
-function (builder::EmbeddingIndexBuilder)(result::RAGContext, args...)
-    index = get_index(builder, result)
+function (builder::EmbeddingIndexBuilder)(chunks::OrderedDict{String, String}, query::AbstractString)
+    index = get_index(builder, chunks)
     finder = RAG.CosineSimilarity()
     retriever = RAG.AdvancedRetriever(
         finder=finder,
         reranker=RAG.NoReranker(),
         rephraser=RAG.NoRephraser(),
     )
-    retrieved = RAG.retrieve(retriever, index, result.question; top_k=builder.top_k, top_n=builder.top_k, return_all=true)
+    retrieved = RAG.retrieve(retriever, index, query; top_k=builder.top_k, top_n=builder.top_k, return_all=true)
     
-    res = RAGContext(SourceChunk(retrieved.sources, retrieved.context), result.question)
-    return res
+    return OrderedDict(zip(retrieved.sources, retrieved.context))
 end
 
 function (builder::BM25IndexBuilder)(result::RAGContext, args...)

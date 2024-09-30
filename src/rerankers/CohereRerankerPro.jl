@@ -7,33 +7,35 @@ Base.@kwdef struct CohereRerankerPro <: AbstractReranker
     top_n::Int = 10
 end
 
-function (reranker::CohereRerankerPro)(result::RAGContext, args...)
-    reranked = rerank(reranker, result.chunk.sources, result.chunk.contexts, result.question)
-    return RAGContext(SourceChunk(reranked.sources, reranked.contexts), result.question)
+function (reranker::CohereRerankerPro)(chunks::OrderedDict{<:AbstractString, <:AbstractString}, query::AbstractString)
+    reranked = rerank(reranker, chunks, query)
+    return reranked
 end
 
 function rerank(
     reranker::CohereRerankerPro,
-    sources::AbstractVector{<:AbstractString},
-    chunks::AbstractVector{<:AbstractString},
-    question::AbstractString;
+    chunks::OrderedDict{<:AbstractString, <:AbstractString},
+    query::AbstractString;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Bool = false
 )
-    reranked = RAG.rerank(RAG.CohereReranker(model=reranker.model), question, chunks; top_n=top_n)
+    sources = collect(keys(chunks))
+    contents = collect(values(chunks))
     
-    reranked_sources = sources[reranked]
-    reranked_chunks = chunks[reranked]
+    reranked_indices = RAG.rerank(RAG.CohereReranker(model=reranker.model), query, contents; top_n=top_n)
     
-    return (sources=reranked_sources, contexts=reranked_chunks)
+    reranked_sources = sources[reranked_indices]
+    reranked_chunks = contents[reranked_indices]
+    
+    return OrderedDict(zip(reranked_sources, reranked_chunks))
 end
 
 # Maintain compatibility with the existing RAG.rerank method
 function RAG.rerank(
     reranker::CohereRerankerPro,
     index::AbstractDocumentIndex,
-    question::AbstractString,
+    query::AbstractString,
     candidates::AbstractCandidateChunks;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
@@ -42,9 +44,10 @@ function RAG.rerank(
 )
     documents = index[candidates, :chunks]
     sources = index[candidates, :sources]
-    reranked = rerank(reranker, sources, documents, question; top_n, cost_tracker, verbose)
+    chunks = OrderedDict(zip(sources, documents))
+    reranked = rerank(reranker, chunks, query; top_n, cost_tracker, verbose)
     
-    reranked_positions = findall(s -> s in reranked.sources, sources)
+    reranked_positions = findall(s -> s in keys(reranked), sources)
     reranked_scores = [1.0 / i for i in 1:length(reranked_positions)]
     
     if candidates isa MultiCandidateChunks

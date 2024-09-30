@@ -1,5 +1,6 @@
 using PromptingTools.Experimental.RAGTools
 import PromptingTools.Experimental.RAGTools as RAG
+using DataStructures: OrderedDict
 
 abstract type CombinationMethod end
 
@@ -16,11 +17,11 @@ struct RRFCombiner <: CombinationMethod end
     combination_method::CombinationMethod = SimpleAppender()
 end
 
-function get_index(builder::CombinedIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+function get_index(builder::CombinedIndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
     if !isnothing(builder.cache)
         return builder.cache
     else
-        builder.cache = [get_index(b, result; cost_tracker, verbose) for b in builder.builders]
+        builder.cache = [get_index(b, chunks; cost_tracker, verbose) for b in builder.builders]
         
         # Check if all indexes have the same sources
         sources = RAG.sources(builder.cache[1])
@@ -46,15 +47,15 @@ function get_positions_and_scores(finder::RAG.BM25Similarity, builder::AbstractI
     RAG.find_closest(finder, RAG.chunkdata(index), Float32[], query_tokens; top_k=top_k)
 end
 
-function (builder::CombinedIndexBuilder)(result::RAGContext, args...)
-    indexes = get_index(builder, result)
+function (builder::CombinedIndexBuilder)(chunks::OrderedDict{String, String}, query::AbstractString)
+    indexes = get_index(builder, chunks)
     
     # Get results from each index
     all_results = []
     for (i, index) in enumerate(indexes)
         finder = get_finder(builder.builders[i])
         
-        positions, scores = get_positions_and_scores(finder, builder.builders[i], index, result.question, length(RAG.sources(indexes[1])))
+        positions, scores = get_positions_and_scores(finder, builder.builders[i], index, query, length(RAG.sources(indexes[1])))
         push!(all_results, (positions=positions, scores=scores))
     end
 
@@ -72,8 +73,7 @@ function (builder::CombinedIndexBuilder)(result::RAGContext, args...)
     sources = first_index[candidates, :sources]
     chunks = first_index[candidates, :chunks]
 
-    new_chunk = SourceChunk(sources, chunks)
-    return RAGContext(new_chunk, result.question)
+    return OrderedDict(zip(sources, chunks))
 end
 
 # Implement combination methods

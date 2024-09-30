@@ -15,7 +15,7 @@ end
 (ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws.rel_project_paths)...)
 function (ws::Workspace)(chunker)
 	chunks, sources = RAGTools.get_chunks(chunker, ws())
-	return CTX_unwrapp(sources, chunks)
+	return OrderedDict(sources .=> chunks)
 end
 
 
