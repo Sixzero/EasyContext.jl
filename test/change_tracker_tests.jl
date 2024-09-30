@@ -18,9 +18,9 @@ include("../src/ContextStructs.jl")
 
         updated_tracker, updated_content = tracker(src_content)
 
-        @test length(updated_tracker) == 2
-        @test updated_tracker["file1.txt"] == :NEW
-        @test updated_tracker["file2.txt"] == :UPDATED
+        @test length(updated_tracker.changes) == 2
+        @test updated_tracker.changes["file1.txt"] == :NEW
+        @test updated_tracker.changes["file2.txt"] == :UPDATED
         @test updated_content == src_content
 
         # Restore the original function
@@ -36,14 +36,14 @@ include("../src/ContextStructs.jl")
         src_content = Dict(sources[1] => contexts[1])
         updated_tracker, _ = tracker(src_content)
         
-        @test length(updated_tracker) == 1
-        @test updated_tracker[sources[1]] == :NEW
+        @test length(updated_tracker.changes) == 1
+        @test updated_tracker.changes[sources[1]] == :NEW
 
         # Second update (no change)
         updated_tracker, _ = tracker(src_content)
         
-        @test length(updated_tracker) == 1
-        @test updated_tracker[sources[1]] == :UNCHANGED
+        @test length(updated_tracker.changes) == 1
+        @test updated_tracker.changes[sources[1]] == :UNCHANGED
 
         # Third update (with change)
         new_context = "# Updated content of ContextNode.jl"
@@ -52,8 +52,8 @@ include("../src/ContextStructs.jl")
         
         updated_tracker, _ = tracker(src_content)
         
-        @test length(updated_tracker) == 1
-        @test updated_tracker[sources[1]] == :UPDATED
+        @test length(updated_tracker.changes) == 1
+        @test updated_tracker.changes[sources[1]] == :UPDATED
 
         # Restore the original function
         global get_updated_content = original_get_updated_content
