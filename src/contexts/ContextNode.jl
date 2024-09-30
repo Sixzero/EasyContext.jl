@@ -1,8 +1,10 @@
+using DataStructures: OrderedDict
+
 @kwdef mutable struct ContextNode
     tag::String = "Docs"
     element::String = "Doc"
-    attributes::Dict{String, String} = Dict{String, String}()
-    tracked_sources::Dict{String, Tuple{Int, String}} = Dict{String, Tuple{Int, String}}()
+    attributes::OrderedDict{String, String} = OrderedDict{String, String}()
+    tracked_sources::OrderedDict{String, Tuple{Int, String}} = OrderedDict{String, Tuple{Int, String}}()
     call_counter::Int = 0
     updated_sources::Vector{String} = String[]
     new_sources::Vector{String} = String[]

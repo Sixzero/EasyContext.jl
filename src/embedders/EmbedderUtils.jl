@@ -52,8 +52,8 @@ end
     top_k::Int=200
 end
 
-function get_index(builder::BM25IndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
-    hash_str = hash("$(result.chunk.sources)")
+function get_index(builder::BM25IndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
+    hash_str = hash("$(chunks)")
     cache_file = joinpath(CACHE_DIR, "bm25_index_$(hash_str).jld2")
 
     if !isnothing(builder.cache)
@@ -62,7 +62,7 @@ function get_index(builder::BM25IndexBuilder, result::RAGContext; cost_tracker =
         builder.cache = JLD2.load(cache_file, "index")
         return builder.cache
     else
-        chunks, sources = result.chunk.contexts, result.chunk.sources
+        chunks, sources = values(chunks), keys(chunks)
         processor = builder.processor
         
         dtm = RAG.get_keywords(processor, chunks;
@@ -79,7 +79,7 @@ function get_index(builder::BM25IndexBuilder, result::RAGContext; cost_tracker =
 end
 
 function get_index(builder::EmbeddingIndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    hash_str = hash("$(keys(chunks))_$(get_model_name(builder.embedder))")
+    hash_str = hash("$(chunks)_$(get_model_name(builder.embedder))")
     cache_file = joinpath(CACHE_DIR, "embedding_index_$(hash_str).jld2")
 
     if !isnothing(builder.cache)
