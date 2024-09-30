@@ -9,16 +9,21 @@ export ProModel, AbstractPyTorchLikeForward
 abstract type AbstractPyTorchLikeForward end
 
 @kwdef mutable struct ConversationProcessor
-    ai_state::AISH.AIState
-    max_history::Int = 10
+    max_history::Int = 12
+    keep_history::Int = 6
+    conv::Vector{AbstractChatMessage} = []
+    sys_msg::SystemMessage=SystemMessage()
 end
 
 function (cp::ConversationProcessor)(input)
-    conv = AISH.curr_conv(cp.ai_state)
-    if length(conv.messages) > cp.max_history
-        AISH.cut_history!(conv, keep=cp.max_history)
+    conv = cp.conv
+    if length(conv) > cp.max_history
+        conv = conv[end-cp.keep_history+1:end]
     end
-    return input
+    push!(conv, UserMessage(input))
+    saveUserMsg(model.conversation_processor, input)
+    need_cache = (length(conv)+1>cp.max_history) ? nothing : :last
+    return [cp.sys_msg, conv...], need_cache
 end
 
 @kwdef mutable struct StreamingLLMProcessor
@@ -27,14 +32,17 @@ end
     state::AISH.AIState
 end
 
-function (slp::StreamingLLMProcessor)(input)
+function (slp::StreamingLLMProcessor)(conv; on_chunk=c->c, cache=:last)
     clearline()
     print("\e[32mProcessing... \e[0m")
-    cache = get_cache_setting(slp.state.contexter, AISH.curr_conv(slp.state))
-    channel = AISH.ai_stream_safe(slp.state, printout=false, cache=cache) 
+    reset!(slp.extractor)
+    channel = AISH.ai_stream_safe(conv, printout=false, cache=cache)
     msg, user_meta, ai_meta = AISH.process_stream(channel, 
-        on_meta_usr=meta->(clearline();println("\e[32mUser message: \e[0m$(AISH.format_meta_info(meta))"); AISH.update_last_user_message_meta(slp.state, meta); print("\e[36m¬ \e[0m")), 
-        on_text=chunk->on_text(chunk, slp.extractor), 
+        on_meta_usr=meta->(clearline();println("\e[32mUser message: \e[0m$(AISH.format_meta_info(meta))"); print("\e[36m¬ \e[0m")), 
+        on_text=chunk->begin
+                on_chunk(chunk, )
+                print(chunk)
+        end, 
         on_meta_ai=meta->println("\n\e[32mAI message: \e[0m$(AISH.format_meta_info(meta))"))
     println("")
     return msg, user_meta, ai_meta
@@ -79,22 +87,24 @@ function (model::ProModel)(question::AbstractString)
 
     # Wait for all tasks and combine contexts
     combined_context = """
-    $(fetch(context_tasks[:shell]))
+    $(fetch(ctx_shell))
 
-    $(fetch(context_tasks[:codebase]))
+    $(fetch(ctx_codebase))
 
-    $(fetch(context_tasks[:package]))
+    $(fetch(ctx_package))
 
     <Question>
     $question
     </Question>
     """
-
+    sys_msg_ext = ""
+    sys_msg_ext *= get_processor_description(:ShellResults, model.shell_context)
+    sys_msg_ext *= get_processor_description(:CodebaseContextV3, model.codebase_context)
+    sys_msg_ext *= get_processor_description(:JuliaPackageContext, model.package_context)
     # Process through conversation processor and generate response
-    saveUserMsg(model.conversation_processor, combined_context)
-    processed_input = model.conversation_processor(combined_context)
+    processed_input, cache = model.conversation_processor(combined_context)
     
-    streaming_llm = StreamingLLMProcessor(model="claude", extractor=model.shell_extractor, state=model.state.ai_state)
+    streaming_llm = StreamingLLMProcessor(processed_input, model="claude", extractor=model.shell_extractor, cache=cache)
     response, user_meta, ai_meta = streaming_llm(processed_input)
     
     saveAiMsg(model.conversation_processor, response)
@@ -107,5 +117,6 @@ function saveUserMsg(cp::ConversationProcessor, msg::AbstractString)
 end
 
 function saveAiMsg(cp::ConversationProcessor, msg::AbstractString)
+    push!(cp.conv, AIMessage(msg))
     AISH.add_n_save_ai_message!(cp.ai_state, msg)
 end

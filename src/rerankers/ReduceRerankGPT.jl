@@ -53,7 +53,9 @@ function rerank(
     end
     
     remaining_docs = collect(1:total_docs)
+    doc_counts = [total_docs]
 
+    is_last_multibatch = false
     # the reduction
     while length(remaining_docs) > top_n
         batches = [remaining_docs[i:min(i+batch_size-1, end)] for i in 1:batch_size:length(remaining_docs)]
@@ -62,21 +64,31 @@ function rerank(
             rankings = rerank_batch(chunks[batch_indices])
             return batch_indices[rankings]
         end
-        
+        is_last_multibatch = length(batches) > 1
         # Flatten and take top results from each batch
         remaining_docs = reduce(vcat, [batch[1:min(top_n, length(batch))] for batch in batch_rankings])
         
-        verbose && @info "Reduced to $(length(remaining_docs)) documents"
+        push!(doc_counts, length(remaining_docs))
     end
 
+    if is_last_multibatch
+        # We will do a final rerank, to let the model have full context in the last decision.
+        @info "Final rerank to get the top $top_n documents."
     # Final ranking of the remaining documents
-    final_rankings = rerank_batch(chunks[remaining_docs])
-    final_top_n = remaining_docs[final_rankings][1:min(top_n, length(final_rankings))]
+        final_rankings = rerank_batch(chunks[remaining_docs])
+        remaining_docs = remaining_docs[final_rankings]
+        push!(doc_counts, length(remaining_docs))
+    end
+    final_top_n = remaining_docs[1:min(top_n, length(remaining_docs))]
     
     reranked_sources = sources[final_top_n]
     reranked_chunks = chunks[final_top_n]
     
-    verbose && @info "Reranking completed. Total cost: \$$(cost_tracker[])"
+    if verbose
+        doc_count_str = join(doc_counts, " > ")
+        total_cost = round(cost_tracker[], digits=4)
+        println("RankGPT document reduction: $doc_count_str Total cost: \$$(total_cost)")
+    end
     
     return (sources=reranked_sources, contexts=reranked_chunks)
 end

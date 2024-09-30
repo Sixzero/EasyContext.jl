@@ -1,14 +1,14 @@
 using Dates
 using Base.Threads
 
-@kwdef mutable struct RateLimiter
+@kwdef mutable struct RateLimiterRPM
   max_requests::Int = 60
   time_window::Float64 = 60.0
   request_times::Vector{DateTime} = DateTime[]
   lock::ReentrantLock = ReentrantLock()
 end
 
-function with_rate_limiter(f::Function, limiter::RateLimiter)
+function with_rate_limiter(f::Function, limiter::RateLimiterRPM)
   return function(args...; kwargs...)
       lock(limiter.lock) do
           now = Dates.now()

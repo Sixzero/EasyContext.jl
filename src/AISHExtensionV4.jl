@@ -27,16 +27,16 @@ end
         Pipe([
             QuestionAccumulatorProcessor(),
             CodebaseContextV3(),
-            # EmbeddingIndexBuilder(top_n=50),
+            EmbeddingIndexBuilder(;top_k=50),
             ReduceRankGPTReranker(;batch_size=30, model="gpt4om"),
             ContextNode(tag="Codebase", element="File"),
         ]),
-        # Pipe([
-        #     JuliaPackageContext(),
-        #     EmbeddingIndexBuilder(),
-        #     ReduceRankGPTReranker(; batch_size=40),
-        #     ContextNode(tag="Functions", element="Function")
-        # ]),
+        Pipe([
+            JuliaPackageContext(),
+            EmbeddingIndexBuilder(;top_k=100),
+            ReduceRankGPTReranker(; batch_size=50),
+            ContextNode(tag="Functions", element="Function")
+        ]),
     ]
 end
 

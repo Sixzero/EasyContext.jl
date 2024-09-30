@@ -13,6 +13,7 @@ include("OpenAIBatchEmbedder.jl")
 include("JinaEmbedder.jl")
 include("VoyageEmbedder.jl")
 include("CacheBatchEmbedder.jl")
+include("SimpleCombinedIndexBuilder.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
@@ -104,6 +105,17 @@ function get_index(builder::EmbeddingIndexBuilder, result::RAGContext; cost_trac
     return builder.cache
 end
 
+function get_index(builder::MultiIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+    if !isnothing(builder.cache)
+        return builder.cache
+    else
+        indices = [get_index(b, result; cost_tracker, verbose) for b in builder.builders]
+        builder.cache = RAG.MultiIndex(indices)
+    end
+    return builder.cache
+end
+
+
 function (builder::EmbeddingIndexBuilder)(result::RAGContext, args...)
     index = get_index(builder, result)
     finder = RAG.CosineSimilarity()
@@ -112,7 +124,7 @@ function (builder::EmbeddingIndexBuilder)(result::RAGContext, args...)
         reranker=RAG.NoReranker(),
         rephraser=RAG.NoRephraser(),
     )
-    retrieved = RAG.retrieve(retriever, index, result.question; top_k=builder.top_k, return_all=true)
+    retrieved = RAG.retrieve(retriever, index, result.question; top_k=builder.top_k, top_n=builder.top_k, return_all=true)
     
     res = RAGContext(SourceChunk(retrieved.sources, retrieved.context), result.question)
     return res
@@ -132,39 +144,9 @@ function (builder::BM25IndexBuilder)(result::RAGContext, args...)
     return res
 end
 
-function get_index(builder::MultiIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    if !isnothing(builder.cache)
-        return builder.cache
-    else
-        indices = [get_index(b, result; cost_tracker, verbose) for b in builder.builders]
-        builder.cache = RAG.MultiIndex(indices)
-    end
-    return builder.cache
-end
-
-function (builder::MultiIndexBuilder)(result::RAGContext, args...)
-    if isnothing(builder.cache) || length(result.chunk.contexts) != length(builder.cache.indices)
-        builder.cache = RAG.MultiIndex([get_index(b, result) for b in builder.builders])
-    end
-
-    finders = [get_finder(b) for b in builder.builders]
-    multi_finder = RAG.MultiFinder(finders)
-
-    retriever = RAG.AdvancedRetriever(
-        processor=RAG.KeywordsProcessor(),
-        finder=multi_finder,
-        reranker=RAG.NoReranker(),
-        rephraser=RAG.NoRephraser(),
-    )
-
-    retrieved = RAG.retrieve(retriever, builder.cache, result.question; top_k=builder.top_k, return_all=true)
-
-    new_chunk = SourceChunk(retrieved.sources, retrieved.context)
-    return RAGContext(new_chunk, result.question)
-end
-
 get_embedder(builder::EmbeddingIndexBuilder) = builder.embedder
 get_embedder(embedder::RAG.BatchEmbedder) = embedder
+get_processor(builder::BM25IndexBuilder) = builder.processor
 
 function *(a::AbstractIndexBuilder, b::Union{AbstractIndexBuilder, RAG.AbstractReranker})
     return x -> b(a(x))
@@ -180,5 +162,4 @@ end
 
 # Exports
 export build_index, build_multi_index, get_context, get_answer
-
 

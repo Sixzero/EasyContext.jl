@@ -20,7 +20,7 @@ Supports two model options:
 - `model::String`: The name of the embedding model to use.
 - `dimensions::Union{Int, Nothing}`: The number of dimensions for the embedding (required for ColBERT model).
 - `input_type::String`: The type of input (e.g., "document" or "query", required for ColBERT model).
-- `rate_limiter::RateLimiter`: A rate limiter to manage API request rates.
+- `rate_limiter::RateLimiterRPM`: A rate limiter to manage API request rates.
 """
 @kwdef mutable struct JinaEmbedder <: AbstractEasyEmbedder
     api_url::String = "https://api.jina.ai/v1/embeddings"
@@ -28,7 +28,7 @@ Supports two model options:
     model::String = "jina-embeddings-v2-base-code"
     dimensions::Union{Int, Nothing} = nothing
     input_type::String = "document"
-    rate_limiter::RateLimiter = RateLimiter()
+    rate_limiter::RateLimiterRPM = RateLimiterRPM()
 end
 
 function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};

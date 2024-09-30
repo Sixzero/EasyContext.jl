@@ -1,4 +1,3 @@
-using PromptingTools.Experimental.RAGTools
 
 @kwdef mutable struct CodebaseContextV3 <: AbstractContextProcessor
     chunker::RAG.AbstractChunker = FullFileChunker()
@@ -14,7 +13,7 @@ function (context::CodebaseContextV3)(input::Union{String, RAGContext}, args...)
 end
 
 function get_chunked_files(context::CodebaseContextV3)
-    all_files::Vector{String} = vcat(String[get_files_in_path(context.file_selector, path) for path in context.project_paths]...)
+    all_files::Vector{String} = vcat([get_files_in_path(context.file_selector, path) for path in context.project_paths]...)
     chunks, sources = RAGTools.get_chunks(context.chunker, all_files)
     return chunks, sources
 end
