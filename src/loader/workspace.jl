@@ -12,7 +12,7 @@ CreateWorkspace(project_paths::Vector{String}=String[]) = begin
     Workspace(project_paths, rel_project_paths, common_path)
 end
 
-(ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws.project_paths)...)
+(ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws.rel_project_paths)...)
 function (ws::Workspace)(chunker)
 	chunks, sources = RAGTools.get_chunks(chunker, ws())
 	return CTX_unwrapp(sources, chunks)
