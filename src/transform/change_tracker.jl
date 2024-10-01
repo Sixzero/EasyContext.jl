@@ -64,8 +64,7 @@ to_string(tag::String, element::String, shell_results::AbstractDict{String, Code
     """
 end
 
-to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = format_tag(tag, element, scr_state, src_cont)
-format_tag(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = begin
+to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = begin
     output = ""
     new_files = format_element(element, scr_state, src_cont, :NEW)
     if !is_really_empty(new_files)
