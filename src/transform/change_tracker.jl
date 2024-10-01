@@ -3,9 +3,15 @@ using DataStructures: OrderedDict
 
 @kwdef mutable struct ChangeTracker
     changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
+    source_parser::Function = default_source_parser
 end
 
-function (tracker::ChangeTracker)(src_content::Context)
+function default_source_parser(source::String, current_content::String)
+    updated_content = get_updated_content(source)
+    return get_chunk_standard_format(source, updated_content)
+end
+
+function (tracker::ChangeTracker)(src_content)
     existing_keys = keys(src_content)
     filter!(pair -> pair.first in existing_keys, tracker.changes)
 
@@ -14,7 +20,7 @@ function (tracker::ChangeTracker)(src_content::Context)
             tracker.changes[source] = :NEW
             continue
         end
-        new_content = get_chunk_standard_format(source, get_updated_content(source))
+        new_content = tracker.source_parser(source, content)
         tracker.changes[source] = content == new_content ? :UNCHANGED : :UPDATED
     end
     print_context_updates(tracker; deleted=[k for k in existing_keys if !(k in keys(tracker.changes))], item_type="sources")
@@ -47,6 +53,7 @@ function parse_source(source::String)
 end
 
 function get_updated_content(source::String)
+    println("OK")
     file_path, line_range = parse_source(source)
     !isfile(file_path) && (@warn "File not found: $file_path"; return nothing)
     isnothing(line_range) && return read(file_path, String)
