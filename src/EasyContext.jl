@@ -32,7 +32,7 @@ include("filter/AgeTracker.jl")
 include("rerankers/ReduceRerankGPT.jl")
 include("contexts/Contexts.jl")
 include("loader/workspace.jl")
-include("loader/get_project_files.jl")
+include("loader/workspace_file_filters.jl")
 include("action/loading_spinner.jl")
 
 include("processor/CodeBlockExtractor.jl")

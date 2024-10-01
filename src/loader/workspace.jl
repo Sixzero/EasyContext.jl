@@ -51,6 +51,54 @@ end
 
 
 
+function get_project_files(w::Workspace)
+	all_files = String[]
+	for path in w.rel_project_paths
+			append!(all_files, get_project_files(w, path))
+	end
+	return all_files
+end
+function get_project_files(w::Workspace, path::String)
+	files = String[]
+	ignore_cache = Dict{String, Vector{String}}()
+	ignore_stack = Pair{String, Vector{String}}[]
+	
+	for (root, dirs, files_in_dir) in walkdir(path, topdown=true)
+			any(d -> d in w.FILTERED_FOLDERS, splitpath(root)) && (empty!(dirs); continue)
+			
+			# Read and cache ignore patterns for this directory
+			if !haskey(ignore_cache, root)
+					res = parse_ignore_files(root, w.IGNORE_FILES)
+					if !isempty(res)
+							ignore_cache[root] = res
+							push!(ignore_stack, root => res)
+					end
+			end
+			
+			# Use the most recent ignore patterns
+			ignore_patterns = isempty(ignore_stack) ? String[] : last(ignore_stack).second
+			ignore_root = isempty(ignore_stack) ? "" : last(ignore_stack).first
+			
+			for file in files_in_dir
+					file_path = joinpath(root, file)
+					if is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS) && 
+						 !ignore_file(file_path, w.IGNORED_FILE_PATTERNS) && 
+						 !is_ignored_by_patterns(file_path, ignore_patterns, ignore_root)
+							push!(files, file_path)
+					end
+			end
+			
+			# Filter out ignored directories to prevent unnecessary recursion
+			filter!(d -> !is_ignored_by_patterns(joinpath(root, d), ignore_patterns, ignore_root), dirs)
+			
+			# Remove ignore patterns from the stack when moving out of their directory
+			while !isempty(ignore_stack) && !startswith(root, first(last(ignore_stack)))
+					pop!(ignore_stack)
+			end
+	end
+	return files
+end
+
 set_project_path(path::String) = path !== "" && (cd(path); println("Project path initialized: $(path)"))
 set_project_path(w::Workspace) = set_project_path(w.common_path)
 set_project_path(w::Workspace, paths) = begin
