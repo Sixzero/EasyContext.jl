@@ -30,6 +30,9 @@ const path_separator="/"
 	IGNORED_FILE_PATTERNS::Vector{String} = [
 		".log", "config.ini", "secrets.yaml", "Manifest.toml", ".gitignore", ".aiignore", ".aishignore", "Project.toml" # , "README.md"
 	]
+	IGNORE_FILES::Vector{String} = [
+		".gitignore", ".aishignore"
+	]
 
 
 end

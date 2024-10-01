@@ -1,6 +1,5 @@
 
 
-const IGNORE_FILES = [".gitignore", ".aishignore"]
 
 
 is_project_file(w, lowered_file) = lowered_file in w.PROJECT_FILES || any(endswith(lowered_file, "." * ext) for ext in w.FILE_EXTENSIONS)
