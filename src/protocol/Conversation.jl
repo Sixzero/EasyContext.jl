@@ -25,27 +25,22 @@ update_message_by_id(conv::Conversation, message_id::String, new_content::String
 	update_message_by_idx(conv, idx, new_content)
 end
 
-add_user_message!(conv::Conversation, user_question::String) = add_user_message!(conv, create_user_message(user_question))
-add_user_message!(conv::Conversation, user_msg::Message)     = push!(conv.messages, user_msg)[end]
 
-add_ai_message!(conv::Conversation, ai_message::String, meta::Dict) = add_ai_message!(conv, create_AI_message(ai_message, meta))
-add_ai_message!(conv::Conversation, ai_message::String)             = add_ai_message!(conv, create_AI_message(ai_message))
-add_ai_message!(conv::Conversation, ai_msg::Message)                = push!(conv.messages, ai_msg)[end]
 
 add_error_message!(conv::Conversation, error_content::String) = begin
 	convmes = conv.messages
-	isempty(convmes) && return add_user_message!(conv, error_content)
-	return if convmes[end].role == :user 
-		add_ai_message!(conv, error_content)
+	isempty(convmes) && return push!(convmes, create_user_message(error_content))
+	if convmes[end].role == :user
+		push!(convmes, create_AI_message(error_content))
 	elseif convmes[end].role == :assistant 
-		update_message_by_idx(conv, length(conv.messages), convmes[end].content * error_content)
+		update_message_by_idx(conv, length(convmes), convmes[end].content * error_content)
 	else
-		add_user_message!(conv, error_content)
+		push!(convmes, create_user_message(error_content))
 	end
 end
 
 
-to_dict(conv::Conversation)                = [Dict("role" => "system", "content" => conv().system_message); to_dict_nosys(conv())]
+to_dict(conv::Conversation)                = [Dict("role" => "system", "content" => conv.conv.system_message); to_dict_nosys(conv.conv)]
 to_dict_nosys(conv::Conversation)          = [Dict("role" => string(msg.role), "content" => msg.content) for msg in conv.messages]
 to_dict_nosys_detailed(conv::Conversation) = [to_dict(message) for message in conv.messages]
 

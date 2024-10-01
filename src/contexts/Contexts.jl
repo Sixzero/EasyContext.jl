@@ -83,3 +83,4 @@ end
 
 
 get_chunk_standard_format(source, content) = "# $source\n$content"
+get_chunk_standard_format(d::T) where {T<:AbstractDict} = T(src => get_chunk_standard_format(src, content) for (src, content) in d)

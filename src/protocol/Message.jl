@@ -41,3 +41,4 @@ update_message(msg::M, itok, otok, cached, cache_read, price, elapsed) where {M 
 	msg
 end
 
+export create_user_message, create_AI_message

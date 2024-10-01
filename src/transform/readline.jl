@@ -4,9 +4,17 @@ dialog() = print("\e[36m➜ \e[0m")  # teal arrow
 
 function readline_multi()
     buffer = IOBuffer()
+    empty_lines = 0
     while true
         batch = readavailable(stdin)
-        length(batch) == 1 && batch[1] == 0x0a && break
+        if length(batch) == 1 && batch[1] == 0x0a  # newline character
+            empty_lines += 1
+            if empty_lines == 2
+                break
+            end
+        else
+            empty_lines = 0
+        end
         write(buffer, batch)
     end
     return String(take!(buffer))
@@ -14,20 +22,22 @@ end
 
 function readline_multi_interactive()
     buffer = IOBuffer()
-    newlines = 0
+    empty_lines = 0
     while true
         char = read(stdin, Char)
+        if char in ('\n', '\r')
+            empty_lines += 1
+            if empty_lines == 3
+                break
+            end
+        elseif !isspace(char)
+            empty_lines = 0
+        end
         write(buffer, char)
         print(char)
-        if char in ('\n', '\r')
-            newlines += 1
-            newlines == 2 && return String(take!(buffer))
-        else
-            newlines = 0
-        end
     end
+    return String(take!(buffer))
 end
-
 
 function readline_improved()
     dialog()
@@ -43,7 +53,7 @@ function readline_improved()
     return res
 end
 
-wait_user_question(user_question) = begin
+function wait_user_question(user_question)
     while is_really_empty(user_question)
         user_question = readline_improved()
     end

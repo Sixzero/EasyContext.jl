@@ -8,23 +8,23 @@ export ProModel, AbstractPyTorchLikeForward
 
 abstract type AbstractPyTorchLikeForward end
 
-@kwdef mutable struct ConversationCTX
-    max_history::Int = 12
-    keep_history::Int = 6
-    conv::Vector{AbstractChatMessage} = []
-    sys_msg::SystemMessage=SystemMessage()
-end
+# @kwdef mutable struct ConversationCTX
+#     max_history::Int = 12
+#     keep_history::Int = 6
+#     conv::Vector{AbstractChatMessage} = []
+#     sys_msg::SystemMessage=SystemMessage()
+# end
 
-function (cp::ConversationCTX)(input)
-    conv = cp.conv
-    if length(conv) > cp.max_history
-        conv = conv[end-cp.keep_history+1:end]
-    end
-    push!(conv, UserMessage(input))
-    saveUserMsg(model.conversation_processor, input)
-    need_cache = (length(conv)+1>cp.max_history) ? nothing : :last
-    return [cp.sys_msg, conv...], need_cache
-end
+# function (cp::ConversationCTX)(input)
+#     conv = cp.conv
+#     if length(conv) > cp.max_history
+#         conv = conv[end-cp.keep_history+1:end]
+#     end
+#     push!(conv, UserMessage(input))
+#     saveUserMsg(model.conversation_processor, input)
+#     need_cache = (length(conv)+1>cp.max_history) ? nothing : :last
+#     return [cp.sys_msg, conv...], need_cache
+# end
 
 @kwdef mutable struct StreamingLLMProcessor
     model::String

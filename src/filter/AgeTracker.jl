@@ -1,8 +1,6 @@
 
-const Age = Int
-
 @kwdef mutable struct AgeTracker
-    tracker::Dict{String, Age} = Dict{String, Age}()
+    tracker::Dict{String, Int} = Dict{String, Int}()
 end
 
 function (tracker::AgeTracker)(src_content::Context; max_history::Int)
