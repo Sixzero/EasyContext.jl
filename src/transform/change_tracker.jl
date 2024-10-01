@@ -53,13 +53,12 @@ function parse_source(source::String)
 end
 
 function get_updated_content(source::String)
-    println("OK")
     file_path, line_range = parse_source(source)
     !isfile(file_path) && (@warn "File not found: $file_path"; return nothing)
-    isnothing(line_range) && return read(file_path, String)
-    lines = readlines(file_path)
-    @assert join(lines, "\n") == read(file_path,String)
-    return join(lines[line_range[1]:min(line_range[2], length(lines))], "\n") # TODO unittest because we cut the last enter somehow!?
+    content = read(file_path, String)
+    isnothing(line_range) && return content
+    lines = split(content, '\n')
+    return join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
 end
 
 to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)

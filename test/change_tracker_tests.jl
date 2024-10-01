@@ -87,7 +87,7 @@ using Random
     # end
 
     @testset "Default source parser with temporary file" begin
-        function append!(file_path::String, content::String)
+        function append_content!(file_path::String, content::String)
             open(file_path, "a") do io
                 write(io, content)
             end
@@ -103,7 +103,7 @@ using Random
         
         # First run
         src_content = OrderedDict{String,String}(
-            temp_file => get_chunk_standard_format(temp_file, read(temp_file, String))
+            temp_file => read(temp_file, String)
         )
         updated_tracker, updated_content = tracker(src_content)
 
@@ -112,11 +112,11 @@ using Random
         @test updated_content == src_content
 
         # Modify the file
-        append!(temp_file, "\nAdditional content")
+        append_content!(temp_file, "\nAdditional content")
 
         # Second run
         src_content = OrderedDict{String,String}(
-            temp_file => get_chunk_standard_format(temp_file, read(temp_file, String))
+            temp_file => read(temp_file, String)
         )
         updated_tracker, updated_content = tracker(src_content)
 
