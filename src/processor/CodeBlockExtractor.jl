@@ -52,3 +52,18 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
     return nothing
 end
 
+
+to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)
+to_string(tag::String, element::String, shell_results::AbstractDict{String, CodeBlock}) = begin
+    return isempty(shell_results) ? "" : """
+    <$tag>
+    $(join(["""<$element shortened>
+    $(get_shortened_code(codestr(codeblock)))
+    </$element>
+    <$(SHELL_RUN_RESULT)>
+    $(codeblock.run_results[end])
+    </$(SHELL_RUN_RESULT)>
+    """ for (code, codeblock) in shell_results], "\n"))
+    </$tag>
+    """
+end

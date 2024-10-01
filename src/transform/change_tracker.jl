@@ -49,20 +49,6 @@ function get_updated_content(source::String)
     return join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
 end
 
-to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)
-to_string(tag::String, element::String, shell_results::AbstractDict{String, CodeBlock}) = begin
-    return isempty(shell_results) ? "" : """
-    <$tag>
-    $(join(["""<$element shortened>
-    $(get_shortened_code(codestr(codeblock)))
-    </$element>
-    <$(SHELL_RUN_RESULT)>
-    $(codeblock.run_results[end])
-    </$(SHELL_RUN_RESULT)>
-    """ for (code, codeblock) in shell_results], "\n"))
-    </$tag>
-    """
-end
 
 to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = begin
     output = ""
