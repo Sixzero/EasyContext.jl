@@ -33,9 +33,9 @@ Fields:
             ShellContext(),
             # AllProjectContext(),
             CodebaseContextV2(),
-            # GoogleContext(),
+            # GoogleLoader(),
             # JuliaLoader(),
-            # PythonPackageContext(),
+            # PythonLoader(),
         ]
     )
     keep::Int = 9

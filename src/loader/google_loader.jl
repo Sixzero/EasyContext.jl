@@ -1,12 +1,12 @@
 using PromptingTools
 using PromptingTools.Experimental.APITools: create_websearch
 
-@kwdef mutable struct GoogleContext <: AbstractContextProcessor
+@kwdef mutable struct GoogleLoader <: AbstractLoader
     max_results::Int = 5
     include_answer::Bool = true
 end
 
-function get_context(processor::GoogleContext, question::String, ai_state=nothing, shell_results=nothing)
+function (processor::GoogleLoader)(question::String)
     
     # Perform web search using Tavily API
     search_result = create_websearch(
@@ -30,6 +30,6 @@ function get_context(processor::GoogleContext, question::String, ai_state=nothin
     return formatted_results
 end
 
-function cut_history!(processor::GoogleContext, keep::Int)
+function cut_history!(processor::GoogleLoader, keep::Int)
     # Reset the call counter when cutting history
 end

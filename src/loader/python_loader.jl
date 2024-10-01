@@ -6,20 +6,16 @@ using PromptingTools.Experimental.RAGTools
     location::String
 end
 
-@kwdef mutable struct PythonPackageContext <: AbstractContextProcessor
-    context_node::ContextNode = ContextNode(tag="PythonPackages", element="Pkg")
+@kwdef mutable struct PythonLoader <: AbstractLoader
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
     index_builder::AbstractIndexBuilder = MultiIndexBuilder()
     packages::Vector{PythonPkgInfo} = PythonPkgInfo[]
 end
 
-function get_context(context::PythonPackageContext, question::String, ai_state=nothing, shell_results=nothing)
+function get_context(context::PythonLoader, question::String, ai_state=nothing, shell_results=nothing)
     pkg_infos = get_python_package_infos(context.packages)
     result = get_context(context.index_builder, question; data=pkg_infos)
-
-    add_or_update_source!(processor.context_node, result.sources, result.context)
-    
-    return processor.context_node
+    return  Dict(result.sources .=> result.context)
 end
 
 function get_python_package_infos(packages::Vector{PythonPkgInfo})
@@ -49,9 +45,9 @@ function get_package_description(package_name::String)
     return "Description not available"
 end
 
-function cut_history!(processor::PythonPackageContext, keep::Int)
-    cut_history!(processor.context_node, keep)
-end
+# function cut_history!(processor::PythonLoader, keep::Int)
+#     cut_history!(processor.context_node, keep)
+# end
 
 # Helper function to find Python packages
 function find_python_packages()

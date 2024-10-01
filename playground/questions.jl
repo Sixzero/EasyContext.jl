@@ -289,7 +289,7 @@ ai"Are you here?"claudeh
 #%%
 using EasyContext
 using EasyContext: get_answer, get_context, JuliaLoader, format_context_node
-using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, MultiIndexBuilder, ContextNode, Pipe
+using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, MultiIndexBuilder, Pipe
 import EasyContext: get_context, RAGContext, ReduceRankGPTReranker
 using PromptingTools: pprint
 # question = "I need to walk packages. I also want to track whether I could trace in a stack which modules I am in currently."
@@ -389,7 +389,7 @@ index = build_index(ctxer.index_builder, pkg_infos, force_rebuild=true)
 #%%
 reduce(hcat,[randn(20,2), randn(20,3)])
 #%%
-using EasyContext: GoogleContext, get_context, CodebaseContext, JuliaLoader
+using EasyContext: GoogleLoader, get_context, CodebaseContext, JuliaLoader
 
 question = "Could we create a file which would use jina or voyage or some ColBERT type multi vector embedding solution?"
 question = "Could we create a file which would use jina or voyage or some ColBERT type embedder for code embedding?"
@@ -401,7 +401,7 @@ Closest candidates are:
 question = "What packages could I use for BM25 implementation?"
 
 ctxer = CodebaseContext()
-ctxer = GoogleContext()
+ctxer = GoogleLoader()
 ctxer = JuliaLoader()
 res = get_context(ctxer, question, nothing, nothing)
 println(res);

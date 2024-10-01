@@ -1,5 +1,5 @@
 using PromptingTools.Experimental.RAGTools
-using PromptingTools.Experimental.RAGTools: SimpleIndexer
+using PromptingTools.Experimental.RAGTools: SimpleIndexer, AbstractReranker
 using JLD2
 
 function get_embedding_context(index::RAG.AbstractChunkIndex, question::String)

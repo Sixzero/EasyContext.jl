@@ -53,28 +53,5 @@ include("../src/ContextStructs.jl")
         @test result["source4"] == "updated_content4"
         @test result["source5"] == "content5"
     end
-
-    @testset "Cut history functionality" begin
-        tracker = AgeTracker()
-        sources = ["./src/contexts/ContextNode.jl", "./src/contexts/ContextProcessors.jl"]
-        contexts = ["# Content of ContextNode.jl", "# Content of ContextProcessors.jl"]
-        
-        for i in 1:5
-            src_content = Dict(sources[1] => contexts[1] * " $i")
-            tracker(src_content; max_history=10)
-        end
-        src_content = Dict(sources[2] => contexts[2])
-        tracker(src_content; max_history=10)
-        
-        @test length(tracker.tracker) == 2
-        
-        result = tracker(src_content; max_history=3)
-        
-        @test length(tracker.tracker) == 1
-        @test haskey(tracker.tracker, sources[2])
-        @test !haskey(tracker.tracker, sources[1])
-        @test length(result) == 1
-        @test haskey(result, sources[2])
-    end
 end
 

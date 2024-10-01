@@ -5,7 +5,7 @@ abstract type AbstractContextProcessor end
 
 # Include ContextNode definition
 include("CTXAbstract.jl")
-include("ContextNode.jl")
+# include("ContextNode.jl")
 # Include other context processors
 # include("CodebaseUtils.jl")
 # include("AllProjectContext.jl")
@@ -13,9 +13,6 @@ include("ContextNode.jl")
 # include("CodebaseContextV2.jl")
 # include("CodebaseContextV3.jl")
 include("CTXQuestion.jl")
-include("EmbeddingContext.jl")
-include("GoogleContext.jl")
-include("PythonPackageContext.jl")
 # include("ShellContext.jl")
 
 include("CTXConversation.jl")

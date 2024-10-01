@@ -1,4 +1,4 @@
-@kwdef mutable struct JuliaLoader <: AbstractContextProcessor
+@kwdef mutable struct JuliaLoader <: AbstractLoader
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
     cache::Union{Nothing, Tuple{Vector{String}, Vector{String}}} = nothing  # TODO cache should be modular!
     last_pkg_hash::String = ""                                              # this is ALSO only cache!! coudl be the filename
