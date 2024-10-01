@@ -1,9 +1,10 @@
 
 @kwdef mutable struct LoadingSpinner
+	message::String="Progressing..."
 	running::Ref{Bool}=true
 end
 function (sp::LoadingSpinner)()
-	p = ProgressUnknown("Progressing...", spinner=true)
+	p = ProgressUnknown(message, spinner=true)
 	@async_showerr begin
 			while !istaskdone(current_task()) && sp.running[]
 					ProgressMeter.next!(p)  # Update spinner without incrementing progress

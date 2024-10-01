@@ -10,3 +10,6 @@ is_really_empty(user_question) = isempty(strip(user_question))
 genid() = string(UUIDs.uuid4()) 
 
 
+
+home_abrev(path::AbstractString) = startswith(path, homedir()) ? joinpath("~", relpath(path, homedir())) : path
+

@@ -11,10 +11,5 @@ function find_package_path(package_name::String)
   
   pkg_info::Pkg.API.PackageInfo = Pkg.dependencies()[pkg]
   full_path = pkg_info.source
-  home_dir = homedir()
-  if startswith(full_path, home_dir)
-    return replace(full_path, home_dir => "~")
-  else
-    return full_path
-  end
+  home_abrev(full_path)
 end

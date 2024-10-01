@@ -1,5 +1,11 @@
 
-using DataStructures: OrderedDict
+
+const colors = Dict{Symbol, Symbol}(
+    :NEW       => :blue,
+    :UPDATED   => :yellow,
+    :UNCHANGED => :light_black,
+    :DELETED   => :red,
+)
 
 @kwdef mutable struct ChangeTracker
     changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
@@ -27,11 +33,6 @@ function (tracker::ChangeTracker)(src_content)
     return tracker, src_content
 end
 
-const colors = Dict{Symbol, Symbol}(
-    :NEW => :blue,
-    :UPDATED => :yellow,
-    :UNCHANGED => :light_black,
-)
 
 function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
     printstyled("Number of $item_type selected: ", color=:green, bold=true)
@@ -41,7 +42,7 @@ function print_context_updates(tracker::ChangeTracker; deleted, item_type::Strin
         printstyled("  [$s] $item\n", color=colors[s])
     end
     for item in deleted
-        printstyled("  [DELETED] $item\n", color=:red)
+        printstyled("  [DELETED] $item\n", color=colors[:DELETED])
     end
 end
 

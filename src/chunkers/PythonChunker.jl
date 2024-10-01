@@ -65,7 +65,7 @@ function process_py_file(file_path, import_paths::Vector{String}, verbose::Bool=
     verbose && @info "Processing Python file: $file_path"
     s = read(file_path, String)
     lines = split(s, '\n')
-    defs = source_explorer(lines; file_path=convert_path_to_tilde(file_path), import_path=import_paths, verbose)
+    defs = source_explorer(lines; file_path=home_abrev(file_path), import_path=import_paths, verbose)
     defs
 end
 

@@ -12,10 +12,6 @@ include("PythonChunker.jl")
 
 struct SourceChunker <: AbstractChunker end
 
-# Function to convert paths to use tilde notation
-function convert_path_to_tilde(path::AbstractString)
-    return replace(path, homedir() => "~")
-end
 
 function RAG.get_chunks(chunker::SourceChunker,
         items::Vector{<:Any};
@@ -43,7 +39,7 @@ function RAG.get_chunks(chunker::SourceChunker,
     end
 
     # Convert paths to use tilde notation
-    output_sources = [convert_path_to_tilde(source) for source in output_sources]
+    output_sources = [home_abrev(source) for source in output_sources]
 
     return output_chunks, output_sources, extras
 end

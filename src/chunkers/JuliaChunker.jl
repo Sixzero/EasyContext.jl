@@ -65,7 +65,7 @@ function process_jl_file(file_path, modules::Vector{String}, verbose::Bool=false
   # @show typeof(expr2)
   expr = Meta.parseall(s)       
   lines = split(s, '\n')
-  defs = source_explorer(expr, lines; file_path=convert_path_to_tilde(file_path), module_stack=modules, verbose)
+  defs = source_explorer(expr, lines; file_path=home_abrev(file_path), module_stack=modules, verbose)
   defs
 end
 
