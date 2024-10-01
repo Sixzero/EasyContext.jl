@@ -9,6 +9,7 @@ const colors = Dict{Symbol, Symbol}(
 
 @kwdef mutable struct ChangeTracker
     changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
+    content::OrderedDict{String, String} = OrderedDict{String, String}()
     source_parser::Function = default_source_parser
 end
 
@@ -18,18 +19,29 @@ function default_source_parser(source::String, current_content::String)
 end
 
 function (tracker::ChangeTracker)(src_content::Context)
-    existing_keys = keys(src_content.d)
-    filter!(pair -> pair.first in existing_keys, tracker.changes)
+    current_keys = keys(src_content.d)
+    deleted_keys = [k for k in keys(tracer.changes) if !(k in current_keys)]
+    for k in deleted_keys
+        delete!(tracker.changes, k)
+        delete!(tracker.content, k)
+    end
 
     for (source, content) in src_content.d
         if !haskey(tracker.changes, source)
             tracker.changes[source] = :NEW
+            tracker.content[source] = content
             continue
         end
         new_content = tracker.source_parser(source, content)
-        tracker.changes[source] = content == new_content ? :UNCHANGED : :UPDATED
+        if tracker.content[source] == new_content
+            tracker.changes[source] = :UNCHANGED
+        else
+            tracker.changes[source] = :UPDATED
+            tracker.content[source] = new_content
+            src_content.d[source]   = new_content
+        end
     end
-    print_context_updates(tracker; deleted=[k for k in existing_keys if !(k in keys(tracker.changes))], item_type="sources")
+    print_context_updates(tracker; deleted=deleted_keys, item_type="sources")
     return tracker, src_content
 end
 

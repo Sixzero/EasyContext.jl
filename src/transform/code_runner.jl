@@ -1,6 +1,6 @@
 
 codeblock_runner(extractor::CodeBlockExtractor) = begin
-    !extractor.skip_code_execution ? execute_shell_commands(extractor; no_confirm=extractor.no_confirm) : OrderedDict{String, CodeBlock}()
+    return !extractor.skip_code_execution ? execute_shell_commands(extractor; no_confirm=extractor.no_confirm) : OrderedDict{String, CodeBlock}()
 end
 
 function execute_shell_commands(extractor::CodeBlockExtractor; no_confirm=false)
