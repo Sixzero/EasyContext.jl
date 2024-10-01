@@ -2,6 +2,8 @@ using PromptingTools: recursive_splitter
 using PromptingTools.Experimental.RAGTools
 const RAG = RAGTools
 
+export FullFileChunker
+
 @kwdef struct FullFileChunker <: AbstractChunker 
     separators::Vector{String}=["\n"]
     max_length::Int=10000

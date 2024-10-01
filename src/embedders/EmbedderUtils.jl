@@ -13,7 +13,7 @@ include("OpenAIBatchEmbedder.jl")
 include("JinaEmbedder.jl")
 include("VoyageEmbedder.jl")
 include("CacheBatchEmbedder.jl")
-include("SimpleCombinedIndexBuilder.jl")
+include("CombinedIndexBuilder.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
@@ -52,8 +52,8 @@ end
     top_k::Int=200
 end
 
-function get_index(builder::BM25IndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
-    hash_str = hash("$(chunks)")
+function get_index(builder::BM25IndexBuilder, ctx::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)    
+    hash_str = hash("$(ctx)")
     cache_file = joinpath(CACHE_DIR, "bm25_index_$(hash_str).jld2")
 
     if !isnothing(builder.cache)
@@ -62,7 +62,7 @@ function get_index(builder::BM25IndexBuilder, chunks::OrderedDict{String, String
         builder.cache = JLD2.load(cache_file, "index")
         return builder.cache
     else
-        chunks, sources = values(chunks), keys(chunks)
+        chunks, sources = values(ctx), keys(ctx)
         processor = builder.processor
         
         dtm = RAG.get_keywords(processor, chunks;

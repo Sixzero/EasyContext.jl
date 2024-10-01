@@ -1,5 +1,7 @@
 include("token_counter.jl")
 
+export WorkspaceLoader
+
 @kwdef mutable struct Workspace
 	project_paths::Vector{String}
 	rel_project_paths::Vector{String}=String[]
@@ -11,6 +13,7 @@ WorkspaceLoader(project_paths::Vector{String}=String[]) = begin
 		common_path !== "" && (cd(common_path); println("Project path initialized: $(common_path)"))
     Workspace(project_paths, rel_project_paths, common_path)
 end
+
 
 (ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws.rel_project_paths)...)
 function (ws::Workspace)(chunker)
@@ -103,4 +106,3 @@ function print_tree_line(parts, depth, is_last_file, is_last_part, remaining_pat
 end
 
 format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
-
