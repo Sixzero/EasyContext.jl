@@ -4,7 +4,7 @@ abstract type AbstractContextProcessor end
 
 
 # Include ContextNode definition
-include("core.jl")
+include("CTXAbstract.jl")
 include("ContextNode.jl")
 # Include other context processors
 # include("CodebaseUtils.jl")
@@ -17,9 +17,8 @@ include("EmbeddingContext.jl")
 include("GoogleContext.jl")
 include("JuliaPackageContext.jl")
 include("PythonPackageContext.jl")
-include("ShellContext.jl")
+# include("ShellContext.jl")
 
-include("processor_codeblockextractor.jl")
 include("CTXConversation.jl")
 
 
