@@ -1,6 +1,6 @@
 @kwdef mutable struct JuliaPackageContext <: AbstractContextProcessor
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
-    chunker::GolemSourceChunker=GolemSourceChunker()
+    chunker::SourceChunker=SourceChunker()
     cache::Union{Nothing, Tuple{Vector{String}, Vector{String}}} = nothing
     last_pkg_hash::String = ""
 end

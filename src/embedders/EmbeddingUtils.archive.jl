@@ -2,7 +2,7 @@
 
 # Old BM25IndexBuilder
 @kwdef mutable struct OldBM25IndexBuilder <: AbstractIndexBuilder
-  chunker::RAG.AbstractChunker = GolemSourceChunker()
+  chunker::RAG.AbstractChunker = SourceChunker()
   processor::RAG.AbstractProcessor = RAG.KeywordsProcessor()
   tagger::RAG.AbstractTagger = RAG.NoTagger()
   cache::Union{Nothing, RAG.AbstractChunkIndex} = nothing
@@ -10,7 +10,7 @@ end
 
 # Old JinaEmbeddingIndexBuilder
 @kwdef mutable struct OldJinaEmbeddingIndexBuilder <: AbstractIndexBuilder
-  chunker::RAG.AbstractChunker = GolemSourceChunker()
+  chunker::RAG.AbstractChunker = SourceChunker()
   embedder::RAG.AbstractEmbedder = CachedBatchEmbedder(
       embedder=JinaEmbedder(
           model="jina-embeddings-v2-base-code",

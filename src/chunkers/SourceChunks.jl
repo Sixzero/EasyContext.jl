@@ -7,18 +7,17 @@ import JuliaSyntax: @K_str, kind
 using Pkg
 using ProgressMeter
 
-include("GolemUtils.jl")
-include("GolemJuliaChunker.jl")
-include("GolemPythonChunker.jl")
+include("JuliaChunker.jl")
+include("PythonChunker.jl")
 
-struct GolemSourceChunker <: AbstractChunker end
+struct SourceChunker <: AbstractChunker end
 
 # Function to convert paths to use tilde notation
 function convert_path_to_tilde(path::AbstractString)
     return replace(path, homedir() => "~")
 end
 
-function RAG.get_chunks(chunker::GolemSourceChunker,
+function RAG.get_chunks(chunker::SourceChunker,
         items::Vector{<:Any};
         sources::AbstractVector{<:AbstractString} = String[],
         verbose::Bool = false)
@@ -49,7 +48,7 @@ function RAG.get_chunks(chunker::GolemSourceChunker,
     return output_chunks, output_sources, extras
 end
 
-function process_file(chunker::GolemSourceChunker, file_path::AbstractString, source::AbstractString, 
+function process_file(chunker::SourceChunker, file_path::AbstractString, source::AbstractString, 
                       output_chunks::Vector{SubString{String}}, output_sources::Vector{String}, verbose::Bool)
     if endswith(lowercase(file_path), ".jl")
         julia_chunker = JuliaSourceChunker()
@@ -66,7 +65,7 @@ function process_file(chunker::GolemSourceChunker, file_path::AbstractString, so
     append!(output_sources, src)
 end
 
-function process_package(chunker::GolemSourceChunker, pkg_info::Pkg.API.PackageInfo, 
+function process_package(chunker::SourceChunker, pkg_info::Pkg.API.PackageInfo, 
                          output_chunks::Vector{SubString{String}}, output_sources::Vector{String}, verbose::Bool)
     pkg_path = pkg_info.source
     if isnothing(pkg_path)

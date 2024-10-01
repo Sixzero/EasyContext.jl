@@ -514,8 +514,8 @@ pkg_infos = [info for (uuid, info) in all_dependencies if info.name in ["DiffLib
 #%%
 using PromptingTools
 const RAG = PromptingTools.Experimental.RAGTools
-using EasyContext: GolemSourceChunker, CachedBatchEmbedder
-chunker = GolemSourceChunker()
+using EasyContext: SourceChunker, CachedBatchEmbedder
+chunker = SourceChunker()
 indexer = RAG.SimpleIndexer(;
     chunker, 
     embedder=CachedBatchEmbedder(;model="text-embedding-3-small"), 
@@ -526,7 +526,7 @@ index = RAG.build_index(indexer, pkg_infos; embedder_kwargs=(;model=indexer.embe
 #%%
 using PromptingTools
 const RAG = PromptingTools.Experimental.RAGTools
-using EasyContext: GolemSourceChunker, CachedBatchEmbedder
+using EasyContext: SourceChunker, CachedBatchEmbedder
 question = "How can we use DiffLib.jl library in julia for reconstructing a 3rd file from 2 file?"
 using EasyContext: GLOBAL_INDEX
 # index = GLOBAL_INDEX[]
@@ -545,7 +545,7 @@ println.(collect(index[reranked_candidates, :sources, sorted = true]))
 #%%
 using PromptingTools
 const RAG = PromptingTools.Experimental.RAGTools
-using EasyContext: GolemSourceChunker, CachedBatchEmbedder
+using EasyContext: SourceChunker, CachedBatchEmbedder
 question = "How can we use DiffLib.jl library in julia for reconstructing a 3rd file from 2 file?"
 using EasyContext: GLOBAL_INDEX
 index = GLOBAL_INDEX[]
