@@ -1,32 +1,10 @@
 
 
-const path_separator="/"
-
 const IGNORE_FILES = [".gitignore", ".aishignore"]
 
-const PROJECT_FILES = [
-    "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
-    "README.md", 
-    "Gemfile", "Cargo.toml"# , "Project.toml"
-]
 
-const FILE_EXTENSIONS = [
-    "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
-    "html", "css", "scss", "sass", "less", "js", "jsx", "ts", "tsx", "php", "vue", "svelte",
-    "py", "pyw", "ipynb", "rb", "rake", "gemspec", "java", "kt", "kts", "groovy", "scala",
-    "clj", "c", "h", "cpp", "hpp", "cc", "cxx", "cs", "csx", "go", "rs", "swift", "m", "mm",
-    "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
-    "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
-    "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml"
-]
-const FILTERED_FOLDERS = ["spec", "specs", "examples", "docs", "dist", "python", "benchmarks", "node_modules", 
-"conversations", "archived", "archive", "test_cases", ".git" ,"playground"]
-const IGNORED_FILE_PATTERNS = [".log", "config.ini", "secrets.yaml", "Manifest.toml", ".gitignore", ".aiignore", ".aishignore", "Project.toml"] # , "README.md"
-
-
-
-is_project_file(lowered_file) = lowered_file in PROJECT_FILES || any(endswith(lowered_file, "." * ext) for ext in FILE_EXTENSIONS)
-ignore_file(file) = any(endswith(file, pattern) for pattern in IGNORED_FILE_PATTERNS)
+is_project_file(w, lowered_file) = lowered_file in w.PROJECT_FILES || any(endswith(lowered_file, "." * ext) for ext in w.FILE_EXTENSIONS)
+ignore_file(w, file) = any(endswith(file, pattern) for pattern in w.IGNORED_FILE_PATTERNS)
 
 function parse_ignore_file(root, filename)
     ignore_path = joinpath(root, filename)
@@ -41,9 +19,9 @@ function parse_ignore_file(root, filename)
     return patterns
 end
 
-function parse_ignore_files(root)
+function parse_ignore_files(w, root)
     patterns = String[]
-    for ignore_file in IGNORE_FILES
+    for ignore_file in w.IGNORE_FILES
         ignore_path = joinpath(root, ignore_file)
         if isfile(ignore_path)
             append!(patterns, readlines(ignore_path))
@@ -80,24 +58,24 @@ function is_ignored_by_patterns(file, ignore_patterns, root)
     return false
 end
 
-function get_project_files(paths::Vector{String})
+function get_project_files(w)
     all_files = String[]
-    for path in paths
-        append!(all_files, get_project_files(path))
+    for path in w.rel_project_paths
+        append!(all_files, get_project_files(w, path))
     end
     return all_files
 end
-function get_project_files(path::String)
+function get_project_files(w, path::String)
     files = String[]
     ignore_cache = Dict{String, Vector{String}}()
     ignore_stack = Pair{String, Vector{String}}[]
     
     for (root, dirs, files_in_dir) in walkdir(path, topdown=true)
-        any(d -> d in FILTERED_FOLDERS, splitpath(root)) && (empty!(dirs); continue)
+        any(d -> d in w.FILTERED_FOLDERS, splitpath(root)) && (empty!(dirs); continue)
         
         # Read and cache ignore patterns for this directory
         if !haskey(ignore_cache, root)
-            res = parse_ignore_files(root)
+            res = parse_ignore_files(w, root)
             if !isempty(res)
                 ignore_cache[root] = res
                 push!(ignore_stack, root => res)
@@ -110,8 +88,8 @@ function get_project_files(path::String)
         
         for file in files_in_dir
             file_path = joinpath(root, file)
-            if is_project_file(lowercase(file)) && 
-               !ignore_file(file_path) && 
+            if is_project_file(w, lowercase(file)) && 
+               !ignore_file(w, file_path) && 
                !is_ignored_by_patterns(file_path, ignore_patterns, ignore_root)
                 push!(files, file_path)
             end
@@ -135,6 +113,11 @@ end
 
 
 
+const comment_map = Dict{String, Tuple{String,String}}(
+        ".jl" => ("#", ""), ".py" => ("#", ""), ".sh" => ("#", ""), ".bash" => ("#", ""), ".zsh" => ("#", ""), ".r" => ("#", ""), ".rb" => ("#", ""),
+        ".js" => ("//", ""), ".ts" => ("//", ""), ".cpp" => ("//", ""), ".c" => ("//", ""), ".java" => ("//", ""), ".cs" => ("//", ""), ".php" => ("//", ""), ".go" => ("//", ""), ".rust" => ("//", ""), ".swift" => ("//", ""),
+        ".html" => ("<!--", "-->"), ".xml" => ("<!--", "-->")
+)
 
 
 function format_file_content(file)
@@ -142,13 +125,7 @@ function format_file_content(file)
 	relative_path = relpath(file, pwd())
 
 	ext = lowercase(splitext(file)[2])
-	comment_map = Dict(
-			".jl" => ("#", ""), ".py" => ("#", ""), ".sh" => ("#", ""), ".bash" => ("#", ""), ".zsh" => ("#", ""), ".r" => ("#", ""), ".rb" => ("#", ""),
-			".js" => ("//", ""), ".ts" => ("//", ""), ".cpp" => ("//", ""), ".c" => ("//", ""), ".java" => ("//", ""), ".cs" => ("//", ""), ".php" => ("//", ""), ".go" => ("//", ""), ".rust" => ("//", ""), ".swift" => ("//", ""),
-			".html" => ("<!--", "-->"), ".xml" => ("<!--", "-->")
-	)
-
-	comment_prefix, comment_suffix = get(comment_map, ext, ("#", ""))
+    comment_prefix, comment_suffix = get(comment_map, ext, ("#", ""))
 
 	return """
 	File: $(relative_path)

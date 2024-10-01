@@ -2,20 +2,45 @@ include("token_counter.jl")
 
 export WorkspaceLoader
 
+
+const path_separator="/"
+
 @kwdef mutable struct Workspace
 	project_paths::Vector{String}
 	rel_project_paths::Vector{String}=String[]
 	common_path::String=""
+	PROJECT_FILES::Vector{String} = [
+    "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
+    "README.md", 
+    "Gemfile", "Cargo.toml"# , "Project.toml"
+	]
+	FILE_EXTENSIONS::Vector{String} = [
+    "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
+    "html", "css", "scss", "sass", "less", "js", "jsx", "ts", "tsx", "php", "vue", "svelte",
+    "py", "pyw", "ipynb", "rb", "rake", "gemspec", "java", "kt", "kts", "groovy", "scala",
+    "clj", "c", "h", "cpp", "hpp", "cc", "cxx", "cs", "csx", "go", "rs", "swift", "m", "mm",
+    "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
+    "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
+    "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml"
+	]
+	FILTERED_FOLDERS::Vector{String} = [
+		"spec", "specs", "examples", "docs", "dist", "python", "benchmarks", "node_modules", 
+		"conversations", "archived", "archive", "test_cases", ".git" ,"playground"
+	]
+	IGNORED_FILE_PATTERNS::Vector{String} = [
+		".log", "config.ini", "secrets.yaml", "Manifest.toml", ".gitignore", ".aiignore", ".aishignore", "Project.toml" # , "README.md"
+	]
+
+
 end
 
 WorkspaceLoader(project_paths::Vector{String}=String[]) = begin
 		common_path, rel_project_paths = find_common_path_and_relatives(project_paths)
 		common_path !== "" && (cd(common_path); println("Project path initialized: $(common_path)"))
-    Workspace(project_paths, rel_project_paths, common_path)
+    Workspace(;project_paths, rel_project_paths, common_path)
 end
 
-
-(ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws.rel_project_paths)...)
+(ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws)...)
 function (ws::Workspace)(chunker)
 	chunks, sources = RAGTools.get_chunks(chunker, ws())
 	return OrderedDict(sources .=> chunks)
@@ -53,10 +78,10 @@ function commonprefix(paths)
 end
 
 
-print_project_tree(paths::Vector{String}; show_tokens::Bool=false) = print_project_tree.(paths; show_tokens)
-print_project_tree(w::Workspace;          show_tokens::Bool=false) = print_project_tree(w.rel_project_paths; show_tokens)
-print_project_tree(path::String;          show_tokens::Bool=false) = begin
-    files = get_project_files(path)
+print_project_tree(w::Workspace;             show_tokens::Bool=false) = print_project_tree(w, w.rel_project_paths; show_tokens)
+print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false) = (print_project_tree(w, path; show_tokens) for path in paths)
+print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
+    files = get_project_files(w, path)
     rel_paths = sort([relpath(f, path) for f in files])
     
     println("Project structure:")

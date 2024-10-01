@@ -1,6 +1,6 @@
 
-mutable struct Context 
-	d::OrderedDict{String, String}
+@kwdef mutable struct Context 
+	d::OrderedDict{String, String}=OrderedDict{String, String}()
 end
 
 (ctx::Context)(new_ctx::Context) = merge!(ctx.d, new_ctx.d)
