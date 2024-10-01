@@ -3,7 +3,7 @@ using Test
 using DataStructures
 import EasyContext
 using EasyContext: ChangeTracker, get_chunk_standard_format
-using EasyContext: get_updated_content
+using EasyContext: get_updated_content, default_source_parser
 using Random
 
 @testset "ChangeTracker tests" begin
@@ -103,7 +103,7 @@ using Random
         
         # First run
         src_content = OrderedDict{String,String}(
-            temp_file => read(temp_file, String)
+            temp_file => default_source_parser(temp_file, "")
         )
         updated_tracker, updated_content = tracker(src_content)
 
@@ -116,7 +116,7 @@ using Random
 
         # Second run
         src_content = OrderedDict{String,String}(
-            temp_file => read(temp_file, String)
+            temp_file => default_source_parser(temp_file, "")
         )
         updated_tracker, updated_content = tracker(src_content)
 
