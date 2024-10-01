@@ -3,7 +3,8 @@
 	d::OrderedDict{String, String}=OrderedDict{String, String}()
 end
 
-(ctx::Context)(new_ctx::Context) = merge!(ctx.d, new_ctx.d)
+(ctx::Context)(new_ctx::Context)                     = (merge!(ctx.d, new_ctx.d); return ctx)
+(ctx::Context)(new_ctx::OrderedDict{String, String}) = (merge!(ctx.d, new_ctx);   return ctx)
 
 SHELL_TAG         = "ShellRunResults"
 SHELL_ELEMENT     = "sh_script"

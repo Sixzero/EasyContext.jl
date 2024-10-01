@@ -17,11 +17,11 @@ function default_source_parser(source::String, current_content::String)
     return get_chunk_standard_format(source, updated_content)
 end
 
-function (tracker::ChangeTracker)(src_content)
-    existing_keys = keys(src_content)
+function (tracker::ChangeTracker)(src_content::Context)
+    existing_keys = keys(src_content.d)
     filter!(pair -> pair.first in existing_keys, tracker.changes)
 
-    for (source, content) in src_content
+    for (source, content) in src_content.d
         if !haskey(tracker.changes, source)
             tracker.changes[source] = :NEW
             continue
