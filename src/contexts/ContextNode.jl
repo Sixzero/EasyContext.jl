@@ -1,4 +1,3 @@
-using DataStructures: OrderedDict
 
 @kwdef mutable struct ContextNode
     tag::String = "Docs"

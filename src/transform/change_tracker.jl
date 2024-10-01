@@ -76,7 +76,7 @@ format_element(element::String, scr_state::ChangeTracker, src_cont::Context, sta
     <$element>
     $content
     </$element>
-    """ for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
+    """ for (src, content) in src_cont.d if scr_state.changes[src] == state], '\n')
 end
 
 

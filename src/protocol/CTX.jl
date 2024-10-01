@@ -1,7 +1,9 @@
 
-const Context = OrderedDict{String, String}
+mutable struct Context 
+	d::OrderedDict{String, String}
+end
 
-(ctx::Context)(new_ctx::Context) = merge!(ctx, new_ctx)
+(ctx::Context)(new_ctx::Context) = merge!(ctx.d, new_ctx.d)
 
 SHELL_TAG         = "ShellRunResults"
 SHELL_ELEMENT     = "sh_script"
