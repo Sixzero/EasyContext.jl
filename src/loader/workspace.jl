@@ -130,7 +130,7 @@ end
 
 
 print_project_tree(w::Workspace;             show_tokens::Bool=false) = print_project_tree(w, w.rel_project_paths; show_tokens)
-print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false) = (print_project_tree(w, path; show_tokens) for path in paths)
+print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false) = [print_project_tree(w, path; show_tokens) for path in paths]
 print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
     files = get_project_files(w, path)
     rel_paths = sort([relpath(f, path) for f in files])
