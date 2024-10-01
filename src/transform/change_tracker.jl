@@ -33,19 +33,6 @@ function (tracker::ChangeTracker)(src_content)
     return tracker, src_content
 end
 
-
-function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
-    printstyled("Number of $item_type selected: ", color=:green, bold=true)
-    printstyled(length(tracker.changes), "\n", color=:green)
-    
-    for (item, s) in tracker.changes
-        printstyled("  [$s] $item\n", color=colors[s])
-    end
-    for item in deleted
-        printstyled("  [DELETED] $item\n", color=colors[:DELETED])
-    end
-end
-
 function parse_source(source::String)
     parts = split(source, ':')
     length(parts) == 1 && return parts[1], nothing
@@ -105,4 +92,17 @@ format_element(element::String, scr_state::ChangeTracker, src_cont::Context, sta
     $content
     </$element>
     """ for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
+end
+
+
+function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
+    printstyled("Number of $item_type selected: ", color=:green, bold=true)
+    printstyled(length(tracker.changes), "\n", color=:green)
+    
+    for (item, s) in tracker.changes
+        printstyled("  [$s] $item\n", color=colors[s])
+    end
+    for item in deleted
+        printstyled("  [DELETED] $item\n", color=colors[:DELETED])
+    end
 end
