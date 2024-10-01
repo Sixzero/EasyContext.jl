@@ -287,7 +287,7 @@ PT.pprint(msg)
 #%%
 ai"Are you here?"claudeh
 #%%
-using EasyContext: get_answer, get_context, JuliaPackageContext, format_context_node, CodebaseContextV2
+using EasyContext: get_answer, get_context, JuliaPackageContext, format_context_node
 using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, MultiIndexBuilder, ContextNode, Pipe
 import EasyContext: get_context, RAGContext, ReduceRankGPTReranker
 using PromptingTools: pprint

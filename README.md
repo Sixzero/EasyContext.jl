@@ -1,5 +1,8 @@
 # EasyContext.jl
 
+EVERYTHING is refactored...
+Docs is lacking behind! Literally everything is changed... so you can check the AISH.jl for example. 
+
 EasyContext.jl is a Julia package that enhances the context-aware capabilities of AI-powered applications. It provides tools for efficient document indexing, embedding, and retrieval, making it easier to build robust Retrieval-Augmented Generation (RAG) systems.
 
 ## Features
