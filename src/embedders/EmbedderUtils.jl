@@ -62,7 +62,7 @@ function get_index(builder::BM25IndexBuilder, ctx::OrderedDict{String, String}; 
         builder.cache = JLD2.load(cache_file, "index")
         return builder.cache
     else
-        chunks, sources = values(ctx), keys(ctx)
+        chunks, sources = collect(values(ctx)), collect(keys(ctx))
         processor = builder.processor
         
         dtm = RAG.get_keywords(processor, chunks;
