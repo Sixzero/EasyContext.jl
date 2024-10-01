@@ -8,14 +8,14 @@ export ProModel, AbstractPyTorchLikeForward
 
 abstract type AbstractPyTorchLikeForward end
 
-@kwdef mutable struct ConversationProcessor
+@kwdef mutable struct ConversationCTX
     max_history::Int = 12
     keep_history::Int = 6
     conv::Vector{AbstractChatMessage} = []
     sys_msg::SystemMessage=SystemMessage()
 end
 
-function (cp::ConversationProcessor)(input)
+function (cp::ConversationCTX)(input)
     conv = cp.conv
     if length(conv) > cp.max_history
         conv = conv[end-cp.keep_history+1:end]
@@ -56,7 +56,7 @@ end
 @kwdef struct ProModel <: AbstractPyTorchLikeForward
     project_paths::Vector{String} = String[]
     state::NamedTuple = (;)
-    conversation_processor::ConversationProcessor
+    conversation_processor::ConversationCTX
     shell_extractor::CodeBlockExtractor
     shell_context::ContextNode = ContextNode(tag="ShellRunResults", element="sh_script")
     codebase_context::ContextNode = ContextNode(tag="Codebase", element="File")
@@ -71,13 +71,13 @@ function (model::ProModel)(question::AbstractString)
             format_shell_results_to_context(model.shell_context, shell_results)
         end,
         :codebase => @async begin
-            question_acc = QuestionAccumulatorProcessor()(question)
+            question_acc = QuestionCTX()(question)
             codebase = CodebaseContextV3(project_paths=model.project_paths)(question_acc)
             reranked = ReduceRankGPTReranker(batch_size=30, model="gpt4om")(codebase)
             model.codebase_context(reranked)
         end,
         :package => @async begin
-            question_acc = QuestionAccumulatorProcessor()(question)
+            question_acc = QuestionCTX()(question)
             package = JuliaPackageContext()(question_acc)
             embedded = EmbeddingIndexBuilder()(package)
             reranked = ReduceRankGPTReranker(batch_size=40)(embedded)
@@ -112,11 +112,11 @@ function (model::ProModel)(question::AbstractString)
     return response, user_meta, ai_meta
 end
 
-function saveUserMsg(cp::ConversationProcessor, msg::AbstractString)
+function saveUserMsg(cp::ConversationCTX, msg::AbstractString)
     AISH.add_n_save_user_message!(cp.ai_state, msg)
 end
 
-function saveAiMsg(cp::ConversationProcessor, msg::AbstractString)
+function saveAiMsg(cp::ConversationCTX, msg::AbstractString)
     push!(cp.conv, AIMessage(msg))
     AISH.add_n_save_ai_message!(cp.ai_state, msg)
 end

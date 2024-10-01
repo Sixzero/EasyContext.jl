@@ -1,10 +1,10 @@
 using Test
 using EasyContext
-using EasyContext: QuestionAccumulatorProcessor
+using EasyContext: QuestionCTX
 
-@testset "QuestionAccumulatorProcessor Tests" begin
+@testset "QuestionCTX Tests" begin
     @testset "Basic functionality" begin
-        qa = QuestionAccumulatorProcessor()
+        qa = QuestionCTX()
         
         # Test single question
         result = qa("First question")
@@ -21,7 +21,7 @@ using EasyContext: QuestionAccumulatorProcessor
     end
 
     @testset "Max questions limit" begin
-        qa = QuestionAccumulatorProcessor(max_questions=3)
+        qa = QuestionCTX(max_questions=3)
         
         qa("Question 1")
         qa("Question 2")
@@ -35,7 +35,7 @@ using EasyContext: QuestionAccumulatorProcessor
     end
 
     @testset "Empty initial state" begin
-        qa = QuestionAccumulatorProcessor()
+        qa = QuestionCTX()
         @test isempty(qa.questions)
         @test qa.max_questions == 5  # default value
     end

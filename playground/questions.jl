@@ -324,9 +324,9 @@ pipe = Pipe([
     ReduceRankGPTReranker(),
     ContextNode(),
 ])
-using EasyContext: QuestionAccumulatorProcessor, CodebaseContextV3
+using EasyContext: QuestionCTX, CodebaseContextV3
 pipe = Pipe([
-    QuestionAccumulatorProcessor(),
+    QuestionCTX(),
     CodebaseContextV3(;project_paths=["."]),
     # MultiIndexBuilder(;builders=[
     #     EmbeddingIndexBuilder(top_k=50),

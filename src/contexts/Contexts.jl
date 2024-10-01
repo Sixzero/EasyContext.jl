@@ -7,13 +7,12 @@ abstract type AbstractContextProcessor end
 include("core.jl")
 include("ContextNode.jl")
 # Include other context processors
-include("GetProjectFiles.jl")
 # include("CodebaseUtils.jl")
 # include("AllProjectContext.jl")
 # include("CodebaseContext.jl")
 # include("CodebaseContextV2.jl")
 # include("CodebaseContextV3.jl")
-include("QuestionAccumulator.jl")
+include("CTXQuestion.jl")
 include("EmbeddingContext.jl")
 include("GoogleContext.jl")
 include("JuliaPackageContext.jl")
@@ -21,8 +20,7 @@ include("PythonPackageContext.jl")
 include("ShellContext.jl")
 
 include("processor_codeblockextractor.jl")
-include("processor_conversation.jl")
-include("processor_persistable.jl")
+include("CTXConversation.jl")
 
 
 function get_processor_description(processor::Symbol, context_node=nothing)
