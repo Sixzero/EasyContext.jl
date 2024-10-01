@@ -21,7 +21,7 @@ The following diagram illustrates the inner workings of EasyContext.jl:
 
 ![EasyContext.jl System Architecture](system_architecture.svg)
 
-This diagram shows how the AsyncContextJoiner orchestrates parallel processing of different context sources (CodebaseContext, ShellContext, and JuliaPackageContext). The results are then used in the indexing and retrieval processes, which feed into the customizable RAG pipeline.
+This diagram shows how the AsyncContextJoiner orchestrates parallel processing of different context sources (CodebaseContext, ShellContext, and JuliaLoader). The results are then used in the indexing and retrieval processes, which feed into the customizable RAG pipeline.
 
 ## Installation
 
@@ -45,7 +45,7 @@ joiner = AsyncContextJoiner(
     processors=[
         CodebaseContextV2(),
         ShellContext(),
-        JuliaPackageContext(),
+        JuliaLoader(),
     ],
     keep=10,
     max_messages=16
@@ -74,7 +74,7 @@ println("Codebase context:")
 println(codebase_context)
 
 # Get context from Julia packages
-package_context = get_context(JuliaPackageContext(), question, ai_state, Dict())
+package_context = get_context(JuliaLoader(), question, ai_state, Dict())
 println("Julia package context:")
 println(package_context)
 
@@ -94,7 +94,7 @@ println(shell_context)
 3. **SourceChunker**: A specialized chunker for Julia source code.
 4. **ReduceRankGPTReranker**: A reranker that uses GPT models to improve retrieval results.
 5. **AsyncContextJoiner**: A component that runs multiple context processors in parallel.
-6. **Various Context Processors**: Including CodebaseContext, ShellContext, and JuliaPackageContext.
+6. **Various Context Processors**: Including CodebaseContext, ShellContext, and JuliaLoader.
 
 ## Advanced Features
 

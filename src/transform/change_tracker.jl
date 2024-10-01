@@ -20,7 +20,7 @@ end
 
 function (tracker::ChangeTracker)(src_content::Context)
     current_keys = keys(src_content.d)
-    deleted_keys = [k for k in keys(tracer.changes) if !(k in current_keys)]
+    deleted_keys = [k for k in keys(tracker.changes) if !(k in current_keys)]
     for k in deleted_keys
         delete!(tracker.changes, k)
         delete!(tracker.content, k)

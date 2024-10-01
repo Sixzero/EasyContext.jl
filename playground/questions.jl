@@ -288,7 +288,7 @@ PT.pprint(msg)
 ai"Are you here?"claudeh
 #%%
 using EasyContext
-using EasyContext: get_answer, get_context, JuliaPackageContext, format_context_node
+using EasyContext: get_answer, get_context, JuliaLoader, format_context_node
 using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, MultiIndexBuilder, ContextNode, Pipe
 import EasyContext: get_context, RAGContext, ReduceRankGPTReranker
 using PromptingTools: pprint
@@ -311,9 +311,9 @@ question = "I would want you to use ReplMaker.jl to create a terminal for AI cha
 # pprint(msg)
 aistate_mock = (conversations=[(;messages=String[], rel_project_paths=".")], selected_conv_id=1, )
 using EasyContext: create_voyage_embedder, create_combined_index_builder
-# ctxer = JuliaPackageContext() * MultiIndexBuilder(;builders=[BM25IndexBuilder()], top_k=100) * rerank(CohereReranker(), top_n=10) * ContextNode(docs="Functions", doc="Function")
+# ctxer = JuliaLoader() * MultiIndexBuilder(;builders=[BM25IndexBuilder()], top_k=100) * rerank(CohereReranker(), top_n=10) * ContextNode(docs="Functions", doc="Function")
 # pipe = Pipe([
-#     JuliaPackageContext(),
+#     JuliaLoader(),
 #     create_voyage_embedder(),
 #     # EmbeddingIndexBuilder(top_k=50),
 #     # create_combined_index_builder(),
@@ -377,11 +377,11 @@ using EasyContext: get_finder
 
 map(get_finder, ctxer.index_builder.builders)
 #%%
-using EasyContext: JuliaPackageContext, BM25IndexBuilder, build_index, JinaEmbedder, JinaEmbeddingIndexBuilder, EmbeddingIndexBuilder
-ctxer = JuliaPackageContext(;index_builder=JinaEmbeddingIndexBuilder(embedder=JinaEmbedder(
+using EasyContext: JuliaLoader, BM25IndexBuilder, build_index, JinaEmbedder, JinaEmbeddingIndexBuilder, EmbeddingIndexBuilder
+ctxer = JuliaLoader(;index_builder=JinaEmbeddingIndexBuilder(embedder=JinaEmbedder(
     model="jina-embeddings-v2-base-code",
 )))
-# ctxer = JuliaPackageContext(;index_builder=EmbeddingIndexBuilder())
+# ctxer = JuliaLoader(;index_builder=EmbeddingIndexBuilder())
 using EasyContext: get_package_infos
 pkg_infos = get_package_infos(:installed)
 pkg_infos = pkg_infos[1:5]
@@ -389,7 +389,7 @@ index = build_index(ctxer.index_builder, pkg_infos, force_rebuild=true)
 #%%
 reduce(hcat,[randn(20,2), randn(20,3)])
 #%%
-using EasyContext: GoogleContext, get_context, CodebaseContext, JuliaPackageContext
+using EasyContext: GoogleContext, get_context, CodebaseContext, JuliaLoader
 
 question = "Could we create a file which would use jina or voyage or some ColBERT type multi vector embedding solution?"
 question = "Could we create a file which would use jina or voyage or some ColBERT type embedder for code embedding?"
@@ -402,7 +402,7 @@ question = "What packages could I use for BM25 implementation?"
 
 ctxer = CodebaseContext()
 ctxer = GoogleContext()
-ctxer = JuliaPackageContext()
+ctxer = JuliaLoader()
 res = get_context(ctxer, question, nothing, nothing)
 println(res);
 #%%

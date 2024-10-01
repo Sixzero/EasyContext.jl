@@ -22,7 +22,7 @@
     <text x="325" y="230" text-anchor="middle" class="component">ShellContext</text>
     
     <rect x="450" y="200" width="150" height="60" fill="#FFFFBA" stroke="black"/>
-    <text x="525" y="230" text-anchor="middle" class="component">JuliaPackageContext</text>
+    <text x="525" y="230" text-anchor="middle" class="component">JuliaLoader</text>
     
     <!-- Indexing and Retrieval -->
     <rect x="50" y="320" width="200" height="80" fill="#FFD1DC" stroke="black"/>

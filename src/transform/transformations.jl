@@ -1,4 +1,6 @@
 
+include("cache.jl")
+
 include("context_combiner.jl")
 include("code_runner.jl")
 include("change_tracker.jl")

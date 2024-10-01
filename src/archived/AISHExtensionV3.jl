@@ -34,7 +34,7 @@ Fields:
             # AllProjectContext(),
             CodebaseContextV2(),
             # GoogleContext(),
-            # JuliaPackageContext(),
+            # JuliaLoader(),
             # PythonPackageContext(),
         ]
     )

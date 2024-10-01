@@ -15,7 +15,6 @@ include("ContextNode.jl")
 include("CTXQuestion.jl")
 include("EmbeddingContext.jl")
 include("GoogleContext.jl")
-include("JuliaPackageContext.jl")
 include("PythonPackageContext.jl")
 # include("ShellContext.jl")
 
@@ -25,7 +24,7 @@ include("CTXConversation.jl")
 function get_processor_description(processor::Symbol, context_node=nothing)
     processor_msg = processor == :ShellResults ? "Shell command results are" :
                     processor == :CodebaseContext ? "Codebase context is" :
-                    processor == :JuliaPackageContext ? "Julia package context functions are" :
+                    processor == :JuliaLoader ? "Julia package context functions are" :
                     ""
     @assert processor_msg != "" "Unknown processor"
 

@@ -78,7 +78,7 @@ function (model::ProModel)(question::AbstractString)
         end,
         :package => @async begin
             question_acc = QuestionCTX()(question)
-            package = JuliaPackageContext()(question_acc)
+            package = JuliaLoader()(question_acc)
             embedded = EmbeddingIndexBuilder()(package)
             reranked = ReduceRankGPTReranker(batch_size=40)(embedded)
             model.package_context(reranked)
@@ -100,7 +100,7 @@ function (model::ProModel)(question::AbstractString)
     sys_msg_ext = ""
     sys_msg_ext *= get_processor_description(:ShellResults, model.shell_context)
     sys_msg_ext *= get_processor_description(:CodebaseContextV3, model.codebase_context)
-    sys_msg_ext *= get_processor_description(:JuliaPackageContext, model.package_context)
+    sys_msg_ext *= get_processor_description(:JuliaLoader, model.package_context)
     # Process through conversation processor and generate response
     processed_input, cache = model.conversation_processor(combined_context)
     

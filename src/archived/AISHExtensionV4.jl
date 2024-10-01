@@ -32,7 +32,7 @@ end
             ContextNode(tag="Codebase", element="File"),
         ]),
         Pipe([
-            JuliaPackageContext(),
+            JuliaLoader(),
             EmbeddingIndexBuilder(;top_k=100),
             ReduceRankGPTReranker(; batch_size=50),
             ContextNode(tag="Functions", element="Function")
@@ -64,7 +64,7 @@ function get_processor_description(::CodebaseContextV3, context_node::Union{Cont
     return "The codebase you are working on will be wrapped in <$(context_node.tag)> and </$(context_node.tag)> tags, with individual files chunks wrapped in <$(context_node.element)> and </$(context_node.element)> tags."
 end
 
-function get_processor_description(::JuliaPackageContext, context_node::Union{ContextNode, Nothing}=nothing)
+function get_processor_description(::JuliaLoader, context_node::Union{ContextNode, Nothing}=nothing)
     if isnothing(context_node)
         return "Function definitions in other existing installed packages will be included."
     end

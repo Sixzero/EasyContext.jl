@@ -1,16 +1,15 @@
-@kwdef mutable struct JuliaPackageContext <: AbstractContextProcessor
+@kwdef mutable struct JuliaLoader <: AbstractContextProcessor
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
-    chunker::SourceChunker=SourceChunker()
-    cache::Union{Nothing, Tuple{Vector{String}, Vector{String}}} = nothing
-    last_pkg_hash::String = ""
+    cache::Union{Nothing, Tuple{Vector{String}, Vector{String}}} = nothing  # TODO cache should be modular!
+    last_pkg_hash::String = ""                                              # this is ALSO only cache!! coudl be the filename
 end
 
-function (context::JuliaPackageContext)(question::String, args...)
-    chunks, sources = get_cached_chunks(context)
-    return RAGContext(SourceChunk(sources, chunks), question)
+function (context::JuliaLoader)(chunker::CHUNKER) where {CHUNKER <: AbstractChunker}
+    chunks, sources = get_cached_chunks(context, chunker)
+    return chunks, sources
 end
 
-function get_cached_chunks(context::JuliaPackageContext)
+function get_cached_chunks(context::JuliaLoader, chunker)
     pkg_infos = get_package_infos(context.package_scope)
     current_hash = hash_pkg_infos(pkg_infos)
     
@@ -27,7 +26,7 @@ function get_cached_chunks(context::JuliaPackageContext)
         return context.cache
     end
     
-    chunks, sources = RAGTools.get_chunks(context.chunker, pkg_infos)
+    chunks, sources = RAGTools.get_chunks(chunker, pkg_infos)
     
     JLD2.save(cache_file, Dict("chunks" => chunks, "sources" => sources))
     
@@ -43,7 +42,7 @@ function hash_pkg_infos(pkg_infos)
     return bytes2hex(sha256(join(pkg_strings, ",")))
 end
 
-function get_context(context::JuliaPackageContext, question::String, ai_state=nothing, shell_results=nothing)
+function get_context(context::JuliaLoader, question::String, ai_state=nothing, shell_results=nothing)
     result = context(question)
     return result
 end
@@ -61,6 +60,6 @@ function get_package_infos(scope::Symbol)
     end
 end
 
-function cut_history!(processor::JuliaPackageContext, keep::Int)
+function cut_history!(processor::JuliaLoader, keep::Int)
     # Implement if needed
 end
