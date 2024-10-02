@@ -1,12 +1,11 @@
 @kwdef mutable struct JuliaLoader <: AbstractLoader
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
-    cache::Union{Nothing, Tuple{Vector{String}, Vector{String}}} = nothing  # TODO cache should be modular!
+    cache::Union{Nothing, OrderedDict{String,String}} = nothing  # TODO cache should be modular!
     last_pkg_hash::String = ""                                              # this is ALSO only cache!! coudl be the filename
 end
 
 function (context::JuliaLoader)(chunker::CHUNKER) where {CHUNKER <: AbstractChunker}
-    chunks, sources = get_cached_chunks(context, chunker)
-    return chunks, sources
+    return get_cached_chunks(context, chunker)
 end
 
 function get_cached_chunks(context::JuliaLoader, chunker)
@@ -17,23 +16,24 @@ function get_cached_chunks(context::JuliaLoader, chunker)
         return context.cache
     end
     
-    cache_file = joinpath(CACHE_DIR, "julia_package_context_$(context.package_scope)_$(current_hash).jld2")
+    cache_file = joinpath(CACHE_DIR, "julia_package_context_$(context.package_scope)_$(current_hash)v5.jld2")
     
     if isfile(cache_file)
         cached_data = JLD2.load(cache_file)
-        context.cache = (cached_data["chunks"], cached_data["sources"])
+        context.cache = cached_data
         context.last_pkg_hash = current_hash
         return context.cache
     end
     
-    chunks, sources = RAGTools.get_chunks(chunker, pkg_infos)
+    _chunks, _sources = RAGTools.get_chunks(chunker, pkg_infos)
+    chunks, sources = String.(_chunks), String.(_sources)
+    context.cache = OrderedDict{String,String}(sources .=> chunks)
     
-    JLD2.save(cache_file, Dict("chunks" => chunks, "sources" => sources))
+    JLD2.save(cache_file, context.cache)
     
-    context.cache = (chunks, sources)
     context.last_pkg_hash = current_hash
     
-    return chunks, sources
+    return context.cache
 end
 
 function hash_pkg_infos(pkg_infos)
