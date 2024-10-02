@@ -27,7 +27,7 @@ function get_cached_chunks(context::JuliaLoader, chunker)
     
     _chunks, _sources = RAGTools.get_chunks(chunker, pkg_infos)
     chunks, sources = String.(_chunks), String.(_sources)
-    context.cache = OrderedDict{String,String}(sources .=> chunks)
+    context.cache = OrderedDict{String,String}(zip(sources, chunks))
     
     JLD2.save(cache_file, context.cache)
     

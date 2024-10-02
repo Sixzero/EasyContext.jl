@@ -4,6 +4,8 @@ using Base.Threads
 const RAG = RAGTools
 const PT = PromptingTools
 
+export ReduceRankGPTReranker
+
 Base.@kwdef struct ReduceRankGPTReranker <: AbstractReranker 
     batch_size::Int=30
     model::AbstractString=PT.MODEL_CHAT

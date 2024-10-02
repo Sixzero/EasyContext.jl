@@ -3,8 +3,9 @@
     tracker::Dict{String, Int} = Dict{String, Int}()
 end
 
-function (tracker::AgeTracker)(src_content::Context; max_history::Int)
-    for source in keys(src_content.d)
+(tracker::AgeTracker)(src_content::Context; max_history::Int) = tracker(src_content.d; max_history=max_history)
+function (tracker::AgeTracker)(src_content::OrderedDict; max_history::Int)
+    for source in keys(src_content)
         tracker.tracker[source] = get(tracker.tracker, source, 0) + 1
     end
 

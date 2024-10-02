@@ -11,6 +11,7 @@ const colors = Dict{Symbol, Symbol}(
     changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
     content::OrderedDict{String, String} = OrderedDict{String, String}()
     source_parser::Function = default_source_parser
+    need_source_reparse::Bool = true
 end
 
 function default_source_parser(source::String, current_content::String)
@@ -18,27 +19,33 @@ function default_source_parser(source::String, current_content::String)
     return get_chunk_standard_format(source, updated_content)
 end
 
-function (tracker::ChangeTracker)(src_content::Context)
-    current_keys = keys(src_content.d)
+(tracker!::ChangeTracker)(src_content::Context) = begin
+    t, d = tracker!(src_content.d)
+    return t, src_content
+end
+function (tracker::ChangeTracker)(src_content::OrderedDict)
+    current_keys = keys(src_content)
     deleted_keys = [k for k in keys(tracker.changes) if !(k in current_keys)]
     for k in deleted_keys
         delete!(tracker.changes, k)
         delete!(tracker.content, k)
     end
 
-    for (source, content) in src_content.d
+    for (source, content) in src_content
         if !haskey(tracker.changes, source)
             tracker.changes[source] = :NEW
             tracker.content[source] = content
             continue
         end
-        new_content = tracker.source_parser(source, content)
-        if tracker.content[source] == new_content
-            tracker.changes[source] = :UNCHANGED
-        else
-            tracker.changes[source] = :UPDATED
-            tracker.content[source] = new_content
-            src_content.d[source]   = new_content
+        if tracker.need_source_reparse
+            new_content = tracker.source_parser(source, content)
+            if tracker.content[source] == new_content
+                tracker.changes[source] = :UNCHANGED
+            else
+                tracker.changes[source] = :UPDATED
+                tracker.content[source] = new_content
+                src_content[source]   = new_content
+            end
         end
     end
     print_context_updates(tracker; deleted=deleted_keys, item_type="sources")
@@ -46,6 +53,7 @@ function (tracker::ChangeTracker)(src_content::Context)
 end
 
 function parse_source(source::String)
+    source = split(source, ' ')[1]
     parts = split(source, ':')
     length(parts) == 1 && return parts[1], nothing
     start_line, end_line = parse.(Int, split(parts[2], '-'))
@@ -62,7 +70,8 @@ function get_updated_content(source::String)
 end
 
 
-to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = begin
+to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = to_string(tag, element, scr_state, src_cont.d)
+to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::OrderedDict) = begin
     output = ""
     new_files = format_element(element, scr_state, src_cont, :NEW)
     if !is_really_empty(new_files)
@@ -83,12 +92,12 @@ to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Cont
     output
 end
 
-format_element(element::String, scr_state::ChangeTracker, src_cont::Context, state::Symbol) = begin
+format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = begin
     join(["""
     <$element>
     $content
     </$element>
-    """ for (src, content) in src_cont.d if scr_state.changes[src] == state], '\n')
+    """ for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
 end
 
 

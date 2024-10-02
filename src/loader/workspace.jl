@@ -45,7 +45,7 @@ end
 (ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws)...)
 function (ws::Workspace)(chunker)
 	chunks, sources = RAGTools.get_chunks(chunker, ws())
-	return OrderedDict(sources .=> chunks)
+	return OrderedDict(zip(sources, chunks))
 end
 
 
