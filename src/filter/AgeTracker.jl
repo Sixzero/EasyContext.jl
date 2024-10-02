@@ -12,7 +12,7 @@ function (tracker::AgeTracker)(src_content::OrderedDict; max_history::Int)
     for (source, age) in tracker.tracker
         if age ≥ max_history
             delete!(tracker.tracker, source)
-            delete!(src_content.d, source)
+            delete!(src_content, source)
         end
     end
     src_content
