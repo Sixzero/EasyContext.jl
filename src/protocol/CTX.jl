@@ -27,7 +27,7 @@ with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE
 shell_format_description()      = "\
 Shell command  will be included in the next user message \
 wrapped in <$(SHELL_TAG)> and </$(SHELL_TAG)> tags, \
-the perviously requested shell script (shortened just for readability) and is in <$(SHELL_ELEMENT)> and </$(SHELL_ELEMENT)> tags, the sh run output is in <sh_output> and </sh_output> tags."
+the perviously requested shell script (shortened just for readability) and is in <$(SHELL_ELEMENT)> and </$(SHELL_ELEMENT)> tags, the sh run output is in <$(SHELL_RUN_RESULT)> and </$(SHELL_RUN_RESULT)> tags."
 julia_format_description()      = "\
 The Julia function definitions in other existing installed packages will be in the user message and \
 wrapped in <$(JULIA_TAG)> and </$(JULIA_TAG)> tags, \
