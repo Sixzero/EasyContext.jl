@@ -35,11 +35,11 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     close(out_pipe.in); close(err_pipe.in)
     
     @async for line in eachline(out_pipe)
-        println(line)
+        println(line); flush(stdout)
         write(output, line * "\n")
     end
     @async for line in eachline(err_pipe)
-        println(stderr, line)
+        println(stderr, line); flush(stderr)
         write(error, line * "\n")
     end
     

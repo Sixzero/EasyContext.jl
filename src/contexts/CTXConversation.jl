@@ -5,7 +5,7 @@
 	max_history::Int = 10
 end
 
-Anthropic.ai_stream_safe(conv::ConversationCTX; model, system_msg=conv.conv.system_message, max_tokens::Int=MAX_TOKEN, printout=true, cache=nothing) = ai_stream_safe(conv.conv; system_msg, model, max_tokens, printout, cache)
+ai_stream(conv::ConversationCTX; model, system_msg=conv.conv.system_message, max_tokens::Int=MAX_TOKEN, printout=true, cache=nothing) = ai_stream(conv.conv; system_msg, model, max_tokens, printout, cache)
 
 ConversationCTX_from_sysmsg(;sys_msg::String) = ConversationCTX(
 	conv=Conversation(system_message=Message(timestamp=now(UTC), role=:system, content=sys_msg), messages=Message[]),

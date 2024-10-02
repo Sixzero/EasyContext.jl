@@ -4,7 +4,7 @@ using DataStructures
 using BoilerplateCvikli: @async_showerr
 
 using Anthropic
-using Anthropic: format_meta_info
+import Anthropic: ai_stream_safe, ai_ask_safe
 
 using Dates
 using UUIDs

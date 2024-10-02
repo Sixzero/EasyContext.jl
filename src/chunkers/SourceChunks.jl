@@ -120,7 +120,7 @@ function process_node(node::JuliaSyntax.SyntaxNode, module_stack::Vector{String}
             if length(module_children) >= 1
                 module_name = module_children[1].val
                 if module_name == nothing
-                    @warn "Unknown module format: $child # TODO handle eventually."
+                    @warn "Unknown module format: $child # TODO handle eventually. $(module_children)"
                     continue
                 end
                 new_module_stack = [module_stack; String(module_name)]

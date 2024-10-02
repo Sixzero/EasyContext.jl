@@ -36,14 +36,14 @@ function (slp::StreamingLLMProcessor)(conv; on_chunk=c->c, cache=:last)
     clearline()
     print("\e[32mProcessing... \e[0m")
     reset!(slp.extractor)
-    channel = AISH.ai_stream_safe(conv, printout=false, cache=cache)
+    channel = ai_stream(conv, printout=false, cache=cache)
     msg, user_meta, ai_meta = AISH.process_stream(channel, 
-        on_meta_usr=meta->(clearline();println("\e[32mUser message: \e[0m$(AISH.format_meta_info(meta))"); print("\e[36m¬ \e[0m")), 
+        on_meta_usr=meta->(clearline();println("\e[32mUser message: \e[0m$(Anthropic.format_meta_info(meta))"); print("\e[36m¬ \e[0m")), 
         on_text=chunk->begin
                 on_chunk(chunk, )
                 print(chunk)
         end, 
-        on_meta_ai=meta->println("\n\e[32mAI message: \e[0m$(AISH.format_meta_info(meta))"))
+        on_meta_ai=meta->println("\n\e[32mAI message: \e[0m$(Anthropic.format_meta_info(meta))"))
     println("")
     return msg, user_meta, ai_meta
 end
