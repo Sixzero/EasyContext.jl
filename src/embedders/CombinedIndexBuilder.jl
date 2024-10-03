@@ -2,7 +2,6 @@ using PromptingTools.Experimental.RAGTools
 import PromptingTools.Experimental.RAGTools as RAG
 using DataStructures: OrderedDict
 
-abstract type CombinationMethod end
 
 struct SimpleAppender <: CombinationMethod end
 struct WeightedCombiner <: CombinationMethod 

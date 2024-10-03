@@ -13,6 +13,7 @@ using PromptingTools
 
 include("utils.jl")
 include("ContextStructs.jl")
+include("protocol/AbstractTypes.jl")
 include("protocol/CTX.jl")
 include("protocol/Message.jl")
 include("protocol/CodeBlock.jl")

@@ -1,4 +1,3 @@
-abstract type MSG end
 
 @kwdef mutable struct Message <: MSG
 	timestamp::DateTime

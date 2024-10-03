@@ -6,8 +6,6 @@ using JLD2, Snowball, Pkg
 import PromptingTools.Experimental.RAGTools as RAG
 import Base: *
 
-abstract type AbstractEasyEmbedder <: AbstractEmbedder end
-
 include("OpenAIBatchEmbedder.jl")
 include("JinaEmbedder.jl")
 include("VoyageEmbedder.jl")
@@ -19,11 +17,7 @@ include("MultiIndexBuilder.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
-get_embedder_uniq_id(embedder::AbstractEasyEmbedder) = begin
-  embedder_type = typeof(get_embedder(embedder)).name.name
-  model_name = get_model_name(embedder)
-  return "$(embedder_type)_$(model_name)"
-end
+get_embedder_uniq_id(embedder::AbstractEasyEmbedder) = "$(typeof(get_embedder(embedder)).name.name)_$(get_model_name(embedder))"
 
 # Module-level constants
 const CACHE_DIR = let
@@ -32,14 +26,9 @@ const CACHE_DIR = let
     dir
 end
 
-# Add this function after the cache functions
-function with_cache(builder::AbstractIndexBuilder)
-    return CachedLoader(loader=builder, cache_dir=CACHE_DIR)
-end
+with_cache(builder::AbstractIndexBuilder) = CachedLoader(loader=builder, cache_dir=CACHE_DIR)
 
-function *(a::AbstractIndexBuilder, b::Union{AbstractIndexBuilder, RAG.AbstractReranker})
-    return x -> b(a(x))
-end
+*(a::AbstractIndexBuilder, b::Union{AbstractIndexBuilder, RAG.AbstractReranker}) = x -> b(a(x))
 
 # Exports
 export build_index, build_multi_index, get_context, get_answer

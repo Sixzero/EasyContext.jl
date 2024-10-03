@@ -1,5 +1,4 @@
 
-abstract type BLOCK end
 
 @kwdef mutable struct CodeBlock <: BLOCK
 	type::Symbol = :NOTHING

@@ -1,5 +1,4 @@
 
-abstract type CONV end
 
 @kwdef mutable struct Conversation{M <: MSG} <: CONV
 	system_message::M

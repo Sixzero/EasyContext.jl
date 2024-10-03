@@ -5,7 +5,7 @@ using PromptingTools.Experimental.RAGTools
 import PromptingTools.Experimental.RAGTools as RAG
 import AISH: prepare_user_message!, get_cache_setting, genid
 
-export get_context, cut_history!, EasyContextCreatorV4, Pipe, get_processor_description, generate_codebase_ctx
+export get_context, cut_history!, EasyContextCreatorV4, Pipe, generate_codebase_ctx
 
 # Define the Pipe struct
 struct Pipe

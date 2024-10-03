@@ -1,5 +1,4 @@
 
-using EasyContext: get_processor_description
 using EasyContext: ConversationCTX
 using EasyContext: Workspace, WorkspaceLoader
 using EasyContext: format_shell_results_to_context
