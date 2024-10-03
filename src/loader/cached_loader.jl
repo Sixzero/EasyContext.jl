@@ -2,27 +2,45 @@
 using JLD2
 using SHA
 
+abstract type Cacheable end
 
-@kwdef struct CachedLoader{L<:AbstractLoader} <: AbstractLoader
-    loader::L
+@kwdef mutable struct CachedLoader{T<:Cacheable} <: Cacheable
+    loader::T
     cache_dir::String = CACHE_DIR
+    in_memory_key::String = ""
+    in_memory_value::Any = nothing
 end
 
-cache_key(loader::AbstractLoader, args...)          = @assert false "Unimplemented method for $(typeof(loader))!"
-cache_filename(loader::AbstractLoader, key::String) = @assert false "Unimplemented method for $(typeof(loader))!"
+cache_key(loader::Cacheable, args...)          = @assert false "Unimplemented method for $(typeof(loader))!"
+cache_filename(loader::Cacheable, key::String) = @assert false "Unimplemented method for $(typeof(loader))!"
 
 function (cached_loader::CachedLoader)(args...)
-    loader   = cached_loader.loader
-    key      = cache_key(loader, args...)
+    loader = cached_loader.loader
+    key = cache_key(loader, args...)
+    
+    # Check if the key matches the in-memory key
+    if key == cached_loader.in_memory_key
+        return cached_loader.in_memory_value
+    end
+    
     filename = joinpath(cached_loader.cache_dir, cache_filename(loader, key))
     
     if isfile(filename)
-        return JLD2.load(filename, "result")["value"]
+        result = JLD2.load(filename, "value")
+        # Update in-memory cache
+        cached_loader.in_memory_key = key
+        cached_loader.in_memory_value = result
+        return result
     end
     
     result = loader(args...)
     
-    JLD2.save(filename, value=result)
+    # Save to file
+    JLD2.save(filename, "value" => result)
+    
+    # Update in-memory cache
+    cached_loader.in_memory_key = key
+    cached_loader.in_memory_value = result
     
     return result
 end

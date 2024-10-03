@@ -6,7 +6,6 @@ using JLD2, Snowball, Pkg
 import PromptingTools.Experimental.RAGTools as RAG
 import Base: *
 
-abstract type AbstractIndexBuilder end
 abstract type AbstractEasyEmbedder <: AbstractEmbedder end
 
 include("OpenAIBatchEmbedder.jl")

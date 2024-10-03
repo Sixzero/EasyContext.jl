@@ -12,24 +12,29 @@ struct RRFCombiner <: CombinationMethod end
 
 @kwdef mutable struct CombinedIndexBuilder <: AbstractIndexBuilder
     builders::Vector{<:AbstractIndexBuilder}
-    cache::Union{Nothing, Vector{<:RAG.AbstractChunkIndex}} = nothing
     top_k::Int = 300
     combination_method::CombinationMethod = SimpleAppender()
 end
 
+function cache_key(builder::CombinedIndexBuilder, args...)
+    builder_hashes = [cache_key(b, args...) for b in builder.builders]
+    return bytes2hex(sha256("CombinedIndexBuilder_$(join(builder_hashes, "_"))"))
+end
+
+function cache_filename(builder::CombinedIndexBuilder, key::String)
+    return "combined_index_$key.jld2"
+end
+
 function get_index(builder::CombinedIndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    if !isnothing(builder.cache)
-        return builder.cache
-    else
-        builder.cache = [get_index(b, chunks; cost_tracker, verbose) for b in builder.builders]
-        
-        # Check if all indexes have the same sources
-        sources = RAG.sources(builder.cache[1])
-        if !all(RAG.sources(index) == sources for index in builder.cache[2:end])
-            error("All indexes must have the same sources")
-        end
+    indices = [get_index(b, chunks; cost_tracker, verbose) for b in builder.builders]
+    
+    # Check if all indexes have the same sources
+    sources = RAG.sources(indices[1])
+    if !all(RAG.sources(index) == sources for index in indices[2:end])
+        error("All indexes must have the same sources")
     end
-    return builder.cache
+    
+    return indices
 end
 
 # Helper function to get positions and scores using dispatch
