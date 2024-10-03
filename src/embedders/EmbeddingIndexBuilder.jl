@@ -17,8 +17,7 @@ function get_index(builder::EmbeddingIndexBuilder, chunks::OrderedDict{String, S
     
     verbose && @info "Index built! (cost: $(round(cost_tracker[], digits=3)))"
 
-    index_id = gensym("ChunkEmbeddingsIndex")
-    index = RAG.ChunkEmbeddingsIndex(; id = index_id, embeddings, chunks=collect(values(chunks)), sources=collect(keys(chunks)))
+    index = RAG.ChunkEmbeddingsIndex(;embeddings, chunks=collect(values(chunks)), sources=collect(keys(chunks)))
     @info "Successfully built embedding index! Size: $(size(embeddings))"
     return index
 end
