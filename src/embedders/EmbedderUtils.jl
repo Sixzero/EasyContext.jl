@@ -8,11 +8,11 @@ import Base: *
 
 include("OpenAIBatchEmbedder.jl")
 include("JinaEmbedder.jl")
+include("EmbeddingIndexBuilder.jl")
 include("VoyageEmbedder.jl")
 include("CacheBatchEmbedder.jl")
-include("CombinedIndexBuilder.jl")
-include("EmbeddingIndexBuilder.jl")
 include("BM25IndexBuilder.jl")
+include("CombinedIndexBuilder.jl")
 include("MultiIndexBuilder.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model

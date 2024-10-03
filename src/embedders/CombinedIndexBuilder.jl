@@ -119,17 +119,15 @@ function combine_results(::RRFCombiner, all_results, total_positions)
     return merged_positions, collect(values(merged_scores))
 end
 
-function create_combined_index_builder(;
-    embedding_model::String = "text-embedding-3-small",
+function create_combined_index_builder(embedding_model::String = "text-embedding-3-small"; kwargs...)
+    create_combined_index_builder(create_openai_embedder(model=embedding_model); kwargs...)
+end
+
+function create_combined_index_builder(embedding_builder::EmbeddingIndexBuilder; 
     top_k::Int = 300,
-    combination_method::CombinationMethod = SimpleAppender(),
-)
-    embedding_builder = EmbeddingIndexBuilder(
-        embedder = CachedBatchEmbedder(;embedder=OpenAIBatchEmbedder(; model=embedding_model)),
-        top_k = top_k
-    )
-    bm25_builder = BM25IndexBuilder()
+    combination_method::CombinationMethod = SimpleAppender())
     
+    bm25_builder = BM25IndexBuilder()
     builders = [embedding_builder, bm25_builder]
     
     CombinedIndexBuilder(

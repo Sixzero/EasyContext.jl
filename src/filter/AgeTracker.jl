@@ -3,7 +3,7 @@
     tracker::Dict{String, Int} = Dict{String, Int}()
 end
 
-(tracker::AgeTracker)(src_content::Context; max_history::Int, refresh_these::Context=Context()) = tracker(src_content.d; max_history=max_history, refresh_these=refresh_these.d)
+(tracker::AgeTracker)(src_content::Context; max_history::Int, refresh_these::OrderedDict=OrderedDict()) = tracker(src_content.d; max_history=max_history, refresh_these=refresh_these)
 
 function (tracker::AgeTracker)(src_content::OrderedDict; max_history::Int, refresh_these::OrderedDict=OrderedDict())
     foreach(source -> tracker.tracker[source] = get(tracker.tracker, source, 0) + 1, keys(src_content))
