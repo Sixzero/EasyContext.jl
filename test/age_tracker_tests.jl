@@ -53,5 +53,38 @@ include("../src/ContextStructs.jl")
         @test result["source4"] == "updated_content4"
         @test result["source5"] == "content5"
     end
+
+    @testset "Refresh specific sources" begin
+        tracker = AgeTracker()
+        src_content = OrderedDict{String,String}(
+            "source1" => "content1",
+            "source2" => "content2",
+            "source3" => "content3"
+        )
+        
+        # First run
+        result = tracker(src_content; max_history=3)
+        @test all(age == 1 for age in values(tracker.tracker))
+
+        # Second run
+        result = tracker(src_content; max_history=3)
+        @test all(age == 2 for age in values(tracker.tracker))
+
+        # Third run with refresh
+        refresh_these = OrderedDict{String,String}(
+            "source1" => "",
+            "source3" => ""
+        )
+        result = tracker(src_content; max_history=3, refresh_these=refresh_these)
+        @test tracker.tracker["source1"] == 1
+        @test tracker.tracker["source2"] == 3
+        @test tracker.tracker["source3"] == 1
+
+        # Fourth run
+        result = tracker(src_content; max_history=3)
+        @test tracker.tracker["source1"] == 2
+        @test !haskey(tracker.tracker, "source2")  # Should be removed due to max_history
+        @test tracker.tracker["source3"] == 2
+    end
 end
 

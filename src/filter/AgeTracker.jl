@@ -3,11 +3,11 @@
     tracker::Dict{String, Int} = Dict{String, Int}()
 end
 
-(tracker::AgeTracker)(src_content::Context; max_history::Int) = tracker(src_content.d; max_history=max_history)
-function (tracker::AgeTracker)(src_content::OrderedDict; max_history::Int)
-    for source in keys(src_content)
-        tracker.tracker[source] = get(tracker.tracker, source, 0) + 1
-    end
+(tracker::AgeTracker)(src_content::Context; max_history::Int, refresh_these::Context=Context()) = tracker(src_content.d; max_history=max_history, refresh_these=refresh_these.d)
+
+function (tracker::AgeTracker)(src_content::OrderedDict; max_history::Int, refresh_these::OrderedDict=OrderedDict())
+    foreach(source -> tracker.tracker[source] = get(tracker.tracker, source, 0) + 1, keys(src_content))
+    foreach(source -> tracker.tracker[source] = 1, keys(refresh_these))
 
     for (source, age) in tracker.tracker
         if age ≥ max_history
