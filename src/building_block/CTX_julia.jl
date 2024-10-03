@@ -2,7 +2,7 @@
 function init_julia_context()
   voyage_embedder = create_voyage_embedder(model="voyage-code-2")
   jl_simi_filter = create_combined_index_builder(voyage_embedder; top_k=120)
-  jl_pkg_index = get_index(jl_simi_filter, CachedLoader(loader=JuliaLoader())(SourceChunker()))
+  jl_pkg_index = get_index(jl_simi_filter, CachedLoader(loader=JuliaLoader(),memory=Dict{String,OrderedDict{String,String}}())(SourceChunker()))
   julia_ctx = Context()
   jl_age! = AgeTracker()
   jl_changes = ChangeTracker(;need_source_reparse=false)
