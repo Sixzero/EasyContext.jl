@@ -25,7 +25,8 @@ end
 # Example of overloading cache_key for a specific loader (e.g., JuliaLoader)
 function cache_key(loader::JuliaLoader, args...)
     pkg_infos = get_package_infos(loader.package_scope)
-    return bytes2hex(sha256("JuliaLoader_$(hash_pkg_infos(pkg_infos))_$(hash(args))"))
+    code = bytes2hex(sha256("JuliaLoader_$(hash_pkg_infos(pkg_infos))_$(hash(args))"))
+    code
 end
 
 
