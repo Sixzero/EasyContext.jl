@@ -1,3 +1,4 @@
+export process_julia_context, init_julia_context
 
 function init_julia_context()
   voyage_embedder = create_voyage_embedder(model="voyage-code-2")
@@ -11,7 +12,7 @@ function init_julia_context()
 end
 
 function process_julia_context(julia_context, ctx_question)
-  jl_simi_filter, jl_pkg_index, julia_ctx, jl_age!, jl_changes, jl_reranker_filterer = julia_context
+  (;jl_simi_filter, jl_pkg_index, julia_ctx, jl_age!, jl_changes, jl_reranker_filterer) = julia_context
   file_chunks_selected = jl_simi_filter(jl_pkg_index, ctx_question)
   file_chunks_reranked = jl_reranker_filterer(file_chunks_selected, ctx_question)
   merged_file_chunks = julia_ctx(file_chunks_reranked)

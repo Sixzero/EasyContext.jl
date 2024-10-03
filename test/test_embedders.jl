@@ -7,6 +7,8 @@ using EasyContext: get_index
 using HTTP
 using PromptingTools.Experimental.RAGTools
 using JSON3
+using Chairmarks
+using BenchmarkTools
 
 @testset "Embedder Tests" begin
     @testset "EmbeddingIndexBuilder" begin
@@ -190,6 +192,7 @@ using JSON3
             @test all(k -> k in keys(chunks), keys(result))
         end
     end
+
 
     # You can add more testsets for other embedder-related components here
 end

@@ -59,6 +59,10 @@ include("building_block/CTX_conversation.jl")
 include("building_block/CTX_julia.jl")
 include("building_block/CTX_workspace.jl")
 include("precompile_scripts.jl")
+include("ai_condition.jl")
+
+# Automation
+include("automation/context_planner.jl")
 
 end # module EasyContext
 

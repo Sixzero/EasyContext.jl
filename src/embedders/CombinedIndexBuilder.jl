@@ -15,6 +15,7 @@ struct RRFCombiner <: CombinationMethod end
     combination_method::CombinationMethod = SimpleAppender()
 end
 
+get_embedder(builder::CombinedIndexBuilder) = get_embedder.(builder.builders)
 function cache_key(builder::CombinedIndexBuilder, args...)
     builder_hashes = [cache_key(b, args...) for b in builder.builders]
     return bytes2hex(sha256("CombinedIndexBuilder_$(join(builder_hashes, "_"))"))

@@ -1,3 +1,4 @@
+export process_workspace_context
 
 function init_workspace_context(project_paths)
   workspace = WorkspaceLoader(project_paths)
@@ -10,7 +11,7 @@ function init_workspace_context(project_paths)
 end
 
 function process_workspace_context(workspace_context, ctx_question)
-  workspace, workspace_ctx, ws_age!, ws_changes, ws_simi_filterer, ws_reranker_filterer = workspace_context
+  (;workspace, workspace_ctx, ws_age!, ws_changes, ws_simi_filterer, ws_reranker_filterer) = workspace_context
   file_chunks = workspace(FullFileChunker()) 
   index = get_index(ws_simi_filterer, file_chunks)
   file_chunks_selected = ws_simi_filterer(index, ctx_question)

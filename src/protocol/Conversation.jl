@@ -5,7 +5,7 @@
 	messages::Vector{M}=[]
 end
 
-
+# always going to cut after an :assitant but before a :user message.
 function cut_history!(conv::Conversation; keep=13)
 	length(conv.messages) <= keep && return conv.messages
 	
@@ -39,12 +39,12 @@ add_error_message!(conv::Conversation, error_content::String) = begin
 end
 
 
-to_dict(conv::Conversation)                = [Dict("role" => "system", "content" => conv.conv.system_message); to_dict_nosys(conv.conv)]
+to_dict(conv::Conversation)                = [Dict("role" => "system", "content" => conv.system_message); to_dict_nosys(conv)]
 to_dict_nosys(conv::Conversation)          = [Dict("role" => string(msg.role), "content" => msg.content) for msg in conv.messages]
 to_dict_nosys_detailed(conv::Conversation) = [to_dict(message) for message in conv.messages]
 
 
-update_last_user_message_meta(conv::Conversation, itok::Int, otok::Int, cached::Int, cache_read::Int, price, elapsed::Float64) = update_message(conv.messages[end], itok, otok, cached, cache_read, price, elapsed)
+update_last_user_message_meta(conv::Conversation, itok::Int, otok::Int, cached::Int, cache_read::Int, price, elapsed::Number) = update_message(conv.messages[end], itok, otok, cached, cache_read, price, elapsed)
 
 
 get_all_conversations_file(p) = readdir(CONVERSATION_DIR(p))
@@ -82,6 +82,10 @@ function save_file(filepath::String, content::String)
     return true
 end
 
+function get_next_msg_contrcutor(conv::Conversation)
+    isempty(conv.messages) && return create_user_message
+    return conv.messages[end].role === :user ? create_AI_message : create_user_message
+end
 
 
 @kwdef mutable struct WebConversation <: CONV

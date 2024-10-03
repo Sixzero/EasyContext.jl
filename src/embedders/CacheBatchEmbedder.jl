@@ -7,7 +7,7 @@ using PromptingTools: MODEL_EMBEDDING
 cache_prefix: The prefix addition to the file being saved.
 """
 @kwdef struct CachedBatchEmbedder <: AbstractEmbedder
-    embedder::AbstractEmbedder = OpenAIBatchEmbedder()
+    embedder::Union{AbstractEmbedder, AbstractIndexBuilder} = OpenAIBatchEmbedder()
     cache_dir::String = let
         current_file = @__FILE__
         default_cache_dir = joinpath(dirname(dirname(dirname(current_file))), "cache")

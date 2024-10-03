@@ -40,7 +40,7 @@ function (builder::EmbeddingIndexBuilder)(index, query::AbstractString)
     return OrderedDict(zip(retrieved.sources, retrieved.context))
 end
 
-get_embedder(builder::EmbeddingIndexBuilder) = builder.embedder
+get_embedder(builder::EmbeddingIndexBuilder) = get_embedder(builder.embedder)
 
 function get_finder(builder::EmbeddingIndexBuilder)
     RAG.CosineSimilarity()
