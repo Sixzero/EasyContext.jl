@@ -55,7 +55,6 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
             error("Failed to get embeddings for batch. Status code: $(response.status)")
         end
         result = JSON3.read(String(response.body))
-        @show length(result["data"])
         return [e["embedding"] for e in result["data"]], result["usage"]["total_tokens"]
     end
 
