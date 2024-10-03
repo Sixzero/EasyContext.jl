@@ -2,6 +2,7 @@ using Test
 using EasyContext
 using Dates
 using EasyContext: get_next_msg_contrcutor, get_cache_setting, add_error_message!
+using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
 
 @testset "ConversationCTX Tests" begin
     @testset "Constructor" begin
@@ -66,7 +67,7 @@ using EasyContext: get_next_msg_contrcutor, get_cache_setting, add_error_message
         
         @test length(conv_ctx.conv.messages) == 1
         @test conv_ctx.conv.messages[1].content == "Test error message"
-        @test conv_ctx.conv.messages[1].role == :system
+        @test conv_ctx.conv.messages[1].role == :user
     end
 
     @testset "get_next_msg_contrcutor" begin
