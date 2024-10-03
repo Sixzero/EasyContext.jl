@@ -10,8 +10,8 @@ using JLD2, SHA
     top_k::Int=200
 end
 
-function get_index(builder::MultiIndexBuilder, result::RAGContext; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    indices = [get_index(b, result; cost_tracker, verbose) for b in builder.builders]
+function get_index(builder::MultiIndexBuilder, ctx::OrderedDict{String,String}, query::String; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
+    indices = [get_index(b, ctx, query; cost_tracker, verbose) for b in builder.builders]
     return RAG.MultiIndex(indices)
 end
 

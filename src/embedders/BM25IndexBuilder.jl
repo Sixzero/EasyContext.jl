@@ -20,21 +20,17 @@ function get_index(builder::BM25IndexBuilder, ctx::OrderedDict{String, String}; 
     return RAG.ChunkKeywordsIndex(; id = index_id, chunkdata = dtm, chunks, sources)
 end
 
-function (builder::BM25IndexBuilder)(chunks::OrderedDict{String, String}, query::AbstractString)
-    if isempty(chunks)
-        return OrderedDict{String, String}()
-    end
-    index = get_index(builder, chunks)
+function (builder::BM25IndexBuilder)(ctx::OrderedDict{String, String}, question, args...)
+    index = get_index(builder, ctx)
     finder = RAG.BM25Similarity()
     retriever = RAG.AdvancedRetriever(
         finder=finder,
         reranker=RAG.NoReranker(),
         rephraser=RAG.NoRephraser(),
     )
-    retrieved = RAG.retrieve(retriever, index, query; top_k=100, return_all=true)
+    retrieved = RAG.retrieve(retriever, index, question; top_k=100, return_all=true)
     
-    res = OrderedDict(zip(retrieved.sources, retrieved.context))
-    return res
+    return OrderedDict(zip(retrieved.sources, retrieved.context))
 end
 
 get_processor(builder::BM25IndexBuilder) = builder.processor

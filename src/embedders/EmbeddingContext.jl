@@ -20,9 +20,8 @@ function get_embedding_context(index::RAG.AbstractChunkIndex, question::String)
     
     RAG.build_context!(SimpleContextJoiner(), index, result)
     
-    return result
+    return OrderedDict(zip(result.chunk.sources, result.chunk.contexts))
 end
-
 
 # Context processing functions
 function get_context(builder::EmbeddingIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
@@ -144,7 +143,7 @@ function get_rag_config(;
         PromptingTools.load_templates!(template_path)
     end
 
-    rephraser=JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
+    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
     reranker = ReduceRankGPTReranker(;batch_size=batch_size, model="gpt4om")
     retriever = RAG.AdvancedRetriever(;
         finder=RAG.CosineSimilarity(),
@@ -169,16 +168,19 @@ function get_rag_config(;
     GLOBAL_RAG_CONFIG[] = (rag_conf, kwargs)
     return rag_conf, kwargs
 end
+
 struct CohereRerankPro <: AbstractReranker
     model::String
     top_n::Int
 end
 
-function (reranker::CohereRerankPro)(result::RAGContext)
-    reranked_indices = RAG.rerank(RAG.CohereReranker(model=reranker.model), result.question, result.chunk.contexts; top_n=reranker.top_n)
-    new_sources = result.chunk.sources[reranked_indices]
-    new_contexts = result.chunk.contexts[reranked_indices]
-    return RAGContext(SourceChunk(new_sources, new_contexts), result.question)
+function (reranker::CohereRerankPro)(chunks::OrderedDict{String,String}, question::String)
+    reranked_indices = RAG.rerank(RAG.CohereReranker(model=reranker.model), question, collect(values(chunks)); top_n=reranker.top_n)
+    sources = collect(keys(chunks))
+    contexts = collect(values(chunks))
+    new_sources = sources[reranked_indices]
+    new_contexts = contexts[reranked_indices]
+    return OrderedDict(zip(new_sources, new_contexts))
 end
 
 struct RerankGPTPro <: AbstractReranker
@@ -187,10 +189,12 @@ struct RerankGPTPro <: AbstractReranker
     top_n::Int
 end
 
-function (reranker::RerankGPTPro)(result::RAGContext)
+function (reranker::RerankGPTPro)(chunks::OrderedDict{String,String}, question::String)
     reranked_indices = RAG.rerank(ReduceRankGPTReranker(batch_size=reranker.batch_size, model=reranker.model), 
-                                  result.chunk.contexts, result.question; top_n=reranker.top_n)
-    new_sources = result.chunk.sources[reranked_indices]
-    new_contexts = result.chunk.contexts[reranked_indices]
-    return RAGContext(SourceChunk(new_sources, new_contexts), result.question)
+                                  collect(values(chunks)), question; top_n=reranker.top_n)
+    sources = collect(keys(chunks))
+    contexts = collect(values(chunks))
+    new_sources = sources[reranked_indices]
+    new_contexts = contexts[reranked_indices]
+    return OrderedDict(zip(new_sources, new_contexts))
 end
