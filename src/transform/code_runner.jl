@@ -10,8 +10,9 @@ function execute_shell_commands(extractor::CodeBlockExtractor; no_confirm=false)
         output = execute_code_block(cb; no_confirm)
         push!(extractor.shell_results[command].run_results, output)
         # println("\n\e[36mCommand:\e[0m $command")
-        println("\e[36mOutput:\e[0m $output")
+        !isempty(strip(output)) && println("\e[36mOutput:\e[0m $output")
     end
+    return extractor.shell_results
 end
 
 reset!(extractor::CodeBlockExtractor) = begin
