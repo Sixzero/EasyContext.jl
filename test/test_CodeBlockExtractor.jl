@@ -1,6 +1,7 @@
 using Test
 using EasyContext
 using OrderedCollections
+using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblocks, reset!, to_string, SHELL_RUN_RESULT
 
 @testset "CodeBlockExtractor Tests" begin
     @testset "Constructor" begin
@@ -25,17 +26,18 @@ using OrderedCollections
         CREATE ./new_file.jl
         ```julia
         function greet(name)
-            println("Hello, $name!")
+            println("Hello, \$name!")
         end
         ```
+        OK
         """
         
-        result = extract_and_preprocess_codeblocks(content, extractor)
+        result = extract_and_preprocess_codeblocks(content, extractor; instant_return=false)
         
-        @test result isa CodeBlock
         @test length(extractor.shell_scripts) == 2
         @test extractor.last_processed_index[] == length(content)
     end
+
 
     @testset "reset!" begin
         extractor = CodeBlockExtractor()
@@ -54,8 +56,8 @@ using OrderedCollections
 
     @testset "to_string" begin
         extractor = CodeBlockExtractor()
-        cb1 = CodeBlock(language="julia", file_path="test1.jl", pre_content="println(1)")
-        cb2 = CodeBlock(language="python", file_path="test2.py", pre_content="print(2)")
+        cb1 = CodeBlock(type=:DEFAULT, language="julia", file_path="test1.jl", pre_content="println(1)")
+        cb2 = CodeBlock(type=:DEFAULT, language="python", file_path="test2.py", pre_content="print(2)")
         push!(cb1.run_results, "1")
         push!(cb2.run_results, "2")
         extractor.shell_results["test1"] = cb1
@@ -65,8 +67,93 @@ using OrderedCollections
         
         @test occursin("<ShellResults>", result)
         @test occursin("<Command shortened>", result)
-        @test occursin("<SHELL_RUN_RESULT>", result)
+        @test occursin("<$SHELL_RUN_RESULT>", result)
         @test occursin("1", result)
         @test occursin("2", result)
     end
+
+    @testset "Nested codeblocks" begin
+        extractor = CodeBlockExtractor()
+        content = """
+        Some text before
+        MODIFY ./test.jl
+        ```julia
+        function nested_block_example()
+            println("Outer function")
+            
+            # Here's a nested codeblock
+            code = ```julia
+            function inner_function()
+                println("Inner function")
+            end
+            inner_function()
+            ```
+            
+            eval(Meta.parse(code))
+        end
+        
+        nested_block_example()
+        ```
+        Some text after
+        """
+        
+        result = extract_and_preprocess_codeblocks(content, extractor)
+        
+        @test result isa CodeBlock
+        @test result.type == :MODIFY
+        @test result.file_path == "./test.jl"
+        @test result.language == "julia"
+        @test occursin("function nested_block_example()", result.pre_content)
+        @test occursin("function inner_function()", result.pre_content)
+        @test occursin("nested_block_example()", result.pre_content)
+        @test length(extractor.shell_scripts) == 1
+        @test extractor.last_processed_index[] == length(content)
+    end
+
+    @testset "Nested codeblocks in documentation" begin
+        extractor = CodeBlockExtractor()
+        content = """
+        Some text before
+        MODIFY ./test.jl
+        ```julia
+        \"\"\"
+        Documentation for a function with a code example:
+
+        ```julia
+        function example()
+            println("This is an example")
+        end
+        ```
+
+        And another example:
+
+        ```python
+        def another_example():
+            print("This is another example")
+        ```
+
+        More documentation text.
+        \"\"\"
+
+        function outer_function()
+            println("Outer function")
+        end
+        ```
+        Some text after
+        """
+        
+        result = extract_and_preprocess_codeblocks(content, extractor)
+        
+        @test result isa CodeBlock
+        @test result.type == :MODIFY
+        @test result.file_path == "./test.jl"
+        @test result.language == "julia"
+        @test occursin("Documentation for a function with a code example:", result.pre_content)
+        @test occursin("function example()", result.pre_content)
+        @test occursin("def another_example():", result.pre_content)
+        @test occursin("function outer_function()", result.pre_content)
+        @test length(extractor.shell_scripts) == 1
+        @test extractor.last_processed_index[] == length(content)
+    end
 end
+;
