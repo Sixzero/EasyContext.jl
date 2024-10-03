@@ -23,11 +23,13 @@ function get_index(builder::EmbeddingIndexBuilder, chunks::OrderedDict{String, S
     return index
 end
 
-function (builder::EmbeddingIndexBuilder)(chunks::OrderedDict{String, String}, query::AbstractString)
-    if isempty(chunks)
+function (builder::EmbeddingIndexBuilder)(index, query::AbstractString)
+    # Check if index is empty
+    if isempty(index.chunks)
+        @info "Empty index. Returning empty result."
         return OrderedDict{String, String}()
     end
-    index = get_index(builder, chunks)
+
     finder = RAG.CosineSimilarity()
     retriever = RAG.AdvancedRetriever(
         finder=finder,

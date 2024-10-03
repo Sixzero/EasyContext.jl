@@ -20,8 +20,7 @@ function get_index(builder::BM25IndexBuilder, ctx::OrderedDict{String, String}; 
     return RAG.ChunkKeywordsIndex(; id = index_id, chunkdata = dtm, chunks, sources)
 end
 
-function (builder::BM25IndexBuilder)(ctx::OrderedDict{String, String}, question, args...)
-    index = get_index(builder, ctx)
+function (builder::BM25IndexBuilder)(index, question, args...)
     finder = RAG.BM25Similarity()
     retriever = RAG.AdvancedRetriever(
         finder=finder,

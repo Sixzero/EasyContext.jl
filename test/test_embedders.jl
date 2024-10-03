@@ -3,6 +3,7 @@ using EasyContext
 using DataStructures: OrderedDict
 using EasyContext: EmbeddingIndexBuilder, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
 using EasyContext: BM25IndexBuilder
+using EasyContext: get_index
 using HTTP
 using PromptingTools.Experimental.RAGTools
 using JSON3
@@ -14,7 +15,6 @@ using JSON3
             @test builder isa EmbeddingIndexBuilder
             @test builder.embedder isa CachedBatchEmbedder
             @test builder.embedder.embedder isa OpenAIBatchEmbedder
-            @test builder.cache === nothing
             @test builder.top_k == 300
             @test builder.force_rebuild == false
         end
@@ -28,18 +28,14 @@ using JSON3
             @test length(index.chunks) == 2
             @test length(index.sources) == 2
             @test size(index.embeddings, 2) == 2
-
-            # Test caching
-            cached_index = EasyContext.get_index(builder, chunks)
-            @test cached_index === index
         end
 
         @testset "call method" begin
             builder = EmbeddingIndexBuilder(top_k=2)
             chunks = OrderedDict("file1.jl" => "content1", "file2.jl" => "content2", "file3.jl" => "content3")
             query = "test query"
-
-            result = builder(chunks, query)
+            index = get_index(builder, chunks)
+            result = builder(index, query)
             @test result isa OrderedDict{String, String}
             @test length(result) == 2  # top_k is 2
             @test all(k -> k in keys(chunks), keys(result))
@@ -49,8 +45,14 @@ using JSON3
             builder = EmbeddingIndexBuilder()
             empty_chunks = OrderedDict{String, String}()
             query = "test query"
+            index = get_index(builder, empty_chunks)
 
-            result = builder(empty_chunks, query)
+            @test index isa RAGTools.ChunkEmbeddingsIndex
+            @test isempty(index.chunks)
+            @test isempty(index.sources)
+            @test size(index.embeddings, 2) == 0
+
+            result = builder(index, query)
             @test isempty(result)
             @test result isa OrderedDict{String, String}
         end
@@ -182,7 +184,7 @@ using JSON3
             @test index isa Vector{<:RAGTools.AbstractChunkIndex}
             @test length(index) == 2
 
-            result = builder(chunks, query)
+            result = builder(index, query)
             @test result isa OrderedDict{String, String}
             @test length(result) <= 5  # Should return at most top_k results
             @test all(k -> k in keys(chunks), keys(result))

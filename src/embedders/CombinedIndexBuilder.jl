@@ -23,7 +23,6 @@ end
 function cache_filename(builder::CombinedIndexBuilder, key::String)
     return "combined_index_$key.jld2"
 end
-
 function get_index(builder::CombinedIndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
     indices = [get_index(b, chunks; cost_tracker, verbose) for b in builder.builders]
     
@@ -51,8 +50,7 @@ function get_positions_and_scores(finder::RAG.BM25Similarity, builder::AbstractI
     RAG.find_closest(finder, RAG.chunkdata(index), Float32[], query_tokens; top_k=top_k)
 end
 
-function (builder::CombinedIndexBuilder)(chunks::OrderedDict{String, String}, query::AbstractString)
-    indexes = get_index(builder, chunks)
+function (builder::CombinedIndexBuilder)(indexes, query::AbstractString)
     
     # Get results from each index
     all_results = []
