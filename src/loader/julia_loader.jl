@@ -5,7 +5,7 @@ end
 function (loader::JuliaLoader)(chunker::CHUNKER) where {CHUNKER <: AbstractChunker}
     pkg_infos = get_package_infos(loader.package_scope)
     chunks, sources = RAGTools.get_chunks(chunker, pkg_infos)
-    return OrderedDict(zip(sources, chunks))
+    return OrderedDict(zip(sources, String.(chunks)))
 end
 
 function get_package_infos(scope::Symbol)
@@ -36,5 +36,5 @@ end
 
 # Example of overloading cache_filename for a specific loader (e.g., JuliaLoader)
 function cache_filename(loader::JuliaLoader, key::String)
-    return "julia_loader_cache_$(loader.package_scope)_$key.jld2"
+    return "julia_loader_file_$(loader.package_scope)_$key.jld2"
 end
