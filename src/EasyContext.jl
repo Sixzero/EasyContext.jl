@@ -55,6 +55,9 @@ include("transform/transformations.jl")
 # include("AISHExtensionV3.jl")
 # include("AISHExtensionV4.jl")
 
+include("building_block/CTX_conversation.jl")
+include("building_block/CTX_julia.jl")
+include("building_block/CTX_workspace.jl")
 include("precompile_scripts.jl")
 
 end # module EasyContext

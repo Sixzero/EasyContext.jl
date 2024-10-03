@@ -1,10 +1,7 @@
 
-@kwdef mutable struct StreamingLLMProcessor
-	model::String="claude-3-5-sonnet-20240620"
-end
 
-function (slp::StreamingLLMProcessor)(conv, cache; on_meta_usr=noop, on_text=noop, on_meta_ai=noop, on_error=noop, on_done=noop, on_start=noop)
-	channel = ai_stream(conv, model=slp.model, printout=false, cache=cache)
+function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20240620", on_meta_usr=noop, on_text=noop, on_meta_ai=noop, on_error=noop, on_done=noop, on_start=noop)
+	channel = ai_stream(conv, model=model, printout=false, cache=cache)
 	try
 		process_stream(channel; 
 				on_text     = (text) -> begin
@@ -34,4 +31,4 @@ function (slp::StreamingLLMProcessor)(conv, cache; on_meta_usr=noop, on_text=noo
 
 end
 
-greet(ChatSH, slp::StreamingLLMProcessor) = println("Welcome to $ChatSH AI. (using $(slp.model))")
+greet(ChatSH, model::String="claude-3-5-sonnet-20240620") = println("Welcome to $ChatSH AI. (using $(model))")
