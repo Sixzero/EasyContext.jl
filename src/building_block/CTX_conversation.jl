@@ -1,6 +1,5 @@
 
-function init_conversation_context()
-  sys_msg = SYSTEM_PROMPT(ChatSH)
+function init_conversation_context(sys_msg)
   sys_msg *= workspace_format_description()
   sys_msg *= shell_format_description()
   sys_msg *= julia_format_description()
