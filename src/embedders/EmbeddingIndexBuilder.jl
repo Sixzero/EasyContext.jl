@@ -24,6 +24,9 @@ function get_index(builder::EmbeddingIndexBuilder, chunks::OrderedDict{String, S
 end
 
 function (builder::EmbeddingIndexBuilder)(chunks::OrderedDict{String, String}, query::AbstractString)
+    if isempty(chunks)
+        return OrderedDict{String, String}()
+    end
     index = get_index(builder, chunks)
     finder = RAG.CosineSimilarity()
     retriever = RAG.AdvancedRetriever(

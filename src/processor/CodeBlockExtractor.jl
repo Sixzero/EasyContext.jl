@@ -30,14 +30,14 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
             block_type = String(strip(line[4:end]))
         elseif in_block && length(line)>=3 && line[1:3] == "```" && (length(line)==3 || all(isspace, line[4:end]))
             command = join(current_command, '\n')
-            cb=CodeBlock(;file_path, type=cmd_type, language=block_type, pre_content=command)
+            cb = CodeBlock(;file_path, type=cmd_type, language=block_type, pre_content=command)
             extractor.shell_scripts[command] = @async_showerr preprocess(cb)
             current_command = String[]
             in_block = false
             cmd_type = :DEFAULT
             block_type = ""
             file_path = ""
-            extractor.last_processed_index[]  = length(extractor.full_content)
+            extractor.last_processed_index[] = length(extractor.full_content)
             
             return cb
         elseif in_block

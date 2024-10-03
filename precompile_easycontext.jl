@@ -17,7 +17,6 @@ using EasyContext: context_combiner!
 using EasyContext: to_disk_custom!
 using EasyContext: extract_and_preprocess_codeblocks
 using EasyContext: LLM_conditonal_apply_changes
-using EasyContext: full_file_chunker
 using EasyContext: workspace_format_description
 using EasyContext: shell_format_description
 using EasyContext: julia_format_description

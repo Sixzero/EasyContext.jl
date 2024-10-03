@@ -1,4 +1,3 @@
-
 @kwdef mutable struct Context 
 	d::OrderedDict{String, String}=OrderedDict{String, String}()
 end

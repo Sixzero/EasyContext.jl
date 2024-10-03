@@ -21,6 +21,7 @@ Supports two model options:
 - `dimensions::Union{Int, Nothing}`: The number of dimensions for the embedding (required for ColBERT model).
 - `input_type::String`: The type of input (e.g., "document" or "query", required for ColBERT model).
 - `rate_limiter::RateLimiterRPM`: A rate limiter to manage API request rates.
+- `http_post::Function`: The function to use for HTTP POST requests.
 """
 @kwdef mutable struct JinaEmbedder <: AbstractEasyEmbedder
     api_url::String = "https://api.jina.ai/v1/embeddings"
@@ -29,6 +30,7 @@ Supports two model options:
     dimensions::Union{Int, Nothing} = nothing
     input_type::String = "document"
     rate_limiter::RateLimiterRPM = RateLimiterRPM()
+    http_post::Function = HTTP.post
 end
 
 function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};
@@ -55,7 +57,7 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
             payload["input_type"] = embedder.input_type
         end
 
-        response = HTTP.post(embedder.api_url, headers, JSON3.write(payload))
+        response = embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
 
         if response.status == 200
             result = JSON3.read(String(response.body))

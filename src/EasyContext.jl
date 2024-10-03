@@ -11,6 +11,8 @@ using UUIDs
 
 using PromptingTools
 
+include("TokenEstimationMethods.jl")
+
 include("utils.jl")
 include("ContextStructs.jl")
 include("protocol/AbstractTypes.jl")
@@ -25,8 +27,8 @@ include("RateLimiterRPM.jl")
 include("RateLimiterHeader.jl")
 include("RateLimiterTPM.jl")
 include("chunkers/SourceChunks.jl")
-include("chunkers/FullFileChunkerOld.jl")
 include("chunkers/FullFileChunker.jl")
+# include("chunkers/FullFileChunker_new.jl")
 include("embedders/EmbedderUtils.jl")
 include("embedders/EmbeddingContext.jl")
 include("ContextJoiner.jl")
@@ -53,6 +55,6 @@ include("transform/transformations.jl")
 
 include("precompile_scripts.jl")
 
-end # module EasyContext
 
+end # module EasyContext
 

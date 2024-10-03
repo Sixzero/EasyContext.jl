@@ -15,6 +15,7 @@ A struct for embedding documents using Voyage AI's embedding models.
 - `model::String`: The name of the embedding model to use.
 - `input_type::Union{String, Nothing}`: The type of input (e.g., "document" or "query").
 - `rate_limiter::RateLimiterTPM`: A rate limiter to manage API request rates.
+- `http_post::Function`: The HTTP post function to use for making requests.
 """
 @kwdef mutable struct VoyageEmbedder <: AbstractEasyEmbedder
     api_url::String = "https://api.voyageai.com/v1/embeddings"
@@ -22,6 +23,7 @@ A struct for embedding documents using Voyage AI's embedding models.
     model::String = "voyage-code-2"
     input_type::Union{String, Nothing} = nothing
     rate_limiter::RateLimiterTPM = RateLimiterTPM()
+    http_post::Function = HTTP.post
 end
 
 function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:AbstractString};
@@ -46,7 +48,7 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
         end
 
         response = retry_on_rate_limit(max_retries=5, verbose=verbose) do
-            HTTP.post(embedder.api_url, headers, JSON3.write(payload))
+            embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
         end
 
         if response.status != 200

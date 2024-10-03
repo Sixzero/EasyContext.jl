@@ -2,13 +2,6 @@
 using Dates
 using Base.Threads
 
-@enum TokenEstimationMethod begin
-    CharCount
-    CharCountDivTwo
-    WordCount
-    GPT2Approximation
-end
-
 @kwdef mutable struct RateLimiterTPM
     max_tokens::Int = 1_000_000
     time_window::Float64 = 60.0  # in seconds
@@ -46,29 +39,6 @@ function with_rate_limiter_tpm(f::Function, limiter::RateLimiterTPM)
             end
         end
     end
-end
-
-# Helper function to estimate tokens based on input and method
-function estimate_tokens(input::AbstractString, method::TokenEstimationMethod)
-    if method == CharCount
-        return length(input)
-    elseif method == CharCountDivTwo
-        return div(length(input), 2)
-    elseif method == WordCount
-        return length(split(input))
-    elseif method == GPT2Approximation
-        # This is a rough approximation of GPT-2 tokenization
-        # It's not exact, but it's closer than character count for English text
-        words = split(input)
-        return sum(length(word) ÷ 4 + 1 for word in words)
-    else
-        error("Unknown token estimation method")
-    end
-end
-
-# Overload estimate_tokens for vector input
-function estimate_tokens(input::AbstractVector{<:AbstractString}, method::TokenEstimationMethod)
-    return sum(estimate_tokens(str, method) for str in input)
 end
 
 # Function to change the estimation method
