@@ -71,11 +71,5 @@ get_project_files(paths) = mock_get_project_files(paths)
         @test result isa RAGContext
         @test result.question == "test question"
     end
-
-    @testset "cut_history!" begin
-        ctx = CodebaseContextV3(chunker=MockFullFileChunker())
-        # This should not throw an error
-        @test_nowarn cut_history!(ctx, 5)
-    end
 end
 ;

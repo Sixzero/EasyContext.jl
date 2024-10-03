@@ -29,7 +29,3 @@ function (processor::GoogleLoader)(question::String)
     
     return formatted_results
 end
-
-function cut_history!(processor::GoogleLoader, keep::Int)
-    # Reset the call counter when cutting history
-end

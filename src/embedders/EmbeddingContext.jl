@@ -27,7 +27,7 @@ end
 function get_context(builder::EmbeddingIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
     index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
 
-    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
+    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude", verbose=true)
     rephraser = RAG.NoRephraser() # RAG.HyDERephraser()
     # reranker = RAG.CohereReranker()
     reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
@@ -143,7 +143,7 @@ function get_rag_config(;
         PromptingTools.load_templates!(template_path)
     end
 
-    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude",verbose=true)
+    rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude", verbose=true)
     reranker = ReduceRankGPTReranker(;batch_size=batch_size, model="gpt4om")
     retriever = RAG.AdvancedRetriever(;
         finder=RAG.CosineSimilarity(),
@@ -169,32 +169,6 @@ function get_rag_config(;
     return rag_conf, kwargs
 end
 
-struct CohereRerankPro <: AbstractReranker
-    model::String
-    top_n::Int
-end
+# Export the necessary functions and types
+export get_embedding_context, get_context, get_answer, get_rag_config
 
-function (reranker::CohereRerankPro)(chunks::OrderedDict{String,String}, question::String)
-    reranked_indices = RAG.rerank(RAG.CohereReranker(model=reranker.model), question, collect(values(chunks)); top_n=reranker.top_n)
-    sources = collect(keys(chunks))
-    contexts = collect(values(chunks))
-    new_sources = sources[reranked_indices]
-    new_contexts = contexts[reranked_indices]
-    return OrderedDict(zip(new_sources, new_contexts))
-end
-
-struct RerankGPTPro <: AbstractReranker
-    model::String
-    batch_size::Int
-    top_n::Int
-end
-
-function (reranker::RerankGPTPro)(chunks::OrderedDict{String,String}, question::String)
-    reranked_indices = RAG.rerank(ReduceRankGPTReranker(batch_size=reranker.batch_size, model=reranker.model), 
-                                  collect(values(chunks)), question; top_n=reranker.top_n)
-    sources = collect(keys(chunks))
-    contexts = collect(values(chunks))
-    new_sources = sources[reranked_indices]
-    new_contexts = contexts[reranked_indices]
-    return OrderedDict(zip(new_sources, new_contexts))
-end

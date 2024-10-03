@@ -87,23 +87,3 @@ using EasyContext: SourceChunk, ContextNode, add_or_update_source!, format_conte
         @test isempty(node.updated_sources)
     end
 end
-#%%
-# @testset "ContextNode" begin
-    @testset "cut_history!" begin
-        node = ContextNode()
-        sources = ["./src/contexts/ContextNode.jl", "./src/contexts/ContextProcessors.jl"]
-        contexts = ["# Content of ContextNode.jl", "# Content of ContextProcessors.jl"]
-        
-        for i in 1:5
-            add_or_update_source!(node, [sources[1]], [contexts[1] * " $i"], verbose=false)
-        end
-        add_or_update_source!(node, [sources[2]], [contexts[2]], verbose=false)
-        
-        @test length(node.tracked_sources) == 2
-        
-        cut_history!(node, 3)
-        
-        @test length(node.tracked_sources) == 1
-        @test node.tracked_sources[sources[2]][1] >= node.call_counter - 2
-    end
-end

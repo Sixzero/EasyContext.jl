@@ -34,6 +34,8 @@ include("embedders/EmbeddingContext.jl")
 include("ContextJoiner.jl")
 include("filter/AgeTracker.jl")
 include("rerankers/ReduceRerankGPT.jl")
+include("rerankers/CohereRerankPro.jl")
+include("rerankers/RerankGPTPro.jl")
 include("contexts/Contexts.jl")
 include("loader/loaders.jl")
 include("action/loading_spinner.jl")
@@ -54,7 +56,6 @@ include("transform/transformations.jl")
 # include("AISHExtensionV4.jl")
 
 include("precompile_scripts.jl")
-
 
 end # module EasyContext
 

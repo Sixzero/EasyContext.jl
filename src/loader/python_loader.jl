@@ -45,9 +45,6 @@ function get_package_description(package_name::String)
     return "Description not available"
 end
 
-# function cut_history!(processor::PythonLoader, keep::Int)
-#     cut_history!(processor.context_node, keep)
-# end
 
 # Helper function to find Python packages
 function find_python_packages()

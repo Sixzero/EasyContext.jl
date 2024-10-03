@@ -1,5 +1,5 @@
 using Test
-include("../src/filters/AgeTracker.jl")
+include("../src/filter/AgeTracker.jl")
 include("../src/ContextStructs.jl")
 
 @testset "AgeTracker tests" begin

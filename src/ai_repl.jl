@@ -27,12 +27,8 @@ function create_ai_repl(state::AIState)
         # valid_input_checker=REPL.complete_julia
     )
 
-
     return ai_mode
 end
 
-function start_ai_repl(state::AIState)
-    ai_mode = create_ai_repl(state)
-    println("AI REPL mode initialized. Press ')' to enter and backspace to exit.")
-end
+start_ai_repl(state::AIState) = (ai_mode = create_ai_repl(state); println("AI REPL mode initialized. Press ')' to enter and backspace to exit."))
 
