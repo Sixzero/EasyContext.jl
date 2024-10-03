@@ -29,7 +29,7 @@ function (cached_loader::CachedLoader)(args...)
     
     result = loader(args...)
     
-    JLD2.save(filename, "value" => result)
+    JLD2.save(filename, value=result)
     cached_loader.in_memory_key, cached_loader.in_memory_value = key, result
     
     return result
