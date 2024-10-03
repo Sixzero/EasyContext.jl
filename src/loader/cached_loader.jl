@@ -3,10 +3,10 @@ using JLD2
 using SHA
 
 
-@kwdef mutable struct CachedLoader{T<:Cacheable} <: Cacheable
+@kwdef mutable struct CachedLoader{T<:Cacheable,D} <: Cacheable
     loader::T
     cache_dir::String = CACHE_DIR
-    memory::Dict{String,Any} = Dict{String,Any}()
+    memory::Dict{String,D}
 end
 
 cache_key(loader::Cacheable, args...)          = @assert false "Unimplemented method for $(typeof(loader))!"
