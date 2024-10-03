@@ -36,7 +36,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     cache_prefix, truncate_dimension = embedder.cache_prefix, embedder.truncate_dimension
     
     cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(unique_name).jld2")
-    cache::Dict{String, Vector{Float32}}() = isfile(cache_file) ? JLD2.load(cache_file) : Dict{String, Vector{Float32}}()
+    cache::Dict{String, Vector{Float32}} = isfile(cache_file) ? JLD2.load(cache_file) : Dict{String, Vector{Float32}}()
     
     doc_hashes = [bytes2hex(sha256(doc)) for doc in docs]
     to_embed_indices = findall(i -> !haskey(cache, doc_hashes[i]), eachindex(docs))
