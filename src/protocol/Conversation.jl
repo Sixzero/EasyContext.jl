@@ -7,7 +7,7 @@ end
 
 (conv::Conversation)(msg::Message) = push!(conv.messages, msg)
 
-Conversation_from_sysmsg(;sys_msg::String) = Conversation(system_message=Message(timestamp=now(UTC), role=:system, content=sys_msg), messages=Message[]),
+Conversation_from_sysmsg(;sys_msg::String) = Conversation(system_message=Message(timestamp=now(UTC), role=:system, content=sys_msg), messages=Message[])
 
 # always going to cut after an :assitant but before a :user message.
 function cut_history!(conv::Conversation; keep=8)
