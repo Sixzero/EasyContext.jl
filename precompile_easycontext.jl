@@ -1,5 +1,4 @@
 
-using EasyContext: ConversationCTX
 using EasyContext: Workspace, WorkspaceLoader
 using EasyContext: format_shell_results_to_context
 using EasyContext: greet, Context
@@ -13,7 +12,6 @@ using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder
 using EasyContext: ReduceRankGPTReranker, QuestionCTX
 using EasyContext: print_project_tree
 using EasyContext: context_combiner!
-using EasyContext: to_disk_custom!
 using EasyContext: extract_and_preprocess_codeblocks
 using EasyContext: LLM_conditonal_apply_changes
 using EasyContext: workspace_format_description
@@ -67,7 +65,6 @@ print_project_tree(workspace, show_tokens=show_tokens)
 !silent && isempty(user_question) && (isdefined(Base, :active_repl) ? println("Your first [Enter] will just interrupt the REPL line and get into the conversation after that: ") : println("Your multiline input (empty line to finish):"))
 
 _add_error_message!(msg) = add_error_message!(conv_ctx, msg)
-to_disk!()               = to_disk_custom!(conv_ctx, persister)
 
 # forward
 while loop || !isempty(user_question)

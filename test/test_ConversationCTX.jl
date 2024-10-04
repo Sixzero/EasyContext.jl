@@ -5,50 +5,40 @@ using EasyContext: get_next_msg_contrcutor, get_cache_setting, add_error_message
 using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
 
 @testset "ConversationCTX Tests" begin
-    @testset "Constructor" begin
-        sys_msg = "This is a system message"
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg=sys_msg)
-        
-        @test conv_ctx isa ConversationCTX
-        @test conv_ctx.conv.system_message.content == sys_msg
-        @test conv_ctx.conv.system_message.role == :system
-        @test isempty(conv_ctx.conv.messages)
-        @test conv_ctx.max_history == 10
-    end
 
     @testset "Adding messages" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
         
         user_msg = create_user_message("Hello, AI!")
         conv_ctx(user_msg)
         
-        @test length(conv_ctx.conv.messages) == 1
-        @test conv_ctx.conv.messages[1].content == "Hello, AI!"
-        @test conv_ctx.conv.messages[1].role == :user
+        @test length(conv_ctx.messages) == 1
+        @test conv_ctx.messages[1].content == "Hello, AI!"
+        @test conv_ctx.messages[1].role == :user
         
         ai_msg = create_AI_message("Hello, human!")
         conv_ctx(ai_msg)
         
-        @test length(conv_ctx.conv.messages) == 2
-        @test conv_ctx.conv.messages[2].content == "Hello, human!"
-        @test conv_ctx.conv.messages[2].role == :assistant
+        @test length(conv_ctx.messages) == 2
+        @test conv_ctx.messages[2].content == "Hello, human!"
+        @test conv_ctx.messages[2].role == :assistant
     end
 
     @testset "Max history limit" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message", max_history=3)
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message", max_history=3)
         
         for i in 1:5
             conv_ctx(create_user_message("User message $i"))
             conv_ctx(create_AI_message("AI message $i"))
         end
         
-        @test length(conv_ctx.conv.messages) == 3
-        @test conv_ctx.conv.messages[1].content == "User message 4"
-        @test conv_ctx.conv.messages[3].content == "AI message 5"
+        @test length(conv_ctx.messages) == 3
+        @test conv_ctx.messages[1].content == "User message 4"
+        @test conv_ctx.messages[3].content == "AI message 5"
     end
 
     @testset "get_cache_setting" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message", max_history=5)
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message", max_history=5)
         
         @test get_cache_setting(conv_ctx) == :all
         
@@ -61,17 +51,17 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "add_error_message!" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
         
         add_error_message!(conv_ctx, "Test error message")
         
-        @test length(conv_ctx.conv.messages) == 1
-        @test conv_ctx.conv.messages[1].content == "Test error message"
-        @test conv_ctx.conv.messages[1].role == :user
+        @test length(conv_ctx.messages) == 1
+        @test conv_ctx.messages[1].content == "Test error message"
+        @test conv_ctx.messages[1].role == :user
     end
 
     @testset "get_next_msg_contrcutor" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
         
         @test get_next_msg_contrcutor(conv_ctx) == create_user_message
         
@@ -83,7 +73,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "to_dict functions" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
         conv_ctx(create_user_message("User message"))
         conv_ctx(create_AI_message("AI message"))
         
@@ -104,7 +94,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "update_last_user_message_meta" begin
-        conv_ctx = ConversationCTX_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
         conv_ctx(create_user_message("User message"))
         
         meta = Dict("input_tokens" => 10, "output_tokens" => 20, 
@@ -113,7 +103,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
         
         update_last_user_message_meta(conv_ctx, meta)
         
-        last_msg = conv_ctx.conv.messages[end]
+        last_msg = conv_ctx.messages[end]
         @test last_msg.input_tokens == 10
         @test last_msg.output_tokens == 20
         @test last_msg.cache_creation_input_tokens == 5

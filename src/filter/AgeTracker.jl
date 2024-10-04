@@ -1,20 +1,41 @@
 
 @kwdef mutable struct AgeTracker
     tracker::Dict{String, Int} = Dict{String, Int}()
+    max_history::Int = 14
+    cut_to::Int = 6
+    age::Int=0
 end
 
-(tracker::AgeTracker)(src_content::Context; max_history::Int, refresh_these::OrderedDict=OrderedDict()) = tracker(src_content.d; max_history=max_history, refresh_these=refresh_these)
-
-function (tracker::AgeTracker)(src_content::OrderedDict; max_history::Int, refresh_these::OrderedDict=OrderedDict())
-    foreach(source -> tracker.tracker[source] = get(tracker.tracker, source, 0) + 1, keys(src_content))
-    foreach(source -> tracker.tracker[source] = 1, keys(refresh_these))
-
-    for (source, age) in tracker.tracker
-        if age ≥ max_history
-            delete!(tracker.tracker, source)
-            delete!(src_content, source)
-        end
+(tracker::AgeTracker)(src_content::Context) = tracker(src_content.d)
+(tracker::AgeTracker)(src_content::OrderedDict) = begin
+    tracker.age += 1
+    for (source, content) in keys(src_content)
+        source in keys(tracker) && continue 
+        tracker[source] = tracker.age
     end
     src_content
 end
 
+function ageing!(tracker::AgeTracker, conv::Conversation, ctx::Context, ct::ChangeTracker)
+    tracker.age += 1
+    if length(conv.messages) > tracker.max_history
+        cut_history!(conv, keep=tracker.cut_to)
+        for (source, age) in tracker.tracker
+            if tracker.age - max_history ≥ age 
+                delete!(tracker.tracker, source)
+                delete!(ctx.d, source)
+                delete!(ct.changes, source)
+                delete!(ct.content, source)
+            end
+        end
+    end
+end
+
+function get_cache_setting(tracker::AgeTracker, conv::Conversation) ## TODO recheck!!
+    messages_count = length(conv.messages)
+    if messages_count > tracker.max_history - 1
+        @info "We do not cache, because next message will trigger a cut!"
+        return nothing
+    end
+    return :last
+end

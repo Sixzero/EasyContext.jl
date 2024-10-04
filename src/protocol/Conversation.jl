@@ -5,12 +5,15 @@
 	messages::Vector{M}=[]
 end
 
+(conv::Conversation)(msg::Message) = push!(conv.messages, msg)
+
+Conversation_from_sysmsg(;sys_msg::String) = Conversation(system_message=Message(timestamp=now(UTC), role=:system, content=sys_msg), messages=Message[]),
+
 # always going to cut after an :assitant but before a :user message.
-function cut_history!(conv::Conversation; keep=13)
+function cut_history!(conv::Conversation; keep=8)
 	length(conv.messages) <= keep && return conv.messages
-	
 	start_index = max(1, length(conv.messages) - keep + 1)
-	start_index += (conv.messages[start_index].role == :assistant)
+	@assert (conv.messages[start_index].role == :user) "how could we cut like this? This function should be only called after :assistant message was attached to the end of the message list"
 	
 	conv.messages = conv.messages[start_index:end]
 end

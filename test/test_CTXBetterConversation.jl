@@ -9,9 +9,9 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
         conv_ctx = BetterConversationCTX_from_sysmsg(sys_msg=sys_msg)
         
         @test conv_ctx isa BetterConversationCTX
-        @test conv_ctx.conv.system_message.content == sys_msg
-        @test conv_ctx.conv.system_message.role == :system
-        @test isempty(conv_ctx.conv.messages)
+        @test conv_ctx.system_message.content == sys_msg
+        @test conv_ctx.system_message.role == :system
+        @test isempty(conv_ctx.messages)
         @test conv_ctx.max_history == 14
         @test conv_ctx.cut_to == 7
     end
@@ -22,16 +22,16 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
         user_msg = create_user_message("Hello, AI!")
         conv_ctx(user_msg)
         
-        @test length(conv_ctx.conv.messages) == 1
-        @test conv_ctx.conv.messages[1].content == "Hello, AI!"
-        @test conv_ctx.conv.messages[1].role == :user
+        @test length(conv_ctx.messages) == 1
+        @test conv_ctx.messages[1].content == "Hello, AI!"
+        @test conv_ctx.messages[1].role == :user
         
         ai_msg = create_AI_message("Hello, human!")
         conv_ctx(ai_msg)
         
-        @test length(conv_ctx.conv.messages) == 2
-        @test conv_ctx.conv.messages[2].content == "Hello, human!"
-        @test conv_ctx.conv.messages[2].role == :assistant
+        @test length(conv_ctx.messages) == 2
+        @test conv_ctx.messages[2].content == "Hello, human!"
+        @test conv_ctx.messages[2].role == :assistant
     end
 
     @testset "Max history limit and cutting" begin
@@ -42,9 +42,9 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
             conv_ctx(create_AI_message("AI message $i"))
         end
         
-        @test length(conv_ctx.conv.messages) == 4
-        @test conv_ctx.conv.messages[1].content == "User message 7"
-        @test conv_ctx.conv.messages[4].content == "AI message 8"
+        @test length(conv_ctx.messages) == 4
+        @test conv_ctx.messages[1].content == "User message 7"
+        @test conv_ctx.messages[4].content == "AI message 8"
     end
 
     @testset "get_cache_setting" begin
@@ -82,16 +82,16 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
         @test get_cache_setting(conv_ctx) === :last
         
         # Check messages after cut
-        @test length(conv_ctx.conv.messages) == 3
-        @test conv_ctx.conv.messages[1].content == "User message 5"
-        @test conv_ctx.conv.messages[2].content == "User message 6"
-        @test conv_ctx.conv.messages[3].content == "User message 7"
+        @test length(conv_ctx.messages) == 3
+        @test conv_ctx.messages[1].content == "User message 5"
+        @test conv_ctx.messages[2].content == "User message 6"
+        @test conv_ctx.messages[3].content == "User message 7"
         
         # Check caching after cut
         @test get_cache_setting(conv_ctx) == :last
         # Add more messages to reach the upper range
         conv_ctx(create_user_message("User message 8"))
-        @test length(conv_ctx.conv.messages) == 4
+        @test length(conv_ctx.messages) == 4
         @test get_cache_setting(conv_ctx) == :last
         conv_ctx(create_user_message("User message 9"))
         
@@ -105,10 +105,10 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
         @test get_cache_setting(conv_ctx) == :last
         
         # Check messages after second cut
-        @test length(conv_ctx.conv.messages) == 3
-        @test conv_ctx.conv.messages[1].content == "User message 9"
-        @test conv_ctx.conv.messages[2].content == "User message 10"
-        @test conv_ctx.conv.messages[3].content == "User message 11"
+        @test length(conv_ctx.messages) == 3
+        @test conv_ctx.messages[1].content == "User message 9"
+        @test conv_ctx.messages[2].content == "User message 10"
+        @test conv_ctx.messages[3].content == "User message 11"
         
         # Check caching after second cut
         @test get_cache_setting(conv_ctx) == :last
@@ -138,7 +138,7 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
         @test get_next_msg_contrcutor(conv_ctx) == create_AI_message
         
         add_error_message!(conv_ctx, "Test error message")
-        @test conv_ctx.conv.messages[end].content == "Test error message"
+        @test conv_ctx.messages[end].content == "Test error message"
         
         # dict = to_dict(conv_ctx)
         # @test dict[:system] == "Test system message"
@@ -160,7 +160,7 @@ using EasyContext: Message, create_user_message, create_AI_message, update_last_
         
         update_last_user_message_meta(conv_ctx, meta)
         
-        last_msg = conv_ctx.conv.messages[end]
+        last_msg = conv_ctx.messages[end]
         @test last_msg isa Message
         @test last_msg.role == :user
         @test last_msg.content == "User message"
