@@ -1,12 +1,12 @@
 using PromptingTools
 
-export llm_context_planner
+export LLM_context_planner
 
 struct ToolSuggestion
     suggested_tools::Vector{String}
 end
 
-function llm_context_planner(ctx, tools; model::String="gpt3", kwargs...)
+function LLM_context_planner(ctx, tools; model::String="gpt3", kwargs...)
     tool_descriptions = join(["$name: $description" for (name, description, _) in tools], "\n")
     
     response = aiextract("""

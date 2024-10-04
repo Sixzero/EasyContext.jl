@@ -61,8 +61,8 @@ include("building_block/CTX_workspace.jl")
 include("precompile_scripts.jl")
 
 # Automation
-include("automation/ai_condition.jl")
-include("automation/context_planner.jl")
+include("automation/llm_context_planner.jl")
+include("automation/llm_condition.jl")
 
 end # module EasyContext
 
