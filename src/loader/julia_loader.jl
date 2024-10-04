@@ -9,11 +9,10 @@ function (loader::JuliaLoader)(chunker::CHUNKER) where {CHUNKER <: AbstractChunk
 end
 
 function get_package_infos(scope::Symbol)
-    installed_packages = Pkg.installed()
     all_dependencies = Pkg.dependencies()
 
     if scope == :installed
-        return [info for (uuid, info) in all_dependencies if info.name in keys(installed_packages)]
+        return [info for (uuid, info) in all_dependencies if info.is_direct_dep==true && info.version !== nothing]
     elseif scope ∈ (:dependencies, :all)
         return collect(values(all_dependencies))
     else
