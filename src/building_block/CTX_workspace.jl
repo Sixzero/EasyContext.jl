@@ -22,4 +22,4 @@ function process_workspace_context(workspace_context, ctx_question)
   return workspace_ctx_2_string(state, scr_content)
 end
 
-age!(workspace_context, conversation) = ageing!(workspace_context.ws_age, conversation, workspace_context.workspace_ctx, workspace_context.ws_changes)
+ws_age!(workspace_context) = ageing!(workspace_context.ws_age, workspace_context.workspace_ctx, workspace_context.ws_changes)

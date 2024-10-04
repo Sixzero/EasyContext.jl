@@ -27,7 +27,13 @@ update_message_by_id(conv::Conversation, message_id::String, new_content::String
 	update_message_by_idx(conv, idx, new_content)
 end
 
-
+ageing!(conv::Conversation, tracker) = begin
+	if length(conv.messages) > tracker.max_history
+		cut_history!(conv, keep=tracker.cut_to) 
+		return true
+	end
+	return false
+end
 
 add_error_message!(conv::Conversation, error_content::String) = begin
 	convmes = conv.messages
