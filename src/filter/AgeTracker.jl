@@ -10,7 +10,7 @@ end
 (tracker::AgeTracker)(src_content::OrderedDict) = begin
     tracker.age += 1
     for (source, content) in keys(src_content)
-        source in keys(tracker) && continue 
+        source in keys(tracker.tracker) && continue 
         tracker[source] = tracker.age
     end
     src_content
@@ -22,10 +22,10 @@ function ageing!(tracker::AgeTracker, conv::Conversation, ctx::Context, ct::Chan
         cut_history!(conv, keep=tracker.cut_to)
         for (source, age) in tracker.tracker
             if tracker.age - max_history ≥ age 
-                delete!(tracker.tracker, source)
                 delete!(ctx.d, source)
                 delete!(ct.changes, source)
                 delete!(ct.content, source)
+                delete!(tracker.tracker, source)
             end
         end
     end
