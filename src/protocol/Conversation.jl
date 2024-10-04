@@ -52,7 +52,7 @@ to_dict(conv::Conversation)                = [Dict("role" => "system", "content"
 to_dict_nosys(conv::Conversation)          = [Dict("role" => string(msg.role), "content" => msg.content) for msg in conv.messages]
 to_dict_nosys_detailed(conv::Conversation) = [to_dict(message) for message in conv.messages]
 
-
+update_last_user_message_meta(conv::Conversation, meta) = update_last_user_message_meta(conv, meta["input_tokens"], meta["output_tokens"], meta["cache_creation_input_tokens"], meta["cache_read_input_tokens"], meta["price"], meta["elapsed"]) 
 update_last_user_message_meta(conv::Conversation, itok::Int, otok::Int, cached::Int, cache_read::Int, price, elapsed::Number) = update_message(conv.messages[end], itok, otok, cached, cache_read, price, elapsed)
 
 
