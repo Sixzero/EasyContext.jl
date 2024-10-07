@@ -12,16 +12,13 @@ const colors = Dict{Symbol, Symbol}(
     content::OrderedDict{String, String} = OrderedDict{String, String}()
     source_parser::Function = default_source_parser
     need_source_reparse::Bool = true
+    verbose::Bool = true  # Add this line
 end
 
-function default_source_parser(source::String, current_content::String)
-    updated_content = get_updated_content(source)
-    return get_chunk_standard_format(source, updated_content)
-end
 
 (tracker!::ChangeTracker)(src_content::Context) = begin
-    t, d = tracker!(src_content.d)
-    return t, src_content
+    d = tracker!(src_content.d)
+    return src_content
 end
 function (tracker::ChangeTracker)(src_content::OrderedDict)
     current_keys = keys(src_content)
@@ -29,6 +26,10 @@ function (tracker::ChangeTracker)(src_content::OrderedDict)
     for k in deleted_keys
         delete!(tracker.changes, k)
         delete!(tracker.content, k)
+    end
+    
+    for (source, _) in tracker.changes # probably it is only needed if tracker.need_source_reparse==false but for safety reasons we do it anyway.
+        tracker.changes[source] != :UNCHANGED && (tracker.changes[source] = :UNCHANGED)
     end
 
     for (source, content) in src_content
@@ -44,12 +45,12 @@ function (tracker::ChangeTracker)(src_content::OrderedDict)
             else
                 tracker.changes[source] = :UPDATED
                 tracker.content[source] = new_content
-                src_content[source]   = new_content
+                src_content[source]     = new_content
             end
         end
     end
-    print_context_updates(tracker; deleted=deleted_keys, item_type="sources")
-    return tracker, src_content
+    tracker.verbose && print_context_updates(tracker; deleted=deleted_keys, item_type="sources")
+    return src_content
 end
 
 function parse_source(source::String)
@@ -102,6 +103,7 @@ end
 
 
 function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
+    
     printstyled("Number of $item_type selected: ", color=:green, bold=true)
     printstyled(length(tracker.changes), "\n", color=:green)
     

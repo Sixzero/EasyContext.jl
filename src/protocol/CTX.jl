@@ -4,6 +4,7 @@ end
 
 (ctx::Context)(new_ctx::Context) = ctx(new_ctx.d)
 (ctx::Context)(new_ctx::OrderedDict{String, String}) = (merge!(ctx.d, new_ctx);   return ctx)
+Base.length(ctx::Context) = length(ctx.d)
 
 SHELL_TAG         = "ShellRunResults"
 SHELL_ELEMENT     = "sh_script"

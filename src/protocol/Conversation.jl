@@ -1,4 +1,4 @@
-
+export Conversation_from_sysmsg
 
 @kwdef mutable struct Conversation{M <: MSG} <: CONV
 	system_message::M
@@ -12,10 +12,12 @@ Conversation_from_sysmsg(;sys_msg::String) = Conversation(system_message=Message
 # always going to cut after an :assitant but before a :user message.
 function cut_history!(conv::Conversation; keep=8)
 	length(conv.messages) <= keep && return conv.messages
+	# keep = conv.messages[length(conv.messages) - keep].role == :user ? keep + 1 : keep
 	start_index = max(1, length(conv.messages) - keep + 1)
 	@assert (conv.messages[start_index].role == :user) "how could we cut like this? This function should be only called after :assistant message was attached to the end of the message list"
 	
 	conv.messages = conv.messages[start_index:end]
+	keep
 end
 
 get_message_by_id(conv::Conversation, message_id::String) = findfirst(msg -> msg.id == message_id, conv.messages)
@@ -27,13 +29,6 @@ update_message_by_id(conv::Conversation, message_id::String, new_content::String
 	update_message_by_idx(conv, idx, new_content)
 end
 
-ageing!(conv::Conversation, tracker) = begin
-	if length(conv.messages) > tracker.max_history
-		cut_history!(conv, keep=tracker.cut_to) 
-		return true
-	end
-	return false
-end
 
 add_error_message!(conv::Conversation, error_content::String) = begin
 	convmes = conv.messages

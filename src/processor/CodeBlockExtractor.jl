@@ -31,10 +31,10 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
 
     for (i, line) in enumerate(lines)
         if startswith(line, "MODIFY ")        
-            file_path = String(strip(line[8:end]))
+            file_path = expanduser(String(strip(line[8:end])))
             cmd_type = :MODIFY
         elseif startswith(line, "CREATE ")
-            file_path = String(strip(line[8:end]))
+            file_path = expanduser(String(strip(line[8:end])))
             cmd_type = :CREATE
         elseif is_opener_ticks(line, nesting_level)
             nesting_level += 1

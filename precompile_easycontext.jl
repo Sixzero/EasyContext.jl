@@ -35,14 +35,14 @@ loop=false
 workspace       = WorkspaceLoader(project_paths)
 workspace_ctx   = Context()
 ws_age!         = AgeTracker()
-ws_changes      = ChangeTracker()
+changes_tracker      = ChangeTracker()
 ws_simi_filterer = create_combined_index_builder(top_k=30)
 
 
 julia_pkgs      = JuliaLoader()
 julia_ctx       = Context()
 jl_age!         = AgeTracker()
-jl_changes      = ChangeTracker()
+changes_tracker      = ChangeTracker()
 jl_simi_filter = create_combined_index_builder(top_k=30)
 
 reranker_filterer   = ReduceRankGPTReranker(batch_size=30, model="gpt4om")
@@ -83,7 +83,7 @@ while loop || !isempty(user_question)
 			file_chunks_reranked = reranker_filterer(file_chunks_selected, ctx_question)
 			merged_file_chunks   = workspace_ctx(file_chunks_reranked)
 			ws_age!(merged_file_chunks, max_history=5)
-			state, scr_content   = ws_changes(merged_file_chunks)
+			state, scr_content   = changes_tracker(merged_file_chunks)
 			workspace_ctx_2_string(state, scr_content)
 		end
 	end
@@ -97,7 +97,7 @@ while loop || !isempty(user_question)
 	#     file_chunks_reranked = reranker_filterer(file_chunks_selected, ctx_question)
 	#     merged_file_chunks   = julia_ctx(file_chunks_reranked)
 	#     jl_age!(merged_file_chunks, max_history=5)
-	#     state, scr_content   = jl_changes(merged_file_chunks)
+	#     state, scr_content   = changes_tracker(merged_file_chunks)
 	#     julia_ctx_2_string(state, scr_content)
 	#   end
 	# end

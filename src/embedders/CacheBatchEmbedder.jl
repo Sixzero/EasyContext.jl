@@ -18,6 +18,7 @@ cache_prefix: The prefix addition to the file being saved.
     truncate_dimension::Union{Int, Nothing}=nothing
 end
 get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)
+get_embedder_uniq_id(embedder::AbstractIndexBuilder) = get_embedder_uniq_id(embedder.embedder)
 get_embedder_uniq_id(embedder::CachedBatchEmbedder) = get_embedder_uniq_id(embedder.embedder)
 get_model_name(embedder::CachedBatchEmbedder) = get_model_name(get_embedder(embedder))
 

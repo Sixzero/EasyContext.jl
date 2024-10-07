@@ -5,5 +5,6 @@ using Test
     include("test_context_planner.jl")
 
     include("test_CTXBetterConversation.jl")
+    include("test_workspace.jl")
 end
 

@@ -1,7 +1,7 @@
 using Dates
 using ..EasyContext: AbstractContextCreator, Conversation, Message, create_AI_message, create_user_message, cut_history!, update_last_user_message_meta
 
-export BetterConversationCTX, BetterConversationCTX_from_sysmsg
+export BetterConversationCTX
 
 @kwdef mutable struct BetterConversationCTX <: AbstractContextCreator
     conv::Conversation
@@ -12,6 +12,10 @@ add_error_message!(conv::BetterConversationCTX, error_content::String) = add_err
 
 
 function BetterConversationCTX_from_sysmsg(;sys_msg::String, max_history=14, cut_to=7)
+    # Ensure even cuts
+    max_history = iseven(max_history) ? max_history : max_history - 1
+    cut_to = iseven(cut_to) ? cut_to : cut_to + 1
+    
     BetterConversationCTX(
         conv=Conversation(system_message=Message(timestamp=now(UTC), role=:system, content=sys_msg), messages=Message[]),
         max_history=max_history,

@@ -1,3 +1,4 @@
+export AgeTracker, cut_old_history!
 
 @kwdef mutable struct AgeTracker
     tracker::Dict{String, Int} = Dict{String, Int}()
@@ -6,31 +7,43 @@
     age::Int=0
 end
 
-(tracker::AgeTracker)(src_content::Context) = tracker(src_content.d)
-(tracker::AgeTracker)(src_content::OrderedDict) = begin
-    tracker.age += 1
-    for source in keys(src_content)
-        source in keys(tracker.tracker) && continue 
-        tracker.tracker[source] = tracker.age
-    end
-    src_content
-end
-
-function ageing!(tracker::AgeTracker, ctx::Context, ct::ChangeTracker)
-    tracker.age += 1
-    for (source, age) in tracker.tracker
-        if tracker.age - tracker.max_history ≥ age 
-            delete!(ctx.d, source)
-            delete!(ct.changes, source)
-            delete!(ct.content, source)
-            delete!(tracker.tracker, source)
+function (ager::AgeTracker)(tracker::ChangeTracker)
+    for (source, state) in tracker.changes
+        if state === :UPDATED || state === :NEW
+            ager.tracker[source] = ager.age
         end
     end
 end
 
+function cut_old_history!(age_tracker::AgeTracker, ctx::Context, ct::ChangeTracker)
+    cut_old_history!(age_tracker, ctx.d, ct)
+end
+function cut_old_history!(age_tracker::AgeTracker, ctx::OrderedDict, ct::ChangeTracker)
+    min_age = age_tracker.age - tracker.cut_to
+    for (source, cont) in ctx
+        if age_tracker.tracker[source].age < min_age 
+            delete!(ctx, source)
+            delete!(ct.changes, source)
+            delete!(ct.content, source)
+            delete!(age_tracker.tracker[source], source)
+        end
+    end
+end
+function cut_old_history!(age_tracker::AgeTracker, conv::Conversation, contexts...)
+    age_tracker.age += 1    
+    if length(conv.messages) > age_tracker.max_history
+        keep = conv.messages[end-age_tracker.cut_to+1].role === :user ? age_tracker.cut_to : age_tracker.cut_to - 1
+		keep = cut_history!(conv, keep=keep) 
+        for (;tracker_context, changes_tracker) in contexts
+            cut_old_history!(age_tracker, tracker_context, changes_tracker)
+        end
+	end
+	return false
+end
+
 function get_cache_setting(tracker::AgeTracker, conv::Conversation) ## TODO recheck!!
     messages_count = length(conv.messages)
-    if messages_count > tracker.max_history - 1
+    if messages_count >= tracker.max_history - 1
         @info "We do not cache, because next message will trigger a cut!"
         return nothing
     end

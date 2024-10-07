@@ -1,2 +1,26 @@
 - Use Jina embedder. 
 - get_context should not return the concatenated context, because of unique filtering.
+
+We could increase and decrease the backtick count right? and I would also maybe make a name for the elseif functions like is_opener_ticks and is_closer_ticks. We would need for the outter opener to also allow simply 3 backtick openers without language specification, but any next opener is only an opener if there is lanauge specification otherwise it is a closer, which decreases the nesting level.
+
+#%%
+
+# function llm_context_planner(ctx, tools)
+#   response = ai"""
+#   What tools do you think you going to need to solve the query:
+#   <tools>
+#     $tools
+#   </tools
+#   <query>
+#     $ctx
+#   </query>
+#   """
+#   parse_tools(response)
+# end
+
+# results = llm_context_planner(ctx=ctx_question, tools=[
+#   (:julia_context => "Tool description" => julia_context),
+#   (:google_search => "") 
+#   ])
+#%%
+We need to implement the  get_next_msg_contrcutor(::Conversation) and then the ConversationCTX and BetterConversationCTX should just use that.
