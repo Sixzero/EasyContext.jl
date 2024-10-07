@@ -13,6 +13,7 @@ end
 function process_workspace_context(workspace_context, ctx_question; age_tracker=nothing)
   (;workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, formatter) = workspace_context
   file_chunks = workspace(FullFileChunker()) 
+  isempty(file_chunks) && return ""
   index = get_index(ws_simi_filterer, file_chunks)
   file_chunks_selected = ws_simi_filterer(index, ctx_question)
   file_chunks_reranked = ws_reranker_filterer(file_chunks_selected, ctx_question)
