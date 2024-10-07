@@ -23,9 +23,7 @@ include("protocol/Conversation.jl")
 include("protocol/History.jl")
 include("anthropic_extension.jl")
 include("Rephrase.v1.jl")
-include("RateLimiterRPM.jl")
-include("RateLimiterHeader.jl")
-include("RateLimiterTPM.jl")
+include("ratelimiters/init.jl")
 include("chunkers/SourceChunks.jl")
 include("chunkers/FullFileChunker.jl")
 # include("chunkers/FullFileChunker_new.jl")
@@ -45,24 +43,20 @@ include("file_io/Persistable.jl")
 
 # include("ai_repl.jl")
 include("PkgLister.jl")
-export find_package_path
 
 include("MainUtils.jl")
 include("transform/transformations.jl")
-# include("AISHExtension.jl")
-# include("AISHExtensionV2.jl")
-# include("AISHExtensionV3.jl")
-# include("AISHExtensionV4.jl")
 
 include("building_block/CTX_conversation.jl")
 include("building_block/CTX_julia.jl")
 include("building_block/CTX_workspace.jl")
-include("precompile_scripts.jl")
 include("filter/AgeTracker.jl")
 
 # Automation
 include("automation/llm_context_planner.jl")
 include("automation/llm_condition.jl")
+
+include("precompile_scripts.jl")
 
 end # module EasyContext
 

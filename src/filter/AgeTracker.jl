@@ -19,7 +19,7 @@ function cut_old_history!(age_tracker::AgeTracker, ctx::Context, ct::ChangeTrack
     cut_old_history!(age_tracker, ctx.d, ct)
 end
 function cut_old_history!(age_tracker::AgeTracker, ctx::OrderedDict, ct::ChangeTracker)
-    min_age = age_tracker.age - tracker.cut_to
+    min_age = age_tracker.age - age_tracker.cut_to
     for (source, cont) in ctx
         if age_tracker.tracker[source].age < min_age 
             delete!(ctx, source)
