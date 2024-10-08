@@ -42,6 +42,8 @@ include("action/loading_spinner.jl")
 
 include("processor/CodeBlockExtractor.jl")
 
+include("benching/IndexLogger.jl")
+
 # include("ai_repl.jl")
 include("PkgLister.jl")
 

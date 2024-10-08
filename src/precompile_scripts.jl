@@ -10,7 +10,7 @@ using PrecompileTools
 
     @compile_workload begin
         # EasyContext-specific initializations
-        workspace_context = init_workspace_context(project_paths)
+        workspace_context = init_workspace_context(project_paths, verbose=false)
         
         # Use the minimal package scope for precompilation
         julia_context = init_julia_context(package_scope=:minimal)

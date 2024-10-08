@@ -21,11 +21,11 @@ end
 function cut_old_history!(age_tracker::AgeTracker, ctx::OrderedDict, ct::ChangeTracker)
     min_age = age_tracker.age - age_tracker.cut_to
     for (source, cont) in ctx
-        if age_tracker.tracker[source].age < min_age 
+        if age_tracker.tracker[source] < min_age 
             delete!(ctx, source)
             delete!(ct.changes, source)
             delete!(ct.content, source)
-            delete!(age_tracker.tracker[source], source)
+            delete!(age_tracker.tracker, source)
         end
     end
 end
