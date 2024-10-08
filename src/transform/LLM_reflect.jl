@@ -28,7 +28,7 @@ function LLM_reflect(ctx_question, ctx_shell, ctx_test, new_ai_msg)
     $(ctx_test)
     """
     aigenerated = PromptingTools.aigenerate(prompt, model="claudeh") # gpt4om, claudeh
-    return aigenerated.content
+    return String(aigenerated.content)
 end
 
 
@@ -38,7 +38,7 @@ LLM_reflect_condition(resp) = begin
         "[STUCKED]" => :STUCKED,
     	"[CONTINUE]" => :CONTINUE,
     )); 
-    c.response=parse(c, String(resp))
+    c.response=parse(c, resp)
     @show c.response
     c
 end
