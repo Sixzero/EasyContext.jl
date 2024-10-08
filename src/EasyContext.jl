@@ -15,12 +15,15 @@ include("TokenEstimationMethods.jl")
 
 include("utils.jl")
 include("ContextStructs.jl")
+include("file_io/custom_format.jl")
+include("file_io/Persistable.jl")
 include("protocol/AbstractTypes.jl")
 include("protocol/CTX.jl")
 include("protocol/Message.jl")
 include("protocol/CodeBlock.jl")
 include("protocol/Conversation.jl")
 include("protocol/History.jl")
+include("protocol/Test.jl")
 include("anthropic_extension.jl")
 include("Rephrase.v1.jl")
 include("ratelimiters/init.jl")
@@ -38,14 +41,14 @@ include("loader/loaders.jl")
 include("action/loading_spinner.jl")
 
 include("processor/CodeBlockExtractor.jl")
-include("file_io/custom_format.jl")
-include("file_io/Persistable.jl")
 
 # include("ai_repl.jl")
 include("PkgLister.jl")
 
 include("MainUtils.jl")
 include("transform/transformations.jl")
+
+
 
 include("building_block/CTX_conversation.jl")
 include("building_block/CTX_julia.jl")

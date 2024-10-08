@@ -44,7 +44,7 @@ function apply_changes_to_file(original_content::AbstractString, changes_content
     """
 
     println("\e[38;5;240mProcessing diff with AI for higher quality...\e[0m")
-    @time aigenerated = PromptingTools.aigenerate(prompt, model="gpt4om") # gpt4om, claudeh
+    aigenerated = PromptingTools.aigenerate(prompt, model="gpt4om") # gpt4om, claudeh
     return extract_final_content(aigenerated.content)
 end
 

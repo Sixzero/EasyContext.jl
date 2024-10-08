@@ -15,7 +15,7 @@ using PrecompileTools
         # Use the minimal package scope for precompilation
         julia_context = init_julia_context(package_scope=:minimal)
         
-        conv_ctx = init_conversation_context("Dummy system prompt", shell_format_description(), workspace_format_description(), julia_format_description())
+        conv_ctx = init_conversation_context("Dummy system prompt")#, shell_format_description(), workspace_format_description(), julia_format_description())
         age_tracker = AgeTracker(max_history=14, cut_to=6)
         
         question_acc = QuestionCTX()

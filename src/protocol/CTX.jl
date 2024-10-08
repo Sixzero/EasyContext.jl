@@ -6,6 +6,8 @@ end
 (ctx::Context)(new_ctx::OrderedDict{String, String}) = (merge!(ctx.d, new_ctx);   return ctx)
 Base.length(ctx::Context) = length(ctx.d)
 
+TEST_CODE         = "TestCode"
+TEST_RESULT       = "TestResults"
 SHELL_TAG         = "ShellRunResults"
 SHELL_ELEMENT     = "sh_script"
 SHELL_RUN_RESULT  = "sh_run_result"
@@ -16,6 +18,7 @@ JULIA_ELEMENT     = "Function"
 PYTHON_TAG        = "PythonPackages" 
 PYTHON_ELEMENT    = "Package" 
 
+test_ctx_2_string(test_frame)               = to_string(TEST_RESULT,     TEST_CODE, test_frame) 
 shell_ctx_2_string(cb_extractor)            = to_string(SHELL_TAG,     SHELL_ELEMENT, cb_extractor) 
 workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG, WORKSPACE_ELEMENT, scr_state, src_cont) 
 julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,     JULIA_ELEMENT, scr_state, src_cont) 
@@ -36,7 +39,14 @@ python_format_description()     = "\
 The Python packages in other existing installed packages will be in the user message and \
 wrapped in <$(PYTHON_TAG)> and </$(PYTHON_TAG)> tags, \
 with individual chunks wrapped in <$(PYTHON_ELEMENT)> and </$(PYTHON_ELEMENT)> tags."
+test_format_description(t)      = """
+We have a buildin testframework which has a testfile: $(t.filename) 
+We run the test file: $(t.run_test_command) 
+To create tests that runs automatically, you have to modify the testfile: $(t.filename) 
+The test code is wrapped in <$(TEST_CODE)> and </$(TEST_CODE)> tags, 
+Each run results of test_code run is wrapped in <$(TEST_RESULT) sh="$(t.run_test_command)"> and </$(TEST_RESULT)> tags where the sh property is the way we run the test file.
+"""
 
 
-
+# If you find the default test run command not appropriate then you can propose another one like: 
 

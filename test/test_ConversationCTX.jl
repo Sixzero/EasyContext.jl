@@ -1,7 +1,7 @@
 using Test
 using EasyContext
 using Dates
-using EasyContext: get_next_msg_contrcutor, get_cache_setting, add_error_message!
+using EasyContext: get_cache_setting, add_error_message!
 using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
 
 @testset "ConversationCTX Tests" begin
@@ -58,18 +58,6 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
         @test length(conv_ctx.messages) == 1
         @test conv_ctx.messages[1].content == "Test error message"
         @test conv_ctx.messages[1].role == :user
-    end
-
-    @testset "get_next_msg_contrcutor" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
-        
-        @test get_next_msg_contrcutor(conv_ctx) == create_user_message
-        
-        conv_ctx(create_user_message("User message"))
-        @test get_next_msg_contrcutor(conv_ctx) == create_AI_message
-        
-        conv_ctx(create_AI_message("AI message"))
-        @test get_next_msg_contrcutor(conv_ctx) == create_user_message
     end
 
     @testset "to_dict functions" begin

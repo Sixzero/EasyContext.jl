@@ -2,7 +2,7 @@ using Test
 using EasyContext
 using Dates
 using EasyContext: Message, create_user_message, create_AI_message, update_last_user_message_meta
-using EasyContext: get_next_msg_contrcutor, get_cache_setting
+using EasyContext: get_cache_setting
 
 @testset "BetterConversationCTX Tests" begin
     @testset "Constructor" begin
@@ -194,41 +194,6 @@ using EasyContext: get_next_msg_contrcutor, get_cache_setting
         end
     end
 
-    @testset "get_next_msg_contrcutor" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
-        
-        # When conversation is empty, it should return create_user_message
-        @test get_next_msg_contrcutor(conv_ctx) == create_user_message
-        
-        # After adding a user message
-        conv_ctx(create_user_message("User message"))
-        @test get_next_msg_contrcutor(conv_ctx) == create_AI_message
-        
-        # After adding an AI message
-        conv_ctx(create_AI_message("AI message"))
-        @test get_next_msg_contrcutor(conv_ctx) == create_user_message
-    end
-
-    @testset "Other methods" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
-        
-        @test get_next_msg_contrcutor(conv_ctx) == create_user_message
-        
-        conv_ctx(create_user_message("User message"))
-        @test get_next_msg_contrcutor(conv_ctx) == create_AI_message
-        
-        # add_error_message!(conv_ctx, "Test error message")
-        # @test conv_ctx.conv.messages[end].content == "Test error message"
-        
-        # dict = to_dict(conv_ctx)
-        # @test dict[:system] == "Test system message"
-        # @test dict[:messages][1][:role] == "user"
-        # @test dict[:messages][1][:content] == "User message"
-        
-        # dict_nosys = to_dict_nosys(conv_ctx)
-        # @test !haskey(dict_nosys, :system)
-        
-    end
 
     @testset "update_last_user_message_meta" begin
         conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")

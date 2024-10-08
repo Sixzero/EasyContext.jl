@@ -11,7 +11,6 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         @test isempty(extractor.shell_results)
         @test extractor.full_content == ""
         @test !extractor.skip_code_execution
-        @test !extractor.no_confirm
     end
 
     @testset "extract_and_preprocess_codeblocks" begin

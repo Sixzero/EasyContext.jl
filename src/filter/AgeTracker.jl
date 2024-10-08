@@ -29,7 +29,7 @@ function cut_old_history!(age_tracker::AgeTracker, ctx::OrderedDict, ct::ChangeT
         end
     end
 end
-function cut_old_history!(age_tracker::AgeTracker, conv::Conversation, contexts...)
+function cut_old_history!(age_tracker::AgeTracker, conv::ToSolve, contexts...)
     age_tracker.age += 1    
     if length(conv.messages) > age_tracker.max_history
         keep = conv.messages[end-age_tracker.cut_to+1].role === :user ? age_tracker.cut_to : age_tracker.cut_to - 1
@@ -41,7 +41,7 @@ function cut_old_history!(age_tracker::AgeTracker, conv::Conversation, contexts.
 	return false
 end
 
-function get_cache_setting(tracker::AgeTracker, conv::Conversation) ## TODO recheck!!
+function get_cache_setting(tracker::AgeTracker, conv::ToSolve) ## TODO recheck!!
     messages_count = length(conv.messages)
     if messages_count >= tracker.max_history - 1
         @info "We do not cache, because next message will trigger a cut!"

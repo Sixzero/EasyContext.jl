@@ -1,7 +1,7 @@
 export process_workspace_context, init_workspace_context
 
-function init_workspace_context(project_paths)
-  workspace = WorkspaceLoader(project_paths)
+function init_workspace_context(project_paths; append_files=String[])
+  workspace = WorkspaceLoader(project_paths; append_files)
   tracker_context = Context()
   changes_tracker = ChangeTracker()
   ws_simi_filterer = create_combined_index_builder(top_k=30)
@@ -22,4 +22,3 @@ function process_workspace_context(workspace_context, ctx_question; age_tracker=
   !isnothing(age_tracker) && age_tracker(changes_tracker)
   return formatter(changes_tracker, scr_content)
 end
-
