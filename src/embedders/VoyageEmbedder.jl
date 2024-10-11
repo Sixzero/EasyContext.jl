@@ -106,8 +106,6 @@ function PromptingTools.aiembed(embedder::VoyageEmbedder,
         elapsed = time
     )
 
-    verbose && @info PromptingTools._report_stats(msg, embedder.model)
-
     return msg
 end
 

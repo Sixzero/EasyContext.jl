@@ -40,7 +40,7 @@ function rerank(
         max_retries = 2
         for attempt in 1:max_retries
             prompt = create_rankgpt_prompt(query, doc_batch, top_n)
-            response = aigenerate(prompt; model=reranker.model, max_tokens=reranker.max_tokens, temperature=reranker.temperature, verbose=false)
+            response = airate(prompt; model=reranker.model, max_tokens=reranker.max_tokens, temperature=reranker.temperature, verbose=false)
 
             rankings = extract_ranking(response.content)
             if all(1 .<= rankings .<= length(doc_batch))

@@ -109,7 +109,6 @@ function PromptingTools.aiembed(embedder::JinaEmbedder,
         elapsed = time
     )
 
-    verbose && @info PromptingTools._report_stats(msg, embedder.model)
 
     return msg
 end

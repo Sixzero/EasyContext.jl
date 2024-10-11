@@ -2,11 +2,10 @@ using JLD2, SHA
 
 @kwdef mutable struct CachedIndexBuilder{T<:AbstractIndexBuilder} <: AbstractIndexBuilder
     builder::T
-    cache_dir::String="./cache"
+    cache_dir::String="cache"
 end
 
-function CachedIndexBuilder(builder::T; cache_dir::String="./cache") where T<:AbstractIndexBuilder
-    isdir(cache_dir) || mkpath(cache_dir)
+function CachedIndexBuilder(builder::T; cache_dir::String="cache") where T<:AbstractIndexBuilder
     return CachedIndexBuilder{T}(builder, cache_dir)
 end
 
@@ -39,7 +38,12 @@ end
 function get_index(cached_builder::CachedIndexBuilder, chunks::OrderedDict{String, String}; 
                    cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false, force_rebuild=false)
     cache_key = fast_cache_key(chunks)
-    cache_file = joinpath(cached_builder.cache_dir, "index_$(cache_key).jld2")
+    
+    # Create a centralized cache directory within EasyContext.jl
+    pkg_cache_dir = joinpath(dirname(@__DIR__), "..", cached_builder.cache_dir, "index_cache")
+    mkpath(pkg_cache_dir)
+    
+    cache_file = joinpath(pkg_cache_dir, "index_$(cache_key).jld2")
 
     if !force_rebuild && isfile(cache_file)
         verbose && @info "Loading cached index from $cache_file"
