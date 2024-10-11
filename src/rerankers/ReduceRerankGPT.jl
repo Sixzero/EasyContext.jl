@@ -127,24 +127,24 @@ function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:Abs
     top_n = min(top_n, length(documents))
     document_context = join(["<doc id=\"$i\">$doc</doc>" for (i, doc) in enumerate(documents)], "\n")
     prompt = """
-  <question>$question</question>
+    <question>$question</question>
 
-  <instruction>
-  Rank the following documents based on their relevance to the question. 
-  Output only the rankings as a comma-separated list of document ids, where the 1st is the most relevant.
-  At max select the top_$(top_n) docs, fewer is also okay. You can return an empty list [] if nothing is relevant.
-  Only use document ids between 1 and $(length(documents)).
-  If a selected document uses a function we probably need, it's preferred to include it in the ranking.
-  </instruction>
+    <instruction>
+    Rank the following documents based on their relevance to the question. 
+    Output only the rankings as a comma-separated list of document ids, where the 1st is the most relevant.
+    At max select the top_$(top_n) docs, fewer is also okay. You can return an empty list [] if nothing is relevant.
+    Only use document ids between 1 and $(length(documents)).
+    If a selected document uses a function we probably need, it's preferred to include it in the ranking.
+    </instruction>
 
-  <documents>
-  $document_context
-  </documents>
+    <documents>
+    $document_context
+    </documents>
 
-  <output_format>
-  [Rankings, comma-separated list of document ids]
-  </output_format>
-  """
+    <output_format>
+    [Rankings, comma-separated list of document ids]
+    </output_format>
+    """
     return prompt
 end
 

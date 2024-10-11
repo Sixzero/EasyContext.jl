@@ -1,5 +1,7 @@
 export process_workspace_context, init_workspace_context
 
+using EasyRAGStore: IndexLogger, log_index
+
 function init_workspace_context(project_paths; verbose=true, index_logger_path="workspace_context_log", append_files=String[])
     workspace = WorkspaceLoader(project_paths; verbose, append_files)
     tracker_context = Context()

@@ -11,9 +11,9 @@ using UUIDs
 
 using PromptingTools
 
-include("TokenEstimationMethods.jl")
+include("utils/utils.jl")
+include("utils/TokenEstimationMethods.jl")
 
-include("utils.jl")
 include("ContextStructs.jl")
 include("file_io/custom_format.jl")
 include("file_io/Persistable.jl")
@@ -42,7 +42,6 @@ include("action/loading_spinner.jl")
 
 include("processor/CodeBlockExtractor.jl")
 
-include("benching/IndexLogger.jl")
 
 # include("ai_repl.jl")
 include("PkgLister.jl")
@@ -60,6 +59,7 @@ include("filter/AgeTracker.jl")
 # Automation
 include("automation/llm_context_planner.jl")
 include("automation/llm_condition.jl")
+
 
 include("precompile_scripts.jl")
 

@@ -1,5 +1,7 @@
 export process_julia_context, init_julia_context
 
+using EasyRAGStore: IndexLogger, log_index
+
 function init_julia_context(; package_scope=:installed, verbose=true, index_logger_path="julia_context_log")
     voyage_embedder = create_voyage_embedder(model="voyage-code-2")
     jl_simi_filter = create_combined_index_builder(voyage_embedder; top_k=120)

@@ -7,13 +7,16 @@
 			"path": "../AISH.jl"
 		},
 		{
+			"path": "../EasyRAGBench.jl"
+		},
+		{
+			"path": "../EasyRAGStore.jl"
+		},
+		{
 			"path": "../Anthropic.jl"
 		},
 		{
 			"path": "../PromptingTools.jl"
-		},
-		{
-			"path": "../AIHelpMe.jl"
 		},
 		{
 			"path": "../LLMBenchmarks.jl"
