@@ -40,9 +40,9 @@ The Python packages in other existing installed packages will be in the user mes
 wrapped in <$(PYTHON_TAG)> and </$(PYTHON_TAG)> tags, \
 with individual chunks wrapped in <$(PYTHON_ELEMENT)> and </$(PYTHON_ELEMENT)> tags."
 test_format_description(t)      = """
-We have a buildin testframework which has a testfile: $(t.filename) 
+We have a buildin testframework which has a testfile: $(t.filepath) 
 We run the test file: $(t.run_test_command) 
-To create tests that runs automatically, you have to modify the testfile: $(t.filename) 
+To create tests that runs automatically, you have to modify the testfile: $(t.filepath) 
 The test code is wrapped in <$(TEST_CODE)> and </$(TEST_CODE)> tags, 
 Each run results of test_code run is wrapped in <$(TEST_RESULT) sh="$(t.run_test_command)"> and </$(TEST_RESULT)> tags where the sh property is the way we run the test file.
 """

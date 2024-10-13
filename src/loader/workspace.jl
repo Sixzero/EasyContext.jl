@@ -36,8 +36,13 @@ include("resolution_methods.jl")
     ]
 end
 
+
 function WorkspaceLoader(project_paths::Vector{String}=String[]; 
-                         resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), append_files=String[], verbose=true)
+                         resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
+                         virtual_ws=nothing,
+                         verbose=true)
+
+    !isnothing(virtual_ws) && push!(project_paths, virtual_ws.rel_path)
     # Check if all paths exist
     for path in project_paths
         @assert isdir(path) "Path does not exist or is not a directory: $path"
@@ -46,7 +51,6 @@ function WorkspaceLoader(project_paths::Vector{String}=String[];
     root_path, rel_project_paths = resolve(resolution_method, project_paths)
     original_dir = pwd()
     workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir)
-    append!(workspace.PROJECT_FILES, append_files)
     
     finalizer(workspace) do w
         if pwd() == w.root_path
