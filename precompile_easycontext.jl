@@ -1,5 +1,5 @@
 
-using EasyContext: Workspace, WorkspaceLoader
+using EasyContext: Workspace
 using EasyContext: format_shell_results_to_context
 using EasyContext: greet, Context
 using EasyContext: update_last_user_message_meta
@@ -32,7 +32,7 @@ show_tokens=false
 silent=false
 loop=false
 # init
-workspace       = WorkspaceLoader(project_paths)
+workspace       = Workspace(project_paths)
 workspace_ctx   = Context()
 ws_age!         = AgeTracker()
 changes_tracker      = ChangeTracker()

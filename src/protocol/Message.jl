@@ -11,7 +11,7 @@
 	elapsed::Float32=0
 end
 @kwdef mutable struct WebMessage <: MSG
-	id::String=genid()
+	id::String=short_ulid()
 	timestamp::DateTime
 	role::Symbol
 	content::String

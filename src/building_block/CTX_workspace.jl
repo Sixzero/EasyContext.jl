@@ -3,7 +3,7 @@ export process_workspace_context, init_workspace_context
 using EasyRAGStore: IndexLogger, log_index
 
 function init_workspace_context(project_paths; verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing)
-    workspace = WorkspaceLoader(project_paths; virtual_ws, verbose)
+    workspace = Workspace(project_paths; virtual_ws, verbose)
     tracker_context = Context()
     changes_tracker = ChangeTracker()
     ws_simi_filterer = create_combined_index_builder(top_k=30)

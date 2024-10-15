@@ -351,7 +351,7 @@ question = "Could you please implement me with ReplMaker or ReplMaker.jl an AI c
 
 question_acc    = QuestionCTX()
 ctx_question    = question_acc(question) 
-file_chunks     = WorkspaceLoader(["."])(FullFileChunker())
+file_chunks     = Workspace(["."])(FullFileChunker())
 file_chunks_selected = create_combined_index_builder(top_k=30)(file_chunks, ctx_question)
 file_chunks_reranked = ReduceRankGPTReranker(batch_size=30, model="gpt4om")(file_chunks_selected, ctx_question)
 @show file_chunks_reranked

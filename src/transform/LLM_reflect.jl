@@ -27,7 +27,7 @@ function LLM_reflect(ctx_question, ctx_shell, ctx_test, new_ai_msg)
     and the test results are:
     $(ctx_test)
     """
-    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh") # gpt4om, claudeh
+    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false) # gpt4om, claudeh
     return String(aigenerated.content)
 end
 

@@ -1,9 +1,9 @@
 using Test
 using EasyContext
-using EasyContext: Workspace, WorkspaceLoader, FirstAsRootResolution, LongestCommonPathResolution, resolve
+using EasyContext: Workspace, FirstAsRootResolution, LongestCommonPathResolution, resolve
 using EasyContext: get_project_files
 
-@testset "Workspace and WorkspaceLoader Tests" begin
+@testset "Workspace Tests" begin
     @testset "Workspace Constructor" begin
         w = Workspace(project_paths=["path1", "path2"])
         @test w.project_paths == ["path1", "path2"]
@@ -50,7 +50,7 @@ using EasyContext: get_project_files
         @test isempty(rel_paths)
     end
 
-    @testset "WorkspaceLoader with FirstAsRootResolution" begin
+    @testset "Workspace with FirstAsRootResolution" begin
         original_dir = pwd()
         temp_dir = tempname()
         try
@@ -60,7 +60,7 @@ using EasyContext: get_project_files
             mkdir(proj1)
             mkdir(proj2)
             
-            w = WorkspaceLoader([proj1, proj2])
+            w = Workspace([proj1, proj2])
             @test rstrip(w.root_path, '/') == rstrip(temp_dir * "/project1", '/')
             @test w.rel_project_paths == [".", "../project2"]
             @test w.resolution_method isa FirstAsRootResolution
@@ -70,7 +70,7 @@ using EasyContext: get_project_files
         end
     end
 
-    @testset "WorkspaceLoader with LongestCommonPathResolution" begin
+    @testset "Workspace with LongestCommonPathResolution" begin
         original_dir = pwd()
         temp_dir = tempname()
         try
@@ -80,7 +80,7 @@ using EasyContext: get_project_files
             mkdir(proj1)
             mkdir(proj2)
             
-            w = WorkspaceLoader([temp_dir, proj1, proj2], resolution_method=LongestCommonPathResolution())
+            w = Workspace([temp_dir, proj1, proj2], resolution_method=LongestCommonPathResolution())
             @test rstrip(w.root_path, '/') == rstrip(temp_dir, '/')
             @test w.rel_project_paths == [".", "project1", "project2"]
             @test w.resolution_method isa LongestCommonPathResolution
@@ -111,7 +111,7 @@ using EasyContext: get_project_files
             touch(joinpath(proj2, "ignored_file.log"))  # Should be ignored based on extension
             
             # Test with common path resolution
-            w_common = WorkspaceLoader([proj1, proj2])
+            w_common = Workspace([proj1, proj2])
             files_common = w_common()
             @test length(files_common) == 4
             @test any(f -> endswith(f, "src/file1.jl"), files_common)
@@ -121,7 +121,7 @@ using EasyContext: get_project_files
             @test !any(f -> endswith(f, "ignored_file.log"), files_common)
 
             # Test with root and relatives resolution
-            w_root = WorkspaceLoader([proj1, proj2], resolution_method=FirstAsRootResolution())
+            w_root = Workspace([proj1, proj2], resolution_method=FirstAsRootResolution())
             files_root = w_root()
             
             @test length(files_root) == 4

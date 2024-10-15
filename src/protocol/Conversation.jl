@@ -51,7 +51,7 @@ update_last_user_message_meta(conv::CONV, itok::Int, otok::Int, cached::Int, cac
 last_msg(conv::CONV) = conv.messages[end].content
 
 @kwdef mutable struct ToSolve{M <: MSG} <: CONV
-    id::String = genid()
+    id::String = short_ulid()
     timestamp::DateTime = now(UTC)
     overview::String = ""
     system_message::M = UndefMessage()
@@ -59,7 +59,9 @@ last_msg(conv::CONV) = conv.messages[end].content
 end
 ToSolve_from_sysmsg(;sys_msg::String) = ToSolve(Conversation_from_sysmsg(;sys_msg))
 
-ToSolve(c::Conversation) = ToSolve(genid(), now(), "", c.system_message, c.messages)
+ToSolve(c::Conversation) = ToSolve(short_ulid(), now(), "", c.system_message, c.messages)
+
+(p::PersistableState)(tsolve::ToSolve) = (mkdir(joinpath(p.conversation_path, tsolve.id)); tsolve)
 
 
 get_message_separator(tosolve_id) = "===AISH_MSG_$(tosolve_id)==="

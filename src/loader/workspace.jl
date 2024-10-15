@@ -1,5 +1,4 @@
 
-export WorkspaceLoader
 
 const path_separator="/"
 include("resolution_methods.jl")
@@ -25,6 +24,7 @@ include("resolution_methods.jl")
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml"
     ]
     FILTERED_FOLDERS::Vector{String} = [
+        "build",
         "spec", "specs", "examples", "docs", "dist", "python", "benchmarks", "node_modules", 
         "conversations", "archived", "archive", "test_cases", ".git" ,"playground"
     ]
@@ -37,10 +37,10 @@ include("resolution_methods.jl")
 end
 
 
-function WorkspaceLoader(project_paths::Vector{String}=String[]; 
-                         resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
-                         virtual_ws=nothing,
-                         verbose=true)
+function Workspace(project_paths::Vector{String}; 
+                    resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
+                    virtual_ws=nothing,
+                    verbose=true)
 
     !isnothing(virtual_ws) && push!(project_paths, virtual_ws.rel_path)
     # Check if all paths exist
