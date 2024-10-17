@@ -2,7 +2,7 @@
 using JLD2
 
 @kwdef mutable struct PersistableState
-	conversation_path::String=joinpath("..", "conversations")
+	conversation_path::String=joinpath(@__DIR__, "..","..","conversations")
 	format::String="jld2"
 end
 

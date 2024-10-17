@@ -50,22 +50,22 @@ update_last_user_message_meta(conv::CONV, itok::Int, otok::Int, cached::Int, cac
 
 last_msg(conv::CONV) = conv.messages[end].content
 
-@kwdef mutable struct ToSolve{M <: MSG} <: CONV
+@kwdef mutable struct ConversationX{M <: MSG} <: CONV
     id::String = short_ulid()
     timestamp::DateTime = now(UTC)
     overview::String = ""
     system_message::M = UndefMessage()
     messages::Vector{M} = Message[]
 end
-ToSolve_from_sysmsg(;sys_msg::String) = ToSolve(Conversation_from_sysmsg(;sys_msg))
+ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
 
-ToSolve(c::Conversation) = ToSolve(short_ulid(), now(), "", c.system_message, c.messages)
+ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), "", c.system_message, c.messages)
 
-(p::PersistableState)(tsolve::ToSolve) = (mkdir(joinpath(p.conversation_path, tsolve.id)); tsolve)
+(p::PersistableState)(conv::ConversationX) = (println(joinpath(p.conversation_path, conv.id));mkdir(joinpath(p.conversation_path, conv.id)); conv)
 
 
-get_message_separator(tosolve_id) = "===AISH_MSG_$(tosolve_id)==="
-get_conversation_filename(p::PersistableState,tosolve_id) = (files = filter(f -> endswith(f, "_$(tosolve_id).log"), readdir(CONVERSATION_DIR(p))); isempty(files) ? nothing : joinpath(CONVERSATION_DIR(p), first(files)))
+get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
+get_conversation_filename(p::PersistableState,conv_id) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(CONVERSATION_DIR(p))); isempty(files) ? nothing : joinpath(CONVERSATION_DIR(p), first(files)))
 
 function parse_conversation_filename(filename)
     m = match(CONVERSATION_FILE_REGEX, filename)
@@ -76,18 +76,18 @@ function parse_conversation_filename(filename)
     )
 end
 
-load_tosolve(p::PersistableState, tosolve_id::String) = begin
-    filename = get_conversation_filename(p, tosolve_id)
+load_conv(p::PersistableState, conv_id::String) = begin
+    filename = get_conversation_filename(p, conv_id)
     isnothing(filename) && return "", String[]
-    return filename, load_tosolve(filename)
+    return filename, load_conv(filename)
 end
-load_tosolve(filename::String) = @load filename tosolve
-save_file(filename::String, tosolve::ToSolve) = @save filename tosolve
+load_conv(filename::String) = @load filename conv
+save_file(filename::String, conv::ConversationX) = @save filename conv
 
 
-function generate_overview(conv::CONV, tosolve_id::String)
+function generate_overview(conv::CONV, conv_id::String)
 	sanitized_chars = strip(replace(replace(first(conv.messages[1].content, 32), r"[^\w\s-]" => "_"), r"\s+" => "_"), '_')
-	return joinpath(CONVERSATION_DIR, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(tosolve_id).log")
+	return joinpath(CONVERSATION_DIR, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
 end
 
 

@@ -1,6 +1,5 @@
 using ULID: encoderandom, encodetime
 
-clearline() = print("\033[1\033[G\033[2K")
 
 noop() = nothing
 noop(_) = nothing

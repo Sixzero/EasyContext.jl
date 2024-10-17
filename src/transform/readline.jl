@@ -1,6 +1,7 @@
 using REPL
 
-dialog() = print("\e[36m➜ \e[0m")  # teal arrow
+dialog()    = print("\e[36m➜ \e[0m")  # teal arrow
+clearline() = print("\033[1\033[G\033[2K")
 
 function readline_multi()
     buffer = IOBuffer()
@@ -47,7 +48,6 @@ function readline_improved()
     else
         res = readline_multi()
     end
-    clearline()
     clearline()
     print("\e[0m")  # reset text style
     return String(strip(res))
