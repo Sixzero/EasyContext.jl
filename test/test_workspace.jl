@@ -125,7 +125,7 @@ using EasyContext: get_project_files
             files_root = w_root()
             
             @test length(files_root) == 4
-            abs_files_root = [normpath(joinpath(w_root.common_path, f)) for f in files_root]
+            abs_files_root = [normpath(joinpath(w_root.root_path, f)) for f in files_root]
             @test any(f -> endswith(f, "project1/src/file1.jl"), abs_files_root)
             @test any(f -> endswith(f, "project1/README.md"), abs_files_root)
             @test any(f -> endswith(f, "project2/file2.jl"), abs_files_root)
@@ -133,7 +133,7 @@ using EasyContext: get_project_files
             @test !any(f -> endswith(f, "ignored_file.log"), abs_files_root)
 
             # Test relative paths
-            rel_files_common = [normpath(joinpath(w_common.common_path, f)) for f in files_common]
+            rel_files_common = [normpath(joinpath(w_common.root_path, f)) for f in files_common]
             @test any(f -> endswith(f, joinpath("project1", "src", "file1.jl")), rel_files_common)
             @test any(f -> endswith(f, joinpath("project1", "README.md")), rel_files_common)
             @test any(f -> endswith(f, joinpath("project2", "file2.jl")), rel_files_common)

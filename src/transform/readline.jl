@@ -50,7 +50,7 @@ function readline_improved()
     clearline()
     clearline()
     print("\e[0m")  # reset text style
-    return res
+    return String(strip(res))
 end
 
 function wait_user_question(user_question)
