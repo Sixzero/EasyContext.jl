@@ -39,7 +39,7 @@ LLM_reflect_condition(resp) = begin
     	"[CONTINUE]" => :CONTINUE,
     )); 
     c.response=parse(c, resp)
-    @show c.response
+    !(c.response in [:DONE, :STUCKED, :CONTINUE]) && @warn "We couldn't identify direction! (maybe autostop with warning??)"
     c
 end
 is_continue(c::Condition) = c.response == :CONTINUE 
