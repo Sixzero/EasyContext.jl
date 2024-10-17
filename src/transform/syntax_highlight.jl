@@ -97,18 +97,6 @@ function handle_code_block_end(state::SyntaxHighlightState, line::AbstractString
     end
 end
 
-function is_opener_ticks(line::AbstractString, in_code_block::Int)
-    if in_code_block == 0
-        return startswith(line, "```")
-    else
-        return startswith(line, "```") && length(strip(line)) > 3
-    end
-end
-
-function is_closer_ticks(line::AbstractString)
-    return startswith(line, "```") && length(strip(line)) == 3
-end
-
 highlight_string(code::AbstractString, lexer::Type{<:AbstractLexer}) = sprint() do io
     highlight(io, MIME("text/ansi"), code, lexer)
 end
