@@ -19,8 +19,6 @@ function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20240620", on_m
     end
 end
 
-greet(ChatSH, model::String="claude-3-5-sonnet-20240620") = println("Welcome to $ChatSH AI. (using $(model))")
-
 # Helper functions
 flush_highlight(state) = process_buffer(state, flush=true)
 print_user_message(meta) = println("\e[32mUser message: \e[0m$(Anthropic.format_meta_info(meta))\n\e[36m¬ \e[0m")
