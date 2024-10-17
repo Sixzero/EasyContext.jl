@@ -9,15 +9,15 @@ using EasyContext: QuestionCTX
         # Test single question
         result = qa("First question")
         @test occursin("1. First question", result)
-        @test occursin("<CurrentQuestion>", result)
-        @test !occursin("<PastQuestions>", result)
+        @test occursin("<UserQuestion>", result)
+        @test !occursin("<PastUserQuestions>", result)
 
         # Test two questions
         result = qa("Second question")
         @test occursin("1. First question", result)
         @test occursin("2. Second question", result)
-        @test occursin("<PastQuestions>", result)
-        @test occursin("<CurrentQuestion>", result)
+        @test occursin("<PastUserQuestions>", result)
+        @test occursin("<UserQuestion>", result)
     end
 
     @testset "Max questions limit" begin

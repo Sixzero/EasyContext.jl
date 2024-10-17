@@ -11,18 +11,18 @@ function (qa::QuestionCTX)(question::String)
     if length(qa.questions) > 1
         history = join(["$i. $msg" for (i, msg) in enumerate(qa.questions[1:end-1])], "\n")
         return """
-        <PastQuestions>
+        <PastUserQuestions>
         $history
-        </PastQuestions>
-        <CurrentQuestion>
+        </PastUserQuestions>
+        <UserQuestion>
         $(length(qa.questions)). $(qa.questions[end])
-        </CurrentQuestion>
+        </UserQuestion>
         """
     else
         return """
-        <CurrentQuestion>
-        1. $(qa.questions[end])
-        </CurrentQuestion>
+        <UserQuestion>
+        $(qa.questions[end])
+        </UserQuestion>
         """
     end
 end

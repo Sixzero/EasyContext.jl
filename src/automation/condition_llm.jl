@@ -1,7 +1,7 @@
 using PromptingTools
 
 """
-    LLM_condition(condition::AbstractString; model::AbstractString="gpt4om", verbose::Bool=false)
+    condition_llm(condition::AbstractString; model::AbstractString="gpt4om", verbose::Bool=false)
 
 Evaluates a given condition using an AI model and returns a boolean result.
 
@@ -15,17 +15,17 @@ Evaluates a given condition using an AI model and returns a boolean result.
 
 # Example
 ```julia
-if LLM_condition("Is it raining today?")
+if condition_llm("Is it raining today?")
     println("Bring an umbrella!")
 else
     println("Enjoy the sunshine!")
 end
 ```
 """
-function LLM_condition(condition::AbstractString; model::AbstractString="gpt4om", verbose::Bool=false)
+function condition_llm(condition::AbstractString; model::AbstractString="gpt4om", verbose::Bool=false)
     result = aiclassify(condition; model=model, verbose=verbose)
     return parse(Bool, result)
 end
 
 
-export LLM_condition
+export condition_llm

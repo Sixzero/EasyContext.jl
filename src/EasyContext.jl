@@ -60,8 +60,8 @@ include("building_block/CTX_workspace.jl")
 include("filter/AgeTracker.jl")
 
 # Automation
-include("automation/llm_context_planner.jl")
-include("automation/llm_condition.jl")
+include("automation/selector_llm.jl")
+include("automation/condition_llm.jl")
 
 
 include("precompile_scripts.jl")
