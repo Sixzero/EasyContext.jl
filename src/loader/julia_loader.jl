@@ -9,9 +9,11 @@ function (loader::JuliaLoader)(chunker::CHUNKER) where {CHUNKER <: AbstractChunk
 end
 
 function get_package_infos(scope::Symbol)
-    all_dependencies = Pkg.dependencies()
-
-    if scope == :installed
+    global_env_path = joinpath(DEPOT_PATH[1], "environments", "v$(VERSION.major).$(VERSION.minor)", "Project.toml")
+    global_env = Pkg.Types.EnvCache(global_env_path)
+    all_dependencies = Pkg.dependencies(global_env)
+    # scope == :installed && return collect(values(simplified_dependencies(global_env_path))) # this is 0.0002s while running the whole Pkg.dependencies is 0.02s if not more with more packages. But it has extremely more information than we need.
+    if scope == :installed 
         return [info for (uuid, info) in all_dependencies if info.is_direct_dep==true && info.version !== nothing]
     elseif scope == :dependencies
         return collect(values(all_dependencies))
@@ -35,6 +37,9 @@ function hash_pkg_infos(pkg_infos)
 end
 
 function get_pkg_unique_key(loader::Pkg.API.PackageInfo) 
+    return string(loader.name, loader.version)
+end
+function get_pkg_unique_key(loader::SimplePackageInfo) 
     return string(loader.name, loader.version)
 end
 function cache_filename(loader::JuliaLoader, key::String)

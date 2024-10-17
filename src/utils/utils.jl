@@ -19,7 +19,6 @@ home_abrev(path::AbstractString) = startswith(path, homedir()) ? joinpath("~", r
 
 
 
-using UUIDs
 import Pkg.Types: Project, read_project, VersionSpec
 
 struct SimplePackageInfo
