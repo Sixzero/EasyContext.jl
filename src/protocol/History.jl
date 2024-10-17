@@ -26,7 +26,7 @@ function generate_new_to_solve(history::History, sys_msg)
 	history.selected_conv_id = to_solve.id
 end
 
-load(history::History, persistable) = get_all_conversations_without_messages(history, persistable)
+load(history::History, persistable::PersistableState) = get_all_conversations_without_messages(history, persistable)
 function get_all_conversations_without_messages(history::History, persistable)
 	for file in get_all_conversations_file(persistable)    
 			conv_info = parse_conversation_filename(file)

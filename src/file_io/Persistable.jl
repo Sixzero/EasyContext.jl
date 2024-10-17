@@ -2,11 +2,11 @@
 using JLD2
 
 @kwdef mutable struct PersistableState
-	conversation_path::String=joinpath(@__DIR__, "..","..","conversations")
+	conversation_path::String
 	format::String="jld2"
 end
 
-Persistable(path::String) = (mkpath(path); PersistableState(conversation_path=path))
+PersistableState(path::String) = (mkpath(path); PersistableState(conversation_path=home_abrev(path)))
 
 CONVERSATION_DIR(p::PersistableState) = p.conversation_path
 

@@ -85,9 +85,10 @@ load_conv(filename::String) = @load filename conv
 save_file(filename::String, conv::ConversationX) = @save filename conv
 
 
-function generate_overview(conv::CONV, conv_id::String)
+function generate_overview(conv::CONV, conv_id::String, p::PersistableState)
+    @assert false
 	sanitized_chars = strip(replace(replace(first(conv.messages[1].content, 32), r"[^\w\s-]" => "_"), r"\s+" => "_"), '_')
-	return joinpath(CONVERSATION_DIR, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
+	return joinpath(CONVERSATION_DIR(p), "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
 end
 
 
