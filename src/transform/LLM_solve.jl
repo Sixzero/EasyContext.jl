@@ -31,4 +31,3 @@ function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20240620", on_m
 
 end
 
-greet(ChatSH, model::String="claude-3-5-sonnet-20240620") = println("Welcome to $ChatSH AI. (using $(model))")

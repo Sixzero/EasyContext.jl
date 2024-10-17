@@ -12,8 +12,11 @@ using UUIDs
 using PromptingTools
 
 include("utils/utils.jl")
+include("action/greet.jl")
 include("utils/TokenEstimationMethods.jl")
 
+include("directions/skills.jl")
+include("directions/guides.jl")
 include("ContextStructs.jl")
 include("file_io/custom_format.jl")
 include("file_io/Persistable.jl")

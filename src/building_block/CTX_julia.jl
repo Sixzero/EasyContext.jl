@@ -10,9 +10,9 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
     cached_jl_simi_filter = CachedIndexBuilder(jl_simi_filter)
     
     # Use the provided package_scope
-    julia_loader = CachedLoader(loader=JuliaLoader(package_scope=package_scope), memory=Dict{String,OrderedDict{String,String}}())
+    julia_loader = CachedLoader(loader=JuliaLoader(package_scope=package_scope), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
     
-    jl_pkg_index = get_index(cached_jl_simi_filter, julia_loader(SourceChunker()))
+    jl_pkg_index = get_index(cached_jl_simi_filter, julia_loader)
     tracker_context = Context()
     changes_tracker = ChangeTracker(;need_source_reparse=false, verbose=verbose)
     jl_reranker_filterer = ReduceRankGPTReranker(batch_size=40, model="gpt4om")
