@@ -4,9 +4,10 @@ using EasyRAGStore: IndexLogger, log_index
 
 @kwdef mutable struct JuliaCTX
     voyage_embedder::EmbeddingIndexBuilder
-    jl_simi_filter::CombinedIndexBuilder           
+    jl_simi_filter::EasyContext.CachedIndexBuilder{EasyContext.CombinedIndexBuilder}           
     jl_pkg_index::ChangeTracker
-    changes_tracker::ChangeTracker
+    tracker_context::Context
+    changes_tracker
     jl_reranker_filterer
     index_logger::IndexLogger
 end
@@ -30,7 +31,7 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
 
     return JuliaCTX(
         voyage_embedder,
-        jl_simi_filter=cached_jl_simi_filter,
+        cached_jl_simi_filter,
         jl_pkg_index,
         tracker_context,
         changes_tracker,
@@ -40,7 +41,7 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
 end
 
 function process_julia_context(julia_context, ctx_question; age_tracker=nothing)
-    (;jl_simi_filter, jl_pkg_index, tracker_context, changes_tracker, jl_reranker_filterer, index_logger) = julia_context
+    (;jl_simi_filter, jl_pkg_index, tracker_context, changes_tracker, jl_reranker_filterer, index_logger) = julia_context.jl_simi_filter, julia_context.jl_pkg_index, julia_context.tracker_context, julia_context.changes_tracker, julia_context.jl_reranker_filterer, julia_context.index_logger
 
     file_chunks_selected = jl_simi_filter(jl_pkg_index, ctx_question)
     file_chunks_reranked = jl_reranker_filterer(file_chunks_selected, ctx_question)

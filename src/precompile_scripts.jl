@@ -10,23 +10,23 @@ using PrecompileTools
 
     @compile_workload begin
         # EasyContext-specific initializations
-        workspace_context = init_workspace_context(project_paths, verbose=false)
+        # workspace_context = init_workspace_context(project_paths, verbose=false)
         
-        # Use the minimal package scope for precompilation
-        julia_context = init_julia_context(package_scope=:minimal)
+        # # Use the minimal package scope for precompilation
+        # julia_context = init_julia_context(package_scope=:minimal)
         
-        conv_ctx = init_conversation_context("Dummy system prompt")#, shell_format_description(), workspace_format_description(), julia_format_description())
-        age_tracker = AgeTracker(max_history=14, cut_to=6)
+        # conv_ctx = init_conversation_context("Dummy system prompt")#, shell_format_description(), workspace_format_description(), julia_format_description())
+        # age_tracker = AgeTracker(max_history=14, cut_to=6)
         
-        question_acc = QuestionCTX()
-        extractor = CodeBlockExtractor()
-        persister = PersistableState(logdir)
+        # question_acc = QuestionCTX()
+        # extractor = CodeBlockExtractor()
+        # persister = PersistableState(logdir)
 
-        # Simulate usage of EasyContext functions
-        # print_project_tree(workspace_context.workspace, show_tokens=show_tokens)
+        # # Simulate usage of EasyContext functions
+        # # print_project_tree(workspace_context.workspace, show_tokens=show_tokens)
         
-        ctx_question = user_question |> question_acc 
-        ctx_shell = extractor |> shell_ctx_2_string
+        # ctx_question = user_question |> question_acc 
+        # ctx_shell = extractor |> shell_ctx_2_string
         # ctx_jl_pkg = process_julia_context(julia_context, ctx_question; age_tracker)
         
         
