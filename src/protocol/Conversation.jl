@@ -53,7 +53,6 @@ last_msg(conv::CONV) = conv.messages[end].content
 @kwdef mutable struct ConversationX{M <: MSG} <: CONV
     id::String = short_ulid()
     timestamp::DateTime = now(UTC)
-    overview::String = ""
     system_message::M = UndefMessage()
     messages::Vector{M} = Message[]
 end
@@ -62,7 +61,6 @@ ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sy
 ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), "", c.system_message, c.messages)
 
 (p::PersistableState)(conv::ConversationX) = (println(joinpath(p.conversation_path, conv.id));mkdir(joinpath(p.conversation_path, conv.id)); conv)
-
 
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
 get_conversation_filename(p::PersistableState,conv_id) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(CONVERSATION_DIR(p))); isempty(files) ? nothing : joinpath(CONVERSATION_DIR(p), first(files)))
@@ -82,6 +80,7 @@ load_conv(p::PersistableState, conv_id::String) = begin
     return filename, load_conv(filename)
 end
 load_conv(filename::String) = @load filename conv
+save_file(p::PersistableState, conv::String) = save_file(get_conversation_filename(p, conv.id), conv)
 save_file(filename::String, conv::ConversationX) = @save filename conv
 
 
@@ -91,4 +90,6 @@ function generate_overview(conv::CONV, conv_id::String, p::PersistableState)
 	return joinpath(CONVERSATION_DIR(p), "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
 end
 
-
+@kwdef mutable struct TODO <: CONV
+    overview::String         # max 20 token thing
+end

@@ -38,7 +38,7 @@ function start_conversation(user_question=""; resume, streaming, project_paths, 
   
   question_acc      = QuestionCTX()
   extractor         = CodeBlockExtractor()
-  persister         = Persistable(logdir)
+  persister         = PersistableState(logdir)
 
   # prepare 
   print_project_tree(workspace_context.workspace, show_tokens=show_tokens)

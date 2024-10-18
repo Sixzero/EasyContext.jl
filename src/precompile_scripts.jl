@@ -20,7 +20,7 @@ using PrecompileTools
         
         question_acc = QuestionCTX()
         extractor = CodeBlockExtractor()
-        persister = Persistable(logdir)
+        persister = PersistableState(logdir)
 
         # Simulate usage of EasyContext functions
         # print_project_tree(workspace_context.workspace, show_tokens=show_tokens)

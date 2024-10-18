@@ -7,7 +7,7 @@ using EasyContext: add_error_message!
 using EasyContext: wait_user_question, reset!
 using EasyContext: workspace_ctx_2_string, julia_ctx_2_string, shell_ctx_2_string
 using EasyContext: ChangeTracker, AgeTracker
-using EasyContext: CodeBlockExtractor, Persistable
+using EasyContext: CodeBlockExtractor
 using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder
 using EasyContext: ReduceRankGPTReranker, QuestionCTX
 using EasyContext: print_project_tree
@@ -48,7 +48,7 @@ jl_simi_filter = create_combined_index_builder(top_k=30)
 reranker_filterer   = ReduceRankGPTReranker(batch_size=30, model="gpt4om")
 
 extractor       = CodeBlockExtractor()
-persister       = Persistable(logdir)
+persister       = PersistableState(logdir)
 
 question_acc    = QuestionCTX()
 
