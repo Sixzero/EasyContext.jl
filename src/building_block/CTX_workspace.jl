@@ -18,11 +18,10 @@ function init_workspace_context(project_paths; verbose=true, index_logger_path="
     changes_tracker = ChangeTracker()
     ws_simi_filterer = create_combined_index_builder(top_k=30)
     ws_reranker_filterer = ReduceRankGPTReranker(batch_size=30, model="gpt4om")
-    formatter = workspace_ctx_2_string  # Default formatter
     
     index_logger = IndexLogger(index_logger_path)
 
-    return WorkspaceCTX(workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, formatter, index_logger )
+    return WorkspaceCTX(workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger )
 end
 
 function process_workspace_context(workspace_context, ctx_question; age_tracker=nothing)
