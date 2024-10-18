@@ -5,9 +5,9 @@ using EasyRAGStore: IndexLogger, log_index
 @kwdef mutable struct JuliaCTX
     voyage_embedder::EmbeddingIndexBuilder
     jl_simi_filter::EasyContext.CachedIndexBuilder{EasyContext.CombinedIndexBuilder}           
-    jl_pkg_index::ChangeTracker
+    jl_pkg_index
     tracker_context::Context
-    changes_tracker
+    changes_tracker::ChangeTracker
     jl_reranker_filterer
     index_logger::IndexLogger
 end
