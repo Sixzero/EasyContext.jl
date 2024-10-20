@@ -52,7 +52,7 @@ function Workspace(project_paths::Vector{String};
     original_dir = pwd()
     workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir)
     
-    finalizer(workspace) do w
+    finalizer(workspace) do w # TODO this does nothing... As I see
         if pwd() == w.root_path
             cd(w.original_dir)
             println("Returned to original directory: $(w.original_dir)")
