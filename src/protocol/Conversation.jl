@@ -60,10 +60,11 @@ ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sy
 
 ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), "", c.system_message, c.messages)
 
-(p::PersistableState)(conv::ConversationX) = (println(joinpath(p.conversation_path, conv.id));mkdir(joinpath(p.conversation_path, conv.id)); conv)
+conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
+(p::PersistableState)(conv::ConversationX) = (println(conversaion_path(p, conv));mkdir(conversaion_path(p, conv)); conv)
 
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
-get_conversation_filename(p::PersistableState,conv_id) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(CONVERSATION_DIR(p))); isempty(files) ? nothing : joinpath(CONVERSATION_DIR(p), first(files)))
+get_conversation_filename(p::PersistableState,conv_id) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))
 
 function parse_conversation_filename(filename)
     m = match(CONVERSATION_FILE_REGEX, filename)
@@ -87,7 +88,7 @@ save_file(filename::String, conv::ConversationX) = @save filename conv
 function generate_overview(conv::CONV, conv_id::String, p::PersistableState)
     @assert false
 	sanitized_chars = strip(replace(replace(first(conv.messages[1].content, 32), r"[^\w\s-]" => "_"), r"\s+" => "_"), '_')
-	return joinpath(CONVERSATION_DIR(p), "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
+	return joinpath(p.path, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
 end
 
 @kwdef mutable struct TODO <: CONV

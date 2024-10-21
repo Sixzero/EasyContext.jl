@@ -4,7 +4,7 @@
 	selected_conv_id::String=""
 end
 
-get_all_conversations_file(p) = readdir(CONVERSATION_DIR(p))
+get_all_conversations_file(p) = readdir(p.path)
 
 function select_conversation(history::History, conv_id)
 	file_exists, conv = load_conv(conv_id)

@@ -11,7 +11,7 @@ function init_virtual_workspace_path(conv_ctx::ConversationX)
 end
 
 function (p::PersistableState)(vws::VirtualWorkspace)
-	vws.rel_path = mkdir(joinpath(p.conversation_path, vws.rel_path))
+	vws.rel_path = mkdir(joinpath(p.path, vws.rel_path))
 	vws
 end
 
