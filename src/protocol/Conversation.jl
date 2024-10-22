@@ -58,10 +58,15 @@ last_msg(conv::CONV) = conv.messages[end].content
 end
 ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
 
-ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), "", c.system_message, c.messages)
+ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), c.system_message, c.messages)
 
 conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
-(p::PersistableState)(conv::ConversationX) = (println(conversaion_path(p, conv));mkdir(conversaion_path(p, conv)); conv)
+(p::PersistableState)(conv::ConversationX) = begin
+    println(conversaion_path(p, conv))
+    mkdir(expanduser(joinpath(p.path, conv.id)))
+    mkdir(expanduser(conversaion_path(p, conv)))
+    conv
+end
 
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
 get_conversation_filename(p::PersistableState,conv_id) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))

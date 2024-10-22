@@ -2,7 +2,7 @@
 
 include("token_counter.jl")
 include("workspace_file_filters.jl")
-include("workspace.jl")
+include("workspace_loader.jl")
 include("virtual_workspace.jl")
 
 include("cached_loader.jl")

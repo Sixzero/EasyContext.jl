@@ -20,7 +20,6 @@ include("directions/guides.jl")
 include("ContextStructs.jl")
 include("file_io/custom_format.jl")
 include("file_io/Persistable.jl")
-include("file_io/GitTracker.jl")
 include("protocol/AbstractTypes.jl")
 include("protocol/CTX.jl")
 include("protocol/Message.jl")
@@ -51,6 +50,7 @@ include("processor/CodeBlockExtractor.jl")
 include("PkgLister.jl")
 
 include("MainUtils.jl")
+include("stateful_transformation/StatefulTransformators.jl")
 include("transform/transformations.jl")
 
 
@@ -58,7 +58,6 @@ include("transform/transformations.jl")
 include("building_block/CTX_conversation.jl")
 include("building_block/CTX_julia.jl")
 include("building_block/CTX_workspace.jl")
-include("filter/AgeTracker.jl")
 
 # Automation
 include("automation/selector_llm.jl")
