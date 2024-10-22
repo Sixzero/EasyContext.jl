@@ -83,3 +83,9 @@ function start_conversation(user_question=""; resume, streaming, project_paths, 
     silent && break
   end
 end
+
+
+#%%
+- worktree relative path
+- worktree cleanup mistakes...
+- merge... accept changes... how? + delete branch?
