@@ -6,8 +6,10 @@ const TODO4AI_Signature::LibGit2.Signature = LibGit2.Signature("todo4.ai", "trac
 const INITIAL_BRANCH_NAME = "unnamed-branch"
 
 LLM_branch_name(TODO)    = LLM_overview(TODO, max_token=8, extra="It will be used as branch name so use hyphens (-) to separate words between the branch name.")
-LLM_job_to_do(TODO)      = LLM_overview(user_question, max_token=29, extra="We need this to be a very concise overview about the question")
-LLM_commit_changes(TODO) = LLM_overview(user_question, max_token=29, extra="We need a very concise overview about the changes we are planning to make")
+LLM_job_to_do(TODO)      = LLM_overview(TODO, max_token=29, extra="We need this to be a very concise overview about the question")
+LLM_commit_changes(TODO) = LLM_overview(TODO, max_token=29, extra="We need a very concise overview about the changes we are planning to make")
+# TODoO = "a\ra isay hi"
+# new_name = LLM_job_to_do3(TODoO)
 
 @kwdef mutable struct Branch
 	initial_hash::LibGit2.GitHash
@@ -21,11 +23,11 @@ end
 end
 
 GitTracker!(ws, p::PersistableState, conv, TODO::String) = begin
-	
-  branch = isempty(TODO) ? INITIAL_BRANCH_NAME : LLM_branch_name(TODO)
+	# clean_unnamed()
+  branch = isempty(TODO) ? "$(INITIAL_BRANCH_NAME)_$(String(Int(datetime2unix(now())))[8:end])" : LLM_branch_name(TODO)
+	@show branch
   # TODO if there is branch name collision then regerenrate extending the list what we 'don't want' 
 	gits = Branch[]
-	orig_paths = copy(ws.project_paths)
 	for (i, project_path) in enumerate(ws.project_paths)
 		!is_git(project_path) && continue
 		repo = LibGit2.GitRepo(project_path)
@@ -51,7 +53,7 @@ end
 is_git(path)    = isdir(joinpath(path, ".git"))
 orig_branch(br) = LibGit2.shortname(br.initial_hash)
 commit_changes(g::GitTracker, message::String) = begin
-	if g.tracked_gits[1].branch == INITIAL_BRANCH_NAME
+	if g.tracked_gits[1].branch[1:length(INITIAL_BRANCH_NAME)] == INITIAL_BRANCH_NAME
 		rename(g, message)
 	end
 	commit_msg = LLM_commit_changes(message)
@@ -92,8 +94,7 @@ rename(g::GitTracker, TODO) = begin
 		@show LibGit2.path(git.repo)
 		@show typeof(LibGit2.path(git.repo))
 		cd(String(LibGit2.path(git.repo))) do
-			@show "git branch -m $(git.branch) $new_name"
-			run(`git branch -m $(git.branch) $new_name`)
+			run(`git branch -m $(git.branch) "$(new_name)"`)
 		end
 		git.branch = new_name
 	end
