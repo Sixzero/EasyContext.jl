@@ -59,12 +59,9 @@ end
 is_git(path)    = isdir(joinpath(path, ".git"))
 orig_branch(br) = LibGit2.shortname(br.initial_hash)
 commit_changes(g::GitTracker, message::String) = begin
-	if g.tracked_gits[1].branch[1:length(INITIAL_BRANCH_NAME)] == INITIAL_BRANCH_NAME
-		rename_branch(g, message)
-		g.todo = message
-	end
+	rename_branch(g, message)
 	commit_msg = LLM_commit_changes(message)
-	@show commit_msg
+	# @show commit_msg
 	for git in g.tracked_gits
 		# @show git.initial_hash
 		repo = git.repo
@@ -94,14 +91,15 @@ init_git(path::String, forcegit = true) = begin
 	end
 end 
 rename_branch(g::GitTracker, TODO) = begin
-	new_name = LLM_branch_name(TODO)
-	@show new_name
-	# @show  length(g.tracked_gits)
-	# @show  g.tracked_gits
+	new_name = ""
+	# @show new_name
 	# println(join([LibGit2.workdir(git.repo) for git in g.tracked_gits], "\n"))
 	for git in g.tracked_gits
+		!startswith(git.branch, INITIAL_BRANCH_NAME) && continue
 		git.branch in ["master", "main"] && continue
-		@show LibGit2.workdir(git.original_repo)
+		isempty(new_name) && ((new_name = LLM_branch_name(TODO)); (g.todo=TODO))
+	
+		# @show LibGit2.workdir(git.original_repo)
 		cd(LibGit2.workdir(git.original_repo)) do
 			run(`git branch -m "$(git.branch)" "$(new_name)"`)
 		end
@@ -112,8 +110,8 @@ end
 
 create_worktree(original_repo, branch_name, worktree_path) = begin
 	LibGit2.create_branch(original_repo, branch_name, LibGit2.GitCommit(original_repo, LibGit2.head_oid(original_repo)))
-	@show worktree_path
-	@show branch_name
+	# @show worktree_path
+	# @show branch_name
 	# @show "initializing"
 	cd(LibGit2.workdir(original_repo)) do
 		run(`git worktree add $worktree_path $branch_name`)

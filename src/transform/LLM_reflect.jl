@@ -3,7 +3,7 @@ using PromptingTools
 
 export LLM_reflect, is_continue, LLM_reflect_condition
 
-function LLM_reflect(ctx_question, ctx_shell, ctx_test, new_ai_msg)
+function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     prompt = """
     You are an AI assistant specialized in determining what are the problems and what have to be repaired or the task actually fulfulled and DONE or in certain case you have to deteck if the solution actually stucked and cannot reach final solution due to we tried each of the answers but they all fails.
     You don't solve the problem. :D 
@@ -23,11 +23,8 @@ function LLM_reflect(ctx_question, ctx_shell, ctx_test, new_ai_msg)
     The latest answer was this:
     $(new_ai_msg)
 
-    and the shell results are:
+    and the shell results are where we likely have test results too:
     $(ctx_shell)
-
-    and the test results are:
-    $(ctx_test)
     """
     aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false) # gpt4om, claudeh
     return String(aigenerated.content)
