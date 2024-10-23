@@ -5,7 +5,8 @@ using LibGit2
 const TODO4AI_Signature::LibGit2.Signature = LibGit2.Signature("todo4.ai", "tracker@todo4.ai")
 const INITIAL_BRANCH_NAME = "unnamed-branch"
 
-LLM_branch_name(TODO)    = LLM_overview(TODO, max_token=8, extra="It will be used as branch name so use hyphens (-) to separate words between the branch name.")
+LLM_branch_name(TODO)    = LLM_overview(TODO, max_token=7, extra="It will be used as branch name so use hyphens (-) to separate words between the branch name.\n \
+Avoid characters like: quote (\"), space ( ), tilde (~), caret (^), colon (:), questionmark (?), asterisk (*), or open bracket ([)")
 LLM_job_to_do(TODO)      = LLM_overview(TODO, max_token=29, extra="We need this to be a very concise overview about the question")
 LLM_commit_changes(TODO) = LLM_overview(TODO, max_token=29, extra="We need a very concise overview about the changes we are planning to make")
 # TODoO = "a\ra isay hi"
@@ -13,6 +14,7 @@ LLM_commit_changes(TODO) = LLM_overview(TODO, max_token=29, extra="We need a ver
 
 @kwdef mutable struct Branch
 	initial_hash::LibGit2.GitHash
+	original_repo::LibGit2.GitRepo
 	repo::LibGit2.GitRepo
 	worktreepath::String=""
 	branch::String=""                           # max 6 token thing
@@ -20,46 +22,51 @@ LLM_commit_changes(TODO) = LLM_overview(TODO, max_token=29, extra="We need a ver
 end
 @kwdef mutable struct GitTracker
 	tracked_gits::Vector{Branch}
+	todo::String=""
 end
 
-GitTracker!(ws, p::PersistableState, conv, TODO::String) = begin
+GitTracker!(ws, p::PersistableState, conv) = begin
 	# clean_unnamed()
-  branch = isempty(TODO) ? "$(INITIAL_BRANCH_NAME)_$(String(Int(datetime2unix(now())))[8:end])" : LLM_branch_name(TODO)
-	@show branch
+  branch = "$(INITIAL_BRANCH_NAME)-$(string(floor(Int,datetime2unix(now())))[5:end])"
+	
   # TODO if there is branch name collision then regerenrate extending the list what we 'don't want' 
 	gits = Branch[]
 	for (i, project_path) in enumerate(ws.project_paths)
-		!is_git(project_path) && continue
-		repo = LibGit2.GitRepo(project_path)
+		expanded_project_path = expanduser(abspath(expanduser(project_path)))
+		# @show expanded_project_path
+		!is_git(expanded_project_path) && continue
+		original_repo = LibGit2.GitRepo(expanded_project_path)
 		# proj_name = basename(normpath(project_path))
-		proj_name = split(abspath(project_path),"/", keepempty=false)[end]
-		worktreepath = joinpath(p.path, conv.id, proj_name)
+		proj_name = split(expanded_project_path, "/", keepempty=false)[end]
+		worktreepath = expanduser(joinpath(abspath(expanduser(p.path)), conv.id, proj_name)) # workpath cannot be ~ ... it MUST be expanded 
 		ws.project_paths[i]=worktreepath
-		create_worktree(repo, branch, worktreepath)
-		orig_branch = LibGit2.head_oid(repo)
-		@show orig_branch
-		@show worktreepath
-		push!(gits, Branch(orig_branch, repo, worktreepath, branch))
+		create_worktree(original_repo, branch, worktreepath)
+		orig_branch = LibGit2.head_oid(original_repo)
+		# @show orig_branch
+		# @show worktreepath
+		# @show LibGit2.GitRepo(worktreepath)
+		push!(gits, Branch(orig_branch, original_repo, LibGit2.GitRepo(worktreepath), worktreepath, branch))
 	end
-	ws.root_path, ws.rel_project_paths = resolve(ws.resolution_method, project_paths)
-	
-	conv_path = conversaion_path(p, conv)
+	ws.root_path, ws.rel_project_paths = resolve(ws.resolution_method, ws.project_paths)
+	conv_path = abs_conversaion_path(p, conv)
+
 	init_git(conv_path)
 	conv_repo = LibGit2.GitRepo(conv_path)
-	push!(gits, Branch(LibGit2.head_oid(conv_repo), conv_repo, conv_path, branch))
-	GitTracker(gits)
+	push!(gits, Branch(LibGit2.head_oid(conv_repo), conv_repo, conv_repo, conv_path, "master"))
+	GitTracker(gits,"")
 end
 
 is_git(path)    = isdir(joinpath(path, ".git"))
 orig_branch(br) = LibGit2.shortname(br.initial_hash)
 commit_changes(g::GitTracker, message::String) = begin
 	if g.tracked_gits[1].branch[1:length(INITIAL_BRANCH_NAME)] == INITIAL_BRANCH_NAME
-		rename(g, message)
+		rename_branch(g, message)
+		g.todo = message
 	end
 	commit_msg = LLM_commit_changes(message)
+	@show commit_msg
 	for git in g.tracked_gits
-		@show git.initial_hash
-		@show git.repo
+		# @show git.initial_hash
 		repo = git.repo
 		LibGit2.add!(repo, ".")        # Stages new and modified files
 		
@@ -86,30 +93,53 @@ init_git(path::String, forcegit = true) = begin
 		return nothing
 	end
 end 
-rename(g::GitTracker, TODO) = begin
-	@show TODO
-	new_name = LLM_job_to_do(TODO)
+rename_branch(g::GitTracker, TODO) = begin
+	new_name = LLM_branch_name(TODO)
 	@show new_name
+	# @show  length(g.tracked_gits)
+	# @show  g.tracked_gits
+	# println(join([LibGit2.workdir(git.repo) for git in g.tracked_gits], "\n"))
 	for git in g.tracked_gits
-		@show LibGit2.path(git.repo)
-		@show typeof(LibGit2.path(git.repo))
-		cd(String(LibGit2.path(git.repo))) do
-			run(`git branch -m $(git.branch) "$(new_name)"`)
+		git.branch in ["master", "main"] && continue
+		@show LibGit2.workdir(git.original_repo)
+		cd(LibGit2.workdir(git.original_repo)) do
+			run(`git branch -m "$(git.branch)" "$(new_name)"`)
 		end
 		git.branch = new_name
 	end
 end
 
 
-create_worktree(repo, branch_name, worktree_path) = begin
-	path = LibGit2.path(repo)
-	head_oid = LibGit2.head_oid(repo)
-	LibGit2.create_branch(repo, branch_name, LibGit2.GitCommit(repo, head_oid))
+create_worktree(original_repo, branch_name, worktree_path) = begin
+	LibGit2.create_branch(original_repo, branch_name, LibGit2.GitCommit(original_repo, LibGit2.head_oid(original_repo)))
 	@show worktree_path
-	@show "initializing"
-	cd(String(path)) do
+	@show branch_name
+	# @show "initializing"
+	cd(LibGit2.workdir(original_repo)) do
 		run(`git worktree add $worktree_path $branch_name`)
 	end
-	@show "successfully"
+	# @show "successfully"
+end
+
+merge(g::GitTracker) = begin
+	for git in g.tracked_gits
+		cd(LibGit2.workdir(git.original_repo)) do
+			run(`git stash save "Temp stash before $(git.branch)"`)
+			merge_result = read(`git merge --squash $(git.branch)`, String)
+			if occursin("CONFLICT", merge_result) || occursin("error:", merge_result)
+					@warn ("Merge conflict detected: $merge_result")
+			else
+				run(`git add .`)
+				run(`git commit -m  "$(g.todo)"`)
+				run(`git merge $(git.branch) --no-ff`)
+				pop_result = read(`git stash pop`, String)
+				if occursin("CONFLICT", pop_result) || occursin("error:", pop_result)
+					@warn ("Stash pop conflict detected: $pop_result")
+						
+				end
+			end
+			
+		end
+	end
 end
 

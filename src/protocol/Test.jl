@@ -17,7 +17,7 @@ end
 run_tests(t::TestFramework) = ((t.results = cmd_all_info_stream(t.run_test_command)); t)
 
 to_string(results_tag::String, code_tag::String, t::TestFramework) = begin
-    return isempty(t.results) ? "" : """
+    return isempty(t.results) || !isfile(t.filepath) ? "" : """
     <$(code_tag)>
 		$(read(t.filepath, String))
     </$(code_tag)>

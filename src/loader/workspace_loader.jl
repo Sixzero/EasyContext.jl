@@ -59,8 +59,9 @@ function Workspace(project_paths::Vector{String};
         end
     end
 
+    root_path !== "" && (cd(root_path))
     if verbose
-        root_path !== "" && (cd(root_path); println("Project path initialized: $(root_path)"))
+        println("Project path initialized: $(root_path)")
         print_project_tree(workspace)
     end
 

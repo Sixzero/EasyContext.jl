@@ -60,6 +60,7 @@ ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sy
 
 ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), c.system_message, c.messages)
 
+abs_conversaion_path(p,conv) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")
 conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
 (p::PersistableState)(conv::ConversationX) = begin
     println(conversaion_path(p, conv))
