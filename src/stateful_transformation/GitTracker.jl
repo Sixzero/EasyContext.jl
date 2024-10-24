@@ -119,25 +119,21 @@ create_worktree(original_repo, branch_name, worktree_path) = begin
 	# @show "successfully"
 end
 
-merge(g::GitTracker) = begin
-	for git in g.tracked_gits
-		cd(LibGit2.workdir(git.original_repo)) do
-			run(`git stash save "Temp stash before $(git.branch)"`)
-			merge_result = read(`git merge --squash $(git.branch)`, String)
-			if occursin("CONFLICT", merge_result) || occursin("error:", merge_result)
-					@warn ("Merge conflict detected: $merge_result")
-			else
-				run(`git add .`)
-				run(`git commit -m  "$(g.todo)"`)
-				run(`git merge $(git.branch) --no-ff`)
-				pop_result = read(`git stash pop`, String)
-				if occursin("CONFLICT", pop_result) || occursin("error:", pop_result)
-					@warn ("Stash pop conflict detected: $pop_result")
-						
-				end
-			end
-			
-		end
+merge_git(g::GitTracker) = for branch in g.tracked_gits
+	merge_git(branch, g.todo)
+end
+merge_git(b::Branch, commit_msg::String)                         = merge_git(b.original_repo, b.branch, commit_msg)
+merge_git(repo::GitRepo, branch::String, commit_msg::String)     = merge_git(LibGit2.workdir(repo),branch,commit_msg)
+merge_git(repo_path::String, branch::String, commit_msg::String) = begin
+	cd(repo_path) do
+		stash_result = read(`git stash save "Temp stash before $(branch)"`, String)
+		has_stash = !occursin("No local changes to save", stash_result)
+		merge_result = read(`git merge $(branch) --no-ff -m "$(commit_msg)"`, String)
+		(occursin("CONFLICT", merge_result) || occursin("error:", merge_result)) && (@warn ("Merge conflict detected: $merge_result"); return)
+		!has_stash && return
+		pop_result = read(`git stash pop`, String)
+		(occursin("CONFLICT", pop_result) || occursin("error:", pop_result)) && @warn ("Stash pop conflict detected: $pop_result")
 	end
 end
+
 

@@ -2,9 +2,9 @@
 using PromptingTools
 using Random
 
-LLM_conditonal_apply_changes(cb::CodeBlock) = begin
+LLM_conditonal_apply_changes(cb::CodeBlock, ws) = begin
     cb.content = (if cb.type==:MODIFY
-        original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
+        original_content, ai_generated_content = LLM_apply_changes_to_file(cb, ws)
         ai_generated_content
     else
         cb.pre_content
@@ -12,9 +12,12 @@ LLM_conditonal_apply_changes(cb::CodeBlock) = begin
     cb
 end
 
-LLM_apply_changes_to_file(cb::CodeBlock) = begin
-    !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
-    original_content = read(cb.file_path, String)
+LLM_apply_changes_to_file(cb::CodeBlock, ws) = begin
+    local original_content
+    cd(ws.root_path) do
+        !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
+        original_content = read(cb.file_path, String)
+    end
     ai_generated_content = apply_changes_to_file(original_content, cb.pre_content)
     
     original_content, ai_generated_content

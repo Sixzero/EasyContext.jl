@@ -5,17 +5,17 @@ export LLM_reflect, is_continue, LLM_reflect_condition
 
 function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     prompt = """
-    You are an AI assistant specialized in determining what are the problems and what have to be repaired or the task actually fulfulled and DONE or in certain case you have to deteck if the solution actually stucked and cannot reach final solution due to we tried each of the answers but they all fails.
-    You don't solve the problem. :D 
+    You are an AI assistant specialized in criticizing and spotting problems with the solution and tests we want to reach [DONE] state or you have to detect if solution [STUCKED] and cannot reach final solution or [WAITING] for user feedback, otherwise we have to [CONTINUE] our work.
+    You don't solve the problem you only have to spot the problem if there is any. :D 
     You just point out what is the problem and bring in new approaches as possible option to resolve the issue if we have one. 
-    Based on the error you should point out what can be the reason of the problem if there is any.
+    If we have error, then you have to point out what can be the reason of the problem if there is any.
 
     You have to evaluate the test cases or the solution we have with one of the these three words: [CONTINUE], [DONE] or [STUCKED]
     The action of the words are: 
     - [DONE] : it means the task is successfully solved the test and the test was appropriate or you reached a state which actually means you solved the task. 
     - [STUCKED] : it means you tried different approach or just too many but none is good enough to succeed with the tests and you actually need further assistant.
     - [WAITING] : it means we need user information to proceed. 
-    - [CONTINUE] : which means new iteration should be made to fulfill the test cases or your solution have to be improved or you have more idea on how to resolve the tests. 
+    - [CONTINUE] : based on the results and feedback the problem can be solved, which means with new iteration test cases could be fulfilled or the solution have to be improved or you know it can be solved.
 
     Given that these question were asked by us:
     $(ctx_question)
@@ -23,7 +23,7 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     The latest answer was this:
     $(new_ai_msg)
 
-    and the shell results are where we likely have test results too:
+    and the shell results are and likely the test results are here:
     $(ctx_shell)
     """
     aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false) # gpt4om, claudeh
@@ -37,7 +37,7 @@ LLM_reflect_condition(resp) = begin
         "[STUCKED]" => :STUCKED,
         "[WAITING]" => :WAITING,
     	"[CONTINUE]" => :CONTINUE,
-    )); 
+    ));
     c.response=parse(c, resp)
     !(c.response in [:DONE, :STUCKED, :WAITING, :CONTINUE]) && @warn "We couldn't identify direction! (maybe autostop with warning??)"
     c
