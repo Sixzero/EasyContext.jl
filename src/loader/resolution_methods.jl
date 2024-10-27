@@ -6,7 +6,7 @@ struct LongestCommonPathResolution <: AbstractResolutionMethod end
 
 function resolve(::FirstAsRootResolution, paths::Vector{String})
     isempty(paths) && return "", String[]
-    root_path = abspath(paths[1])
+    root_path = abspath(normpath(joinpath(pwd(),paths[1])))
     relative_paths = ["."]
     for path in paths[2:end]
         abs_path = abspath(path)

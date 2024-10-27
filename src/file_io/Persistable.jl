@@ -6,7 +6,7 @@ using JLD2
 	format::String="jld2"
 end
 
-PersistableState(path::String) = (mkpath(path); PersistableState(path=home_abrev(path)))
+PersistableState(path::String) = (mkpath(path); PersistableState(path=expanduser(abspath(expanduser((path))))))
 
 
 # persist!(conv::ConversationCTX) = save_message(conv)

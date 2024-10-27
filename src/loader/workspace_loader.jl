@@ -36,7 +36,15 @@ include("resolution_methods.jl")
     ]
 end
 
+cd_rootpath(ws::Workspace) = begin
+    curr_rel_path  = [normpath(joinpath(pwd(),rel_path)) for rel_path in ws.rel_project_paths]
+    ideal_rel_path = [normpath(joinpath(root_path,rel_path)) for rel_path in ws.rel_project_paths]
+    new_rel_path = relpath.(ideal_rel_path, curr_rel_path)
+    cd(root_path)
+    println("Project path initialized: $(path)")
 
+    ws.rel_project_paths = new_rel_path
+end
 function Workspace(project_paths::Vector{String}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
                     virtual_ws=nothing,
@@ -45,24 +53,26 @@ function Workspace(project_paths::Vector{String};
     !isnothing(virtual_ws) && push!(project_paths, virtual_ws.rel_path)
     # Check if all paths exist
     for path in project_paths
-        @assert isdir(path) "Path does not exist or is not a directory: $path"
+        @assert isdir(expanduser(path)) "Path does not exist or is not a directory: $path"
     end
     
     root_path, rel_project_paths = resolve(resolution_method, project_paths)
     original_dir = pwd()
     workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir)
+    # root_path !== "" && cd_rootpath(workspace)
     
-    finalizer(workspace) do w # TODO this does nothing... As I see
+    finalizer(workspace) do w # TODO this won't be necessary as we never cd to anywhere only temporarily to the root from now!
         if pwd() == w.root_path
             cd(w.original_dir)
             println("Returned to original directory: $(w.original_dir)")
         end
     end
 
-    root_path !== "" && (cd(root_path))
     if verbose
         println("Project path initialized: $(root_path)")
-        print_project_tree(workspace)
+        cd(workspace.root_path) do
+            print_project_tree(workspace)
+        end
     end
 
     return workspace
@@ -76,8 +86,10 @@ end
 
 function get_project_files(w::Workspace)
     all_files = String[]
-    for path in w.rel_project_paths
-        append!(all_files, get_project_files(w, path))
+    cd(w.root_path) do
+        for path in w.rel_project_paths
+            append!(all_files, get_project_files(w, path))
+        end
     end
     return all_files
 end
@@ -123,18 +135,16 @@ function get_project_files(w::Workspace, path::String)
     return files
 end
 
-set_project_path(path::String) = path !== "" && (cd(path); println("Project path initialized: $(path)"))
-set_project_path(w::Workspace) = set_project_path(w.root_path)
-set_project_path(w::Workspace, paths) = begin
-    w.root_path, w.rel_project_paths = resolve(w.resolution_method, paths)
-    set_project_path(w)
+# set_project_path(w::Workspace) = cd_rootpath(w)
+# set_project_path(w::Workspace, paths) = begin
+#     w.root_path, w.rel_project_paths = resolve(w.resolution_method, paths)
+#     set_project_path(w)
 
-    if verbose
-        root_path !== "" && (cd(root_path); println("Project path initialized: $(root_path)"))
-        print_project_tree(workspace)
-    end
+#     if verbose
+#         print_project_tree(workspace)
+#     end
 
-end
+# end
 
 print_project_tree(w::Workspace;             show_tokens::Bool=false) = print_project_tree(w, w.rel_project_paths; show_tokens)
 print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false) = [print_project_tree(w, path; show_tokens) for path in paths]

@@ -35,11 +35,13 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 		expanded_project_path = expanduser(abspath(expanduser(project_path)))
 		# @show expanded_project_path
 		!is_git(expanded_project_path) && continue
-		original_repo = LibGit2.GitRepo(expanded_project_path)
+
 		# proj_name = basename(normpath(project_path))
 		proj_name = split(expanded_project_path, "/", keepempty=false)[end]
-		worktreepath = expanduser(joinpath(abspath(expanduser(p.path)), conv.id, proj_name)) # workpath cannot be ~ ... it MUST be expanded 
+		worktreepath = joinpath(p.path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
 		ws.project_paths[i]=worktreepath
+
+		original_repo = LibGit2.GitRepo(expanded_project_path)
 		create_worktree(original_repo, branch, worktreepath)
 		orig_branch = LibGit2.head_oid(original_repo)
 		# @show orig_branch

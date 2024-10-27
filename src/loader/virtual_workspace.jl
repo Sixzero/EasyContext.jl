@@ -5,13 +5,10 @@ struct VirtualWorkspace
     rel_path::String
 end
 
-function init_virtual_workspace_path(conv_ctx::ConversationX)
-    rel_path = joinpath(conv_ctx.id, "workspace")
+function init_virtual_workspace_path(p::PersistableState, conv_ctx::ConversationX)
+    vpath = joinpath(conv_ctx.id, "workspace")
+    rel_path = mkdir(expanduser(joinpath(p.path, vpath)))
     VirtualWorkspace(rel_path)
 end
 
-function (p::PersistableState)(vws::VirtualWorkspace)
-	vws.rel_path = mkdir(joinpath(p.path, vws.rel_path))
-	vws
-end
 
