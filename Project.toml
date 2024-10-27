@@ -33,6 +33,7 @@ ULID = "28ea79d9-6354-52a7-8af1-38e01db141d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 GoogleCloud = "55e21f81-8b0a-565e-b5ad-6816892a5ee7"
 Mocking = "78c3b35d-d492-501b-9361-3d52fe80e533"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 julia = ">=1.9"
