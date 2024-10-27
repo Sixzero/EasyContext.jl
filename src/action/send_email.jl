@@ -1,5 +1,5 @@
 
-using GoogleCloud
+using GoogleCloud.Gmail
 using Base64
 
 function create_gmail_draft(to::String, subject::String, body::String)
@@ -14,7 +14,7 @@ function create_gmail_draft(to::String, subject::String, body::String)
             ["https://www.googleapis.com/auth/gmail.compose"]
         )
     )
-    gmail = GoogleCloud.Gmail(session)
+    gmail = Gmail(session)
 
     # Prepare the email message
     message = Dict(
@@ -38,5 +38,4 @@ function create_gmail_draft(to::String, subject::String, body::String)
 
     return response
 end
-
 

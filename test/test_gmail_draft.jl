@@ -1,15 +1,15 @@
 
 using Test
 using Mocking
-using GoogleCloud
+using GoogleCloud.Gmail
 using Base64
 using JSON3
 
 Mocking.activate()
 
-# Mock the GoogleCloud.Gmail module
+# Mock the Gmail module
 mock_gmail_response = Dict("id" => "draft123", "message" => Dict("id" => "msg456"))
-mock_gmail = @patch function GoogleCloud.Gmail(session)
+mock_gmail = @patch function Gmail(session)
     return function(args...; kwargs...)
         data = kwargs[:data]
         message = JSON3.read(base64decode(data["message"]["raw"]))
@@ -56,7 +56,7 @@ include("../src/action/send_email.jl")
 
         @testset "API error handling" begin
             error_response = Dict("error" => Dict("message" => "API Error"))
-            error_gmail = @patch function GoogleCloud.Gmail(session)
+            error_gmail = @patch function Gmail(session)
                 return (args...; kwargs...) -> error_response
             end
 
