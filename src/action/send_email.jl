@@ -9,6 +9,24 @@ struct GmailService <: AbstractEmailService
     access_token::String
 end
 
+"""
+    create_gmail_draft(email_service::GmailService, to::String, subject::String, body::String)
+
+Create a new Gmail draft message.
+
+# Arguments
+- `email_service::GmailService`: The Gmail service object with access token.
+- `to::String`: The recipient's email address.
+- `subject::String`: The email subject.
+- `body::String`: The email body content.
+
+# Returns
+A dictionary containing the draft message details.
+
+# Throws
+- `ArgumentError`: If any of the input parameters are invalid.
+- `HTTP.ExceptionRequest.StatusError`: If the API request fails.
+"""
 function create_gmail_draft(email_service::GmailService, to::String, subject::String, body::String)
     isempty(to) && throw(ArgumentError("Email recipient (to) cannot be empty"))
     isempty(subject) && throw(ArgumentError("Email subject cannot be empty"))
@@ -45,15 +63,24 @@ function create_gmail_draft(email_service::GmailService, to::String, subject::St
     # Create the draft
     response = send_draft(email_service, message)
 
-    # Check for API errors
-    if haskey(response, "error")
-        error_message = response["error"]["message"]
-        throw(ErrorException("Email API Error: $error_message"))
-    end
-
     return response
 end
 
+"""
+    send_draft(email_service::GmailService, message::Dict)
+
+Send a draft message to the Gmail API.
+
+# Arguments
+- `email_service::GmailService`: The Gmail service object with access token.
+- `message::Dict`: The message content as a dictionary.
+
+# Returns
+A dictionary containing the API response.
+
+# Throws
+- `HTTP.ExceptionRequest.StatusError`: If the API request fails.
+"""
 function send_draft(email_service::GmailService, message::Dict)
     url = "https://www.googleapis.com/gmail/v1/users/me/drafts"
     headers = Dict(
@@ -66,6 +93,21 @@ function send_draft(email_service::GmailService, message::Dict)
     return JSON3.read(response.body, Dict)
 end
 
+"""
+    send_gmail_message(email_service::GmailService, draft_id::String)
+
+Send a Gmail message from an existing draft.
+
+# Arguments
+- `email_service::GmailService`: The Gmail service object with access token.
+- `draft_id::String`: The ID of the draft to send.
+
+# Returns
+A dictionary containing the sent message details.
+
+# Throws
+- `HTTP.ExceptionRequest.StatusError`: If the API request fails.
+"""
 function send_gmail_message(email_service::GmailService, draft_id::String)
     url = "https://www.googleapis.com/gmail/v1/users/me/drafts/$(draft_id)/send"
     headers = Dict(
@@ -77,6 +119,21 @@ function send_gmail_message(email_service::GmailService, draft_id::String)
     return JSON3.read(response.body, Dict)
 end
 
+"""
+    get_gmail_draft(email_service::GmailService, draft_id::String)
+
+Retrieve a Gmail draft message.
+
+# Arguments
+- `email_service::GmailService`: The Gmail service object with access token.
+- `draft_id::String`: The ID of the draft to retrieve.
+
+# Returns
+A dictionary containing the draft message details.
+
+# Throws
+- `HTTP.ExceptionRequest.StatusError`: If the API request fails.
+"""
 function get_gmail_draft(email_service::GmailService, draft_id::String)
     url = "https://www.googleapis.com/gmail/v1/users/me/drafts/$(draft_id)"
     headers = Dict(
