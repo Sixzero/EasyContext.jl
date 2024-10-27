@@ -1,5 +1,6 @@
 
 using GoogleCloud
+using Base64
 
 function create_gmail_draft(to::String, subject::String, body::String)
     isempty(to) && throw(ArgumentError("Email recipient (to) cannot be empty"))
@@ -29,6 +30,11 @@ function create_gmail_draft(to::String, subject::String, body::String)
     # Create the draft
     draft = Dict("message" => message)
     response = gmail(:users=>:drafts=>:create; userId="me", data=draft)
+
+    # Check for API errors
+    if haskey(response, "error")
+        throw(ErrorException("Gmail API Error: $(response["error"]["message"])"))
+    end
 
     return response
 end

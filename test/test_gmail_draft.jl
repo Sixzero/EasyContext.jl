@@ -2,13 +2,24 @@
 using Test
 using Mocking
 using GoogleCloud
+using Base64
 
 Mocking.activate()
 
 # Mock the GoogleCloud module
 mock_gmail_response = Dict("id" => "draft123", "message" => Dict("id" => "msg456"))
 mock_gmail = @patch function Gmail(session)
-    return (args...; kwargs...) -> mock_gmail_response
+    return function(args...; kwargs...)
+        data = kwargs[:data]
+        message = JSON3.read(base64decode(data["message"]["raw"]))
+        return Dict(
+            "id" => "draft123",
+            "message" => Dict(
+                "id" => "msg456",
+                "raw" => data["message"]["raw"]
+            )
+        )
+    end
 end
 
 @testset "Gmail Draft Creation" begin
