@@ -14,7 +14,7 @@ function create_gmail_draft(to::String, subject::String, body::String)
             ["https://www.googleapis.com/auth/gmail.compose"]
         )
     )
-    gmail = Gmail(session)
+    gmail = GoogleCloud.Gmail(session)
 
     # Prepare the email message
     message = Dict(
