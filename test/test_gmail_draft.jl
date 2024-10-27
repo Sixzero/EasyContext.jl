@@ -3,8 +3,8 @@ using Test
 using Base64
 include("../src/action/send_email.jl")
 
-@testset "Email Draft Creation" begin
-    @testset "create_gmail_draft function" begin
+@testset "Gmail Operations" begin
+    @testset "Email Draft Creation" begin
         email_service = MockEmailService()
         to = "test@example.com"
         subject = "Test Subject"
