@@ -23,6 +23,9 @@ mock_gmail = @patch function GoogleCloud.Gmail(session)
     end
 end
 
+# Import the create_gmail_draft function
+include("../src/action/send_email.jl")
+
 @testset "Gmail Draft Creation" begin
     apply(mock_gmail) do
         @testset "create_gmail_draft function" begin
@@ -63,5 +66,4 @@ end
         end
     end
 end
-
 
