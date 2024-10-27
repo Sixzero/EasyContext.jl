@@ -6,15 +6,19 @@ execute_code_block(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") 
   if cb.type==:MODIFY || cb.type==:CREATE
     println("\e[32m$(get_shortened_code(code))\e[0m")
     cb.type==:CREATE && ((no_confirm || (print("\e[34mContinue? (y) \e[0m"); !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0")))) && return "Operation cancelled by user."
+    cb.type==:CREATE && println("\n\e[36mOutput:\e[0m")
     return cmd_all_info_modify(`zsh -c $code`)
   else
     !(lowercase(cb.language) in ["bash", "sh", "zsh"]) && return ""
     println("\e[32m$code\e[0m")
     if no_confirm
+      println("\n\e[36mOutput:\e[0m")
       return cmd_all_info_stream(`zsh -c $code`)
     else
       print("\e[34mContinue? (y) \e[0m")
-      return readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0" ? cmd_all_info_stream(`zsh -c $code`) : "Operation cancelled by user."
+      !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0") && return "Operation cancelled by user."
+      println("\n\e[36mOutput:\e[0m")
+      return cmd_all_info_stream(`zsh -c $code`)
     end
   end
 end

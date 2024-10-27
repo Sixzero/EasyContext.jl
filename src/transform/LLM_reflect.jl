@@ -10,7 +10,8 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     You just point out what is the problem and bring in new approaches as possible option to resolve the issue if we have one. 
     If we have error, then you have to point out what can be the reason of the problem if there is any.
 
-    You have to evaluate the test cases or the solution we have with one of the these three words: [CONTINUE], [DONE] or [STUCKED]
+    Only if it is simple to test then you have to test it. 
+    To evaluate the test cases or the solution you have to decide from the following 4 state: [CONTINUE], [DONE], [WAITING] or [STUCKED]
     The action of the words are: 
     - [DONE] : it means the task is successfully solved the test and the test was appropriate or you reached a state which actually means you solved the task. 
     - [STUCKED] : it means you tried different approach or just too many but none is good enough to succeed with the tests and you actually need further assistant.
@@ -26,16 +27,16 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     and the shell results are and likely the test results are here:
     $(ctx_shell)
     """
-    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false) # gpt4om, claudeh
+    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false, stream=true) # gpt4om, claudeh
     return String(aigenerated.content)
 end
 
 
 LLM_reflect_condition(resp) = begin
     c=Condition(patterns=Dict{String,Symbol}(
-        "[DONE]" => :DONE,
-        "[STUCKED]" => :STUCKED,
-        "[WAITING]" => :WAITING,
+        "[DONE]"     => :DONE,
+        "[STUCKED]"  => :STUCKED,
+        "[WAITING]"  => :WAITING,
     	"[CONTINUE]" => :CONTINUE,
     ));
     c.response=parse(c, resp)
