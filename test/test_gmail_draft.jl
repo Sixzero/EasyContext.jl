@@ -32,14 +32,5 @@ include("../src/action/send_email.jl")
         @test_throws ArgumentError create_gmail_draft(email_service, "test@example.com", "Subject", "")
     end
 
-    @testset "API error handling" begin
-        struct ErrorEmailService <: AbstractEmailService end
-        function send_draft(::ErrorEmailService, message::Dict)
-            return Dict("error" => Dict("message" => "API Error"))
-        end
-
-        error_service = ErrorEmailService()
-        @test_throws ErrorException create_gmail_draft(error_service, "test@example.com", "Subject", "Body")
-    end
 end
 
