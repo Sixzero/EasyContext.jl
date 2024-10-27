@@ -1,11 +1,15 @@
 
 using Base64
+using HTTP
+using JSON3
 
 abstract type AbstractEmailService end
 
-struct MockEmailService <: AbstractEmailService end
+struct GmailService <: AbstractEmailService
+    access_token::String
+end
 
-function create_gmail_draft(email_service::AbstractEmailService, to::String, subject::String, body::String)
+function create_gmail_draft(email_service::GmailService, to::String, subject::String, body::String)
     isempty(to) && throw(ArgumentError("Email recipient (to) cannot be empty"))
     isempty(subject) && throw(ArgumentError("Email subject cannot be empty"))
     isempty(body) && throw(ArgumentError("Email body cannot be empty"))
@@ -38,7 +42,7 @@ function create_gmail_draft(email_service::AbstractEmailService, to::String, sub
         """)
     )
 
-    # Create the draft (this would be implemented differently for each email service)
+    # Create the draft
     response = send_draft(email_service, message)
 
     # Check for API errors
@@ -50,15 +54,36 @@ function create_gmail_draft(email_service::AbstractEmailService, to::String, sub
     return response
 end
 
-# Mock implementation for testing
-function send_draft(::MockEmailService, message::Dict)
-    # Simulate API response
-    return Dict(
-        "id" => "draft123",
-        "message" => Dict(
-            "id" => "msg456",
-            "raw" => message["raw"]
-        )
+function send_draft(email_service::GmailService, message::Dict)
+    url = "https://www.googleapis.com/gmail/v1/users/me/drafts"
+    headers = Dict(
+        "Authorization" => "Bearer $(email_service.access_token)",
+        "Content-Type" => "application/json"
     )
+    body = JSON3.write(Dict("message" => message))
+
+    response = HTTP.post(url, headers, body)
+    return JSON3.read(response.body, Dict)
+end
+
+function send_gmail_message(email_service::GmailService, draft_id::String)
+    url = "https://www.googleapis.com/gmail/v1/users/me/drafts/$(draft_id)/send"
+    headers = Dict(
+        "Authorization" => "Bearer $(email_service.access_token)",
+        "Content-Type" => "application/json"
+    )
+
+    response = HTTP.post(url, headers)
+    return JSON3.read(response.body, Dict)
+end
+
+function get_gmail_draft(email_service::GmailService, draft_id::String)
+    url = "https://www.googleapis.com/gmail/v1/users/me/drafts/$(draft_id)"
+    headers = Dict(
+        "Authorization" => "Bearer $(email_service.access_token)"
+    )
+
+    response = HTTP.get(url, headers)
+    return JSON3.read(response.body, Dict)
 end
 
