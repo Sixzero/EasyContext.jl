@@ -19,7 +19,7 @@ include("../src/action/send_email.jl")
         @test response["message"]["id"] == "msg456"
 
         # Verify the content of the draft email
-        raw_message = base64decode(response["message"]["raw"])
+        raw_message = String(base64decode(response["message"]["raw"]))
         @test occursin("To: $to", raw_message)
         @test occursin("Subject: $subject", raw_message)
         @test occursin(body, raw_message)
