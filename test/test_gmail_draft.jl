@@ -1,5 +1,7 @@
+
 using Test
 using Mocking
+using GoogleCloud
 
 Mocking.activate()
 
@@ -24,5 +26,23 @@ end
             @test haskey(response, "message")
             @test response["message"]["id"] == "msg456"
         end
+
+        @testset "Invalid input handling" begin
+            @test_throws ArgumentError create_gmail_draft("", "Subject", "Body")
+            @test_throws ArgumentError create_gmail_draft("test@example.com", "", "Body")
+            @test_throws ArgumentError create_gmail_draft("test@example.com", "Subject", "")
+        end
+
+        @testset "API error handling" begin
+            error_response = Dict("error" => Dict("message" => "API Error"))
+            error_gmail = @patch function Gmail(session)
+                return (args...; kwargs...) -> error_response
+            end
+
+            apply(error_gmail) do
+                @test_throws ErrorException create_gmail_draft("test@example.com", "Subject", "Body")
+            end
+        end
     end
 end
+

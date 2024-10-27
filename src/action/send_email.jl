@@ -2,6 +2,10 @@
 using GoogleCloud
 
 function create_gmail_draft(to::String, subject::String, body::String)
+    isempty(to) && throw(ArgumentError("Email recipient (to) cannot be empty"))
+    isempty(subject) && throw(ArgumentError("Email subject cannot be empty"))
+    isempty(body) && throw(ArgumentError("Email body cannot be empty"))
+
     # Initialize the Gmail service
     session = GoogleSession(
         GoogleCredentials(
