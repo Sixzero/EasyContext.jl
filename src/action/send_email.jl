@@ -26,7 +26,8 @@ function create_gmail_draft(email_service::AbstractEmailService, to::String, sub
 
     # Check for API errors
     if haskey(response, "error")
-        throw(ErrorException("Email API Error: $(response["error"]["message"])"))
+        error_message = response["error"]["message"]
+        throw(ErrorException("Email API Error: $error_message"))
     end
 
     return response
