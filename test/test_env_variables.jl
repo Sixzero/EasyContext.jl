@@ -1,10 +1,11 @@
 using Test
+include("test_gmail.jl")  # This will import the constants
 
 @testset "Gmail Environment Variables" begin
     # Test if environment variables are set
-    @test haskey(ENV, "GMAIL_CLIENT_ID")
-    @test haskey(ENV, "GMAIL_CLIENT_SECRET")
-    @test haskey(ENV, "GMAIL_REDIRECT_URI")
+    @test !isempty(ENV["GMAIL_CLIENT_ID"])
+    @test !isempty(ENV["GMAIL_CLIENT_SECRET"])
+    @test !isempty(ENV["GMAIL_REDIRECT_URI"])
 
     # Test if constants are set correctly
     @test CLIENT_ID == ENV["GMAIL_CLIENT_ID"]
