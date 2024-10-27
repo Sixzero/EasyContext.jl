@@ -1,8 +1,8 @@
 
-# Ezeket az adatokat a Google Cloud Console-ból kell megszerezni
-const CLIENT_ID = ""
-const CLIENT_SECRET = ""
-const REDIRECT_URI = "http://localhost:8080/callback"
+# Ezeket az adatokat a környezeti változókból olvassuk be
+const CLIENT_ID = get(ENV, "GMAIL_CLIENT_ID", "")
+const CLIENT_SECRET = get(ENV, "GMAIL_CLIENT_SECRET", "")
+const REDIRECT_URI = get(ENV, "GMAIL_REDIRECT_URI", "http://localhost:8080/callback")
 const SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 
 println("Kérjük, látogasson el erre az URL-re és engedélyezze az alkalmazást:")
