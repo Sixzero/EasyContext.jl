@@ -9,6 +9,7 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     You don't solve the problem you only have to spot the problem if there is any. :D 
     You just point out what is the problem and bring in new approaches as possible option to resolve the issue if we have one. 
     If we have error, then you have to point out what can be the reason of the problem if there is any.
+    Try to be simple when reflecting and giving feedback.
 
     Only if it is simple to test then you have to test it. 
     To evaluate the test cases or the solution you have to decide from the following 4 state: [CONTINUE], [DONE], [WAITING] or [STUCKED]
@@ -27,7 +28,7 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     and the shell results are and likely the test results are here:
     $(ctx_shell)
     """
-    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false, stream=true) # gpt4om, claudeh
+    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false, streamcallback=stdout) # gpt4om, claudeh
     return String(aigenerated.content)
 end
 
