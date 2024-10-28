@@ -38,10 +38,13 @@ end
 
 # Helper function to get positions and scores using dispatch
 function get_positions_and_scores(finder::RAG.CosineSimilarity, builder::AbstractIndexBuilder, index, query, top_k)
-    embedder = get_embedder(builder)
+    embedder = builder.embedder # hopefully .embedder always available. previously it was get_embedder(builder), but than cache layer gets removed.
     query_emb = RAG.get_embeddings(embedder, [query])
     # Ensure query_emb is a vector
-    query_emb = query_emb isa AbstractVector ? query_emb : reshape(query_emb, :)
+    # check if query_emb id a matrix
+    @assert query_emb isa AbstractMatrix
+    @assert size(query_emb, 2) == 1
+    query_emb = reshape(query_emb, :)
     RAG.find_closest(finder, RAG.chunkdata(index), query_emb; top_k=top_k)
 end
 

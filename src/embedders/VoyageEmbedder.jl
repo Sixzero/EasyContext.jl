@@ -24,10 +24,11 @@ A struct for embedding documents using Voyage AI's embedding models.
     input_type::Union{String, Nothing} = nothing
     rate_limiter::RateLimiterTPM = RateLimiterTPM()
     http_post::Function = HTTP.post
+    verbose::Bool = true
 end
 
 function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:AbstractString};
-    verbose::Bool = true,
+    verbose::Bool = embedder.verbose,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     kwargs...)
 
@@ -67,9 +68,7 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     results = asyncmap(batches, ntasks=20) do batch
         embeddings, tokens = process_batch_limited(batch)
         embeddings_matrix = stack(embeddings, dims=2)
-        if verbose
-            @info "Batch processed. Size: $(size(embeddings_matrix))"
-        end
+        verbose && @info "Batch processed. Size: $(size(embeddings_matrix))"
         next!(progress)
 
         return embeddings_matrix, tokens
@@ -113,10 +112,11 @@ end
 function create_voyage_embedder(;
     model::String = "voyage-code-2", # or voyage-3
     top_k::Int = 300,
-    input_type::Union{String, Nothing} = nothing
+    input_type::Union{String, Nothing} = nothing,
+    verbose::Bool = true,
 )
-    voyage_embedder = VoyageEmbedder(; model=model, input_type=input_type)
-    embedder = CachedBatchEmbedder(;embedder=voyage_embedder)
+    voyage_embedder = VoyageEmbedder(; model, input_type, verbose)
+    embedder = CachedBatchEmbedder(;embedder=voyage_embedder, verbose)
     EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
 end
 

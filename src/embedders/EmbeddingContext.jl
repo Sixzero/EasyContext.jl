@@ -70,39 +70,6 @@ function get_context(builder::BM25IndexBuilder, question::String; data::Union{No
     return result
 end
 
-function get_context(builder::MultiIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
-    index, finders = isnothing(data) ? (builder.cache, map(get_finder, builder.builders)) : build_index(builder, data; force_rebuild=force_rebuild)
-
-    processor = RAG.KeywordsProcessor()
-
-    # Create a MultiFinder
-    # multi_finder = RAG.MultiFinder([get_finder(b) for b in context.index_builder.builders])
-    multi_finder = RAG.MultiFinder(finders)
-
-    # Create a reranker (you can choose between CohereReranker or ReduceRankGPTReranker)
-    # reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
-
-    retriever = RAG.AdvancedRetriever(
-        processor=processor,
-        embedder=builder.builders[1].embedder,
-        finder=multi_finder,
-        reranker=reranker,
-        rephraser = RAG.NoRephraser(),
-    )
-
-    result = RAG.retrieve(retriever, index, question;
-        return_all=true,
-        top_k=300,
-        top_n=10,
-    )
-
-    # RAG.build_context!(SimpleContextJoiner(), index, result)
-
-    return result
-end
-
-
 function get_answer(question::String;
     index=nothing,
     force_rebuild=false,

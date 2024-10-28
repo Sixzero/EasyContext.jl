@@ -13,7 +13,7 @@ const model2ratelimiter = Dict("claude" => ANTHROPIC_RATE_LIMITER, "claudeh" => 
 
 # Add this new function after the includes
 """
-    airate(args...; model::String = "claudeh", kwargs...)
+    airatelimited(args...; model::String = "claudeh", kwargs...)
 
 A wrapper for `aigenerate` that automatically applies the appropriate rate limiter based on the model.
 
@@ -25,7 +25,7 @@ A wrapper for `aigenerate` that automatically applies the appropriate rate limit
 # Returns
 - The result of `aigenerate` after applying rate limiting
 """
-function airate(args...; model::String = "claudeh", kwargs...)
+function airatelimited(args...; model::String = "claudeh", kwargs...)
     rate_limiter = get(model2ratelimiter, model, nothing)
     
     if isnothing(rate_limiter)
@@ -76,4 +76,4 @@ function update_rate_limiter!(rate_limiter::RateLimiterTPM, response::PromptingT
     end
 end
 
-export airate
+export airatelimited

@@ -45,15 +45,12 @@ include("action/loading_spinner.jl")
 
 include("processor/CodeBlockExtractor.jl")
 
-
 # include("ai_repl.jl")
 include("PkgLister.jl")
 
 include("MainUtils.jl")
 include("stateful_transformation/StatefulTransformators.jl")
 include("transform/transformations.jl")
-
-
 
 include("building_block/CTX_conversation.jl")
 include("building_block/CTX_julia.jl")
@@ -62,7 +59,6 @@ include("building_block/CTX_workspace.jl")
 # Automation
 include("automation/selector_llm.jl")
 include("automation/condition_llm.jl")
-
 
 include("precompile_scripts.jl")
 

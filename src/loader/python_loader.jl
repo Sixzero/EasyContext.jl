@@ -8,7 +8,7 @@ end
 
 @kwdef mutable struct PythonLoader <: AbstractLoader
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
-    index_builder::AbstractIndexBuilder = MultiIndexBuilder()
+    index_builder::AbstractIndexBuilder = CombinedIndexBuilder()
     packages::Vector{PythonPkgInfo} = PythonPkgInfo[]
 end
 

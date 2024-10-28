@@ -31,10 +31,11 @@ Supports two model options:
     input_type::String = "document"
     rate_limiter::RateLimiterRPM = RateLimiterRPM()
     http_post::Function = HTTP.post
+    verbose::Bool = true
 end
 
 function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};
-    verbose::Bool = true,
+    verbose::Bool = embedder.verbose,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     kwargs...)
 

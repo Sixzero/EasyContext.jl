@@ -1,4 +1,3 @@
-using RelevanceStacktrace
 using MacroTools
 
 # Function to extract all function definitions and function calls from a file

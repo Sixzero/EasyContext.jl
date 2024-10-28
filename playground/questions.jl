@@ -56,7 +56,7 @@ function rerank_reduce(
   
   function rerank_batch(batch)
       prompt = create_rankgpt_prompt(question, batch)
-      response = aigenerate(prompt; model=model, api_key=api_key, max_tokens=max_tokens, temperature=temperature)
+      response = aigenerate(prompt; model=model, api_key=api_key, api_kwargs=(max_tokens=max_tokens, temperature=temperature))
       
       # Parse the response to get rankings
       rankings = parse_rankgpt_response(response.content)
@@ -289,7 +289,7 @@ ai"Are you here?"claudeh
 #%%
 using EasyContext
 using EasyContext: get_answer, get_context, JuliaLoader, format_context_node
-using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, MultiIndexBuilder, Pipe
+using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, Pipe
 import EasyContext: get_context, RAGContext, ReduceRankGPTReranker
 using PromptingTools: pprint
 # question = "I need to walk packages. I also want to track whether I could trace in a stack which modules I am in currently."

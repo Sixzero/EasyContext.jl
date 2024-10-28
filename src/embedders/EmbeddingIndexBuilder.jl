@@ -9,38 +9,36 @@ using JLD2, SHA
 end
 
 function get_index(builder::EmbeddingIndexBuilder, chunks::OrderedDict{String, String}; cost_tracker = Threads.Atomic{Float64}(0.0), verbose=false)
-    embedder = builder.embedder
-
-    embeddings = RAG.get_embeddings(embedder, collect(values(chunks));
+    embeddings = RAG.get_embeddings(builder.embedder, collect(values(chunks),);
         verbose = verbose,
         cost_tracker)
     
     verbose && @info "Index built! (cost: $(round(cost_tracker[], digits=3)))"
 
-    index = RAG.ChunkEmbeddingsIndex(;embeddings, chunks=collect(values(chunks)), sources=collect(keys(chunks)))
-    @info "Successfully built embedding index! Size: $(size(embeddings))"
-    return index
+    RAG.ChunkEmbeddingsIndex(;embeddings, chunks=collect(values(chunks)), sources=collect(keys(chunks)))
 end
 
 function (builder::EmbeddingIndexBuilder)(index, query::AbstractString)
-    # Check if index is empty
     if isempty(index.chunks)
         @info "Empty index. Returning empty result."
         return OrderedDict{String, String}()
     end
 
     finder = RAG.CosineSimilarity()
-    retriever = RAG.AdvancedRetriever(
-        finder=finder,
-        reranker=RAG.NoReranker(),
-        rephraser=RAG.NoRephraser(),
-    )
-    retrieved = RAG.retrieve(retriever, index, query; top_k=builder.top_k, top_n=builder.top_k, return_all=true)
+    query_emb = RAG.get_embeddings(builder.embedder, [query], false, Threads.Atomic{Float64}(0.0), 80_000, 4)
+    @assert query_emb isa AbstractMatrix
+    @assert size(query_emb, 2) == 1
+    query_emb = reshape(query_emb, :)
     
-    return OrderedDict(zip(retrieved.sources, retrieved.context))
+    positions, scores = RAG.find_closest(finder, RAG.chunkdata(index), query_emb; top_k=builder.top_k)
+    
+    sources = index.sources[positions]
+    chunks = index.chunks[positions]
+    
+    OrderedDict(zip(sources, chunks))
 end
 
-get_embedder(builder::EmbeddingIndexBuilder) = get_embedder(builder.embedder)
+get_embedder(builder::EmbeddingIndexBuilder) = builder.embedder
 
 function get_finder(builder::EmbeddingIndexBuilder)
     RAG.CosineSimilarity()
@@ -54,5 +52,9 @@ function cache_key(builder::EmbeddingIndexBuilder, args...)
 end
 
 function cache_filename(builder::EmbeddingIndexBuilder, key::String)
-    return "embedding_index_$key.jld2"
+    "embedding_index_$key.jld2"
 end
+
+# Export the constructor function if needed
+export EmbeddingIndexBuilder
+

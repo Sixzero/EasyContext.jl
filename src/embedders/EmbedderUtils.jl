@@ -14,7 +14,6 @@ include("CachedIndexBuilder.jl")
 include("CacheBatchEmbedder.jl")
 include("BM25IndexBuilder.jl")
 include("CombinedIndexBuilder.jl")
-include("MultiIndexBuilder.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
