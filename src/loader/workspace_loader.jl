@@ -26,7 +26,7 @@ include("resolution_methods.jl")
     FILTERED_FOLDERS::Vector{String} = [
         "build",
         "spec", "specs", "examples", "docs", "dist", "python", "benchmarks", "node_modules", 
-        "conversations", "archived", "archive", "test_cases", ".git" ,"playground"
+        "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable"
     ]
     IGNORED_FILE_PATTERNS::Vector{String} = [
         ".log", "config.ini", "secrets.yaml", "Manifest.toml", ".gitignore", ".aiignore", ".aishignore",  # , "Project.toml", "README.md"
@@ -198,4 +198,27 @@ function print_tree_line(parts, depth, is_last_file, is_last_part, remaining_pat
     end
 end
 
+tree_string(path, w::Workspace,     pre="") = tree_string(path, w.FILTERED_FOLDERS, pre)
+tree_string(path, FILTERED_FOLDERS, pre="") = begin
+    buf = IOBuffer()
+    dirs = filter(d -> isdir(joinpath(path,d)) && !(d in FILTERED_FOLDERS), readdir(path))
+    for (i, d) in enumerate(dirs)
+        last = i == length(dirs)
+        println(buf, pre * (last ? "└── " : "├── ") * d)
+        new_p = joinpath(path, d)
+        !any(d -> d in FILTERED_FOLDERS, splitpath(new_p)) && tree_string(new_p, FILTERED_FOLDERS, pre * (last ? "    " : "│   "), buf)
+    end
+    return String(take!(buf))
+end
+
 format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
+
+format_project(ws, path) = "Project $(get_project_name(path)) [$path]\n$(tree_string(path, ws))"
+workspace_format_description(ws::Workspace)  = """
+The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
+with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
+Our workspace has a root path: $(ws.root_path)
+The projects and their folders: 
+""" * join([format_project(ws, joinpath(ws.root_path, path)) for path in ws.rel_project_paths], "\n")
+
+get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))

@@ -13,6 +13,7 @@ function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20241022", on_m
                 on_done     = () -> (flush_highlight(highlight_state); on_done()),
                 on_start)
     catch e
+        e isa InterruptException && rethrow(e)
         @error "Error executing code block: $(sprint(showerror, e))" exception=(e, catch_backtrace())
         on_error(e)
         return e
