@@ -32,7 +32,7 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 		!is_git(expanded_project_path) && continue
 
 		# proj_name = basename(normpath(project_path))
-		proj_name           = split(expanded_project_path, "/", keepempty=false)[end]
+		proj_name           = get_project_name(expanded_project_path)
 		worktreepath        = joinpath(p.path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
 		ws.project_paths[i] = worktreepath
 
