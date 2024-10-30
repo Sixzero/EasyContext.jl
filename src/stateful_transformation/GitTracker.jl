@@ -12,11 +12,10 @@ LLM_commit_changes(TODO) = LLM_overview(TODO, max_token=29, extra="We need a ver
 # TODoO = "a\ra isay hi"
 # new_name = LLM_job_to_do3(TODoO)
 
+# initial_hash::LibGit2.GitHash
 @kwdef mutable struct WorkTree
-	initial_hash::LibGit2.GitHash
 	original_repo::LibGit2.GitRepo
 	repo::LibGit2.GitRepo
-	worktreepath::String=""
 end
 @kwdef mutable struct GitTracker
 	tracked_gits::Vector{WorkTree}
@@ -33,23 +32,22 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 		!is_git(expanded_project_path) && continue
 
 		# proj_name = basename(normpath(project_path))
-		proj_name = split(expanded_project_path, "/", keepempty=false)[end]
-		worktreepath = joinpath(p.path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
-		ws.project_paths[i]=worktreepath
+		proj_name           = split(expanded_project_path, "/", keepempty=false)[end]
+		worktreepath        = joinpath(p.path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
+		ws.project_paths[i] = worktreepath
 
 		original_repo = LibGit2.GitRepo(expanded_project_path)
 		create_worktree(original_repo, worktreepath)
-		init_hash = LibGit2.head_oid(original_repo)
+		# init_hash = LibGit2.head_oid(original_repo)
 		# @show worktreepath
-		# @show LibGit2.GitRepo(worktreepath)
-		push!(gits, WorkTree(init_hash, original_repo, LibGit2.GitRepo(worktreepath), worktreepath))
+		push!(gits, WorkTree(original_repo, LibGit2.GitRepo(worktreepath)))
 	end
 	ws.root_path, ws.rel_project_paths = resolve(ws.resolution_method, ws.project_paths)
 	conv_path = abs_conversaion_path(p, conv)
 
 	init_git(conv_path)
 	conv_repo = LibGit2.GitRepo(conv_path)
-	push!(gits, WorkTree(LibGit2.head_oid(conv_repo), conv_repo, conv_repo, conv_path, "master"))
+	push!(gits, WorkTree(conv_repo, conv_repo))
 	GitTracker(gits,"")
 end
 
@@ -59,7 +57,6 @@ commit_changes(g::GitTracker, message::String) = begin
 	commit_msg = LLM_commit_changes(message)
 	# @show commit_msg
 	for git in g.tracked_gits
-		# @show git.initial_hash
 		repo = git.repo
 		LibGit2.add!(repo, ".")        # Stages new and modified files
 		
@@ -100,11 +97,14 @@ end
 merge_git(g::GitTracker) = for worktree in g.tracked_gits
 	merge_git(worktree, g.todo)
 end
-merge_git(w::WorkTree, commit_msg::String)                         = merge_git(w.original_repo, LLM_branch_name(commit_msg), commit_msg)
-merge_git(repo::GitRepo, branch::String, commit_msg::String)     = merge_git(LibGit2.workdir(repo),branch,commit_msg)
-merge_git(repo_path::String, branch::String, commit_msg::String) = begin
-	cd(repo_path) do
+merge_git(w::WorkTree, commit_msg::String)                              = merge_git(w.original_repo, w.repo, commit_msg)
+merge_git(repo::GitRepo, worktree_repo::GitRepo, commit_msg::String)    = merge_git(LibGit2.workdir(repo), LibGit2.workdir(worktree_repo), commit_msg)
+merge_git(repo_path::String, worktree_path::String, commit_msg::String) = begin
+	branch = LLM_branch_name(commit_msg)
+	cd(worktree_path) do
 		run(`git checkout -b $(branch)`) # no name collision please while loop should be here...
+	end
+	cd(repo_path) do
 
 		stash_result = read(`git stash save "Temp stash before $(branch)"`, String)
 		has_stash = !occursin("No local changes to save", stash_result)
