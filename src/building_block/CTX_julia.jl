@@ -3,7 +3,6 @@ export process_julia_context, init_julia_context
 using EasyRAGStore: IndexLogger, log_index
 
 @kwdef mutable struct JuliaCTX
-    voyage_embedder::EmbeddingIndexBuilder
     jl_simi_filter::EasyContext.CachedIndexBuilder{EasyContext.CombinedIndexBuilder}           
     jl_pkg_index
     tracker_context::Context
@@ -13,7 +12,7 @@ using EasyRAGStore: IndexLogger, log_index
 end
 
 function init_julia_context(; package_scope=:installed, verbose=true, index_logger_path="julia_context_log")
-    voyage_embedder = create_voyage_embedder(model="voyage-code-2")
+    voyage_embedder = create_voyage_embedder(model="voyage-code-2", cache_prefix="juliapkgs")
     jl_simi_filter = create_combined_index_builder(voyage_embedder; top_k=120)
     
     # Wrap the jl_simi_filter with CachedIndexBuilder
@@ -30,7 +29,6 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
     index_logger = IndexLogger(index_logger_path)
 
     return JuliaCTX(
-        voyage_embedder,
         cached_jl_simi_filter,
         jl_pkg_index,
         tracker_context,

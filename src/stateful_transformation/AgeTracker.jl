@@ -4,7 +4,8 @@ export AgeTracker, cut_old_history!
     tracker::Dict{String, Int} = Dict{String, Int}()
     max_history::Int = 14
     cut_to::Int = 6
-    age::Int=0
+    age::Int = 0
+    last_message_count::Int = 0
 end
 
 function (ager::AgeTracker)(tracker::ChangeTracker)
@@ -20,25 +21,32 @@ function cut_old_history!(age_tracker::AgeTracker, ctx::Context, ct::ChangeTrack
 end
 function cut_old_history!(age_tracker::AgeTracker, ctx::OrderedDict, ct::ChangeTracker)
     min_age = age_tracker.age - age_tracker.cut_to
-    for (source, cont) in ctx
-        if age_tracker.tracker[source] < min_age 
-            delete!(ctx, source)
-            delete!(ct.changes, source)
-            delete!(ct.content, source)
-            delete!(age_tracker.tracker, source)
+    sources_to_delete = String[]
+    for (source, age) in age_tracker.tracker
+        if age < min_age  # Changed < to <= to include cut_to threshold
+            push!(sources_to_delete, source)
         end
+    end
+    for source in sources_to_delete
+        delete!(ctx, source)
+        delete!(ct.changes, source)
+        delete!(ct.content, source)
+        delete!(age_tracker.tracker, source)
     end
 end
 function cut_old_history!(age_tracker::AgeTracker, conv::ConversationX, contexts...)
-    age_tracker.age += 1    
-    if length(conv.messages) > age_tracker.max_history
-        keep = conv.messages[end-age_tracker.cut_to+1].role === :user ? age_tracker.cut_to : age_tracker.cut_to - 1
-		keep = cut_history!(conv, keep=keep) 
+    current_msg_count = length(conv.messages)
+    age_tracker.age += current_msg_count - age_tracker.last_message_count
+    
+    if current_msg_count > age_tracker.max_history
+        keep = age_tracker.cut_to - (conv.messages[end - age_tracker.cut_to + 1].role === :assistant)
+        kept = cut_history!(conv; keep)
         for (;tracker_context, changes_tracker) in contexts
             cut_old_history!(age_tracker, tracker_context, changes_tracker)
         end
-	end
-	return false
+    end
+    age_tracker.last_message_count = length(conv.messages)
+    return false
 end
 
 function get_cache_setting(tracker::AgeTracker, conv::ConversationX) ## TODO recheck!!

@@ -114,9 +114,10 @@ function create_voyage_embedder(;
     top_k::Int = 300,
     input_type::Union{String, Nothing} = nothing,
     verbose::Bool = true,
+    cache_prefix=""
 )
     voyage_embedder = VoyageEmbedder(; model, input_type, verbose)
-    embedder = CachedBatchEmbedder(;embedder=voyage_embedder, verbose)
+    embedder = CachedBatchEmbedder(;embedder=voyage_embedder, cache_prefix, verbose)
     EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
 end
 

@@ -13,10 +13,11 @@ Conversation_from_sysmsg(;sys_msg::String) = Conversation(Message(timestamp=now(
 function cut_history!(conv::CONV; keep=8) # always going to cut after an :assitant but before a :user message.
 	length(conv.messages) <= keep && return conv.messages
 	start_index = max(1, length(conv.messages) - keep + 1)
+    kept = length(conv.messages) - start_index + 1
 	@assert (conv.messages[start_index].role == :user) "how could we cut like this? This function should be only called after :assistant message was attached to the end of the message list"
 	
 	conv.messages = conv.messages[start_index:end]
-	keep
+	kept
 end
 
 get_message_by_id(conv::CONV, message_id::String) = findfirst(msg -> msg.id == message_id, conv.messages)

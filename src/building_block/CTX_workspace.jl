@@ -16,7 +16,8 @@ function init_workspace_context(project_paths; verbose=true, index_logger_path="
     workspace = Workspace(project_paths; virtual_ws, verbose)
     tracker_context = Context()
     changes_tracker = ChangeTracker()
-    ws_simi_filterer = create_combined_index_builder(top_k=30)
+    openai_embedder = create_openai_embedder(cache_prefix="workspace")
+    ws_simi_filterer = create_combined_index_builder(openai_embedder, top_k=30, )
     ws_reranker_filterer = ReduceRankGPTReranker(batch_size=30, model="gpt4om")
     
     index_logger = IndexLogger(index_logger_path)

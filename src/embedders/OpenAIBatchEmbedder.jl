@@ -17,9 +17,10 @@ get_model_name(embedder::OpenAIBatchEmbedder) = embedder.model
 # Add this at the end of the file
 function create_openai_embedder(;
     model::String = "text-embedding-3-small",
-    top_k::Int = 300
+    top_k::Int = 300,
+    cache_prefix="",
 )
-    embedder = CachedBatchEmbedder(;embedder=OpenAIBatchEmbedder(; model=model))
+    embedder = CachedBatchEmbedder(; embedder=OpenAIBatchEmbedder(; model=model), cache_prefix)
     EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
 end
 

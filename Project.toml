@@ -5,10 +5,6 @@ authors = ["SixZero <havliktomi@hotmail.com>"]
 version = "0.1.0"
 
 [deps]
-GoogleCloud = "55e21f81-8b0a-565e-b5ad-6816892a5ee7"
-JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
-Mocking = "78c3b35d-d492-501b-9361-3d52fe80e533"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Anthropic = "a00d14cb-3434-48ec-9b49-cfc2b9ce2a8f"
 BoilerplateCvikli = "9c9f911a-9395-49bd-b3fc-139ceb24aa85"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
@@ -19,6 +15,7 @@ ExpressionExplorer = "21656369-7473-754a-2065-74616d696c43"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 Highlights = "eafb193a-b7ab-5a9e-9068-77385905fa72"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 JuliaSyntax = "70703baa-626e-46a2-a12c-08ffd08c73b4"
 LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
