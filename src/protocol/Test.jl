@@ -4,10 +4,10 @@ export TestFramework, add_tests
 	test_cases::String="There are no test cases written for this conversation. If this problem is testable then test cases would be nice to have!"
 end
 
-add_tests(user_question, tf::TestFramework) = begin
-	tf.test_cases=="" && return """$(user_question)
+add_tests(test_cases, tf::TestFramework) = begin
+	tf.test_cases=="" && return """$(test_cases)
 	Decide if the user question is testable and if it is so then try to write tests and run them after you provided a solution to make verify that you really solved the problem."""
-	return """$(user_question)
+	return """$(test_cases)
 
 	<$TESTS>
 	You should use the test from this codeblock:

@@ -25,11 +25,6 @@ workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG, WORKSPACE
 julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,     JULIA_ELEMENT, scr_state, src_cont) 
 python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,    PYTHON_ELEMENT, scr_state, src_cont) 
 
-workspace_format_description()  = "\
-The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, \
-with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags."
-virtual_workspace_description(vws)  = "\
-You have a folder where you can create file and store things: $(vws.rel_path)"
 shell_format_description()      = "\
 Shell command  will be included in the next user message \
 wrapped in <$(SHELL_TAG)> and </$(SHELL_TAG)> tags, \
