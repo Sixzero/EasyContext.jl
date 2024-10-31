@@ -89,3 +89,21 @@ end
 - worktree relative path
 - worktree cleanup mistakes...
 - merge... accept changes... how? + delete branch?
+
+
+#%%
+- SR finomhangolása
+- sh block és sh result tisztázása
+- virtual workspace + sima workspace-nál julia projektnél miért gondolja hogy van src folder... mit lát? nem kéne látnia milyen folderek vannak és akkor egyből tudja mit kellene tennie? 
+- merge javítása
+- weboldal deploy
+- TODO
+- delete/archive TODO vagy delete worktree...
+- Authentikáció (autologin)
+- adatbázis kiválasztása amelyik szinkronizál.
+- todo.ai megvásárlása
+- hosted + nem hosted usage
+- tesztable... nem tesztable... too strong 
+- backend server
+- controllability.... keyboard + signals (merge + clean repo (archive worktree... reattach later??))
+- gmail create draft
