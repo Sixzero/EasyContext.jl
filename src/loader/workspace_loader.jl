@@ -198,17 +198,16 @@ function print_tree_line(parts, depth, is_last_file, is_last_part, remaining_pat
     end
 end
 
-tree_string(path, w::Workspace,     pre="") = tree_string(path, w.FILTERED_FOLDERS, pre)
-tree_string(path, FILTERED_FOLDERS, pre="") = begin
-    buf = IOBuffer()
+tree_string(path, w::Workspace)                             = String(take!(tree_string(path, w.FILTERED_FOLDERS)))
+tree_string(path, FILTERED_FOLDERS, pre="", buf=IOBuffer()) = begin
     dirs = filter(d -> isdir(joinpath(path,d)) && !(d in FILTERED_FOLDERS), readdir(path))
     for (i, d) in enumerate(dirs)
         last = i == length(dirs)
         println(buf, pre * (last ? "└── " : "├── ") * d)
         new_p = joinpath(path, d)
-        !any(d -> d in FILTERED_FOLDERS, splitpath(new_p)) && tree_string(new_p, FILTERED_FOLDERS, pre * (last ? "    " : "│   "), buf)
+        tree_string(new_p, FILTERED_FOLDERS, pre * (last ? "    " : "│   "), buf)
     end
-    return String(take!(buf))
+    buf
 end
 
 format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
