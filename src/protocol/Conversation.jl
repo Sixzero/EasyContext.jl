@@ -56,10 +56,12 @@ last_msg(conv::CONV) = conv.messages[end].content
     timestamp::DateTime = now(UTC)
     system_message::M = UndefMessage()
     messages::Vector{M} = Message[]
+    status::Sambol=:PENDING
 end
 ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
 
 ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), c.system_message, c.messages)
+
 
 abs_conversaion_path(p,conv) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")
 conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
@@ -67,6 +69,7 @@ conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
     println(conversaion_path(p, conv))
     mkdir(expanduser(joinpath(p.path, conv.id)))
     mkdir(expanduser(conversaion_path(p, conv)))
+    save_conversation(conv, conversaion_path(p, conv))
     conv
 end
 

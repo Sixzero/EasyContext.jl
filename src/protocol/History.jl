@@ -1,10 +1,28 @@
 
 @kwdef mutable struct History
-	to_solve::Dict{String,ConversationX}=Dict()
-	selected_conv_id::String=""
+	TODOs::Dict{String,String} = Dict() # id => todo description
+end
+
+
+
+JSON3.StructTypes.StructType(::Type{History}) = JSON3.StructTypes.Struct()
+add_conversation!(history::History, conv::ConversationX;) = history.TODOs[conv.id] = TODO(conv)
+
+save_history(history::History, p::PersistableState) = write(joinpath(p.path, "history.json"), JSON3.pretty(history))
+load_history(p::PersistableState) = begin
+	history_path = joinpath(p.path, "history.json")
+	isfile(history_path) ? JSON3.read(read(history_path, String), History) : History()
 end
 
 get_all_conversations_file(p) = readdir(p.path)
+
+
+
+
+@kwdef mutable struct SelectedTODO
+	name::String=""
+end
+
 
 function select_conversation(history::History, conv_id)
 	file_exists, conv = load_conv(conv_id)
