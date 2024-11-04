@@ -68,17 +68,17 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
     return nothing
 end
 
-to_string(tag::String, element::String, cb_ext::CodeBlockExtractor) = to_string(tag::String, element::String, cb_ext.shell_results)
-to_string(tag::String, element::String, shell_results::AbstractDict{String, CodeBlock}) = begin
+to_string(cb_run_open::String, cb_open::String, cb_close::String, cb_ext::CodeBlockExtractor) = to_string(cb_run_open, cb_open, cb_close, cb_ext.shell_results)
+to_string(cb_run_open::String, cb_open::String, cb_close::String, shell_results::AbstractDict{String, CodeBlock}) = begin
     return isempty(shell_results) ? "" : """
-    <$tag>
-    $(join(["""<$element shortened>
-    $(get_shortened_code(codestr(codeblock)))
-    </$element>
-    <$(SHELL_RUN_RESULT)>
+    Previous shell scripts and their run results:
+    $(join(["""$(cb_open)
+    $(codestr(codeblock))
+    $(cb_close)
+    $(cb_run_open)
     $(codeblock.run_results[end])
-    </$(SHELL_RUN_RESULT)>
-    """ for (code, codeblock) in shell_results], "\n"))
-    </$tag>
+    $(cb_close)
+    """ for (code, codeblock) in shell_results], "\n\n"))
     """
+    # $(get_shortened_code(codestr(codeblock)))
 end

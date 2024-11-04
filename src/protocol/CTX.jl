@@ -6,29 +6,25 @@ end
 (ctx::Context)(new_ctx::OrderedDict{String, String}) = (merge!(ctx.d, new_ctx);   return ctx)
 Base.length(ctx::Context) = length(ctx.d)
 
-const TESTS             = "Testing"
-const TEST_CODE         = "TestCode"
-const TEST_RESULT       = "TestResults"
-const SHELL_TAG         = "ShellRunResults"
-const SHELL_ELEMENT     = "sh_script"
-const SHELL_RUN_RESULT  = "sh_run_result"
-const WORKSPACE_TAG     = "Codebase" 
-const WORKSPACE_ELEMENT = "File" 
-const JULIA_TAG         = "JuliaFunctions" 
-const JULIA_ELEMENT     = "Function" 
-const PYTHON_TAG        = "PythonPackages" 
-const PYTHON_ELEMENT    = "Package" 
+const TESTS              = "Testing"
+const TEST_CODE          = "TestCode"
+const TEST_RESULT        = "TestResults"
+const SHELL_ELEMENT_OPEN = "```sh"
+const CODEBLOCK_CLOSE    = "```"
+const SHELL_RUN_RESULT   = "```sh_run_result"
+const WORKSPACE_TAG      = "Codebase" 
+const WORKSPACE_ELEMENT  = "File" 
+const JULIA_TAG          = "JuliaFunctions" 
+const JULIA_ELEMENT      = "Function" 
+const PYTHON_TAG         = "PythonPackages" 
+const PYTHON_ELEMENT     = "Package" 
 
-test_ctx_2_string(test_frame)               = to_string(TEST_RESULT,     TEST_CODE, test_frame) 
-shell_ctx_2_string(cb_extractor)            = to_string(SHELL_TAG,     SHELL_ELEMENT, cb_extractor) 
-workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG, WORKSPACE_ELEMENT, scr_state, src_cont) 
-julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,     JULIA_ELEMENT, scr_state, src_cont) 
-python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,    PYTHON_ELEMENT, scr_state, src_cont) 
+# test_ctx_2_string(test_frame)               = to_string(TEST_RESULT,      TEST_CODE, test_frame) 
+shell_ctx_2_string(cb_extractor)            = to_string(SHELL_RUN_RESULT, SHELL_ELEMENT_OPEN, CODEBLOCK_CLOSE, cb_extractor) 
+workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG,    WORKSPACE_ELEMENT, scr_state, src_cont) 
+julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,        JULIA_ELEMENT, scr_state, src_cont) 
+python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,       PYTHON_ELEMENT, scr_state, src_cont) 
 
-shell_format_description()      = "\
-Shell command  will be included in the next user message \
-wrapped in <$(SHELL_TAG)> and </$(SHELL_TAG)> tags, \
-the perviously requested shell script (shortened just for readability) and is in <$(SHELL_ELEMENT)> and </$(SHELL_ELEMENT)> tags, the sh run output is in <$(SHELL_RUN_RESULT)> and </$(SHELL_RUN_RESULT)> tags."
 julia_format_description()      = "\
 The Julia function definitions in other existing installed packages will be in the user message and \
 wrapped in <$(JULIA_TAG)> and </$(JULIA_TAG)> tags, \

@@ -50,21 +50,21 @@ process_create_command(file_path::String, content::String) = begin
 	"cat > $(file_path) <<'$delimiter'\n$(content)\n$delimiter"
 end
 
-function format_shell_results_to_context(shell_commands::AbstractDict{String, CodeBlock})
-	inner = join(["""<sh_script shortened>
-    $(get_shortened_code(codestr(codeblock)))
-    </sh_script>
-    <sh_output>
-    $(codeblock.results[end])
-    </sh_output>
-    """ for (code, codeblock) in shell_commands], "\n")
-	content = """
-	<ShellRunResults>
-	$inner
-	</ShellRunResults>
-	"""
-	return content
-end
+# function format_shell_results_to_context(shell_commands::AbstractDict{String, CodeBlock})
+# 	inner = join(["""<sh_script shortened>
+#     $(get_shortened_code(codestr(codeblock)))
+#     </sh_script>
+#     <sh_output>
+#     $(codeblock.results[end])
+#     </sh_output>
+#     """ for (code, codeblock) in shell_commands], "\n")
+# 	content = """
+# 	<ShellRunResults>
+# 	$inner
+# 	</ShellRunResults>
+# 	"""
+# 	return content
+# end
 
 
 
