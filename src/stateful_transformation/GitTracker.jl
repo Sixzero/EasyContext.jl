@@ -84,13 +84,10 @@ init_git(path::String, forcegit = true) = begin
 	
 end 
 
-
 create_worktree(expanded_project_path, worktree_path) = begin
-	# @show worktree_path
 	cd(expanded_project_path) do
-		run(`git worktree add -d $worktree_path`)
+		run(pipeline(`git worktree add -d $worktree_path`, stdout=devnull, stderr=devnull))
 	end
-	# @show "successfully"
 end
 
 merge_git(g::GitTracker) = for worktree in g.tracked_gits
@@ -117,5 +114,4 @@ merge_git(worktree_path::String, commit_msg::String)  = begin
 		(occursin("CONFLICT", pop_result) || occursin("error:", pop_result)) && @warn ("Stash pop conflict detected: $pop_result")
 	end
 end
-
 
