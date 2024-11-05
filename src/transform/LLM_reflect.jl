@@ -12,7 +12,7 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     Try to be simple when reflecting and giving feedback.
 
     Only if it is simple to test then you have to test it. 
-    To evaluate the test cases or the solution you have to decide from the following 4 state: [CONTINUE], [DONE], [WAITING] or [STUCKED]
+    To evaluate the test cases or the solution you have to decide from the following 4 state: [DONE], [STUCKED], [WAITING], or [CONTINUE].
     The action of the words are: 
     - [DONE] : it means the task is successfully solved the test and the test was appropriate or you reached a state which actually means you solved the task. 
     - [STUCKED] : it means you tried different approach or just too many but none is good enough to succeed with the tests and you actually need further assistant.

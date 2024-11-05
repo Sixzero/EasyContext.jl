@@ -14,7 +14,6 @@ LLM_commit_changes(TODO) = LLM_overview(TODO, max_token=29, extra="We need a ver
 
 # initial_hash::LibGit2.GitHash
 @kwdef mutable struct WorkTree
-	original_repo::LibGit2.GitRepo
 	repo::LibGit2.GitRepo
 end
 @kwdef mutable struct GitTracker
@@ -36,11 +35,9 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 		worktreepath        = joinpath(p.path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
 		ws.project_paths[i] = worktreepath
 
-		original_repo = LibGit2.GitRepo(expanded_project_path)
-		create_worktree(original_repo, worktreepath)
-		# init_hash = LibGit2.head_oid(original_repo)
+		create_worktree(expanded_project_path, worktreepath)
 		# @show worktreepath
-		push!(gits, WorkTree(original_repo, LibGit2.GitRepo(worktreepath)))
+		push!(gits, WorkTree(LibGit2.GitRepo(worktreepath)))
 	end
 	ws.root_path, ws.rel_project_paths = resolve(ws.resolution_method, ws.project_paths)
 	conv_path = abs_conversaion_path(p, conv)
@@ -58,16 +55,18 @@ commit_changes(g::GitTracker, message::String) = begin
 	# @show commit_msg
 	for git in g.tracked_gits
 		repo = git.repo
-		LibGit2.add!(repo, ".")        # Stages new and modified files
-		
-    index = LibGit2.GitIndex(repo)
+		cd(LibGit2.workdir(repo)) do
+			LibGit2.add!(repo, ".")        # Stages new and modified files
+			
+			index = LibGit2.GitIndex(repo)
 
-    tree_id = LibGit2.write_tree!(index)
-		parent_ids = LibGit2.GitHash[]
-    head_commit = LibGit2.head(repo)    # will this error if no head? maybe I should listen to the Claude Sonnet 3.5? :D
-		push!(parent_ids, LibGit2.GitHash(head_commit))
-    
-		commit_id = LibGit2.commit(repo, commit_msg; committer=TODO4AI_Signature, tree_id=tree_id, parent_ids=parent_ids)
+			tree_id = LibGit2.write_tree!(index)
+			parent_ids = LibGit2.GitHash[]
+			head_commit = LibGit2.head(repo)    # will this error if no head? maybe I should listen to the Claude Sonnet 3.5? :D
+			push!(parent_ids, LibGit2.GitHash(head_commit))
+			
+			commit_id = LibGit2.commit(repo, commit_msg; committer=TODO4AI_Signature, tree_id=tree_id, parent_ids=parent_ids)
+		end
 	end
 end
 init_git(path::String, forcegit = true) = begin
@@ -86,9 +85,9 @@ init_git(path::String, forcegit = true) = begin
 end 
 
 
-create_worktree(original_repo, worktree_path) = begin
+create_worktree(expanded_project_path, worktree_path) = begin
 	# @show worktree_path
-	cd(LibGit2.workdir(original_repo)) do
+	cd(expanded_project_path) do
 		run(`git worktree add -d $worktree_path`)
 	end
 	# @show "successfully"
@@ -97,12 +96,15 @@ end
 merge_git(g::GitTracker) = for worktree in g.tracked_gits
 	merge_git(worktree, g.todo)
 end
-merge_git(w::WorkTree, commit_msg::String)                              = merge_git(w.original_repo, w.repo, commit_msg)
-merge_git(repo::GitRepo, worktree_repo::GitRepo, commit_msg::String)    = merge_git(LibGit2.workdir(repo), LibGit2.workdir(worktree_repo), commit_msg)
-merge_git(repo_path::String, worktree_path::String, commit_msg::String) = begin
+merge_git(w::WorkTree, commit_msg::String)            = merge_git(w.repo, commit_msg)
+merge_git(worktree_repo::GitRepo, commit_msg::String) = merge_git(LibGit2.workdir(worktree_repo), commit_msg)
+merge_git(worktree_path::String, commit_msg::String)  = begin
+	repo_path = ""
 	branch = LLM_branch_name(commit_msg)
 	cd(worktree_path) do
 		run(`git checkout -b $(branch)`) # no name collision please while loop should be here...
+		git_dir = read(`git rev-parse --git-dir`, String)
+		repo_path = replace(strip(git_dir), r".git/worktrees/[^/]*" => ".git")
 	end
 	cd(repo_path) do
 
