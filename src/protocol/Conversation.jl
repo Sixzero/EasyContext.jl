@@ -7,7 +7,7 @@ end
 
 (conv::Conversation)(msg::Message) = (push!(conv.messages, msg); conv)
 
-Conversation_from_sysmsg(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
+Conversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
 
 function cut_history!(conv::CONV; keep=8) # always going to cut after an :assitant but before a :user message.
@@ -58,10 +58,10 @@ last_msg(conv::CONV) = conv.messages[end].content
     messages::Vector{M} = Message[]
     status::Symbol=:PENDING
 end
-ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
-
-ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
+ConversationX(c::Conversation)  = ConversationX(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
+ConversationX(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
 (conv::ConversationX)(msg::Message) = (push!(conv.messages, msg); conv)
+
 
 abs_conversaion_path(p,conv) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")
 conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
