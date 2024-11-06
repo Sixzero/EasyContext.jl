@@ -14,19 +14,17 @@ end
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace.root_path)
 
 function init_workspace_context(project_paths; verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing)
-    workspace = Workspace(project_paths; virtual_ws, verbose)
-    tracker_context = Context()
-    changes_tracker = ChangeTracker()
-    openai_embedder = create_openai_embedder(cache_prefix="workspace")
-    ws_simi_filterer = create_combined_index_builder(openai_embedder, top_k=30, )
+    workspace            = Workspace(project_paths; virtual_ws, verbose)
+    tracker_context      = Context()
+    changes_tracker      = ChangeTracker()
+    openai_embedder      = create_openai_embedder(cache_prefix="workspace")
+    ws_simi_filterer     = create_combined_index_builder(openai_embedder, top_k=30, )
     ws_reranker_filterer = ReduceRankGPTReranker(batch_size=30, model="gpt4om")
     
     index_logger = IndexLogger(index_logger_path)
 
     return WorkspaceCTX(workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger )
 end
-
-Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace.root_path)
 
 function process_workspace_context(workspace_context, ctx_question; age_tracker=nothing)
     workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger = workspace_context.workspace, workspace_context.tracker_context, workspace_context.changes_tracker, workspace_context.ws_simi_filterer, workspace_context.ws_reranker_filterer, workspace_context.index_logger

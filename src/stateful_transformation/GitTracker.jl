@@ -44,8 +44,16 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 
 	init_git(conv_path)
 	conv_repo = LibGit2.GitRepo(conv_path)
-	push!(gits, WorkTree(conv_repo, conv_repo))
-	GitTracker(gits,"")
+	push!(gits, WorkTree(conv_repo))
+	GitTracker(gits, "")
+end
+GitTracker(base_worktree_path::String) = begin
+	gits = WorkTree[]
+	for folder in readdir(base_worktree_path)
+		repo_path = joinpath(base_worktree_path, folder)
+		push!(gits, WorkTree(LibGit2.GitRepo(repo_path)))
+	end
+	GitTracker(gits, "")
 end
 
 is_git(path)    = isdir(joinpath(path, ".git"))
@@ -89,20 +97,26 @@ create_worktree(expanded_project_path, worktree_path) = begin
 		run(pipeline(`git worktree add -d $worktree_path`, stdout=devnull, stderr=devnull))
 	end
 end
-
-merge_git(g::GitTracker) = for worktree in g.tracked_gits
-	merge_git(worktree, g.todo)
+merge_git(g::GitTracker) = begin
+	branch = LLM_branch_name(g.todo)
+	commit_msg = LLM_commit_changes(g.todo)
+	for worktree in g.tracked_gits
+		merge_git(worktree, branch, commit_msg)
+	end
 end
-merge_git(w::WorkTree, commit_msg::String)            = merge_git(w.repo, commit_msg)
-merge_git(worktree_repo::GitRepo, commit_msg::String) = merge_git(LibGit2.workdir(worktree_repo), commit_msg)
-merge_git(worktree_path::String, commit_msg::String)  = begin
+merge_git(w::WorkTree, branch::String, commit_msg::String) = merge_git(w.repo, branch, commit_msg)
+merge_git(worktree_repo::GitRepo, branch::String, commit_msg::String) = merge_git(LibGit2.workdir(worktree_repo), branch, commit_msg)
+merge_git(worktree_path::String, branch::String, commit_msg::String; skip_merge=String[]) = begin
+	# we should check if the worktree was already merged... So we don't merge it twice
+	basename(worktree_path) in skip_merge && return
 	repo_path = ""
-	branch = LLM_branch_name(commit_msg)
 	cd(worktree_path) do
 		run(`git checkout -b $(branch)`) # no name collision please while loop should be here...
+		basename(worktree_path) in ["conversation"] && return
 		git_dir = read(`git rev-parse --git-dir`, String)
-		repo_path = replace(strip(git_dir), r".git/worktrees/[^/]*" => ".git")
+		repo_path = dirname(replace(strip(git_dir), r".git/worktrees/[^/]*" => ""))
 	end
+	isempty(repo_path) && return # Return early if not a worktree
 	cd(repo_path) do
 
 		stash_result = read(`git stash save "Temp stash before $(branch)"`, String)
