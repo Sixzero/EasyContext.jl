@@ -39,7 +39,7 @@ using EasyContext: get_cache_setting
         for i in 1:8
             conv_ctx(create_user_message("User message $i"))
             conv_ctx(create_AI_message("AI message $i"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
         end
         
         @test length(conv_ctx.messages) == 4
@@ -78,7 +78,7 @@ using EasyContext: get_cache_setting
             for i in 1:3
                 conv_ctx(create_user_message("User message $i"))
                 conv_ctx(create_AI_message("AI message $i"))
-                cut_old_history!(age_tracker, conv_ctx)
+                cut_old_conversation_history!(age_tracker, conv_ctx)
             end
             
             # Check caching before cut
@@ -86,7 +86,7 @@ using EasyContext: get_cache_setting
             
             # Trigger cut
             conv_ctx(create_user_message("User message 4"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) == :last
             
             # Check messages after cut
@@ -97,14 +97,14 @@ using EasyContext: get_cache_setting
             
             # Add more messages to reach the upper range
             conv_ctx(create_AI_message("AI message 4"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) == :last
             conv_ctx(create_user_message("User message 5"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
             @test length(conv_ctx.messages) == 5
             conv_ctx(create_AI_message("AI message 5"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             
             # Check caching in the upper range
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
@@ -112,7 +112,7 @@ using EasyContext: get_cache_setting
             
             # Trigger another cut
             conv_ctx(create_user_message("User message 6"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) == :last
             
             # Check messages after second cut
@@ -134,24 +134,24 @@ using EasyContext: get_cache_setting
             for i in 1:3
                 conv_ctx(create_user_message("User message $i"))
                 conv_ctx(create_AI_message("AI message $i"))
-                cut_old_history!(age_tracker, conv_ctx)
+                cut_old_conversation_history!(age_tracker, conv_ctx)
             end
             
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
             @test length(conv_ctx.messages) == 6
             conv_ctx(create_user_message("User message 4"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) == :last
             @test length(conv_ctx.messages) == 3
             conv_ctx(create_AI_message("AI message 4"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             # Check caching before cut
             @test get_cache_setting(age_tracker, conv_ctx) == :last
             
             @test length(conv_ctx.messages) == 4
             # Trigger cut
             conv_ctx(create_user_message("User message 5"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
             
             # Check messages after cut
@@ -161,29 +161,29 @@ using EasyContext: get_cache_setting
             
             # Add more messages to reach the upper range
             conv_ctx(create_AI_message("AI message 5"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
             conv_ctx(create_user_message("User message 6"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test get_cache_setting(age_tracker, conv_ctx) == :last
             conv_ctx(create_AI_message("AI message 6"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             conv_ctx(create_user_message("User message 7"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             
             # Check caching in the upper range
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
             @test length(conv_ctx.messages) == 5
             # Trigger another cut
             conv_ctx(create_AI_message("AI message 7"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test length(conv_ctx.messages) == 6
             @test get_cache_setting(age_tracker, conv_ctx) === nothing
             conv_ctx(create_user_message("User message 8"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             @test length(conv_ctx.messages) == 3
             conv_ctx(create_AI_message("AI message 8"))
-            cut_old_history!(age_tracker, conv_ctx)
+            cut_old_conversation_history!(age_tracker, conv_ctx)
             
             # Check messages after second cut
             @test length(conv_ctx.messages) == 4

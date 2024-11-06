@@ -76,7 +76,7 @@ to_string(cb_run_open::String, cb_open::String, cb_close::String, shell_results:
     $(codestr(codeblock))
     $(cb_close)
     $(cb_run_open)
-    $(codeblock.run_results[end])
+    $(length(codeblock.run_results)>0 ? codeblock.run_results[end] : "Missing outputs.")
     $(cb_close)
     """ for (code, codeblock) in shell_results], "\n\n"))
     """

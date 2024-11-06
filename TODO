@@ -53,4 +53,11 @@ This is the new use of the age things:
 - gmail create draft
 
 - using COMPUTER is a skill: Click + Keyboard + image understanding
+#%%
+@warn "This should not really happen cachefile: $cache_file"
+Why does this getting ran?
+What is the thing that is in the key here? I want to print that also and the stacktrace when it is getting called, @warn doesn'T print that.
+#%%
+┌ Warning: Failed to find Base.active_repl_backend.ast_transforms
+└ @ BasicAutoloads ~/.julia/packages/BasicAutoloads/xHol6/src/BasicAutoloads.jl:106
 

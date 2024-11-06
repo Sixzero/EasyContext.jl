@@ -1,4 +1,3 @@
-
 name = "EasyContext"
 uuid = "5067fbba-b9ec-41e5-aa31-a8c1ac509a30"
 authors = ["SixZero <havliktomi@hotmail.com>"]
@@ -6,8 +5,10 @@ version = "0.1.0"
 
 [deps]
 Anthropic = "a00d14cb-3434-48ec-9b49-cfc2b9ce2a8f"
+Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
 BoilerplateCvikli = "9c9f911a-9395-49bd-b3fc-139ceb24aa85"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 EasyRAGStore = "d16f9f6d-81ae-4245-9512-f7a8526a5ef4"

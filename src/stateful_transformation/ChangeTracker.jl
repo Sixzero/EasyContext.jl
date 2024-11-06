@@ -28,7 +28,7 @@ function (tracker::ChangeTracker)(src_content::OrderedDict)
         delete!(tracker.content, k)
     end
     
-    for (source, _) in tracker.changes # probably it is only needed if tracker.need_source_reparse==false but for safety reasons we do it anyway.
+    for (source, _) in tracker.changes # we reset everything to :UNCHANGED
         tracker.changes[source] != :UNCHANGED && (tracker.changes[source] = :UNCHANGED)
     end
 

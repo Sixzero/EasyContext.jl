@@ -4,7 +4,7 @@ using EasyRAGStore: IndexLogger, log_index
 
 @kwdef mutable struct JuliaCTX
     jl_simi_filter::EasyContext.CachedIndexBuilder{EasyContext.CombinedIndexBuilder}           
-    jl_pkg_index
+    jl_pkg_index::Union{Vector{RAG.AbstractChunkIndex}, RAG.AbstractChunkIndex, Nothing}
     tracker_context::Context
     changes_tracker::ChangeTracker
     jl_reranker_filterer
@@ -21,7 +21,7 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
     # Use the provided package_scope
     julia_loader = CachedLoader(loader=JuliaLoader(package_scope=package_scope), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
     
-    jl_pkg_index = get_index(cached_jl_simi_filter, julia_loader)
+    jl_pkg_index = nothing # get_index(cached_jl_simi_filter, julia_loader) # TODO place this back
     tracker_context = Context()
     changes_tracker = ChangeTracker(;need_source_reparse=false, verbose=verbose)
     jl_reranker_filterer = ReduceRankGPTReranker(batch_size=40, model="gpt4om")

@@ -34,53 +34,57 @@ Supports two model options:
     verbose::Bool = true
 end
 
-function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};
-    verbose::Bool = embedder.verbose,
-    cost_tracker = Threads.Atomic{Float64}(0.0),
-    kwargs...)
-
+function process_batch(batch, embedder::JinaEmbedder)
+    payload = Dict(
+        "model" => embedder.model,
+        "normalized" => true,
+        "embedding_type" => "float",
+        "input" => batch
+    )
     headers = [
         "Content-Type" => "application/json",
         "Authorization" => "Bearer $(embedder.api_key)"
     ]
 
-    function process_batch(batch)
-        payload = Dict(
-            "model" => embedder.model,
-            "normalized" => true,
-            "embedding_type" => "float",
-            "input" => batch
-        )
-
-        if embedder.model == "jina-colbert-v2"
-            embedder.api_url = "https://api.jina.ai/v1/multi-vector"
-            payload["dimensions"] = embedder.dimensions
-            payload["input_type"] = embedder.input_type
-        end
-
-        response = embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
-
-        if response.status == 200
-            result = JSON3.read(String(response.body))
-            return [e["embedding"] for e in result["data"]]
-        else
-            error("Failed to get embeddings for batch. Status code: $(response.status)")
-        end
+    if embedder.model == "jina-colbert-v2"
+        embedder.api_url = "https://api.jina.ai/v1/multi-vector"
+        payload["dimensions"] = embedder.dimensions
+        payload["input_type"] = embedder.input_type
     end
+
+    response = embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
+
+    if response.status == 200
+        result = JSON3.read(String(response.body))
+        return [e["embedding"] for e in result["data"]]
+    else
+        error("Failed to get embeddings for batch. Status code: $(response.status)")
+    end
+end
+
+function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractString};
+    verbose::Bool = embedder.verbose,
+    cost_tracker = Threads.Atomic{Float64}(0.0),
+    kwargs...)
 
     process_batch_limited = with_rate_limiter(process_batch, embedder.rate_limiter)
 
     batch_size = 1024 # 2048 is the max, but it caused error (maybe for really large requests)
     batches = [docs[i:min(i + batch_size - 1, end)] for i in 1:batch_size:length(docs)]
-
-    progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
-    embeddings = asyncmap(batches, ntasks=4) do batch
-        result = process_batch_limited(batch)
-        result = stack(result, dims=2)
-        next!(progress)
-        return result
+    @show length(batches)
+    @time if length(batches) == 1
+        embeddings = process_batch_limited(batches[1], embedder)
+        all_embeddings = stack(embeddings, dims=2)
+    else
+        progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
+        embeddings = asyncmap(batches, ntasks=4) do batch
+            result = process_batch_limited(batch, embedder)
+            result = stack(result, dims=2)
+            next!(progress)
+            return result
+        end
+        all_embeddings = reduce(hcat, embeddings)
     end
-    all_embeddings = reduce(hcat, embeddings)
 
     if verbose
         @info "Embedding complete for $(length(docs)) documents using $(embedder.model)."
@@ -119,10 +123,11 @@ function create_jina_embedder(;
     model::String = "jina-embeddings-v2-base-code",
     top_k::Int = 300,
     dimensions::Union{Int, Nothing} = nothing,
-    input_type::String = "document"
+    input_type::String = "document",
+    cache_prefix="",
 )
     jina_embedder = JinaEmbedder(; model=model, dimensions=dimensions, input_type=input_type)
-    embedder = CachedBatchEmbedder(;embedder=jina_embedder)
+    embedder = CachedBatchEmbedder(;embedder=jina_embedder, cache_prefix)
     EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
 end
 

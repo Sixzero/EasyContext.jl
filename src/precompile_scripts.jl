@@ -47,6 +47,6 @@ using PrecompileTools
         # conv_ctx(create_AI_message("Dummy AI message"))
         # codeblock_runner(extractor)
         
-        # cut_old_history!(age_tracker, conv_ctx, julia_context, workspace_context)
+        # cut_old_conversation_history!(age_tracker, conv_ctx, julia_context, workspace_context)
     end
 end
