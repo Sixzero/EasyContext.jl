@@ -36,28 +36,3 @@ This is the new use of the age things:
 
 
 #%%
-- SR finomhangolása
-- sh block és sh result tisztázása
-- virtual workspace + sima workspace-nál julia projektnél miért gondolja hogy van src folder... mit lát? nem kéne látnia milyen folderek vannak és akkor egyből tudja mit kellene tennie? 
-- merge javítása
-- weboldal deploy
-- TODO
-- delete/archive TODO vagy delete worktree...
-- Authentikáció (autologin)
-- adatbázis kiválasztása amelyik szinkronizál.
-- todo.ai megvásárlása
-- hosted + nem hosted usage
-- tesztable... nem tesztable... too strong 
-- backend server
-- controllability.... keyboard + signals (merge + clean repo (archive worktree... reattach later??))
-- gmail create draft
-
-- using COMPUTER is a skill: Click + Keyboard + image understanding
-#%%
-@warn "This should not really happen cachefile: $cache_file"
-Why does this getting ran?
-What is the thing that is in the key here? I want to print that also and the stacktrace when it is getting called, @warn doesn'T print that.
-#%%
-┌ Warning: Failed to find Base.active_repl_backend.ast_transforms
-└ @ BasicAutoloads ~/.julia/packages/BasicAutoloads/xHol6/src/BasicAutoloads.jl:106
-

@@ -27,7 +27,7 @@ function LLM_apply_changes_to_file(cb::CodeBlock, ws)
     original_content, ai_generated_content
 end
 
-function apply_changes_to_file(original_content::AbstractString, changes_content::AbstractString; model::String="orgf", temperature=0, verbose=true, get_merge_prompt::Function=get_merge_prompt_v1)
+function apply_changes_to_file(original_content::AbstractString, changes_content::AbstractString; model::String="gpt4om", temperature=0, verbose=false, get_merge_prompt::Function=get_merge_prompt_v1)
     prompt = get_merge_prompt(original_content, changes_content)
 
     verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")

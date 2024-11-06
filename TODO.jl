@@ -41,20 +41,6 @@ fix Promptingtools stream
 Fix faster async shell process.
 create aishREPL
 #%%
-The error it should be able to handle:
-TP.Exceptions.StatusError(429, "/v1/embeddings", HTTP.Messages.Response:
-"""
-HTTP/1.1 429 Too Many Requests
-date: Mon, 23 Sep 2024 13:30:55 GMT
-server: uvicorn
-Content-Length: 504
-content-type: application/json
-Via: 1.1 google
-Alt-Svc: h3=":443"; ma=2592000,h3-29=":443"; ma=2592000
-{"detail":"You have exceeded the Tokens Per Minute (TPM) rate limit of 1000000 tokens per minute. In the past minute before this request, you have used 994127 tokens. This payload has approximately 14745 tokens. To prevent further rate limiting, try exponential backoff or sleeping between requests as described in our documentation at https://docs.voyageai.com/docs/rate-limits. If you would like a higher TPM, please make a request using this form: http://www.voyageai.com/request-rate-limit-increase"}""")
-Stacktrace:
-  [1] (::HTTP.ConnectionRequest.var"#connections#4"{…})(req::HTTP.Messages.Request; proxy::Nothing, socket_type::Type, socket_type_tls::Nothing, readtimeout::Int64, connect_timeout::Int64, logerrors::Bool, logtag::Nothing, closeimmediately::Bool, kw::@Kwargs{…})
-The rate limiter thing should be not a function this way in voyager in multiple threads this will fail, because it will on every thread work separately, we need to be able to handle things in the same memory/lock with a struct, maybe this could be RateLimiterTPM or something like this. These RateLimiters should be possible to be used one after the other, depending what feature we need...
 #%%
 in the test folder I want you to create a benchmark_create.jl which should be about creating benchmark dataset if given questions like:
 question = "How to use BM25 for retrieval?"
@@ -69,34 +55,110 @@ Also as a sidenote, probably to estabilish the CodebaseContextV3 best accuracy i
 #%%
 We will need to filter the questions whether it is relevant for testing for the specific task (PkgRetrieval, CodebaseContext stuff or anything else).
 #%%
-ERROR: MethodError: no method matching find_closest(::PromptingTools.Experimental.RAGTools.CosineSimilarity, ::Matrix{Float32}, ::Float32; top_k::Int64)
-Closest candidates are:
-  find_closest(::PromptingTools.Experimental.RAGTools.CosineSimilarity, ::AbstractMatrix{<:Real}, ::AbstractVector{<:Real}; ...)
-   @ PromptingTools ~/repo/PromptingTools.jl/src/Experimental/RAGTools/retrieval.jl:200
-  find_closest(::PromptingTools.Experimental.RAGTools.CosineSimilarity, ::AbstractMatrix{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:AbstractString}; top_k, minimum_similarity, kwargs...)
-   @ PromptingTools ~/repo/PromptingTools.jl/src/Experimental/RAGTools/retrieval.jl:200
-  find_closest(::PromptingTools.Experimental.RAGTools.AbstractSimilarityFinder, ::AbstractMatrix{<:Real}, ::AbstractVector{<:Real}, ::AbstractVector{<:AbstractString}; kwargs...)
-   @ PromptingTools ~/repo/PromptingTools.jl/src/Experimental/RAGTools/retrieval.jl:178
-  ...
-Stacktrace:
- [1] get_positions_and_scores(finder::PromptingTools.Experimental.RAGTools.CosineSimilarity, builder::EmbeddingIndexBuilder, index::PromptingTools.Experimental.RAGTools.ChunkEmbeddingsIndex{…}, query::String, top_k::Int64)
-   @ EasyContext ~/repo/EasyContext.jl/src/embedders/SimpleCombinedIndexBuilder.jl:38
- [2] (::EasyContext.CombinedIndexBuilder)(::RAGContext, ::@NamedTuple{…}, ::Vararg{…})
-   @ EasyContext ~/repo/EasyContext.jl/src/embedders/SimpleCombinedIndexBuilder.jl:55
-#%%
-ERROR: MethodError: no method matching getindex(::PromptingTools.Experimental.RAGTools.ChunkEmbeddingsIndex{…}, ::Vector{…}, ::Symbol)
-Closest candidates are:
-  getindex(::PromptingTools.Experimental.RAGTools.AbstractChunkIndex, ::PromptingTools.Experimental.RAGTools.CandidateChunks{TP, TD}, ::Symbol; sorted) where {TP<:Integer, TD<:Real}
-   @ PromptingTools ~/repo/PromptingTools.jl/src/Experimental/RAGTools/types.jl:846
-  getindex(::PromptingTools.Experimental.RAGTools.AbstractChunkIndex, ::PromptingTools.Experimental.RAGTools.MultiCandidateChunks{TP, TD}, ::Symbol; sorted) where {TP<:Integer, TD<:Real}
-   @ PromptingTools ~/repo/PromptingTools.jl/src/Experimental/RAGTools/types.jl:902
-  getindex(::PromptingTools.Experimental.RAGTools.AbstractDocumentIndex, ::PromptingTools.Experimental.RAGTools.AbstractCandidateChunks, ::Symbol)
-   @ PromptingTools ~/repo/PromptingTools.jl/src/Experimental/RAGTools/types.jl:841
-  ...
-Stacktrace:
- [1] (::EasyContext.CombinedIndexBuilder)(::RAGContext, ::@NamedTuple{…}, ::Vararg{…})
-   @ EasyContext ~/repo/EasyContext.jl/src/embedders/SimpleCombinedIndexBuilder.jl:71
- [2] (::Pipe)(input::String, ai_state::@NamedTuple{…}, shell_results::Dict{…})
-   @ EasyContext ~/repo/EasyContext.jl/src/AISHExtensionV4.jl:18
-#%%
-I guess we would still need to add back the printing into change_tracker what was done in print_context_updates function.
+
+
+
+2- [x] sh block és sh result tisztázása 
+3- [x] virtual workspace + sima workspace-nál julia projektnél miért gondolja hogy van src folder... mit lát? nem kéne látnia milyen folderek vannak és akkor egyből tudja mit kellene tennie? 
+2- [x] multiple project handling
+8- [ ] SR finomhangolása
+4- [x] controllability.... keyboard + signals (merge + clean repo (archive worktree... reattach later??))
+# 5- delete/archive TODO vagy delete worktree...
+# 5- merge javítása
+2- [x] save conversation too
+                              2- universal format conversation save (simple csv...)
+                              8- @pcache (type safe... arrow... stb.... dir...) @mcache (@file_memo, @memo)
+                              4- package for this....
+                              2- @ucache (type safe... arrow... stb.... dir...) universal... so it would cache... and file cache
+                              1- adopt @pcache style everywhere
+                              6- automatic context selector
+                              10- dinamic context SIZE!
+                              - Tool usage implementation
+                                10- Anthropic.jl
+                                4- streaming
+                                6- refactoring everything
+# 8- tesztable... nem tesztable... too strong ... validation for automation + SR... self testing
+4- [ ] port server API
+# 4- [ ] Proxy backend!
+- backend server
+  2- [ ] connect/init 
+  2- [ ] LOGIN APIkeys
+  2- [ ] user_question streaming
+  1- [ ] new_conversation
+  1- [ ] select_conversation
+  2- [ ] run_cell
+  1- [ ] save file changes
+  1- [ ] get_file
+  4- [ ] diff get_whole_changes
+  - settings     # /SPACE
+     8- [ ] CREDIT by default.... NO API REQUIRED! (API (claude, openai))
+     2- [ ] model picking (llm solve, merge, ctx seracher, embedding, perplexity)
+     1- [ ] caching model enabled?
+     3- [ ] autodiff model 
+     1- [ ] auto/manual instantapply?
+     1- [ ] autorun commands
+    #  1- FIX conversation directory
+     10- [ ] sync_conversation to cloud
+     1- [ ] DEFAULT automatic context selector.
+       1- [ ] available contexts (i information button for each) (disable... estimated size... and time)
+      #  3- delete caches...
+     -workspace configuration...   /SPACE
+       4- [ ] workspace set
+       4- [ ] ignores... folder + files...
+  2- [ ] interupt till waiting for user response
+  20- [ ] @spawn ... async multiple TODO...
+  LATER- [ ] image support + file support (pdf, docs)
+  LATER- [ ] surf internet
+  LATER- [ ] computer usage
+
+- weboldal deploy
+  3- [ ] adatbázis kiválasztása amelyik szinkronizál.
+  6- [ ] Authentikáció (autologin)
+  2- [ ] email
+  4- [ ] layout
+  2- [ ] connect UI 
+       later- autodeploy on local button.... till not ready... only txt-TODO...
+  6- [ ] merge
+ 20- [ ] voice control
+  4- [ ] control buttons (STOP... START SR... MERGE)
+ 10- [ ] workspace view (SHOW aiignore!) (popup codeview/edit monacoban?)
+  2-20- [ ] blog
+  later 1- todo.ai megvásárlása
+  later- research results
+ 10- [ ] API .... automation howto  (BACKEND API kiajánlva... tulajdonképpen)
+  - Profile: 
+    1- [ ] Information
+    2- [ ] API key
+   16- [ ] Billing
+    later...- NEW todolist (workspace? or something like that... or Space?... or something? Easy switch between) per company... or something like that...
+    later 12- report & reporting page...
+  2- [ ] pricing
+  4- [ ] one screen view of todo with back/close button.
+  4- [ ] design
+  later- videos
+  later- marketing... harcore way
+1- [x] julia context
+8- [ ] javascript context
+later 10- [ ] rust context
+later 16- [ ] c++ context
+later 4- [ ] gmail create+draft
+later 4- [ ] perplexity context
+                                  6- [ ] python context
+                                  2- [ ] speedup startup time
+1- [ ] SysImage creation for deployment
+3- [ ] safe interrupt
+later 20- [ ] hosted + nem hosted usage
+later  4- [ ] worskpace filestruct and folder should use the same mechanism... also aiignore extensive usage!
+30- [ ] revert versions....
+later- [ ] refactor tool usage to be general with PromptingTools and not
+later- [ ] promptingtools recreate simpler and migrate to that
+later- [ ] julia slack issue tracker solver
+later- [ ] julia discouse issue tracker solver
+later- [ ] julia github issue tracker solver
+later- [ ] docker shipping...
+
+- using COMPUTER is a skill: Click + Keyboard + image understanding
+
+#
+1 TODO = 1 AGENT
+webview is a "GUI" to see AGENT process
