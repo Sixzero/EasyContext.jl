@@ -8,7 +8,7 @@ include("resolution_methods.jl")
     rel_project_paths::Vector{String}=String[]
     root_path::String=""  # Changed from common_path to root_path
     resolution_method::AbstractResolutionMethod=FirstAsRootResolution()
-    original_dir::String=pwd()
+    original_dir::String
     PROJECT_FILES::Vector{String} = [
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
         "README.md", 
@@ -212,7 +212,13 @@ end
 
 format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
 
-format_project(ws, path) = "Project $(get_project_name(path)) [$path]\n$(tree_string(path, ws))"
+format_project(ws, path) = begin
+    folder_tree = tree_string(path, ws)
+    folder_tree == "" && (folder_tree="└── (no subfolder)")
+    """Project $(get_project_name(path)) [$(normpath(path))]
+    $(folder_tree)
+    """
+end
 workspace_format_description(ws::Workspace)  = """
 The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
