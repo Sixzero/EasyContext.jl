@@ -5,7 +5,7 @@ export Conversation_from_sysmsg
     messages::Vector{M}
 end
 
-(conv::CONV)(msg::Message) = push!(conv.messages, msg)
+(conv::Conversation)(msg::Message) = (push!(conv.messages, msg); conv)
 
 Conversation_from_sysmsg(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
@@ -61,21 +61,24 @@ end
 ConversationX_from_sysmsg(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
 
 ConversationX(c::Conversation) = ConversationX(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-
+(conv::ConversationX)(msg::Message) = (push!(conv.messages, msg); conv)
 
 abs_conversaion_path(p,conv) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")
 conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
 conversaion_file(p,conv) = joinpath(conversaion_path(p, conv), "conversation.json")
+
+mkpath_if_missing(path) = isdir(expanduser(path)) || mkdir(expanduser(path))
+
 (p::PersistableState)(conv::ConversationX) = begin
     println(conversaion_path(p, conv))
-    mkdir(expanduser(joinpath(p.path, conv.id)))
-    mkdir(expanduser(conversaion_path(p, conv)))
+    mkpath_if_missing(joinpath(p.path, conv.id))
+    mkpath_if_missing(conversaion_path(p, conv))
     save_conversation(conversaion_file(p, conv), conv)
     conv
 end
 
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
-get_conversation_filename(p::PersistableState,conv_id) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))
+get_conversation_filename(p::PersistableState,conv_id::String) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))
 
 function parse_conversation_filename(filename)
     m = match(CONVERSATION_FILE_REGEX, filename)
@@ -98,8 +101,8 @@ save_file(filename::String, conv::ConversationX) = @save filename conv
 
 function generate_overview(conv::CONV, conv_id::String, p::PersistableState)
     @assert false
-	sanitized_chars = strip(replace(replace(first(conv.messages[1].content, 32), r"[^\w\s-]" => "_"), r"\s+" => "_"), '_')
-	return joinpath(p.path, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
+    sanitized_chars = strip(replace(replace(first(conv.messages[1].content, 32), r"[^\w\s-]" => "_"), r"\s+" => "_"), '_')
+    return joinpath(p.path, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
 end
 
 @kwdef mutable struct TODO <: CONV
