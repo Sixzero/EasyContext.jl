@@ -79,6 +79,8 @@ We will need to filter the questions whether it is relevant for testing for the 
                                 6- refactoring everything
 # 8- tesztable... nem tesztable... too strong ... validation for automation + SR... self testing
 4- [ ] port server API
+2- [ ] persisting session("model") 
+2- [ ] resume session 
 # 4- [ ] Proxy backend!
 - backend server
   2- [ ] connect/init 
@@ -98,7 +100,7 @@ We will need to filter the questions whether it is relevant for testing for the 
      1- [ ] auto/manual instantapply?
      1- [ ] autorun commands
     #  1- FIX conversation directory
-     10- [ ] sync_conversation to cloud
+    10- [ ] sync_conversation to cloud
      1- [ ] DEFAULT automatic context selector.
        1- [ ] available contexts (i information button for each) (disable... estimated size... and time)
       #  3- delete caches...
@@ -106,7 +108,7 @@ We will need to filter the questions whether it is relevant for testing for the 
        4- [ ] workspace set
        4- [ ] ignores... folder + files...
   2- [ ] interupt till waiting for user response
-  20- [ ] @spawn ... async multiple TODO...
+ 20- [ ] @spawn ... async multiple TODO...
   LATER- [ ] image support + file support (pdf, docs)
   LATER- [ ] surf internet
   LATER- [ ] computer usage
@@ -126,7 +128,7 @@ We will need to filter the questions whether it is relevant for testing for the 
   later 1- todo.ai megvásárlása
   later- research results
  10- [ ] API .... automation howto  (BACKEND API kiajánlva... tulajdonképpen)
-  - Profile: 
+   - Profile: 
     1- [ ] Information
     2- [ ] API key
    16- [ ] Billing
@@ -141,8 +143,8 @@ We will need to filter the questions whether it is relevant for testing for the 
 8- [ ] javascript context
 later 10- [ ] rust context
 later 16- [ ] c++ context
-later 4- [ ] gmail create+draft
-later 4- [ ] perplexity context
+later 4-  [ ] gmail create+draft
+later 4-  [ ] perplexity context
                                   6- [ ] python context
                                   2- [ ] speedup startup time
 1- [ ] SysImage creation for deployment
@@ -158,6 +160,15 @@ later- [ ] julia github issue tracker solver
 later- [ ] docker shipping...
 
 - using COMPUTER is a skill: Click + Keyboard + image understanding
+
+#
+Cloud DB:
+EVERYTHING in the cloud
+workspace ONLY with local version! Also the path should be correct! + ONLY worktree  (barebone...)
+julia ctx... cache (reconstruct it)  (barebone... + cache)
+python ctx... cache (reconstruct it) (barebone... + cache)
+cannot store "computer usage" state  (barebone... + cache)
+cache into the SESSION
 
 #
 1 TODO = 1 AGENT

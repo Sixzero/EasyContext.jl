@@ -7,7 +7,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
 @testset "ConversationCTX Tests" begin
 
     @testset "Adding messages" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         
         user_msg = create_user_message("Hello, AI!")
         conv_ctx(user_msg)
@@ -25,7 +25,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "Max history limit" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message", max_history=3)
+        conv_ctx = Conversation(sys_msg="Test system message", max_history=3)
         
         for i in 1:5
             conv_ctx(create_user_message("User message $i"))
@@ -38,7 +38,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "get_cache_setting" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message", max_history=5)
+        conv_ctx = Conversation(sys_msg="Test system message", max_history=5)
         
         @test get_cache_setting(conv_ctx) == :all
         
@@ -51,7 +51,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "add_error_message!" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         
         add_error_message!(conv_ctx, "Test error message")
         
@@ -61,7 +61,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "to_dict functions" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         conv_ctx(create_user_message("User message"))
         conv_ctx(create_AI_message("AI message"))
         
@@ -82,7 +82,7 @@ using EasyContext: to_dict, to_dict_nosys, update_last_user_message_meta
     end
 
     @testset "update_last_user_message_meta" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         conv_ctx(create_user_message("User message"))
         
         meta = Dict("input_tokens" => 10, "output_tokens" => 20, 

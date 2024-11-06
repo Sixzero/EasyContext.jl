@@ -38,7 +38,7 @@ end
 
 function generate_new_to_solve(history::History, sys_msg)
 	prev_id = history.selected_conv_id
-	new_conv = Conversation_from_sysmsg(;sys_msg)
+	new_conv = Conversation(;sys_msg)
 	to_solve = ConversationX(new_conv)
 	history.to_solve[to_solve.id] = to_solve 
 	history.selected_conv_id = to_solve.id

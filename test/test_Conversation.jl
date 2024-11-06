@@ -7,7 +7,7 @@ using EasyContext: get_cache_setting
 @testset "BetterConversationCTX Tests" begin
     @testset "Constructor" begin
         sys_msg = "This is a system message"
-        conv_ctx = Conversation_from_sysmsg(sys_msg=sys_msg)
+        conv_ctx = Conversation(sys_msg=sys_msg)
         
         @test conv_ctx.system_message.content == sys_msg
         @test conv_ctx.system_message.role == :system
@@ -15,7 +15,7 @@ using EasyContext: get_cache_setting
     end
 
     @testset "Adding messages" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         
         user_msg = create_user_message("Hello, AI!")
         conv_ctx(user_msg)
@@ -33,7 +33,7 @@ using EasyContext: get_cache_setting
     end
 
     @testset "AgeTracker integration" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         age_tracker = AgeTracker(max_history=6, cut_to=3)
         
         for i in 1:8
@@ -48,7 +48,7 @@ using EasyContext: get_cache_setting
     end
 
     @testset "get_cache_setting" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         age_tracker = AgeTracker(max_history=4, cut_to=3)
         
         @test get_cache_setting(age_tracker, conv_ctx) == :last
@@ -71,7 +71,7 @@ using EasyContext: get_cache_setting
 
     @testset "Cutting behavior and caching" begin
         @testset "Even max_history" begin
-            conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+            conv_ctx = Conversation(sys_msg="Test system message")
             age_tracker = AgeTracker(max_history=6, cut_to=4)
         
             # Fill up to max_history with alternating messages
@@ -123,7 +123,7 @@ using EasyContext: get_cache_setting
         end
         
         @testset "Odd max_history (adjusted to even)" begin
-            conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+            conv_ctx = Conversation(sys_msg="Test system message")
             age_tracker = AgeTracker(max_history=6, cut_to=4) # max_history=7, cut_to=3 was before.
             
             # Verify that max_history was adjusted to an even number
@@ -196,7 +196,7 @@ using EasyContext: get_cache_setting
 
 
     @testset "update_last_user_message_meta" begin
-        conv_ctx = Conversation_from_sysmsg(sys_msg="Test system message")
+        conv_ctx = Conversation(sys_msg="Test system message")
         conv_ctx(create_user_message("User message"))
         
         meta = Dict("input_tokens" => 10, "output_tokens" => 20, 

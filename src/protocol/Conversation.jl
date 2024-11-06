@@ -1,4 +1,3 @@
-export Conversation_from_sysmsg
 
 @kwdef mutable struct Conversation{M <: MSG} <: CONV
     system_message::M
@@ -7,7 +6,7 @@ end
 
 (conv::Conversation)(msg::Message) = (push!(conv.messages, msg); conv)
 
-Conversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
+Conversation_(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
 
 function cut_history!(conv::CONV; keep=8) # always going to cut after an :assitant but before a :user message.
@@ -59,7 +58,7 @@ last_msg(conv::CONV) = conv.messages[end].content
     status::Symbol=:PENDING
 end
 ConversationX(c::Conversation)  = ConversationX(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-ConversationX(;sys_msg::String) = ConversationX(Conversation_from_sysmsg(;sys_msg))
+ConversationX_(;sys_msg::String) = ConversationX(Conversation(;sys_msg))
 (conv::ConversationX)(msg::Message) = (push!(conv.messages, msg); conv)
 
 
