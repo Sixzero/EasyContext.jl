@@ -4,3 +4,5 @@ easy_sysimage.so
 data/*
 test/transform/diffs/*
 test/transform/compare/*
+
+.vscode/settings.json
