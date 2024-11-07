@@ -3,10 +3,10 @@
     system_message::M
     messages::Vector{M}
 end
+Conversation_(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
 (conv::Conversation)(msg::Message) = (push!(conv.messages, msg); conv)
 
-Conversation_(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
 
 function cut_history!(conv::CONV; keep=8) # always going to cut after an :assitant but before a :user message.
