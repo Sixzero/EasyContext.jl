@@ -1,6 +1,6 @@
 using PromptingTools
 using PromptingTools.Experimental.RAGTools
-using LinearAlgebra, SparseArrays
+using LinearAlgebra
 using PromptingTools.Experimental.RAGTools: SimpleIndexer, AbstractEmbedder
 using JLD2, Snowball, Pkg
 import PromptingTools.Experimental.RAGTools as RAG

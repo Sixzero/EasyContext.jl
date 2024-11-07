@@ -58,7 +58,7 @@ last_msg(conv::CONV) = conv.messages[end].content
     status::Symbol=:PENDING
 end
 ConversationX(c::Conversation)  = ConversationX(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-ConversationX_(;sys_msg::String) = ConversationX(Conversation(;sys_msg))
+ConversationX_(;sys_msg::String) = ConversationX(Conversation_(;sys_msg))
 (conv::ConversationX)(msg::Message) = (push!(conv.messages, msg); conv)
 
 

@@ -61,12 +61,7 @@ function Workspace(project_paths::Vector{String};
     workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir)
     # root_path !== "" && cd_rootpath(workspace)
     
-    finalizer(workspace) do w # TODO this won't be necessary as we never cd to anywhere only temporarily to the root from now!
-        if pwd() == w.root_path
-            cd(w.original_dir)
-            println("Returned to original directory: $(w.original_dir)")
-        end
-    end
+    isempty(workspace.root_path) && return workspace
 
     if verbose
         println("Project path initialized: $(root_path)")
