@@ -48,6 +48,7 @@ end
 function Workspace(project_paths::Vector{String}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
                     virtual_ws=nothing,
+                    show_tokens=false,
                     verbose=true)
 
     !isnothing(virtual_ws) && push!(project_paths, virtual_ws.rel_path)
@@ -66,7 +67,7 @@ function Workspace(project_paths::Vector{String};
     if verbose
         println("Project path initialized: $(root_path)")
         cd(workspace.root_path) do
-            print_project_tree(workspace)
+            print_project_tree(workspace; show_tokens)
         end
     end
 
