@@ -42,7 +42,7 @@ end
 function safe_append_cache(cache_file::String, new_entries::Dict{String,Vector{Float32}})
     if isempty(new_entries) return end
     
-    @async lock(get!(ReentrantLock, CACHE_STATE.file_locks, cache_file)) do
+    @async_showerr lock(get!(ReentrantLock, CACHE_STATE.file_locks, cache_file)) do
         df = DataFrame(
             hash = collect(keys(new_entries)),
             embedding = collect(values(new_entries))
