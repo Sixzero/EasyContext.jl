@@ -1,4 +1,7 @@
 
+abstract type Workflow end
+
+
 @kwdef mutable struct PersistableWorkFlowSettings
     version::VersionNumber = v"1.0.0"
     workflow
@@ -26,6 +29,17 @@
         "checksum" => true
     )
 end
+
+
+(t::Workflow)(resume::PersistableWorkFlowSettings) = begin
+    typeof(t)(resume.conv_ctx; resume.persist, resume.question_acc, 
+                resume.workspace_context, resume.julia_context,
+                resume.age_tracker,  
+                resume.version_control,
+                no_confirm=resume.config["no_confirm"], )
+  end
+
+
 
 # f <- c (load state + other clients interactions)
 # f -> c (user interaction + ai interaction)

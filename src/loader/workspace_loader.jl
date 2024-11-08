@@ -1,5 +1,3 @@
-
-
 const path_separator="/"
 include("resolution_methods.jl")
 
@@ -34,17 +32,18 @@ include("resolution_methods.jl")
     IGNORE_FILES::Vector{String} = [
         ".gitignore", ".aishignore"
     ]
+    show_tokens::Bool = false
 end
 
-cd_rootpath(ws::Workspace) = begin
-    curr_rel_path  = [normpath(joinpath(pwd(),rel_path)) for rel_path in ws.rel_project_paths]
-    ideal_rel_path = [normpath(joinpath(root_path,rel_path)) for rel_path in ws.rel_project_paths]
-    new_rel_path = relpath.(ideal_rel_path, curr_rel_path)
-    cd(root_path)
-    println("Project path initialized: $(path)")
+# cd_rootpath(ws::Workspace) = begin
+#     curr_rel_path  = [normpath(joinpath(pwd(),rel_path)) for rel_path in ws.rel_project_paths]
+#     ideal_rel_path = [normpath(joinpath(root_path,rel_path)) for rel_path in ws.rel_project_paths]
+#     new_rel_path = relpath.(ideal_rel_path, curr_rel_path)
+#     cd(root_path)
+#     println("Project path initialized: $(path)")
 
-    ws.rel_project_paths = new_rel_path
-end
+#     ws.rel_project_paths = new_rel_path
+# end
 function Workspace(project_paths::Vector{String}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
                     virtual_ws=nothing,
@@ -59,7 +58,7 @@ function Workspace(project_paths::Vector{String};
     
     root_path, rel_project_paths = resolve(resolution_method, project_paths)
     original_dir = pwd()
-    workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir)
+    workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir, show_tokens)
     # root_path !== "" && cd_rootpath(workspace)
     
     isempty(workspace.root_path) && return workspace
@@ -67,7 +66,7 @@ function Workspace(project_paths::Vector{String};
     if verbose
         println("Project path initialized: $(root_path)")
         workspace.root_path != "" && cd(workspace.root_path) do
-            print_project_tree(workspace; show_tokens)
+            print_project_tree(workspace)
         end
     end
 
@@ -142,13 +141,13 @@ end
 
 # end
 
-print_project_tree(w::Workspace;             show_tokens::Bool=false) = print_project_tree(w, w.rel_project_paths; show_tokens)
+print_project_tree(w::Workspace) = print_project_tree(w, w.rel_project_paths; show_tokens)
 print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false) = [print_project_tree(w, path; show_tokens) for path in paths]
 print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
+    println("Project structure:")
     files = get_project_files(w, path)
     rel_paths = sort([relpath(f, path) for f in files])
     
-    println("Project structure:")
     prev_parts = String[]
     for (i, file) in enumerate(rel_paths)
         parts = splitpath(file)
