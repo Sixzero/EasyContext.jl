@@ -54,8 +54,8 @@ function (tracker::ChangeTracker)(src_content::OrderedDict)
 end
 
 function parse_source(source::String)
-    source = split(source, ' ')[1]
-    parts = split(source, ':')
+    source_nospace = split(source, ' ')[1]
+    parts = split(source_nospace, ':')
     length(parts) == 1 && return parts[1], nothing
     start_line, end_line = parse.(Int, split(parts[2], '-'))
     return parts[1], (start_line, end_line)

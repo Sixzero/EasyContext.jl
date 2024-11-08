@@ -11,7 +11,6 @@ end
 
 # Constructor to set the id based on pre_content hash
 
-
 to_dict(cb::CodeBlock)= Dict(
 	"type"        => cb.type,
 	"language"    => cb.language,

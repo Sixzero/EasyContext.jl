@@ -66,7 +66,7 @@ function Workspace(project_paths::Vector{String};
 
     if verbose
         println("Project path initialized: $(root_path)")
-        cd(workspace.root_path) do
+        workspace.root_path != "" && cd(workspace.root_path) do
             print_project_tree(workspace; show_tokens)
         end
     end

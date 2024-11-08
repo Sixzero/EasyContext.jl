@@ -20,7 +20,7 @@ function LLM_apply_changes_to_file(cb::CodeBlock, ws)
     local original_content
     cd(ws.root_path) do
         !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
-        original_content = read(cb.file_path, String)
+        original_content = get_updated_content(cb.file_path)
     end
     ai_generated_content = apply_changes_to_file(original_content, cb.pre_content)
     

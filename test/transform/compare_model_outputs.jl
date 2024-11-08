@@ -41,10 +41,8 @@ function find_different_outputs(config1, config2; min_diff=4)
     return differences
 end
 
-function get_question_msg(eval::InstantApplyDiff)
-    ```question
-    $(eval.question)
-    ```
+function get_question_msg(eval::InstantApplyDiff) 
+    return "```question\n$(eval.question)\n```"
 end
 get_question_msg(_) = ""
 """
@@ -87,7 +85,8 @@ function analyze_differences(differences::Dict, analysis_model="claude"; save_ke
         1. What are the key differences between these solutions? In case it is just a few lines then please write out the differences, otherwise just explain.
         2. Which solution appears to be better and why? Which one solves the question the best?
         3. Are there any potential issues in either solution?
-        """, model=analysis_model, )
+        """, model=analysis_model)
+        
         println(" ======= ORIGINAL")
         println(eval.original)
         println(" ======= PROPOSED")

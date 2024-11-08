@@ -21,9 +21,6 @@ using EasyContext: InstantApplyDiff
         jldopen(test_file, "r") do file
             @test haskey(file, "diffs")
             diffs = file["diffs"]
-            for i in 1:length(diffs)
-              @show i, diffs["diff_$(i)"]
-            end
             
             # Test we have entries
             @test length(diffs) > 0

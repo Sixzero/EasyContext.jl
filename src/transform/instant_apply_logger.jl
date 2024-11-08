@@ -14,33 +14,51 @@ const DIFF_LOCK = ReentrantLock()
 const DIFF_FILE = joinpath(@__DIR__, "..", "..", "data", "instant_apply_diffs.jld2")
 
 function log_instant_apply(original::String, proposed::String, filepath::String, question::String="")
-    @spawn atomic_append_diff(InstantApplyDiff(; original, proposed, filepath, question))
+    atomic_append_diff(InstantApplyDiff(; original, proposed, filepath, question))
 end
 
-function log_instant_apply(extractor::CodeBlockExtractor, question::String)
-    for (_, cb) in extractor.shell_results
-        cb.type == :MODIFY && log_instant_apply(cb.pre_content, cb.content, cb.file_path, question)
+function log_instant_apply(extractor::CodeBlockExtractor, question::String, ws)
+    @async_showerr for (_, task) in extractor.shell_scripts
+        cb = fetch(task)
+        original_content = cd(ws.root_path) do
+            !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
+            isfile(cb.file_path) ? read(cb.file_path, String) : nothing
+        end
+        if !isnothing(original_content) && cb.content != original_content
+            @warn "Content mismatch for $(cb.file_path)"
+            cb.content = original_content
+        end
+        log_instant_apply(cb, question)
     end
+end
+function log_instant_apply(cb::CodeBlock, question::String)
+    cb.type == :MODIFY && log_instant_apply(cb.pre_content, cb.content, cb.file_path, question)
 end
 
 function get_next_diff_number(file)
     !haskey(file, "diffs") && return 1
     
-    # Extract numbers from diff_X keys
-    numbers = [parse(Int, match(r"diff_(\d+)", key).captures[1]) 
+    # Extract numbers from diff_X keys CUT: diff_
+
+    numbers = [Base.parse(Int, key[6:end]) 
                for key in keys(file["diffs"])]
     
     return isempty(numbers) ? 1 : maximum(numbers) + 1
 end
 
 function atomic_append_diff(diff::InstantApplyDiff)
-    lock(DIFF_LOCK) do
+    @async_showerr lock(DIFF_LOCK) do
         mkpath(dirname(DIFF_FILE))
+        success = false
         jldopen(DIFF_FILE, "a+") do file
             group = !haskey(file, "diffs") ? JLD2.Group(file, "diffs") : file["diffs"]
             next_num = get_next_diff_number(file)
+            @show next_num
             group["diff_$next_num"] = diff
+            success = true
         end
+        success || @warn "Failed to append diff to $DIFF_FILE"
+        return success
     end
 end
 

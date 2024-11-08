@@ -1,7 +1,7 @@
 include("syntax_highlight.jl")
 
-function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20241022", on_meta_usr=noop, on_text=noop, on_meta_ai=noop, on_error=noop, on_done=noop, on_start=noop)
-    channel = ai_stream(conv, model=model, printout=false, cache=cache)
+function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20241022", on_meta_usr=noop, on_text=noop, on_meta_ai=noop, on_error=noop, on_done=noop, on_start=noop, top_p=0.8)
+    channel = ai_stream(conv; model, cache, top_p, printout=false)
     highlight_state = SyntaxHighlightState()
 
     try

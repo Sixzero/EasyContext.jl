@@ -89,12 +89,29 @@ const RAG = RAGTools
         mktempdir() do temp_dir
             empty_file = joinpath(temp_dir, "empty.txt")
             touch(empty_file)
+            non_empty_file = joinpath(temp_dir, "nonempty.txt")
+            write(non_empty_file, "content")
 
             chunker = FullFileChunker()
-            chunks, sources = RAG.get_chunks(chunker, [empty_file])
+            chunks, sources = RAG.get_chunks(chunker, [empty_file, non_empty_file])
 
-            @test isempty(chunks)
-            @test isempty(sources)
+            @test length(chunks) == 2
+            @test length(sources) == 2
+            @test isempty(chunks[1])
+            @test !isempty(chunks[2])
+            @test sources[1] == empty_file
+            @test sources[2] == non_empty_file
+
+            # Check that empty files are processed without breaking the chain
+            chunks, sources = RAG.get_chunks(chunker, [empty_file, non_empty_file, empty_file])
+            @test length(chunks) == 3
+            @test length(sources) == 3
+            @test isempty(chunks[1])
+            @test !isempty(chunks[2])
+            @test isempty(chunks[3])
+            @test sources[1] == empty_file
+            @test sources[2] == non_empty_file
+            @test sources[3] == empty_file
         end
     end
 
