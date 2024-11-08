@@ -41,7 +41,8 @@ get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring
 
 function process_modify_command(file_path::String, content::String)
     delimiter = get_unique_eof(content)
-    "meld-pro $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
+    # "meld-pro $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
+    "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
 end
 
 process_create_command(file_path::String, content::String) = begin
