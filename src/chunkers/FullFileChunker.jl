@@ -7,7 +7,7 @@ export FullFileChunker
 @kwdef struct FullFileChunker <: AbstractChunker 
     max_tokens::Int = 8000
     overlap_tokens::Int = 200
-    estimation_method::TokenEstimationMethod = GPT2Approximation
+    estimation_method::TokenEstimationMethod = CharCountDivTwo
     formatter::Function = get_chunk_standard_format
     line_number_token_estimate::Int = 10 # just an estimation on how much linenumbers in the source will matter.
 end
@@ -23,7 +23,7 @@ function RAG.get_chunks(chunker::FullFileChunker,
 
     for i in eachindex(files_or_docs, sources)
         doc_raw, source = RAG.load_text(chunker, files_or_docs[i]; source = sources[i])
-        isempty(doc_raw) && (@warn("Missing content $(files_or_docs[i])"); continue)
+        isempty(doc_raw) && (push!(output_chunks, ""); push!(output_sources, source); continue)
 
         # Calculate the effective max tokens by subtracting formatter and line number tokens
         formatter_tokens = estimate_tokens(chunker.formatter("", ""), chunker.estimation_method)
