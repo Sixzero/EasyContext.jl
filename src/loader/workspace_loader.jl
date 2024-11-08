@@ -151,42 +151,26 @@ print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
 end
 
 function print_tree(paths::Vector{String}, root_path::String=""; show_tokens::Bool=false, pre="")
-    if isempty(paths)
-        return
-    end
+    isempty(paths) && return
 
-    # Group files by their immediate parent directory
-    groups = Dict{String,Vector{String}}()
+    groups = Dict{String, Vector{String}}()
     for path in paths
         parts = splitpath(path)
-        if length(parts) == 1
-            # Files in root
-            push!(get!(groups, "", String[]), path)
-        else
-            # Files in subdirectories
-            push!(get!(groups, parts[1], String[]), joinpath(parts[2:end]...))
-        end
+        dir = length(parts) == 1 ? "" : parts[1]
+        subpath = length(parts) == 1 ? path : joinpath(parts[2:end]...)
+        push!(get!(groups, dir, String[]), subpath)
     end
 
-    # Sort directories and files
-    sorted_keys = sort(collect(keys(groups)))
-    
-    # Process each group
-    for (i, dir) in enumerate(sorted_keys)
-        is_last_dir = i == length(sorted_keys)
+    for (i, (dir, files)) in enumerate(sort(collect(groups)))
+        is_last = i == length(groups)
         
-        if dir == ""
-            # Print files in current directory
-            files = sort(groups[dir])
-            for (j, file) in enumerate(files)
-                is_last_file = j == length(files) && is_last_dir  # Only use corner mark if it's the last file AND last directory
-                print_file(joinpath(root_path, file), is_last_file, pre; show_tokens)
+        if isempty(dir)
+            for (j, file) in enumerate(sort(files))
+                print_file(joinpath(root_path, file), j == length(files) && is_last, pre; show_tokens)
             end
         else
-            # Print directory and its contents
-            println(pre * (is_last_dir ? "└── " : "├── ") * dir * "/")
-            new_pre = pre * (is_last_dir ? "    " : "│   ")
-            print_tree(groups[dir], joinpath(root_path, dir); show_tokens, pre=new_pre)
+            println(pre * (is_last ? "└── " : "├── ") * dir * "/")
+            print_tree(files, joinpath(root_path, dir); show_tokens, pre=pre * (is_last ? "    " : "│   "))
         end
     end
 end
