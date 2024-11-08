@@ -147,49 +147,67 @@ print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
     println("Project structure:")
     files = get_project_files(w, path)
     rel_paths = sort([relpath(f, path) for f in files])
-    
-    prev_parts = String[]
-    for (i, file) in enumerate(rel_paths)
-        parts = splitpath(file)
-        
-        # Find the common prefix with the previous file
-        common_prefix_length = findfirst(j -> j > length(prev_parts) || parts[j] != prev_parts[j], 1:length(parts)) - 1
-        
-        # Print directories that are new in this path
-        for j in (common_prefix_length + 1):(length(parts) - 1)
-            print_tree_line(parts[1:j], j, i == length(rel_paths), false, rel_paths[i+1:end])
+    print_tree(rel_paths, path; show_tokens)
+end
+
+function print_tree(paths::Vector{String}, root_path::String=""; show_tokens::Bool=false, pre="")
+    if isempty(paths)
+        return
+    end
+
+    # Group files by their immediate parent directory
+    groups = Dict{String,Vector{String}}()
+    for path in paths
+        parts = splitpath(path)
+        if length(parts) == 1
+            # Files in root
+            push!(get!(groups, "", String[]), path)
+        else
+            # Files in subdirectories
+            push!(get!(groups, parts[1], String[]), joinpath(parts[2:end]...))
         end
+    end
+
+    # Sort directories and files
+    sorted_keys = sort(collect(keys(groups)))
+    
+    # Process each group
+    for (i, dir) in enumerate(sorted_keys)
+        is_last_dir = i == length(sorted_keys)
         
-        # Print the file (or last directory) with token count
-        print_tree_line(parts, length(parts), i == length(rel_paths), true, rel_paths[i+1:end], joinpath(path, file), show_tokens=show_tokens)
-        
-        prev_parts = parts
+        if dir == ""
+            # Print files in current directory
+            files = sort(groups[dir])
+            for (j, file) in enumerate(files)
+                is_last_file = j == length(files) && is_last_dir  # Only use corner mark if it's the last file AND last directory
+                print_file(joinpath(root_path, file), is_last_file, pre; show_tokens)
+            end
+        else
+            # Print directory and its contents
+            println(pre * (is_last_dir ? "└── " : "├── ") * dir * "/")
+            new_pre = pre * (is_last_dir ? "    " : "│   ")
+            print_tree(groups[dir], joinpath(root_path, dir); show_tokens, pre=new_pre)
+        end
     end
 end
 
-function print_tree_line(parts, depth, is_last_file, is_last_part, remaining_paths, full_path=""; show_tokens::Bool=false)
-    prefix = ""
-    for k in 1:(depth - 1)
-        prefix *= any(p -> startswith(p, join(parts[1:k], "/")), remaining_paths) ? "│   " : "    "
-    end
+function print_file(full_path::String, is_last::Bool, pre::String=""; show_tokens::Bool=false)
+    symbol = is_last ? "└── " : "├── "
+    name = basename(full_path)
     
-    symbol = is_last_file && is_last_part ? "└── " : "├── "
-    name = parts[end]
-
-    
-    if !isempty(full_path) && isfile(full_path)
+    if isfile(full_path)
         full_file = read(full_path, String)
         name *= show_tokens ? " ($(count_tokens(full_file)))" : ""
         size_chars = count(c -> !isspace(c), full_file)
         if size_chars > 10000
             size_str = format_file_size(size_chars)
             color, reset = size_chars > 20000 ? ("\e[31m", "\e[0m") : ("", "") # Red color for files over 20k chars
-            println("$prefix$symbol$name $color($size_str)$reset")
+            println("$pre$symbol$name $color($size_str)$reset")
         else
-            println("$prefix$symbol$name")
+            println("$pre$symbol$name")
         end
     else
-        println("$prefix$symbol$name$(is_last_part ? "" : "/")")
+        println("$pre$symbol$name")
     end
 end
 

@@ -1,6 +1,7 @@
 
 using PromptingTools.Experimental.RAGTools: BatchEmbedder, AbstractEmbedder
 using PromptingTools: MODEL_EMBEDDING
+using SparseArrays
 
 @kwdef struct OpenAIBatchEmbedder <: AbstractEasyEmbedder
     embedder::BatchEmbedder=BatchEmbedder()
