@@ -44,6 +44,7 @@ include("contexts/Contexts.jl")
 include("loader/loaders.jl")
 include("action/loading_spinner.jl")
 
+
 include("processor/CodeBlockExtractor.jl")
 
 # include("ai_repl.jl")
@@ -60,6 +61,8 @@ include("building_block/CTX_workspace.jl")
 # Automation
 include("automation/selector_llm.jl")
 include("automation/condition_llm.jl")
+
+include("model/persistence.jl")
 
 include("precompile_scripts.jl")
 
