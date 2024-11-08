@@ -23,7 +23,7 @@ function RAG.get_chunks(chunker::FullFileChunker,
 
     for i in eachindex(files_or_docs, sources)
         doc_raw, source = RAG.load_text(chunker, files_or_docs[i]; source = sources[i])
-        isempty(doc_raw) && (push!(output_chunks, ""); push!(output_sources, source); continue)
+        isempty(doc_raw) && (push!(output_chunks, chunker.formatter(output_chunks, "empty")); push!(output_sources, source); continue)
 
         # Calculate the effective max tokens by subtracting formatter and line number tokens
         formatter_tokens = estimate_tokens(chunker.formatter("", ""), chunker.estimation_method)

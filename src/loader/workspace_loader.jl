@@ -94,7 +94,7 @@ function get_project_files(w::Workspace, path::String)
     ignore_cache = Dict{String, Vector{String}}()
     ignore_stack = Pair{String, Vector{String}}[]
     
-    for (root, dirs, files_in_dir) in walkdir(path, topdown=true)
+    for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
         any(d -> d in w.FILTERED_FOLDERS, splitpath(root)) && (empty!(dirs); continue)
         
         # Read and cache ignore patterns for this directory

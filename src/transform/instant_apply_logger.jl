@@ -20,19 +20,14 @@ end
 function log_instant_apply(extractor::CodeBlockExtractor, question::String, ws)
     @async_showerr for (_, task) in extractor.shell_scripts
         cb = fetch(task)
-        original_content = cd(ws.root_path) do
-            !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
-            isfile(cb.file_path) ? read(cb.file_path, String) : nothing
-        end
-        if !isnothing(original_content) && cb.content != original_content
-            @warn "Content mismatch for $(cb.file_path)"
-            cb.content = original_content
-        end
-        log_instant_apply(cb, question)
+        log_instant_apply(cb, question, ws)
     end
 end
-function log_instant_apply(cb::CodeBlock, question::String)
-    cb.type == :MODIFY && log_instant_apply(cb.pre_content, cb.content, cb.file_path, question)
+function log_instant_apply(cb::CodeBlock, question::String, ws)
+    original_content = cd(ws.root_path) do
+        default_source_parser(cb.file_path, "")
+    end
+    cb.type == :MODIFY && log_instant_apply(original_content, cb.pre_content, cb.file_path, question)
 end
 
 function get_next_diff_number(file)
