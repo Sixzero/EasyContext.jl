@@ -63,7 +63,7 @@ end
 
 function get_updated_content(source::String)
     file_path, line_range = parse_source(source)
-    !isfile(file_path) && (@warn "File not found: $file_path (pwd: $(pwd()))"; return nothing)
+    !isfile(file_path) && (@warn stacktrace=stacktrace() "File not found: $file_path (pwd: $(pwd()))"; return nothing)
     content = read(file_path, String)
     isnothing(line_range) && return content
     lines = split(content, '\n')

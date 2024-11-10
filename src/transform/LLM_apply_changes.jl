@@ -27,12 +27,14 @@ function LLM_apply_changes_to_file(cb::CodeBlock, ws)
     original_content, ai_generated_content
 end
 
-function apply_changes_to_file(original_content::AbstractString, changes_content::AbstractString; model::String="gpt4om", temperature=0, verbose=false, get_merge_prompt::Function=get_merge_prompt_v1)
+function apply_changes_to_file(original_content::AbstractString, changes_content::AbstractString; model::String="orgf", temperature=0, verbose=false, get_merge_prompt::Function=get_merge_prompt_v1)
     prompt = get_merge_prompt(original_content, changes_content)
 
     verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")
     aigenerated = PromptingTools.aigenerate(prompt, model=model, api_kwargs=(; temperature))
-    return extract_final_content(aigenerated.content)
+    res, is_ok = extract_final_content(aigenerated.content)
+    !is_ok && @warn "The model: $model failed to generate the final content."
+    return res
 end
 
 function extract_final_content(content::AbstractString)
@@ -44,10 +46,10 @@ function extract_final_content(content::AbstractString)
         # Extract the content between the last pair of tags
         start_pos = start_index.stop + 1
         end_pos = end_index.start - 1
-        return content[start_pos:end_pos]
+        return content[start_pos:end_pos], true
     else
         # If tags are not found, return the original content
         @warn "Tags are not found."
-        return content
+        return content, false
     end
 end

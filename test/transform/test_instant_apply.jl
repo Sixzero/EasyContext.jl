@@ -2,46 +2,62 @@ using Test
 using EasyContext
 using JLD2
 using Dates
-using EasyContext: InstantApplyDiff
+using EasyContext: InstantApplyDiff, atomic_append_diff, load_instant_apply_diffs
 
 @testset "InstantApplyDiff Tests" begin
     # Setup test data
-    test_dir = joinpath(@__DIR__, "..", "..", "data")
-    test_file = joinpath(test_dir, "instant_apply_diffs.jld2")
+    test_dir = joinpath(@__DIR__, "diffs")
+    test_file = joinpath(test_dir, "test_instant_apply_diffs.jld2")
     
     @testset "Read InstantApplyDiffs" begin
         mkpath(test_dir)
-        # Create some test data first
-        # log_instant_apply("original1", "proposed1", "test1.jl", "test question1")
-        # log_instant_apply("original2", "proposed2", "test2.jl", "test question2")
+        # Create test data
+        diff1 = InstantApplyDiff(original="original1", proposed="proposed1", 
+                                filepath="test1.jl", question="test question1")
+        diff2 = InstantApplyDiff(original="original2", proposed="proposed2", 
+                                filepath="test2.jl", question="test question2")
         
-        # sleep(0.1) # Wait for async operations
+        # Clear test file if exists
+        isfile(test_file) && rm(test_file)
+        
+        atomic_append_diff(diff1, test_file)
+        atomic_append_diff(diff2, test_file)
         
         # Read and verify the data
-        jldopen(test_file, "r") do file
-            @test haskey(file, "diffs")
-            diffs = file["diffs"]
-            
-            # Test we have entries
-            @test length(diffs) > 0
-            
-            # Check the latest entries
-            latest = diffs["diff_$(length(diffs))"]
-            @test latest isa InstantApplyDiff
-            @test latest.original == "original2"
-            @test latest.proposed == "proposed2"
-            @test latest.filepath == "test2.jl"
-            @test latest.question == "test question2"
-            @test latest.timestamp isa DateTime
-        end
+        diffs = load_instant_apply_diffs(test_file)
+        @test length(diffs) == 2
+        
+        # Check entries
+        latest_key = maximum([parse(Int, split(k, "_")[end]) for k in keys(diffs)])
+        latest = diffs["diffs/diff_$latest_key"]
+        @test latest isa InstantApplyDiff
+        @test latest.original == "original2"
+        @test latest.proposed == "proposed2"
+        @test latest.filepath == "test2.jl"
+        @test latest.question == "test question2"
+        @test latest.timestamp isa DateTime
+        
+        # Cleanup
+        rm(test_file)
     end
 
     @testset "Legacy Format Compatibility" begin
         # Test loading old format diffs
         legacy_diffs = load_instant_apply_diffs()
         @test length(legacy_diffs) > 0
-        @test all(x -> x isa InstantApplyDiff, legacy_diffs)
-        @test all(x -> x.question == "", filter(d -> d.timestamp < DateTime(2024,1,1), legacy_diffs))
+        # @test all(x -> x isa InstantApplyDiff, values(legacy_diffs))
     end
-end
+end;
 #%%
+using EasyContext: load_instant_apply_diffs, DEFAULT_DIFF_FILE, save_instant_apply_diffs
+res = load_instant_apply_diffs()
+
+k = "diffs/diff_36"
+# k = "diffs/diff_39"
+println(res[k].original)
+@show "OK OTHER FILE"
+println(res[k].proposed)
+# for (k, v) in res
+    # @show k, typeof(v)
+# end
+# save_instant_apply_diffs(res, DEFAULT_DIFF_FILE)

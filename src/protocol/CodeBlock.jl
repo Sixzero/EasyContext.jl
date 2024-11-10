@@ -39,10 +39,37 @@ codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(cb.file_pa
 
 get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring(3) : "EOF"
 
+function is_diff_service_available()
+    try
+        HTTP.get("http://localhost:3000/health", readtimeout=1)
+        return true
+    catch
+        return false
+    end
+end
+
+@enum Editor MELD VIMDIFF MELD_PRO
+global CURRENT_EDITOR = MELD  # Default editor
+
 function process_modify_command(file_path::String, content::String)
     delimiter = get_unique_eof(content)
-    # "meld-pro $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
-    "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
+    if CURRENT_EDITOR == VIMDIFF
+        content_esced = replace(content, "'" => "\\'")
+        "vimdiff $file_path <(echo -e '$content_esced')"
+    elseif CURRENT_EDITOR == MELD_PRO
+        if is_diff_service_available()
+            # Use HTTP-based diff editor with proper escaping for zsh
+            content_esced = replace(content, "\"" => "\\\"")
+            """curl -X POST http://localhost:3000/diff -H \\"Content-Type: application/json\\" -d '{
+                \\"leftPath\\": \\"$file_path\\",
+                \\"rightContent\\": \\"$content_esced\\"
+            }'"""
+        else
+            "meld-pro $file_path - <<'$delimiter'\n$content"
+        end
+    else  # MELD
+        "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
+    end
 end
 
 process_create_command(file_path::String, content::String) = begin

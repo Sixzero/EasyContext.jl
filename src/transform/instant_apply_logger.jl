@@ -11,7 +11,7 @@ export log_instant_apply, delete_merge_evaluation
 end
 
 const DIFF_LOCK = ReentrantLock()
-const DIFF_FILE = joinpath(@__DIR__, "..", "..", "data", "instant_apply_diffs.jld2")
+const DEFAULT_DIFF_FILE = joinpath(@__DIR__, "..", "..", "data", "instant_apply_diffs.jld2")
 
 function log_instant_apply(original::String, proposed::String, filepath::String, question::String="")
     atomic_append_diff(InstantApplyDiff(; original, proposed, filepath, question))
@@ -24,10 +24,11 @@ function log_instant_apply(extractor::CodeBlockExtractor, question::String, ws)
     end
 end
 function log_instant_apply(cb::CodeBlock, question::String, ws)
+    cb.type != :MODIFY && return
     original_content = cd(ws.root_path) do
         default_source_parser(cb.file_path, "")
     end
-    cb.type == :MODIFY && log_instant_apply(original_content, cb.pre_content, cb.file_path, question)
+    log_instant_apply(original_content, cb.pre_content, cb.file_path, question)
 end
 
 function get_next_diff_number(file)
@@ -41,19 +42,25 @@ function get_next_diff_number(file)
     return isempty(numbers) ? 1 : maximum(numbers) + 1
 end
 
-function atomic_append_diff(diff::InstantApplyDiff)
+function atomic_append_diff(diff::InstantApplyDiff, diff_file::String=DEFAULT_DIFF_FILE)
     @async_showerr lock(DIFF_LOCK) do
-        mkpath(dirname(DIFF_FILE))
+        mkpath(dirname(diff_file))
         success = false
-        jldopen(DIFF_FILE, "a+") do file
+        jldopen(diff_file, "a+") do file
             group = !haskey(file, "diffs") ? JLD2.Group(file, "diffs") : file["diffs"]
             next_num = get_next_diff_number(file)
-            @show next_num
             group["diff_$next_num"] = diff
             success = true
         end
-        success || @warn "Failed to append diff to $DIFF_FILE"
+        success || @warn "Failed to append diff to $diff_file"
         return success
+    end
+end
+
+function save_instant_apply_diffs(diffs::Dict{String,InstantApplyDiff}, diff_file::String=DEFAULT_DIFF_FILE)
+    lock(DIFF_LOCK) do
+        mkpath(dirname(diff_file))
+        JLD2.save(diff_file, diffs)
     end
 end
 
@@ -75,9 +82,29 @@ function Base.convert(::Type{InstantApplyDiff}, x::LegacyInstantApplyDiff)
     )
 end
 
-function load_instant_apply_diffs()
-    !isfile(DIFF_FILE) && return InstantApplyDiff[]
-    JLD2.load(DIFF_FILE, typemap=Dict("Reconstruct@EasyContext.InstantApplyDiff" => LegacyInstantApplyDiff))
+function load_instant_apply_diffs(diff_file::String=DEFAULT_DIFF_FILE)
+    !isfile(diff_file) && return Dict{String,InstantApplyDiff}()
+    diffs = lock(DIFF_LOCK) do
+        JLD2.load(diff_file, typemap=Dict("Reconstruct@EasyContext.InstantApplyDiff" => LegacyInstantApplyDiff))
+    end
+
+    result = Dict{String,InstantApplyDiff}()
+    for (k, v) in diffs
+        if v isa JLD2.ReconstructedMutable{:InstantApplyDiff}
+            result[k] = InstantApplyDiff(
+                original=v.original,
+                proposed=v.proposed,
+                filepath=v.filepath,
+                question="",  # Legacy entries have no question
+                timestamp=v.timestamp
+            )
+        elseif v isa LegacyInstantApplyDiff
+            result[k] = convert(InstantApplyDiff, v)
+        else
+            result[k] = v
+        end
+    end
+    return result
 end
 
 @kwdef struct MergeEvaluation
@@ -110,13 +137,20 @@ end
 function save_merge_evaluation(key::String, eval::MergeEvaluation)
     lock(DIFF_LOCK) do
         mkpath(dirname(MODEL_COMPARISON_FILE))
-        evals = if isfile(MODEL_COMPARISON_FILE)
-            JLD2.load(MODEL_COMPARISON_FILE)
-        else
-            Dict{String, MergeEvaluation}()
+        success = false
+        
+        # Create file if it doesn't exist
+        !isfile(MODEL_COMPARISON_FILE) && JLD2.save(MODEL_COMPARISON_FILE, Dict{String,MergeEvaluation}())
+        
+        # Open in read/write mode and update
+        jldopen(MODEL_COMPARISON_FILE, "r+") do file
+            haskey(file, key) && delete!(file, key)  # Delete if exists
+            file[key] = eval
+            success = true
         end
-        evals[key] = eval
-        JLD2.save(MODEL_COMPARISON_FILE, evals)
+        
+        success || @warn "Failed to save merge evaluation for key: $key"
+        return success
     end
 end
 
@@ -129,5 +163,3 @@ function delete_merge_evaluation(key::String)
         JLD2.save(MODEL_COMPARISON_FILE, evals)
     end
 end
-
-
