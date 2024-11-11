@@ -40,11 +40,11 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     process = run(pipeline(ignorestatus(cmd), stdout=out_pipe, stderr=err_pipe), wait=false)
     close(out_pipe.in); close(err_pipe.in)
     
-    @async for line in eachline(out_pipe)
+    @async_showerr for line in eachline(out_pipe)
         println(line); flush(stdout)
         write(output, line * "\n")
     end
-    @async for line in eachline(err_pipe)
+    @async_showerr for line in eachline(err_pipe)
         println(stderr, line); flush(stderr)
         write(error, line * "\n")
     end
