@@ -9,8 +9,8 @@ abstract type Workflow end
     timestamp::DateTime = now(UTC)
     conv_ctx::Session
     question_acc::QuestionCTX
-    julia_CTX::JuliaCTX
-    workspace_CTX::WorkspaceCTX
+    julia_ctx::JuliaCTX    # Changed from julia_CTX
+    workspace_ctx::WorkspaceCTX  # Changed from workspace_CTX
     version_control::Union{GitTracker,Nothing}
     # workspace_paths::Vector{String}
     # ignore...
@@ -33,7 +33,7 @@ end
 
 (t::Workflow)(resume::PersistableWorkFlowSettings) = begin
     typeof(t)(resume.conv_ctx; resume.persist, resume.question_acc, 
-                resume.workspace_context, resume.julia_context,
+                resume.workspace_ctx, resume.julia_ctx,
                 resume.age_tracker,  
                 resume.version_control,
                 no_confirm=resume.config["no_confirm"], )
