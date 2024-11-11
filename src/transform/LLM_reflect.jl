@@ -11,6 +11,7 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     Be simple when reflecting and giving feedback.
     Be minimalistic and concise. 
     Focus on the main problem.
+    don't focuse on documentation, loggers, error handler, robustness or things that wasn't explicitly asked or isn't really necessary for the solution.
 
     To evaluate the solution you have to decide from the following 4 state: [DONE], [STUCKED], [WAITING], or [CONTINUE].
     The action of the words are: 

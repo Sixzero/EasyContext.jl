@@ -60,14 +60,13 @@ function parse_source(source::String)
     start_line, end_line = parse.(Int, split(parts[2], '-'))
     return parts[1], (start_line, end_line)
 end
-
 function get_updated_content(source::String)
     file_path, line_range = parse_source(source)
-    !isfile(file_path) && (@warn stacktrace=stacktrace() "File not found: $file_path (pwd: $(pwd()))"; return nothing)
+    !isfile(file_path) && (@warn "File not found: $file_path (pwd: $(pwd()))"; return nothing)
     content = read(file_path, String)
     isnothing(line_range) && return content
     lines = split(content, '\n')
-    return join(lines[line_range[1]:min(line_range[2], length(lines))], "\n")
+    return join(lines[line_range[1]:min(line_range[2], length(lines))], '\n')
 end
 
 

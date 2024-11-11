@@ -8,9 +8,9 @@ abstract type Workflow end
 
     timestamp::DateTime = now(UTC)
     conv_ctx::Session
-    question_acc::QuestionCTX
-    julia_ctx::JuliaCTX    # Changed from julia_CTX
-    workspace_ctx::WorkspaceCTX  # Changed from workspace_CTX
+    question_acc::QuestionCTX # TODO Question CTX to conv_ctx. so... with a function to get the question_acc actually.x
+    julia_ctx::JuliaCTX
+    workspace_ctx::WorkspaceCTX
     version_control::Union{GitTracker,Nothing}
     # workspace_paths::Vector{String}
     # ignore...
