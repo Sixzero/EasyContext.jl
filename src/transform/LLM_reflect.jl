@@ -6,11 +6,10 @@ export LLM_reflect, is_continue, LLM_reflect_condition
 function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     prompt = """
     You are an AI assistant specialized in criticizing and spotting problems with the solution and we want to reach ready [DONE] state or you have to detect if solution [STUCKED] and cannot reach final solution or [WAITING] for user feedback, otherwise we have to [CONTINUE] our work.
-    You don't solve the problem you only have to spot the problem if there is any. :D 
-    You just point out what is the problem and bring in new approaches as possible option to resolve the issue if we have one. 
-    If we have error, then you have to point out what can be the reason of the problem if there is any.
-    Try to be simple when reflecting and giving feedback.
-    Also try to be minimalistic and concise. 
+    You don't solve the problem you only have to spot the problem if there is any. 
+    You just point out what is the problem and only say the must know things to resolve the problem nothing more if there is any problem.
+    Be simple when reflecting and giving feedback.
+    Be minimalistic and concise. 
     Focus on the main problem.
 
     To evaluate the solution you have to decide from the following 4 state: [DONE], [STUCKED], [WAITING], or [CONTINUE].
