@@ -31,7 +31,7 @@ function apply_changes_to_file(original_content::AbstractString, changes_content
     prompt = get_merge_prompt(original_content, changes_content)
 
     verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")
-    aigenerated = PromptingTools.aigenerate(prompt, model=model, api_kwargs=(; temperature))
+    aigenerated = PromptingTools.aigenerate(prompt, model=model, api_kwargs=(; temperature), verbose=false)
     res, is_ok = extract_final_content(aigenerated.content)
     !is_ok && @warn "The model: $model failed to generate the final content."
     return res
