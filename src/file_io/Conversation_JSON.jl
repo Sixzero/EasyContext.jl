@@ -1,13 +1,12 @@
 using JSON3
 
-JSON3.StructTypes.StructType(::Type{WebMessage})      = JSON3.StructTypes.Struct()
-JSON3.StructTypes.StructType(::Type{<:ConversationX}) = JSON3.StructTypes.Mutable()
+JSON3.StructTypes.StructType(::Type{WebMessage}) = JSON3.StructTypes.Struct()
+JSON3.StructTypes.StructType(::Type{<:Session})  = JSON3.StructTypes.Mutable()
 
-save_conversation(filepath::String, conv::ConversationX) = write(filepath, json_pretty(conv) * "\n")
+save_conversation(filepath::String, conv::Session) = write(filepath, json_pretty(conv) * "\n")
 load_conversation(filepath::String) = begin
     json = JSON3.read(read(filepath, String), Dict)
-    # Convert the Dict to ConversationX manually
-    ConversationX(
+    Session(
         id = json["id"],
         timestamp = DateTime(json["timestamp"]),
         system_message = WebMessage(; 

@@ -50,32 +50,6 @@ update_last_user_message_meta(conv::CONV, itok::Int, otok::Int, cached::Int, cac
 
 last_msg(conv::CONV) = conv.messages[end].content
 
-@kwdef mutable struct ConversationX{M <: MSG} <: CONV
-    id::String = short_ulid()
-    timestamp::DateTime = now(UTC)
-    system_message::M = UndefMessage()
-    messages::Vector{M} = Message[]
-    status::Symbol=:PENDING
-end
-ConversationX(c::Conversation)  = ConversationX(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-ConversationX_(;sys_msg::String) = ConversationX(Conversation_(;sys_msg))
-(conv::ConversationX)(msg::Message) = (push!(conv.messages, msg); conv)
-
-
-abs_conversaion_path(p,conv) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")
-conversaion_path(p,conv) = joinpath(p.path, conv.id, "conversations")
-conversaion_file(p,conv) = joinpath(conversaion_path(p, conv), "conversation.json")
-
-mkpath_if_missing(path) = isdir(expanduser(path)) || mkdir(expanduser(path))
-
-(p::PersistableState)(conv::ConversationX) = begin
-    println(conversaion_path(p, conv))
-    mkpath_if_missing(joinpath(p.path, conv.id))
-    mkpath_if_missing(conversaion_path(p, conv))
-    save_conversation(conversaion_file(p, conv), conv)
-    conv
-end
-
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
 get_conversation_filename(p::PersistableState,conv_id::String) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))
 
@@ -95,7 +69,7 @@ load_conv(p::PersistableState, conv_id::String) = begin
 end
 load_conv(filename::String) = @load filename conv
 save_file(p::PersistableState, conv::String) = save_file(get_conversation_filename(p, conv.id), conv)
-save_file(filename::String, conv::ConversationX) = @save filename conv
+save_file(filename::String, conv::Session) = @save filename conv
 
 
 function generate_overview(conv::CONV, conv_id::String, p::PersistableState)

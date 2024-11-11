@@ -7,7 +7,7 @@ abstract type Workflow end
     workflow
 
     timestamp::DateTime = now(UTC)
-    conv_ctx::ConversationX 
+    conv_ctx::Session
     question_acc::QuestionCTX
     julia_CTX::JuliaCTX
     workspace_CTX::WorkspaceCTX
@@ -37,7 +37,7 @@ end
                 resume.age_tracker,  
                 resume.version_control,
                 no_confirm=resume.config["no_confirm"], )
-  end
+end
 
 
 

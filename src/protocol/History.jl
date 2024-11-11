@@ -6,7 +6,7 @@ end
 
 
 JSON3.StructTypes.StructType(::Type{History}) = JSON3.StructTypes.Struct()
-add_conversation!(history::History, conv::ConversationX;) = history.TODOs[conv.id] = TODO(conv)
+add_conversation!(history::History, conv::Session;) = history.TODOs[conv.id] = TODO(conv)
 
 save_history(history::History, p::PersistableState) = write(joinpath(p.path, "history.json"), JSON3.pretty(history))
 load_history(p::PersistableState) = begin
@@ -39,7 +39,7 @@ end
 function generate_new_to_solve(history::History, sys_msg)
 	prev_id = history.selected_conv_id
 	new_conv = Conversation_(;sys_msg)
-	to_solve = ConversationX_(new_conv)
+	to_solve = Session_(new_conv)
 	history.to_solve[to_solve.id] = to_solve 
 	history.selected_conv_id = to_solve.id
 end
@@ -48,7 +48,7 @@ load(history::History, persistable::PersistableState) = get_all_conversations_wi
 function get_all_conversations_without_messages(history::History, persistable)
 	for file in get_all_conversations_file(persistable)    
 			conv_info = parse_conversation_filename(file)
-			history.to_solve[conv_info.id] = ConversationX(
+			history.to_solve[conv_info.id] = Session(
 				id=conv_info.id,
 				timestamp=conv_info.timestamp,
 				to_solve=conv_info.to_solve,

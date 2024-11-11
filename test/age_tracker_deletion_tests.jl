@@ -1,12 +1,13 @@
+
 using Test
 using DataStructures
-using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, ConversationX, create_user_message, create_AI_message
+using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Session, create_user_message, create_AI_message  # Changed here
 
 @testset "AgeTracker with ChangeTracker deletion tests" begin
     @testset "Age-based deletion" begin
         age_tracker = AgeTracker(max_history=6, cut_to=4)
         changes_tracker = ChangeTracker()
-        conv = ConversationX()
+        conv = Session_("Test system")  # Changed here
         
         # Initial content at age 0
         src_content = OrderedDict{String,String}(
@@ -68,7 +69,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Con
     @testset "Update refreshes age" begin
         age_tracker = AgeTracker(max_history=4, cut_to=2)
         changes_tracker = ChangeTracker()
-        conv = ConversationX()
+        conv = Session_("Test system")  # Changed here
         
         # Initial file
         src_content = OrderedDict{String,String}(
@@ -104,7 +105,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Con
     @testset "Message count based age tracking" begin
         age_tracker = AgeTracker(max_history=6, cut_to=4)
         changes_tracker = ChangeTracker()
-        conv = ConversationX()
+        conv = Session_("Test system")  # Changed here
         src_content = OrderedDict{String,String}("file1.txt" => "content1")
         
         # Initial state
@@ -135,7 +136,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Con
         age_tracker = AgeTracker(max_history=6, cut_to=4)
         changes_tracker1 = ChangeTracker()
         changes_tracker2 = ChangeTracker()
-        conv = ConversationX()
+        conv = Session_("Test system")  # Changed here
         
         # Initial content in two different contexts
         src_content1 = OrderedDict{String,String}(

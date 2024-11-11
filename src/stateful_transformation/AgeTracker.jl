@@ -29,7 +29,7 @@ function cut_old_sources!(sources_to_delete::Vector{String}, ctx::OrderedDict, c
     return sources_to_delete
 end
 
-function cut_old_conversation_history!(age_tracker::AgeTracker, conv::ConversationX, contexts...)
+function cut_old_conversation_history!(age_tracker::AgeTracker, conv::Session, contexts...)
     current_msg_count = length(conv.messages)
     age_tracker.age += current_msg_count - age_tracker.last_message_count
     
@@ -55,7 +55,7 @@ function cut_old_conversation_history!(age_tracker::AgeTracker, conv::Conversati
     return false
 end
 
-function get_cache_setting(tracker::AgeTracker, conv::ConversationX) ## TODO recheck!!
+function get_cache_setting(tracker::AgeTracker, conv::Session) ## TODO recheck!!
     messages_count = length(conv.messages)
     if messages_count >= tracker.max_history - 1
         @info "We do not cache, because next message will trigger a cut!"
