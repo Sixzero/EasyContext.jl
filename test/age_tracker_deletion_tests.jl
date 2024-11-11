@@ -7,7 +7,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Ses
     @testset "Age-based deletion" begin
         age_tracker = AgeTracker(max_history=6, cut_to=4)
         changes_tracker = ChangeTracker()
-        conv = Session_("Test system")  # Changed here
+        conv = Session("Test system")  # Changed here
         
         # Initial content at age 0
         src_content = OrderedDict{String,String}(
@@ -69,7 +69,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Ses
     @testset "Update refreshes age" begin
         age_tracker = AgeTracker(max_history=4, cut_to=2)
         changes_tracker = ChangeTracker()
-        conv = Session_("Test system")  # Changed here
+        conv = Session("Test system")  # Changed here
         
         # Initial file
         src_content = OrderedDict{String,String}(
@@ -105,7 +105,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Ses
     @testset "Message count based age tracking" begin
         age_tracker = AgeTracker(max_history=6, cut_to=4)
         changes_tracker = ChangeTracker()
-        conv = Session_("Test system")  # Changed here
+        conv = Session("Test system")  # Changed here
         src_content = OrderedDict{String,String}("file1.txt" => "content1")
         
         # Initial state
@@ -136,7 +136,7 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Ses
         age_tracker = AgeTracker(max_history=6, cut_to=4)
         changes_tracker1 = ChangeTracker()
         changes_tracker2 = ChangeTracker()
-        conv = Session_("Test system")  # Changed here
+        conv = Session("Test system")  # Changed here
         
         # Initial content in two different contexts
         src_content1 = OrderedDict{String,String}(
@@ -190,3 +190,4 @@ using EasyContext: ChangeTracker, AgeTracker, cut_old_conversation_history!, Ses
     end
 end
 ;
+

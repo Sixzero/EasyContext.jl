@@ -3,7 +3,7 @@
     system_message::M
     messages::Vector{M}
 end
-Conversation_(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
+initConversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
 (conv::Conversation)(msg::Message) = (push!(conv.messages, msg); conv)
 
@@ -61,15 +61,6 @@ function parse_conversation_filename(filename)
         id=m[:id],
     )
 end
-
-load_conv(p::PersistableState, conv_id::String) = begin
-    filename = get_conversation_filename(p, conv_id)
-    isnothing(filename) && return "", String[]
-    return filename, load_conv(filename)
-end
-load_conv(filename::String) = @load filename conv
-save_file(p::PersistableState, conv::String) = save_file(get_conversation_filename(p, conv.id), conv)
-save_file(filename::String, conv::Session) = @save filename conv
 
 
 function generate_overview(conv::CONV, conv_id::String, p::PersistableState)

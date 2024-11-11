@@ -1,15 +1,16 @@
 
-export Session, Session_
+export Session, initSession
 
 @kwdef mutable struct Session{M <: MSG} <: CONV
     id::String = short_ulid()
     timestamp::DateTime = now(UTC)
     system_message::M = UndefMessage()
     messages::Vector{M} = Message[]
-    status::Symbol=:PENDING
+    status::Symbol = :PENDING
 end
 Session(c::Conversation) = Session(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-Session_(;sys_msg::String) = Session(Conversation_(;sys_msg))
+initSession(;sys_msg::String) = Session(initConversation(;sys_msg))
+
 (conv::Session)(msg::Message) = (push!(conv.messages, msg); conv)
 
 abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")

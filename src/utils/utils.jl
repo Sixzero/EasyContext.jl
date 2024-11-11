@@ -14,7 +14,7 @@ short_ulid() = encodetime(floor(Int,datetime2unix(now())*1000),10)*encoderandom(
 home_abrev(path::AbstractString) = startswith(path, homedir()) ? joinpath("~", relpath(path, homedir())) : path
 
 
-
+mkpath_if_missing(path::AbstractString) = isdir(expanduser(path)) || mkdir(expanduser(path))
 
 
 
