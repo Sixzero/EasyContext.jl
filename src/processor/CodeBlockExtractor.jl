@@ -49,7 +49,6 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
             if nesting_level == 0
                 command = join(current_command, '\n')
                 cb = CodeBlock(;file_path, type=cmd_type, language=block_type, pre_content=command)
-                @info "starting! $file_path  $cmd_type  $block_type $(length(keys(extractor.shell_scripts)))"
                 extractor.shell_scripts[command] = @async_showerr preprocess(cb)
                 current_command = String[]
                 block_type = ""
