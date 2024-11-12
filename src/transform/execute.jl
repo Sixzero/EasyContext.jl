@@ -6,7 +6,8 @@ execute_code_block(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") 
   if cb.type==:MODIFY || cb.type==:CREATE
     head_lines = cb.type ==:MODIFY ? 1 : 4
     tail_lines = cb.type ==:MODIFY ? 1 : 2
-    println("\e[32m$(get_shortened_code(code, head_lines, tail_lines))\e[0m")
+    shortened_code = startswith(code, "curl") ? "curl diff..." : get_shortened_code(code, head_lines, tail_lines)
+    println("\e[32m$(shortened_code)\e[0m")
     cb.type==:CREATE && ((no_confirm || (print("\e[34mContinue? (y) \e[0m"); !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0")))) && return "Operation cancelled by user."
     cb.type==:CREATE && println("\n\e[36mOutput:\e[0m")
     return cmd_all_info_modify(`zsh -c $code`)
@@ -32,7 +33,7 @@ function cmd_all_info_modify(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     catch e
         err = "$e"
     end
-    return format_cmd_output(output, error, err, process)
+    return format_cmd_output(output, error, err, process, debug_msg=cmd)
 end
 
 function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
@@ -53,12 +54,28 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     return format_cmd_output(output, error, "", process)
 end
 
-function format_cmd_output(output, error, err, process)
+function format_cmd_output(output, error, err, process; debug_msg=nothing)
+    # Try to parse JSON from raw stdout if present
+    stdout_str, error_str = String(take!(output)), String(take!(error))
+    if startswith(stdout_str, "{")
+        try
+            response = JSON3.read(stdout_str)
+            if haskey(response, "error")
+                @info "Server returned error" response.error
+                println(error_str)
+                println("The debug msg:")
+                println(debug_msg)
+            end
+        catch e
+            @info "Failed to parse JSON response" error=e
+        end
+    end
+    
+    # Return formatted output
     join(["$name=$str" for (name, str) in [
-        ("stdout", String(take!(output))),
-        ("stderr", String(take!(error))),
+        ("stdout", stdout_str),
+        ("stderr", error_str),
         ("exception", err),
         ("exit_code", isnothing(process) ? "" : process.exitcode)
     ] if !isempty(str)], "\n")
 end
-

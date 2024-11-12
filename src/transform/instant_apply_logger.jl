@@ -17,18 +17,18 @@ function log_instant_apply(original::String, proposed::String, filepath::String,
     atomic_append_diff(InstantApplyDiff(; original, proposed, filepath, question))
 end
 
-function log_instant_apply(extractor::CodeBlockExtractor, question::String, ws)
+function log_instant_apply(extractor::CodeBlockExtractor, question::String)
     @async_showerr for (_, task) in extractor.shell_scripts
         cb = fetch(task)
-        log_instant_apply(cb, question, ws)
+        log_instant_apply(cb, question)
     end
 end
-function log_instant_apply(cb::CodeBlock, question::String, ws)
+function log_instant_apply(cb::CodeBlock, question::String)
     cb.type != :MODIFY && return
-    original_content = cd(ws.root_path) do
+    original_content = cd(cb.root_path) do
         default_source_parser(cb.file_path, "")
     end
-    log_instant_apply(original_content, cb.pre_content, cb.file_path, question)
+    log_instant_apply(original_content, cb.content, cb.file_path, question)
 end
 
 function get_next_diff_number(file)
