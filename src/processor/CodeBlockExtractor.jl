@@ -23,6 +23,7 @@ end
 function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeBlockExtractor; instant_return=true, preprocess=(v)-> v)
     extractor.full_content *= new_content
     lines = split(extractor.full_content[nextind(extractor.full_content, extractor.last_processed_index[]):end], '\n')
+    processed_idx = extractor.last_processed_index[]
     current_command = String[]
     nesting_level = 0
     cmd_type = :DEFAULT
@@ -30,6 +31,7 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
     file_path = ""
 
     for (i, line) in enumerate(lines)
+        processed_idx += length(line) + 1  # +1 for the newline
         if startswith(line, "MODIFY ")        
             file_path = expanduser(String(strip(line[8:end])))
             cmd_type = :MODIFY
@@ -47,13 +49,12 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
             if nesting_level == 0
                 command = join(current_command, '\n')
                 cb = CodeBlock(;file_path, type=cmd_type, language=block_type, pre_content=command)
+                @info "starting! $file_path  $cmd_type  $block_type $(length(keys(extractor.shell_scripts)))"
                 extractor.shell_scripts[command] = @async_showerr preprocess(cb)
                 current_command = String[]
-                cmd_type = :DEFAULT
                 block_type = ""
                 file_path = ""
-                extractor.last_processed_index[] = length(extractor.full_content)
-                
+                extractor.last_processed_index[] = processed_idx
                 instant_return && return cb
             end
         elseif nesting_level > 0
