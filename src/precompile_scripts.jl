@@ -1,5 +1,6 @@
 using EasyContext
 using PrecompileTools
+using DataStructures: OrderedDict
 
 @setup_workload begin
     # Dummy values for testing
@@ -8,7 +9,24 @@ using PrecompileTools
     logdir = tempdir()
     show_tokens = false
 
-    @compile_workload begin
+    # Create minimal dummy file chunks for testing
+    dummy_chunks = OrderedDict(
+        "src/test.jl" => "function hello() println(\"Hello\") end",
+        "src/main.jl" => "using Test\ninclude(\"test.jl\")"
+    )
+
+    # Mock AI function that doesn't make API calls
+    mock_ai_fn(prompt; kwargs...) = PromptingTools.AIMessage("1,2")
+
+    @time "Precompilation EasyContext.jl" @compile_workload begin
+        # Initialize workspace context
+        workspace_context = init_workspace_context(project_paths, verbose=false)
+               
+        # Test the filtering functionality with dummy data
+        indexx = get_index(workspace_context.ws_simi_filterer, dummy_chunks)
+        file_chunks_selected = workspace_context.ws_simi_filterer(indexx, user_question)
+        file_chunks_reranked = rerank(workspace_context.ws_reranker_filterer, file_chunks_selected, user_question; ai_fn=mock_ai_fn)
+
         # EasyContext-specific initializations
         # workspace_context = init_workspace_context(project_paths, verbose=false)
         

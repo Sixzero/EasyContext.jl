@@ -27,7 +27,8 @@ function rerank(
     query::AbstractString;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
-    verbose::Int = reranker.verbose
+    verbose::Int = reranker.verbose,
+    ai_fn::Function = airatelimited
 )
     sources = collect(keys(chunks))
     contents = collect(values(chunks))
@@ -43,7 +44,7 @@ function rerank(
 
             prompt = reranker.rank_gpt_prompt_fn(query, doc_batch, top_n)
             try_temperature = attempt == 0 ? reranker.temperature : 0.5
-            response = airatelimited(prompt; model=reranker.model, api_kwargs=(max_tokens=reranker.max_tokens, temperature=try_temperature), verbose=false)
+            response = ai_fn(prompt; model=reranker.model, api_kwargs=(max_tokens=reranker.max_tokens, temperature=try_temperature), verbose=false)
             rankings = extract_ranking(response.content)
 
             if all(1 .<= rankings .<= length(doc_batch))
