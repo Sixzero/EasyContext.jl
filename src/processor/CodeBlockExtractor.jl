@@ -20,7 +20,7 @@ function is_closer_ticks(line::AbstractString)
     return startswith(line, "```") && (length(line) == 3 || all(isspace, line[4:end]))
 end
 
-function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeBlockExtractor; instant_return=true, preprocess=(v)-> v)
+function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeBlockExtractor; instant_return=true, preprocess=(v)-> v, root_path="")
     extractor.full_content *= new_content
     lines = split(extractor.full_content[nextind(extractor.full_content, extractor.last_processed_index[]):end], '\n')
     processed_idx = extractor.last_processed_index[]
@@ -48,7 +48,7 @@ function extract_and_preprocess_codeblocks(new_content::String, extractor::CodeB
             
             if nesting_level == 0
                 command = join(current_command, '\n')
-                cb = CodeBlock(;file_path, type=cmd_type, language=block_type, pre_content=command)
+                cb = CodeBlock(;file_path, type=cmd_type, language=block_type, content=command, root_path)
                 extractor.shell_scripts[command] = @async_showerr preprocess(cb)
                 current_command = String[]
                 block_type = ""

@@ -1,22 +1,24 @@
 
 
 @kwdef mutable struct CodeBlock <: BLOCK
-	type::Symbol = :NOTHING
-	language::String
-	file_path::String
-	pre_content::String
-	content::String = ""
-	run_results::Vector{String} = []
+    type::Symbol = :NOTHING
+    language::String
+    file_path::String
+    root_path::String
+    content::String
+    postcontent::String = ""
+    run_results::Vector{String} = []
 end
 
-# Constructor to set the id based on pre_content hash
+# Constructor to set the id based on content hash
 
 to_dict(cb::CodeBlock)= Dict(
 	"type"        => cb.type,
 	"language"    => cb.language,
 	"file_path"   => cb.file_path,
-	"pre_content" => cb.pre_content,
+	"root_path"   => cb.root_path,
 	"content"     => cb.content,
+	"postcontent" => cb.postcontent,
 	"run_results" => cb.run_results)
 
 function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
@@ -32,7 +34,7 @@ function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
     end
 end
 
-codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(cb.file_path, cb.content) :
+codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(cb.file_path, cb.postcontent, cb.root_path) :
                          cb.type == :CREATE  ? process_create_command(cb.file_path, cb.content) :
                          cb.type == :DEFAULT ? cb.content :
                          error("not known type for cb")
@@ -51,21 +53,28 @@ end
 @enum Editor MELD VIMDIFF MELD_PRO
 global CURRENT_EDITOR = MELD  # Default editor
 
-function process_modify_command(file_path::String, content::String)
+function process_modify_command(file_path::String, content::String, root_path)
     delimiter = get_unique_eof(content)
     if CURRENT_EDITOR == VIMDIFF
         content_esced = replace(content, "'" => "\\'")
         "vimdiff $file_path <(echo -e '$content_esced')"
     elseif CURRENT_EDITOR == MELD_PRO
         if is_diff_service_available()
-            # Use HTTP-based diff editor with proper escaping for zsh
-            content_esced = replace(content, "\"" => "\\\"")
-            """curl -X POST http://localhost:3000/diff -H \\"Content-Type: application/json\\" -d '{
-                \\"leftPath\\": \\"$file_path\\",
-                \\"rightContent\\": \\"$content_esced\\"
-            }'"""
+            # Use JSON3.write for proper JSON formatting and escaping
+            payload = Dict(
+                "leftPath" => file_path,
+                "rightContent" => content,
+                "pwd" => root_path
+            )
+            # Escape double quotes and wrap in single quotes for shell
+            json_str = JSON3.write(payload)
+
+            # Escape single quotes for shell
+            json_str_for_shell = replace(json_str, "'" => "'\\''")
+            """curl -X POST http://localhost:3000/diff -H "Content-Type: application/json" -d '$(json_str_for_shell)'"""
         else
-            "meld-pro $file_path - <<'$delimiter'\n$content"
+            # fallback to meld
+            "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
         end
     else  # MELD
         "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
@@ -98,14 +107,14 @@ end
 	type::Symbol = :NOTHING
 	language::String
 	file_path::String
-	pre_content::String
-	content::String = ""
+	content::String
+	postcontent::String = ""
 	run_results::Vector{String} = []
 end
 
-function WebCodeBlock(type::Symbol, language::String, file_path::String, pre_content::String, content::String = "", run_results::Vector{String} = [])
-    id = bytes2hex(sha256(pre_content))
-    WebCodeBlock(id, type, language, file_path, pre_content, content, run_results)
+function WebCodeBlock(type::Symbol, language::String, file_path::String, content::String, postcontent::String = "", run_results::Vector{String} = [])
+    id = bytes2hex(sha256(content))
+    WebCodeBlock(id, type, language, file_path, content, postcontent, run_results)
 end
 
 to_dict(cb::WebCodeBlock)= Dict(
@@ -113,6 +122,6 @@ to_dict(cb::WebCodeBlock)= Dict(
 	"type"        => cb.type,
 	"language"    => cb.language,
 	"file_path"   => cb.file_path,
-	"pre_content" => cb.pre_content,
 	"content"     => cb.content,
+	"postcontent"     => cb.postcontent,
 	"run_results" => cb.run_results)

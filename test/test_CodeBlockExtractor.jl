@@ -42,7 +42,7 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         extractor = CodeBlockExtractor()
         extractor.last_processed_index[] = 100
         extractor.shell_scripts["test"] = @task nothing
-        extractor.shell_results["test"] = CodeBlock(language="julia", file_path="test.jl", pre_content="")
+        extractor.shell_results["test"] = CodeBlock(language="julia", file_path="test.jl", content="")
         extractor.full_content = "Some content"
 
         reset!(extractor)
@@ -55,8 +55,8 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
 
     @testset "to_string" begin
         extractor = CodeBlockExtractor()
-        cb1 = CodeBlock(type=:DEFAULT, language="julia", file_path="test1.jl", pre_content="println(1)")
-        cb2 = CodeBlock(type=:DEFAULT, language="python", file_path="test2.py", pre_content="print(2)")
+        cb1 = CodeBlock(type=:DEFAULT, language="julia", file_path="test1.jl", content="println(1)")
+        cb2 = CodeBlock(type=:DEFAULT, language="python", file_path="test2.py", content="print(2)")
         push!(cb1.run_results, "1")
         push!(cb2.run_results, "2")
         extractor.shell_results["test1"] = cb1
@@ -102,9 +102,9 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         @test result.type == :MODIFY
         @test result.file_path == "./test.jl"
         @test result.language == "julia"
-        @test occursin("function nested_block_example()", result.pre_content)
-        @test occursin("function inner_function()", result.pre_content)
-        @test occursin("nested_block_example()", result.pre_content)
+        @test occursin("function nested_block_example()", result.content)
+        @test occursin("function inner_function()", result.content)
+        @test occursin("nested_block_example()", result.content)
         @test length(extractor.shell_scripts) == 1
         @test extractor.last_processed_index[] == length(content)
     end
@@ -147,10 +147,10 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         @test result.type == :MODIFY
         @test result.file_path == "./test.jl"
         @test result.language == "julia"
-        @test occursin("Documentation for a function with a code example:", result.pre_content)
-        @test occursin("function example()", result.pre_content)
-        @test occursin("def another_example():", result.pre_content)
-        @test occursin("function outer_function()", result.pre_content)
+        @test occursin("Documentation for a function with a code example:", result.content)
+        @test occursin("function example()", result.content)
+        @test occursin("def another_example():", result.content)
+        @test occursin("function outer_function()", result.content)
         @test length(extractor.shell_scripts) == 1
         @test extractor.last_processed_index[] == length(content)
     end

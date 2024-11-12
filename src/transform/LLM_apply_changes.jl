@@ -6,23 +6,23 @@ using Base.Threads: @spawn
 include("instant_apply_logger.jl")
 include("apply_changes_prompts.jl")
 
-function LLM_conditonal_apply_changes(cb::CodeBlock, ws)
-    cb.content = (if cb.type==:MODIFY
-        original_content, ai_generated_content = LLM_apply_changes_to_file(cb, ws)
+function LLM_conditonal_apply_changes(cb::CodeBlock)
+    cb.postcontent = (if cb.type==:MODIFY
+        original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
         ai_generated_content
     else
-        cb.pre_content
+        cb.content
     end)
     cb
 end
 
-function LLM_apply_changes_to_file(cb::CodeBlock, ws)
+function LLM_apply_changes_to_file(cb::CodeBlock)
     local original_content
-    cd(ws.root_path) do
+    cd(cb.root_path) do
         !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
         original_content = get_updated_content(cb.file_path)
     end
-    ai_generated_content = apply_changes_to_file(original_content, cb.pre_content)
+    ai_generated_content = apply_changes_to_file(original_content, cb.content)
     
     original_content, ai_generated_content
 end

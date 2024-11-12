@@ -33,6 +33,6 @@ This is the new use of the age things:
 - worktree relative path
 - worktree cleanup mistakes...
 - merge... accept changes... how? + delete branch?
-
-
 #%%
+How could I run REPL maker to create a repl of which texts would go into the AIModel?
+In AISH.jl
