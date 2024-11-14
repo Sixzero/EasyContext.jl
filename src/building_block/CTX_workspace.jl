@@ -11,7 +11,8 @@ using EasyRAGStore: IndexLogger, log_index
     ws_reranker_filterer
     index_logger::IndexLogger
 end
-Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace.root_path)
+Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
+Base.cd(f::Function, workspace::Workspace)        = !isempty(workspace.root_path)               ? cd(f, workspace.root_path)               : f()
 
 function init_workspace_context(project_paths; show_tokens=false, verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing)
     workspace            = Workspace(project_paths; virtual_ws, verbose, show_tokens)

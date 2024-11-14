@@ -81,7 +81,7 @@ end
 
 function get_project_files(w::Workspace)
     all_files = String[]
-    cd(w.root_path) do
+    cd(w) do
         for path in w.rel_project_paths
             append!(all_files, get_project_files(w, path))
         end
