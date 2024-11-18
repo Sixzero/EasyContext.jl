@@ -8,8 +8,12 @@ execute_code_block(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") 
     tail_lines = cb.type ==:MODIFY ? 1 : 2
     shortened_code = startswith(code, "curl") ? "curl diff..." : get_shortened_code(code, head_lines, tail_lines)
     println("\e[32m$(shortened_code)\e[0m")
-    cb.type==:CREATE && ((no_confirm || (print("\e[34mContinue? (y) \e[0m"); !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0")))) && return "Operation cancelled by user."
-    cb.type==:CREATE && println("\n\e[36mOutput:\e[0m")
+    if cb.type==:CREATE
+      dir = dirname(cb.file_path)
+      !isdir(dir) && mkpath(dir)
+      (no_confirm || (print("\e[34mContinue? (y) \e[0m"); !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0"))) && return "Operation cancelled by user."
+      println("\n\e[36mOutput:\e[0m") 
+    end
     return cmd_all_info_modify(`zsh -c $code`)
   else
     !(lowercase(cb.language) in ["bash", "sh", "zsh"]) && return ""
