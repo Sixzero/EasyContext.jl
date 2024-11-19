@@ -11,7 +11,7 @@ execute_code_block(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") 
     if cb.type==:CREATE
       dir = dirname(cb.file_path)
       !isdir(dir) && mkpath(dir)
-      (no_confirm || (print("\e[34mContinue? (y) \e[0m"); !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0"))) && return "Operation cancelled by user."
+      (no_confirm || (print("\e[34mContinue? (y) \e[0m"); !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0"))) && return "\nOperation cancelled by user."
       println("\n\e[36mOutput:\e[0m") 
     end
     return cmd_all_info_modify(`zsh -c $code`)
@@ -23,7 +23,7 @@ execute_code_block(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") 
       return cmd_all_info_stream(`zsh -c $code`)
     else
       print("\e[34mContinue? (y) \e[0m")
-      !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0") && return "Operation cancelled by user."
+      !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0") && return "\nOperation cancelled by user."
       println("\n\e[36mOutput:\e[0m")
       return cmd_all_info_stream(`zsh -c $code`)
     end

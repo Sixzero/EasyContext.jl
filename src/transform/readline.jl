@@ -10,7 +10,7 @@ function readline_multi()
         batch = readavailable(stdin)
         if length(batch) == 1 && batch[1] == 0x0a  # newline character
             empty_lines += 1
-            if empty_lines == 2
+            if empty_lines == 1
                 break
             end
         else
@@ -28,7 +28,7 @@ function readline_multi_interactive()
         char = read(stdin, Char)
         if char in ('\n', '\r')
             empty_lines += 1
-            if empty_lines == 3
+            if empty_lines == 2
                 break
             end
         elseif !isspace(char)
