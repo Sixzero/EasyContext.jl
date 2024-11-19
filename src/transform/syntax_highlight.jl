@@ -77,6 +77,8 @@ function handle_code_block_start(state::SyntaxHighlightState, line::AbstractStri
     state.in_code_block += 1
     if state.in_code_block == 1
         state.language = length(line) > 3 ? strip(line[4:end]) : ""
+        print(Crayon(background = (40, 44, 52)))  # Set background
+        print("\e[K")  # Clear to end of line with current background color
         println("```$(state.language)")
     else
         write(state.buffer, line, '\n')
@@ -88,7 +90,9 @@ function handle_code_block_end(state::SyntaxHighlightState, line::AbstractString
         state.in_code_block -= 1
         if state.in_code_block == 0
             process_buffer(state, flush=true)
-            println("```")
+            print("```")
+            print(Crayon(reset = true))  # Reset codeblock bg
+            println()  # Now the newline is not colored
         else
             write(state.buffer, line, '\n')
         end
@@ -113,5 +117,4 @@ function Highlights.Format.render(io::IO, ::MIME"text/ansi", tokens::Highlights.
         print(io, cg, str, inv(cg))
     end
 end
-
 
