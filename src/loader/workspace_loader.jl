@@ -45,22 +45,22 @@ end
 
 #     ws.rel_project_paths = new_rel_path
 # end
-function Workspace(project_paths::Vector{String}; 
+function Workspace(project_paths::Vector{<:AbstractString}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
                     virtual_ws=nothing,
                     show_tokens=false,
                     verbose=true)
 
-    !isnothing(virtual_ws) && push!(project_paths, virtual_ws.rel_path)
+    paths = String.(project_paths)  # Convert to String
+    !isnothing(virtual_ws) && push!(paths, virtual_ws.rel_path)
     # Check if all paths exist
-    for path in project_paths
+    for path in paths
         @assert isdir(expanduser(path)) "Path does not exist or is not a directory: $path"
     end
     
-    root_path, rel_project_paths = resolve(resolution_method, project_paths)
+    root_path, rel_project_paths = resolve(resolution_method, paths)
     original_dir = pwd()
-    workspace = Workspace(;project_paths, rel_project_paths, root_path, resolution_method, original_dir, show_tokens)
-    # root_path !== "" && cd_rootpath(workspace)
+    workspace = Workspace(;project_paths=paths, rel_project_paths, root_path, resolution_method, original_dir, show_tokens)
     
     isempty(workspace.root_path) && return workspace
 

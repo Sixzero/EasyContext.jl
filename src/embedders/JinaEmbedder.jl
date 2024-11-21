@@ -11,8 +11,9 @@ using ProgressMeter
 A struct for embedding documents using Jina AI's embedding models.
 
 Supports two model options:
-1. "jina-embeddings-v2-base-code" (default): A general-purpose embedding model.
+1. "jina-embeddings-v3": A general-purpose embedding model.
 2. "jina-colbert-v2": A ColBERT-based embedding model for dense retrieval tasks.
+1. "jina-embeddings-v2-base-code" (default): A general-purpose embedding model.
 
 # Fields
 - `api_url::String`: The API endpoint URL.
@@ -71,8 +72,7 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
 
     batch_size = 1024 # 2048 is the max, but it caused error (maybe for really large requests)
     batches = [docs[i:min(i + batch_size - 1, end)] for i in 1:batch_size:length(docs)]
-    @show length(batches)
-    @time if length(batches) == 1
+    if length(batches) == 1
         embeddings = process_batch_limited(batches[1], embedder)
         all_embeddings = stack(embeddings, dims=2)
     else
