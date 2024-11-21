@@ -20,9 +20,6 @@
 		},
 		{
 			"path": "../LLMBenchmarks.jl"
-		},
-		{
-			"path": "../julia-awesomeness/PkgManager.jl"
 		}
 	],
 	"settings": {
