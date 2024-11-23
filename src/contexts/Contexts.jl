@@ -1,6 +1,9 @@
 using PromptingTools.Experimental.RAGTools
 
-include("CTXQuestion.jl")
+include("CTX_question.jl")
+include("CTX_conversation.jl")
+include("CTX_julia.jl")
+include("CTX_workspace.jl")
 
 function get_cache_setting(::AbstractContextCreator, conv)
     printstyled("WARNING: get_cache_setting not implemented for this contexter type. Defaulting to no caching.\n", color=:red)

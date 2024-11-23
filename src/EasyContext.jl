@@ -41,9 +41,9 @@ include("ContextJoiner.jl")
 include("rerankers/ReduceRerankGPT.jl")
 include("rerankers/CohereRerankPro.jl")
 include("rerankers/RerankGPTPro.jl")
-include("contexts/Contexts.jl")
 include("loader/loaders.jl")
 include("action/loading_spinner.jl")
+include("contexts/Contexts.jl")
 
 
 include("processor/CodeBlockExtractor.jl")
@@ -55,9 +55,6 @@ include("MainUtils.jl")
 include("stateful_transformation/StatefulTransformators.jl")
 include("transform/transformations.jl")
 
-include("building_block/CTX_conversation.jl")
-include("building_block/CTX_julia.jl")
-include("building_block/CTX_workspace.jl")
 
 # Automation
 include("automation/selector_llm.jl")

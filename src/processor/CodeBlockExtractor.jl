@@ -78,7 +78,7 @@ to_string(cb_run_open::String, cb_open::String, cb_close::String, shell_results:
     $(cb_run_open)
     $(length(codeblock.run_results)>0 ? codeblock.run_results[end] : "Missing outputs.")
     $(cb_close)
-    """ for (code, codeblock) in shell_results], "\n\n"))
+    """ for (code, codeblock) in shell_results if !(codeblock.type in [:MODIFY, :CREATE])], "\n\n"))
     """
     # $(get_shortened_code(codestr(codeblock)))
 end
