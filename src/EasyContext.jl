@@ -43,8 +43,6 @@ include("rerankers/CohereRerankPro.jl")
 include("rerankers/RerankGPTPro.jl")
 include("loader/loaders.jl")
 include("action/loading_spinner.jl")
-include("contexts/Contexts.jl")
-
 
 include("processor/CodeBlockExtractor.jl")
 
@@ -54,6 +52,11 @@ include("PkgLister.jl")
 include("MainUtils.jl")
 include("stateful_transformation/StatefulTransformators.jl")
 include("transform/transformations.jl")
+
+
+include("contexts/Contexts.jl")
+
+
 
 
 # Automation
