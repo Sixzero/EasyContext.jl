@@ -6,8 +6,8 @@ using Test
     include("test_full_file_chunker.jl")
     include("test_CodeBlockExtractor.jl")
     include("test_context_planner.jl")
-
+    include("test_executionplanner_context.jl")  # its not free. it cals out to cloud.
     include("test_CTXBetterConversation.jl")
     include("test_workspace.jl")
-    include("transform/test_instant_apply.jl")  # Added this line
+    include("transform/test_instant_apply.jl")
 end

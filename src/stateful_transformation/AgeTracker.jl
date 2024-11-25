@@ -59,7 +59,7 @@ function get_cache_setting(tracker::AgeTracker, conv::Session) ## TODO recheck!!
     messages_count = length(conv.messages)
     if messages_count >= tracker.max_history - 1
         @info "We do not cache, because next message will trigger a cut!"
-        return nothing
+        return :all_but_last
     end
-    return :last
+    return :all
 end
