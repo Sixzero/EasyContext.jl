@@ -1,5 +1,3 @@
-
-
 @kwdef mutable struct CodeBlock <: BLOCK
     type::Symbol = :NOTHING
     language::String
@@ -42,8 +40,9 @@ codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(cb.file_pa
 get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring(3) : "EOF"
 
 function is_diff_service_available()
+    port = get(ENV, "MELD_PORT", "3000")
     try
-        HTTP.get("http://localhost:3000/health", readtimeout=1)
+        HTTP.get("http://localhost:$port/health", readtimeout=1)
         return true
     catch
         return false
@@ -51,7 +50,46 @@ function is_diff_service_available()
 end
 
 @enum Editor MELD VIMDIFF MELD_PRO
-global CURRENT_EDITOR = MELD  # Default editor
+global CURRENT_EDITOR::Editor = MELD  # Default editor
+
+const EDITOR_MAP = Dict(
+    "meld" => MELD,
+    "vimdiff" => VIMDIFF,
+    "meld-pro" => MELD_PRO,
+    "meld_pro" => MELD_PRO,
+    "monacomeld" => MELD_PRO,  # Alias for MELD_PRO
+    "monaco" => MELD_PRO       # Another alias
+)
+
+function set_editor(editor_name::AbstractString)
+    global CURRENT_EDITOR
+    # Handle editor:port format
+    editor_base, port = if occursin(':', editor_name)
+        parts = split(editor_name, ':')
+        if length(parts) != 2 || isnothing(tryparse(Int, parts[2]))
+            println("Error: Invalid port number")
+            return false
+        end
+        parts[1], parts[2]
+    else
+        editor_name, nothing
+    end
+    @show editor_base
+    
+    # Validate and set editor
+    editor = get(EDITOR_MAP, lowercase(editor_base), MELD_PRO)
+    if isnothing(editor)
+        println("Error: Unknown editor. Available editors: $(join(keys(EDITOR_MAP), ", "))")
+        return false
+    end
+    
+    # Set the editor and port
+    CURRENT_EDITOR = editor
+    @show CURRENT_EDITOR
+    !isnothing(port) && (ENV["MELD_PORT"] = port)
+    
+    return true
+end
 
 function process_modify_command(file_path::String, content::String, root_path)
     delimiter = get_unique_eof(content)
@@ -60,18 +98,15 @@ function process_modify_command(file_path::String, content::String, root_path)
         "vimdiff $file_path <(echo -e '$content_esced')"
     elseif CURRENT_EDITOR == MELD_PRO
         if is_diff_service_available()
-            # Use JSON3.write for proper JSON formatting and escaping
+            port = get(ENV, "MELD_PORT", "3000")
             payload = Dict(
                 "leftPath" => file_path,
                 "rightContent" => content,
                 "pwd" => root_path
             )
-            # Escape double quotes and wrap in single quotes for shell
             json_str = JSON3.write(payload)
-
-            # Escape single quotes for shell
             json_str_for_shell = replace(json_str, "'" => "'\\''")
-            """curl -X POST http://localhost:3000/diff -H "Content-Type: application/json" -d '$(json_str_for_shell)'"""
+            """curl -X POST http://localhost:$port/diff -H "Content-Type: application/json" -d '$(json_str_for_shell)'"""
         else
             # fallback to meld
             "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"

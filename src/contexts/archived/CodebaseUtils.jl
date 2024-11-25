@@ -14,7 +14,7 @@ function select_relevant_files(question::String, file_index; top_k::Int=100, top
         finder=RAG.CosineSimilarity(), 
         reranker
     )
-    embedder_model, = file_index.extras
+    embedder_model = file_index.extras[0]
     result = RAG.retrieve(retriever, file_index, question; 
         # rephraser_kwargs = (; template=:RAGRephraserByKeywordsV2, model = "claude", verbose =true, ),
         top_k, top_n,

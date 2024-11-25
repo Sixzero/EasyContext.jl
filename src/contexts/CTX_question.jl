@@ -4,7 +4,7 @@
     max_questions::Int=4
 end
 
-function (qa::QuestionCTX)(question::String)
+function (qa::QuestionCTX)(question::AbstractString)
     push!(qa.questions, question)
     length(qa.questions) > qa.max_questions && popfirst!(qa.questions)
     
