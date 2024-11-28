@@ -8,7 +8,7 @@ function execute_shell_commands(extractor::CodeBlockExtractor; no_confirm=false,
         cb = fetch(task)
         if cb !== nothing
             extractor.shell_results[command] = cb
-            push!(extractor.shell_results[command].run_results, execute_code_block(cb; no_confirm))
+            push!(extractor.shell_results[command].run_results, execute_codeblock(cb; no_confirm))
         else
             @warn "TODO We couldn't run the block, there might have been an error."
             println("\e[31mWarning:\e[0m Task for command '$command' returned nothing")

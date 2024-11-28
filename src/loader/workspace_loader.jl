@@ -142,7 +142,7 @@ end
 
 # end
 
-print_project_tree(w::Workspace) = print_project_tree(w, w.rel_project_paths; show_tokens)
+print_project_tree(w::Workspace) = print_project_tree(w, w.rel_project_paths)
 print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false) = [print_project_tree(w, path; show_tokens) for path in paths]
 print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
     println("Project structure:")

@@ -1,7 +1,7 @@
 
 using Base.Threads
 
-execute_code_block(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") do
+execute_codeblock(cb::CodeBlock; no_confirm=false) = withenv("GTK_PATH" => "") do
   code = codestr(cb)
   if cb.type==:MODIFY || cb.type==:CREATE
     head_lines = cb.type ==:MODIFY ? 1 : 4

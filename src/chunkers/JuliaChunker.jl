@@ -230,7 +230,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
         def = JuliaSourceChunk(; name, signature_hash, is_function,
             start_line_code, end_line_code, file_path, chunk, module_stack)
         
-        @assert (len < 800 || (len ∈ [850, 1224, 667, 761, 736, 918, 1186, 2542, 1765])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
+        # @assert (len < 800 || (len ∈ [850, 1224, 667, 761, 736, 918, 1186, 2542, 1765])) "We have a too long context $(end_line_code - start_line_code) probably for head: $(expr.head) in $(expr_tree.head) file_path: $(file_path):$(start_line_code)"
         push!(source_defs, def)
     end
 

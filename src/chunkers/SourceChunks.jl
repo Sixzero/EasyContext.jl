@@ -23,7 +23,7 @@ function RAG.get_chunks(chunker::SourceChunker,
     output_sources = Vector{eltype(sources)}()
     extras = Vector{Dict{Symbol, String}}()
 
-    progress = Progress(length(items), desc="Processing items: ", showspeed=true)
+    progress = Progress(length(items), desc="Collecting chunks: ", showspeed=true)
     
     for (i, item) in enumerate(items)
         if item isa AbstractString && isfile(item)

@@ -14,6 +14,9 @@ using PromptingTools
 include("utils/utils.jl")
 include("action/greet.jl")
 include("utils/TokenEstimationMethods.jl")
+include("processor/tag_parser.jl")
+include("processor/tag_executor.jl")
+include("processor/tag_extractor.jl")
 
 include("protocol/CTX.jl")
 include("LLM_prompt/skills.jl")
@@ -44,6 +47,7 @@ include("rerankers/CohereRerankPro.jl")
 include("rerankers/RerankGPTPro.jl")
 include("loader/loaders.jl")
 include("action/loading_spinner.jl")
+include("action/GroqSpeech.jl")
 
 include("processor/CodeBlockExtractor.jl")
 

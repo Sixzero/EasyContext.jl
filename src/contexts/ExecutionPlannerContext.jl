@@ -2,7 +2,7 @@ using PromptingTools: SystemMessage, UserMessage
 
 export ExecutionPlannerContext
 
-Base.@kwdef struct ExecutionPlannerContext
+Base.@kwdef mutable struct ExecutionPlannerContext
     model::String = "oro1"
     temperature::Float64 = 0.8
     top_p::Float64 = 0.8
