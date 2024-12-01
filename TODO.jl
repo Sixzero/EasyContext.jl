@@ -77,6 +77,7 @@ We will need to filter the questions whether it is relevant for testing for the 
                                 10- Anthropic.jl
                                 4- streaming
                                 6- refactoring everything
+                                6- file reading skill
 # 8- tesztable... nem tesztable... too strong ... validation for automation + SR... self testing
 4- [ ] port server API
 2- [ ] persisting session("model") 
