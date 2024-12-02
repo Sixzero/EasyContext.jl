@@ -22,7 +22,7 @@ using HTTP
     cmd = codestr(cb)
     
     # Expected curl command pattern with proper escaping
-    expected_pattern = r"""curl -X POST http://localhost:3000/diff -H \\"Content-Type: application/json\\" -d '\{.*\\"leftPath\\".*\\"rightContent\\".*\}'"""
+    expected_pattern = r"""curl -X POST http://localhost:$DEFAULT_MELD_PORT/diff -H \\"Content-Type: application/json\\" -d '\{.*\\"leftPath\\".*\\"rightContent\\".*\}'"""
     
     @test occursin(expected_pattern, cmd)
     @test occursin(file_path, cmd)
@@ -51,7 +51,7 @@ using HTTP
                 @warn "Could not parse JSON response: $output"
             end
         else
-            @warn "Diff server is not running on localhost:3000"
+            @warn "Diff server is not running on localhost:$DEFAULT_MELD_PORT"
         end
     end
 
