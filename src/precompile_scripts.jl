@@ -36,7 +36,6 @@ using DataStructures: OrderedDict
         # age_tracker = AgeTracker(max_history=14, cut_to=6)
         
         # question_acc = QuestionCTX()
-        # extractor = CodeBlockExtractor()
         # persister = PersistableState(logdir)
 
         # # Simulate usage of EasyContext functions

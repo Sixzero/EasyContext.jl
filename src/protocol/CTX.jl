@@ -20,7 +20,7 @@ const PYTHON_TAG         = "PythonPackages"
 const PYTHON_ELEMENT     = "Package" 
 
 # test_ctx_2_string(test_frame)               = to_string(TEST_RESULT,      TEST_CODE, test_frame) 
-shell_ctx_2_string(cb_extractor)            = to_string(SHELL_RUN_RESULT, SHELL_ELEMENT_OPEN, CODEBLOCK_CLOSE, cb_extractor) 
+shell_ctx_2_string(stream_parser)           = to_string(SHELL_RUN_RESULT, SHELL_ELEMENT_OPEN, CODEBLOCK_CLOSE, stream_parser) 
 workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG,    WORKSPACE_ELEMENT, scr_state, src_cont) 
 julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,        JULIA_ELEMENT, scr_state, src_cont) 
 python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,       PYTHON_ELEMENT, scr_state, src_cont) 

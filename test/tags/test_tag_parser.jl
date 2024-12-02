@@ -1,8 +1,8 @@
 using Test
-using EasyContext: Tag, parse_tag, parse_arguments
+using EasyContext: Command, parse_tag, parse_arguments
 
-@testset "Tag Parser Tests" begin
-    @testset "Basic Tag Parsing" begin
+@testset "Command Parser Tests" begin
+    @testset "Basic Command Parsing" begin
         text = """
         MODIFY path/to/file force=true verbose=false arg3
         This is content

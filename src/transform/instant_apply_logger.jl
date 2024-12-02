@@ -17,8 +17,8 @@ function log_instant_apply(original::String, proposed::String, filepath::String,
     atomic_append_diff(InstantApplyDiff(; original, proposed, filepath, question))
 end
 
-function log_instant_apply(extractor::CodeBlockExtractor, question::String)
-    @async_showerr for (_, task) in extractor.shell_scripts
+function log_instant_apply(extractor::StreamParser, question::String)
+    @async_showerr for (_, task) in extractor.command_tasks
         cb = fetch(task)
         log_instant_apply(cb, question)
     end

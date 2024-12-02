@@ -7,7 +7,7 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
     @testset "Constructor" begin
         extractor = CodeBlockExtractor()
         @test extractor.last_processed_index[] == 0
-        @test isempty(extractor.shell_scripts)
+        @test isempty(extractor.command_tasks)
         @test isempty(extractor.shell_results)
         @test extractor.full_content == ""
         @test !extractor.skip_code_execution
@@ -33,7 +33,7 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         
         result = extract_and_preprocess_codeblocks(content, extractor; instant_return=false)
         
-        @test length(extractor.shell_scripts) == 2
+        @test length(extractor.command_tasks) == 2
         @test extractor.last_processed_index[] == length(content)
     end
 
@@ -41,14 +41,14 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
     @testset "reset!" begin
         extractor = CodeBlockExtractor()
         extractor.last_processed_index[] = 100
-        extractor.shell_scripts["test"] = @task nothing
+        extractor.command_tasks["test"] = @task nothing
         extractor.shell_results["test"] = CodeBlock(language="julia", file_path="test.jl", content="")
         extractor.full_content = "Some content"
 
         reset!(extractor)
 
         @test extractor.last_processed_index[] == 0
-        @test isempty(extractor.shell_scripts)
+        @test isempty(extractor.command_tasks)
         @test isempty(extractor.shell_results)
         @test extractor.full_content == ""
     end
@@ -105,7 +105,7 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         @test occursin("function nested_block_example()", result.content)
         @test occursin("function inner_function()", result.content)
         @test occursin("nested_block_example()", result.content)
-        @test length(extractor.shell_scripts) == 1
+        @test length(extractor.command_tasks) == 1
         @test extractor.last_processed_index[] == length(content)
     end
 
@@ -151,7 +151,7 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         @test occursin("function example()", result.content)
         @test occursin("def another_example():", result.content)
         @test occursin("function outer_function()", result.content)
-        @test length(extractor.shell_scripts) == 1
+        @test length(extractor.command_tasks) == 1
         @test extractor.last_processed_index[] == length(content)
     end
 end
