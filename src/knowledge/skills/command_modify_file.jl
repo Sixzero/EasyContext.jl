@@ -38,6 +38,7 @@ const modify_file_skill = Skill(
     file_path::String
     root_path::String
     content::String
+    postcontent::String
     kwargs::Dict{String,String} = Dict{String,String}()
 end
 
