@@ -73,9 +73,7 @@ function execute_commands(stream_parser::StreamParser; no_confirm=false)
     return stream_parser.command_results
 end
 
-function run_stream_parser(stream_parser::StreamParser; no_confirm=false, async=false) = 
-    !stream_parser.skip_execution ? execute_commands(stream_parser; no_confirm) : 
-    OrderedDict{String, Command}()
+function run_stream_parser(stream_parser::StreamParser; no_confirm=false, async=false) = !stream_parser.skip_execution ? execute_commands(stream_parser; no_confirm) : OrderedDict{String, Command}()
 
 
 function to_string(command_run_open::String, command_open::String, command_close::String, stream_parser::StreamParser)
