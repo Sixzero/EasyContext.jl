@@ -1,8 +1,9 @@
-@kwdef struct Tag
-  name::String
-  args::Vector{String}
-  kwargs::Dict{String,String}
-  content::String
+
+@kwdef struct Command
+    name::String
+    args::Vector{String}
+    kwargs::Dict{String,String}
+    content::String
 end
 
 function parse_arguments(parts::Vector{SubString{String}})
@@ -20,10 +21,10 @@ function parse_arguments(parts::Vector{SubString{String}})
   args, kwargs
 end
 
-function parse_tag(text)
+function parse_command(text)
   lines = split(text, '\n')
-  tags = Tag[]
-  current_tag = nothing
+  commands = Command[]
+  current_command = nothing
   current_content = String[]
   
   for line in lines
@@ -31,23 +32,23 @@ function parse_tag(text)
       isempty(line) && continue
       
       if startswith(line, '/') # Closing tag
-          isnothing(current_tag) && error("Found closing tag without opening tag: $line")
-          tag_name = line[2:end]
-          tag_name != current_tag[1] && error("Mismatched tags: expected /$(current_tag[1]), got /$tag_name")
+          isnothing(current_command) && error("Found closing tag without opening tag: $line")
+          command_name = line[2:end]
+          command_name != current_command[1] && error("Mismatched tags: expected /$(current_command[1]), got /$command_name")
           
-          push!(tags, Tag(current_tag[1], current_tag[2], current_tag[3], join(current_content, '\n')))
-          current_tag = nothing
+          push!(commands, Command(current_command[1], current_command[2], current_command[3], join(current_content, '\n')))
+          current_command = nothing
           empty!(current_content)
-      elseif !isnothing(current_tag) # Content
+      elseif !isnothing(current_command) # Content
           push!(current_content, line)
       else # Opening tag
           parts = split(line)
-          tag_name = parts[1]
+          command_name = parts[1]
           args, kwargs = length(parts) > 1 ? parse_arguments(parts[2:end]) : (String[], Dict{String,String}())
-          current_tag = (tag_name, args, kwargs)
+          current_command = (command_name, args, kwargs)
       end
   end
   
-  !isnothing(current_tag) && error("Unclosed tag: $(current_tag[1])")
-  tags
+  !isnothing(current_command) && error("Unclosed tag: $(current_command[1])")
+  commands
 end
