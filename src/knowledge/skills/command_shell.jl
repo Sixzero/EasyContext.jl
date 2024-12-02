@@ -25,6 +25,7 @@ const shell_skill = Skill(
     id::UUID = uuid4()
     language::String = "sh"
     content::String
+    run_results::Vector{String} = []
     kwargs::Dict{String,String} = Dict{String,String}()
 end
 

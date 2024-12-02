@@ -36,6 +36,7 @@ const modify_file_skill = Skill(
     id::UUID = uuid4()
     language::String = "txt"
     file_path::String
+    root_path::String
     content::String
     kwargs::Dict{String,String} = Dict{String,String}()
 end
