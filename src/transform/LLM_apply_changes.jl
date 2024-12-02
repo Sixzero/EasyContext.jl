@@ -33,8 +33,9 @@ function LLM_apply_changes_to_file(cb::ModifyFileCommand)
     end
     
     # Check file size and choose appropriate method
-    if length(original_content) > 20_000
-        ai_generated_content = apply_modify_by_diff(original_content, cb.content)
+    if length(original_content) > 10_000
+        @show "WE DO REPLACE"
+        ai_generated_content = apply_modify_by_replace(original_content, cb.content)
     else
         ai_generated_content = apply_modify_by_llm(original_content, cb.content)
     end
@@ -42,29 +43,46 @@ function LLM_apply_changes_to_file(cb::ModifyFileCommand)
     original_content, ai_generated_content
 end
 
-function apply_modify_by_diff(original_content::AbstractString, changes_content::AbstractString; models=["gem15f", "claude"], temperature=0, verbose=false)
-    prompt = """You are a diff generator. Create a minimal unified diff patch for the proposed changes.
-    Wrap your response in <diff> tags and only output the diff in standard unified diff format.
-    The diff should:
-    - Start with line information using @@ markers
-    - Use - for removed lines and + for added lines
-    - Include minimal context (1-2 lines) around changes
-    - Only include necessary changes, don't modify unrelated parts
+function apply_modify_by_diff(original_content::AbstractString, changes_content::AbstractString; models=["gem15f", "claudeh", "claude"], temperature=0, verbose=false)
+    # Add line numbers to original content
+    numbered_content = join(["$(lpad(i, 4, ' ')) $(line)" for (i, line) in enumerate(split(original_content, '\n'))], '\n')
+    println(numbered_content[end-500:end])
+    
+    prompt = """You are a diff generator specialized in creating high-level, semantically coherent unified diffs.
+    Wrap your response in <diff> tags and only output the diff in a simplified unified diff format.
+    
+    Important Guidelines:
+    1. Use a simplified unified diff format that omits line numbers - just use @@ ... @@ as separator
+    2. Focus on complete, coherent code blocks (functions, methods, classes) rather than individual lines
+    3. Include enough context (1-2 lines) around changes to ensure proper placement
+    4. Use "-" for removed lines and "+" for added lines
+    5. If Proposed changes doesn't specify location, place it at the end or where most appropriate
+    6. Only include necessary changes, don't modify unrelated parts
+    7. Try to keep the changes in larger, semantically meaningful chunks rather than scattered line edits
+    8. Make sure to include all relevant code - don't use ellipsis or lazy comments
 
+    Note: The original content below includes line numbers at the start of each line (first 5 characters).
+    These line numbers are only for reference - your diff should ignore them and work with the actual content.
+    
     Original content:
     ```
-    $original_content
+    $(numbered_content)
     ```
 
     Proposed changes:
     ```
-    $changes_content
+    $(changes_content)
     ```
 
-    Provide your response in this format:
+    Provide your response between <diff> tags in this format:
     <diff>
     @@ ... @@
-    your unified diff content here
+    [unchanged context line]
+    -[removed line]
+    -[removed line]
+    +[added line]
+    +[added line]
+    [unchanged context line]
     </diff>"""
 
     last_error = nothing
@@ -72,6 +90,8 @@ function apply_modify_by_diff(original_content::AbstractString, changes_content:
         try
             verbose && println("\e[38;5;240mGenerating diff with AI ($model)...\e[0m")
             aigenerated = PromptingTools.aigenerate(prompt, model=model, api_kwargs=(; temperature), verbose=false)
+            println(uppercase(model))
+            println(aigenerated.content)
             diff_content = extract_tagged_content(aigenerated.content, "diff")
             return apply_patch(original_content, diff_content)
         catch e
@@ -122,12 +142,133 @@ function apply_patch(original_content::AbstractString, diff_content::AbstractStr
         write(original_file, original_content)
         write(diff_file, diff_content)
         
-        # Apply patch
-        try
-            output = read(`patch -u $original_file $diff_file`, String)
-            return read(original_file, String)
-        catch e
-            throw(ErrorException("Failed to apply patch: $e"))
+        # Try with different patch options for more flexibility
+        for options in [
+            "-u",                    # standard unified diff
+            "-u -l",                 # ignore whitespace
+            "-u -f",                 # force, less strict matching
+            "-u -l -f",             # combine ignore whitespace and force
+            "-u --ignore-whitespace" # most lenient whitespace handling
+        ]
+            try
+                output = read(`patch $options $original_file $diff_file`, String)
+                # If we got here, patch succeeded
+                return read(original_file, String)
+            catch e
+                # Continue to next option if this one failed
+                continue
+            end
         end
+        
+        # If all patch attempts failed, throw error
+        throw(ErrorException("Failed to apply patch with all flexibility options"))
     end
 end
+
+function apply_modify_by_replace(original_content::AbstractString, changes_content::AbstractString; models=["gem15f", "claude"], temperature=0, verbose=false)
+    best_result = original_content
+    min_missing = typemax(Int)
+
+    prompt = """You are a pattern matching specialist. Generate a list of search and replace pairs that will transform the original content to match the proposed changes.
+    Wrap your response in <replacements> tags and provide match/replacewith pairs.
+    
+    
+    Important Guidelines:
+    1. Each pattern should be unique enough to match exactly what needs to be changed
+    2. Include enough context in patterns to ensure correct placement
+    3. Use complete code blocks when possible
+    4. If changes don't specify location, create patterns that would add at the most appropriate place
+    5. Only include necessary changes
+    6. Make sure patterns are specific and won't cause unintended matches
+    7. Do not escape any characters - provide the exact text to match and replace
+    8. Only escape \$ in string literals if needed for string interpolation
+
+    
+    Original content:
+    ```
+    $original_content
+    ```
+    
+    Proposed changes:
+    ```
+    $changes_content
+    ```
+    
+    Provide your response as match/replacewith pairs between <replacements> tags like this:
+    <replacements>
+    <match>
+    function to_find(exact::Code)
+        # with enough context
+    </match>
+    <replacewith>
+    function replaced_with(new::Code)
+        # new implementation
+    </replacewith>
+
+    <match>pattern2</match>
+    <replacewith>replacement2</replacewith>
+    </replacements>"""
+
+    for (i, model) in enumerate(models)
+        try
+            verbose && println("\e[38;5;240mGenerating replacement patterns with AI ($model)...\e[0m")
+            aigenerated = PromptingTools.aigenerate(prompt, model=model, api_kwargs=(; temperature), verbose=false)
+            replacements = extract_tagged_content(aigenerated.content, "replacements")
+            result, missing_count = apply_replacements(original_content, replacements)
+            
+            if missing_count < min_missing
+                best_result = result
+                min_missing = missing_count
+                missing_count == 0 && return best_result # Perfect match found
+            end
+        catch e
+            i < length(models) && verbose && @warn "Failed with model $model, retrying with $(models[i+1])" exception=e
+        end
+    end
+    return best_result # Return best attempt
+end
+
+function apply_replacements(content::AbstractString, replacements::AbstractString)
+    modified_content = content
+    matches = extract_all_tagged_pairs(replacements)
+    
+    # Check missing patterns
+    missing_patterns = [pattern for (pattern, _) in matches if !occursin(pattern, content)]
+    !isempty(missing_patterns) && @warn "Some patterns not found!" patterns=missing_patterns
+    
+    # Apply all replacements anyway
+    for (pattern, replacement) in matches
+        modified_content = replace(modified_content, pattern => replacement)
+    end
+    
+    return modified_content, length(missing_patterns)
+end
+
+function extract_all_tagged_pairs(content::AbstractString)
+    pairs = Pair{String,String}[]
+    
+    # Find all match/replacewith pairs
+    while true
+        match_start = findnext("<match>", content, 1)
+        isnothing(match_start) && break
+        
+        match_end = findnext("</match>", content, match_start.stop)
+        replace_start = findnext("<replacewith>", content, match_end.stop)
+        replace_end = findnext("</replacewith>", content, replace_start.stop)
+        
+        isnothing(match_end) || isnothing(replace_start) || isnothing(replace_end) && break
+        
+        
+        # Get content between tags and trim only leading/trailing whitespace
+        pattern = strip(content[match_start.stop+1:match_end.start-1])
+        replacement = strip(content[replace_start.stop+1:replace_end.start-1])
+        
+        push!(pairs, pattern => replacement)
+        content = content[replace_end.stop+1:end]
+    end
+    
+    return pairs
+end
+
+
+

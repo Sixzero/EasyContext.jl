@@ -49,10 +49,15 @@ function add_error_message!(conv::CONV, error_content::String)
     end
 end
 
-to_dict(conv::CONV) = [Dict("role" => "system", "content" => conv.system_message.content); to_dict_nosys(conv)]
-to_dict_nosys(conv::CONV) = [Dict("role" => string(msg.role), "content" => msg.content) for msg in conv.messages]
-to_dict_nosys_detailed(conv::CONV) = [to_dict(message) for message in conv.messages]
-
+function to_dict(conv::CONV)
+    [Dict("role" => "system", "content" => conv.system_message.content); to_dict_nosys(conv)]
+end
+function to_dict_nosys(conv::CONV) 
+    [Dict("role" => string(msg.role), "content" => msg.content) for msg in conv.messages]
+end
+function to_dict_nosys_detailed(conv::CONV)
+    [to_dict(message) for message in conv.messages]
+end
 update_last_user_message_meta(conv::CONV, meta) = update_last_user_message_meta(conv, meta["input_tokens"], meta["output_tokens"], meta["cache_creation_input_tokens"], meta["cache_read_input_tokens"], meta["price"], meta["elapsed"])
 update_last_user_message_meta(conv::CONV, itok::Int, otok::Int, cached::Int, cache_read::Int, price, elapsed::Number) = update_message(conv.messages[end], itok, otok, cached, cache_read, price, elapsed)
 
