@@ -4,13 +4,12 @@ function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20241022", stop
     display([(m.role, m.content) for m in conv.messages])
     channel = ai_stream(conv; model, cache, top_p, printout=false, stop_sequences)
     highlight_state = SyntaxHighlightState()
-    toolcall = :DEFAULT
     
     try
         process_stream(channel; 
                 on_text     = text -> (on_text(text); handle_text(highlight_state, text)),
                 on_meta_usr = meta -> (flush_highlight(highlight_state); on_meta_usr(meta); print_user_message(meta)),
-                on_meta_ai  = (meta, full_msg) -> (flush_highlight(highlight_state); on_meta_ai(create_AI_message(full_msg, meta)); toolcall=meta["stop_sequence"]; print_ai_message(meta)),
+                on_meta_ai  = (meta, full_msg) -> (flush_highlight(highlight_state); on_meta_ai(create_AI_message(full_msg, meta)); print_ai_message(meta)),
                 on_error,
                 on_done     = () -> (flush_highlight(highlight_state); on_done()),
                 on_start)

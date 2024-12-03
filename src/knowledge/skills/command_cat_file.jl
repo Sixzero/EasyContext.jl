@@ -1,4 +1,4 @@
-const CATFILE_TAG = "CATFILE"
+
 
 const cat_file_skill = """
 when you need the content of a file to solve the task you can use the CATFILE command:
@@ -16,17 +16,14 @@ const catfile_skill = Skill(
 
 @kwdef struct CatFileCommand <: AbstractCommand
     id::UUID = uuid4()
-    path::String
-    content::String = ""
+    file_path::String
+    root_path::String
 end
+CatFileCommand(cmd::Command) = CatFileCommand(file_path=cmd.args[1], root_path=get(cmd.kwargs, "root_path", ""))
 
-function CatFileCommand(cmd::Command)
-    CatFileCommand(
-        path=cmd.args,
-        content=""
-    )
+execute(cmd::CatFileCommand) = let
+    path = normpath(joinpath(cmd.root_path, cmd.file_path))
+    isfile(path) ? read(path, String) : "cat: $(path): No such file or directory"
 end
-
-execute(cmd::CatFileCommand) = isfile(cmd.path) ? read(cmd.path, String) : "cat: $(cmd.path): No such file or directory"
 
 

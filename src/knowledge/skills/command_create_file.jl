@@ -1,5 +1,5 @@
 const create_file_skill = Skill(
-    name="CREATE",
+    name=CREATE_FILE_TAG,
     description="""
 To create new file write CREATE followed by the file_path like this:
 <CREATE file_path>

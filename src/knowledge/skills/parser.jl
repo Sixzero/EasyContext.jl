@@ -1,6 +1,8 @@
+using ..EasyContext: Command
+
 export StreamParser, extract_commands, run_stream_parser
 
-const allowed_commands::Set{String} = Set(["MODIFY", "CREATE", "EXECUTE", "SEARCH", "CLICK", "READFILE", "KEY", "SHELL_RUN"])
+#  I think we will need a runner and parser separated...
 
 @kwdef mutable struct StreamParser
     last_processed_index::Ref{Int} = Ref(0)
@@ -10,24 +12,29 @@ const allowed_commands::Set{String} = Set(["MODIFY", "CREATE", "EXECUTE", "SEARC
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
+function process_immediate_command!(current_cmd, stream_parser, processed_idx, root_path, preprocess)
+    @show current_cmd
+    @show convert_command(current_cmd)
+    stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(convert_command(current_cmd))
+    stream_parser.last_processed_index[] = processed_idx
+    return nothing
+end
+
 function extract_commands(new_content::String, stream_parser::StreamParser; instant_return=false, preprocess=(v)->v, root_path::String="")
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     processed_idx = stream_parser.last_processed_index[]
     current_content = String[]
     current_cmd = nothing
-
     for (i, line) in enumerate(lines)
         processed_idx += length(line) + 1  # +1 for the newline
         line = rstrip(line)
         
         if !isnothing(current_cmd) && startswith(line, "</" * current_cmd.name) # Closing tag
             current_cmd.content = join(current_content, '\n')
-            current_cmd.kwargs["root_path"] = root_path
-            stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(current_cmd)
+            process_immediate_command!(convert(current_cmd), stream_parser, processed_idx, root_path, preprocess)
             current_content = String[]
             current_cmd = nothing
-            stream_parser.last_processed_index[] = processed_idx
             instant_return && return current_cmd
             
         elseif !isnothing(current_cmd) # Content
@@ -35,15 +42,21 @@ function extract_commands(new_content::String, stream_parser::StreamParser; inst
             
         elseif startswith(line, '<') # Opening tag
             cmd_end = findfirst(' ', line)
-            cmd_name = line[2:something(cmd_end, length(line))] # remove <
+            cmd_name = line[2:something(cmd_end, length(line))-1] # remove <
+            @show cmd_name
             if cmd_name ∈ allowed_commands
                 remaining_args = isnothing(cmd_end) ? "" : line[cmd_end+1:end]
-                current_cmd = Command(cmd_name, "", remaining_args, Dict{String,String}())
+                current_cmd = Command(String(cmd_name), "", String(remaining_args), Dict{String,String}("root_path"=>root_path))
+                @show  "wefwef"
+                if cmd_name in ["CLICK", "SHELL_RUN", "SENDKEY", "CATFILE"]
+                    @show  "wefwef??"
+                    process_immediate_command!(current_cmd, stream_parser, processed_idx, root_path)
+                    current_cmd = nothing
+                end
             end
         end
     end
 
-    # !isnothing(current_cmd) && @warn("Unclosed tag: $(current_cmd.name)")
     return nothing
 end
 execute(t::Task) = begin
@@ -59,6 +72,7 @@ function reset!(stream_parser::StreamParser)
 end
 
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
+    @show "???"
     for (content, task) in stream_parser.command_tasks
         cmd = fetch(task)
         if !isnothing(cmd)
@@ -98,5 +112,12 @@ function to_string(command_run_open::String, command_open::String, command_close
         end
     end
     return output
+end
+
+function process_immediate_command!(current_cmd, stream_parser, processed_idx, root_path)
+    current_cmd.kwargs["root_path"] = root_path
+    stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(current_cmd)
+    stream_parser.last_processed_index[] = processed_idx
+    return nothing
 end
 

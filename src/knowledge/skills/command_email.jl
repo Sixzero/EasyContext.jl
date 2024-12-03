@@ -1,15 +1,17 @@
+
+
 const email_skill = Skill(
-    name="EMAIL",
+    name=EMAIL_TAG,
     description="""
-To create an email with a standardized format, use the EMAIL command:
-<EMAIL to=recipient@example.com subject="Email Subject">
+To create an email with a standardized format, use the $(EMAIL_TAG) command:
+<$(EMAIL_TAG) to=recipient@example.com subject="Email Subject">
 Dear Recipient,
 
 [Email content here]
 
 Best regards,
 [Sender]
-</EMAIL>
+</$(EMAIL_TAG)>
 """,
     stop_sequence=""
 )

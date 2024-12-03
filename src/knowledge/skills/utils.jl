@@ -25,8 +25,6 @@ function print_output_header()
     println("\n\e[36mOutput:\e[0m")
 end
 
-
-
 function cmd_all_info_modify(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     err, process = "", nothing
     try

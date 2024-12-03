@@ -1,6 +1,6 @@
 const key_skill = Skill(
-    name="KEY",
-    description="Send keyboard input using format: <KEY text/>",
+    name="SENDKEY",
+    description="Send keyboard input using format: <SENDKEY text/>",
     stop_sequence=ONELINER_SS
 )
 

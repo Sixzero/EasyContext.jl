@@ -4,6 +4,7 @@ abstract type AbstractCommand end
     name::String
     content::String = ""
     args::String = ""
+    kwargs::Dict{String,String} = Dict{String,String}()
 end
 
 function parse_arguments(parts::Vector{SubString{String}})

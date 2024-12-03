@@ -1,4 +1,3 @@
-const SHELL_RUN_TAG = "SHELL_RUN"
 
 const shell_run_skill = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
