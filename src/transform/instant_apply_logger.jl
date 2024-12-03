@@ -23,6 +23,7 @@ function log_instant_apply(extractor::StreamParser, question::String)
         log_instant_apply(cb, question)
     end
 end
+log_instant_apply(cb, question) = nothing
 function log_instant_apply(cb::ModifyFileCommand, question::String)
     cb.type != :MODIFY && return
     original_content = cd(cb.root_path) do

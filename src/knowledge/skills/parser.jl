@@ -12,12 +12,11 @@ export StreamParser, extract_commands, run_stream_parser
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
-function process_immediate_command!(current_cmd, stream_parser, processed_idx, root_path, preprocess)
+function process_immediate_command!(current_cmd, stream_parser, processed_idx, preprocess)
     @show current_cmd
     @show convert_command(current_cmd)
     stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(convert_command(current_cmd))
     stream_parser.last_processed_index[] = processed_idx
-    return nothing
 end
 
 function extract_commands(new_content::String, stream_parser::StreamParser; instant_return=false, preprocess=(v)->v, root_path::String="")
@@ -32,7 +31,7 @@ function extract_commands(new_content::String, stream_parser::StreamParser; inst
         
         if !isnothing(current_cmd) && startswith(line, "</" * current_cmd.name) # Closing tag
             current_cmd.content = join(current_content, '\n')
-            process_immediate_command!(convert(current_cmd), stream_parser, processed_idx, root_path, preprocess)
+            process_immediate_command!(convert(current_cmd), stream_parser, processed_idx, preprocess)
             current_content = String[]
             current_cmd = nothing
             instant_return && return current_cmd
@@ -50,7 +49,7 @@ function extract_commands(new_content::String, stream_parser::StreamParser; inst
                 @show  "wefwef"
                 if cmd_name in ["CLICK", "SHELL_RUN", "SENDKEY", "CATFILE"]
                     @show  "wefwef??"
-                    process_immediate_command!(current_cmd, stream_parser, processed_idx, root_path)
+                    process_immediate_command!(current_cmd, stream_parser, processed_idx, preprocess)
                     current_cmd = nothing
                 end
             end
@@ -114,10 +113,4 @@ function to_string(command_run_open::String, command_open::String, command_close
     return output
 end
 
-function process_immediate_command!(current_cmd, stream_parser, processed_idx, root_path)
-    current_cmd.kwargs["root_path"] = root_path
-    stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(current_cmd)
-    stream_parser.last_processed_index[] = processed_idx
-    return nothing
-end
 

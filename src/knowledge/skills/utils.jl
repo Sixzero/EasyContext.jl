@@ -14,7 +14,7 @@ end
 
 function get_user_confirmation()
     print("\e[34mContinue? (y) \e[0m")
-    !(readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0")
+    readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0"
 end
 
 function print_code(code::AbstractString)
@@ -26,16 +26,11 @@ function print_output_header()
 end
 
 function cmd_all_info_modify(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
-    err, process = "", nothing
-    try
-        process = run(pipeline(ignorestatus(cmd), stdout=output, stderr=error))
-    catch e
-        err = "$e"
-    end
-    return format_cmd_output(output, error, err, process, debug_msg=cmd)
+    process = run(pipeline(ignorestatus(cmd), stdout=output, stderr=error))
+    return format_cmd_output(output, error, process, debug_msg=cmd)
 end
 
-function format_cmd_output(output, error, err, process; debug_msg=nothing)
+function format_cmd_output(output, error, process; debug_msg=nothing)
     # Try to parse JSON from raw stdout if present
     stdout_str, error_str = String(take!(output)), String(take!(error))
     if startswith(stdout_str, "{")
@@ -56,7 +51,6 @@ function format_cmd_output(output, error, err, process; debug_msg=nothing)
     join(["$name=$str" for (name, str) in [
         ("stdout", stdout_str),
         ("stderr", error_str),
-        ("exception", err),
         ("exit_code", isnothing(process) ? "" : process.exitcode)
     ] if !isempty(str)], "\n")
 end

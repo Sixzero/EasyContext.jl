@@ -60,5 +60,5 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     end
     
     wait(process)
-    return format_cmd_output(output, error, "", process)
+    return format_cmd_output(output, error, process)
 end
