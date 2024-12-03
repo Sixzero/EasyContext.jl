@@ -16,5 +16,6 @@ include("command_email.jl")
 
 include("parser.jl")
 
-export Command, ClickCommand, KeyCommand, CatFileCommand, ShellCommand, CreateFileCommand, ModifyFileCommand, EmailCommand
+export ShellCommand, KeyCommand, CatFileCommand, ClickCommand, CreateFileCommand, ModifyFileCommand, EmailCommand
+export shell_skill, key_skill, catfile_skill, click_skill, create_file_skill, modify_file_skill, email_skill
 

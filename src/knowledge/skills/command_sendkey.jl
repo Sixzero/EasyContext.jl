@@ -1,8 +1,6 @@
-
-
 const key_skill = Skill(
     name="KEY",
-    skill_description="Send keyboard input using format: <KEY text/>",
+    description="Send keyboard input using format: <KEY text/>",
     stop_sequence=ONELINER_SS
 )
 
@@ -11,10 +9,6 @@ const key_skill = Skill(
     text::String
 end
 
-function KeyCommand(cmd::Command)
-    KeyCommand(
-        text=first(cmd.args)
-    )
-end
+KeyCommand(cmd::Command) = KeyCommand(text=cmd.args)
 
 execute(cmd::KeyCommand) = "Sending keys: $(cmd.text)"

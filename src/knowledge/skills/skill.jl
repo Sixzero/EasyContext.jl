@@ -1,5 +1,5 @@
 @kwdef struct Skill
 	name::String
-	skill_description::String
+	description::String
 	stop_sequence::String
 end

@@ -1,10 +1,9 @@
 abstract type AbstractCommand end
 
-@kwdef struct Command <: AbstractCommand
+@kwdef mutable struct Command <: AbstractCommand
     name::String
-    args::Vector{String} = String[]
     content::String = ""
-    kwargs::Dict{String,String} = Dict{String,String}()
+    args::String = ""
 end
 
 function parse_arguments(parts::Vector{SubString{String}})
@@ -47,14 +46,6 @@ function convert_command(cmd::Command)
     end
 end
 
-function execute(cmd::Command; no_confirm=false)
-    block = if cmd.name ∈ ["MODIFY", "CREATE"]
-        convert_command(cmd)
-    else
-        ShellBlock(cmd)
-    end
-    execute_codeblock(block; no_confirm)
-end
 
 
 # <CLICK x y/>

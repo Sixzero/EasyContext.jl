@@ -10,5 +10,7 @@ include("guide_organize_file.jl")
 include("guide_highlight_code.jl")
 include("guide_highlight_changes.jl")
 include("guide_testit.jl")
+include("guide_julia_format.jl")
 
-export julia_specific_guide, dont_act_chaotic, refactor_all, system_information, ambiguity_guide, no_loggers, conversaton_starts_here, simplicity_guide, test_it
+export julia_specific_guide, dont_act_chaotic, refactor_all, system_information, ambiguity_guide, no_loggers, conversaton_starts_here, simplicity_guide, test_it, highlight_code_guide, highlight_changes_guide, organize_file_guide
+export julia_format_guide

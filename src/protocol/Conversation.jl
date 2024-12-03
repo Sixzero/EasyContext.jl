@@ -1,11 +1,19 @@
-
 @kwdef mutable struct Conversation{M <: MSG} <: CONV
     system_message::M
     messages::Vector{M}
 end
 initConversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
-(conv::Conversation)(msg::Message) = (push!(conv.messages, msg); conv)
+(conv::Conversation)(msg::Message) = begin
+    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
+        conv.messages[end].content *= "\n" * msg.content
+        conv
+    else
+        println("adding message to conversation : $(msg.content)")
+        push!(conv.messages, msg)
+        conv
+    end
+end
 
 
 

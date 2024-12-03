@@ -1,4 +1,4 @@
-const highlight_code_skill = """
+const highlight_code_guide = """
 If you just want to show code snippets, you can use simple codeblock normally like:
 ```language
 code_snippets

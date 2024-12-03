@@ -1,7 +1,6 @@
-
 const create_file_skill = Skill(
     name="CREATE",
-    skill_description="""
+    description="""
 To create new file write CREATE followed by the file_path like this:
 <CREATE file_path>
 ```language
@@ -16,13 +15,20 @@ new_file_content
     id::UUID = uuid4()
     language::String = "txt"
     file_path::String
+    root_path::String
     content::String
     kwargs::Dict{String,String} = Dict{String,String}()
 end
 
 function CreateFileCommand(cmd::Command)
+    file_path = endswith(cmd.args[1], ">") ? chop(cmd.args[1]) : cmd.args[1]
     language, content = parse_code_block(cmd.content)
-    CreateFileCommand(language=language, file_path=first(cmd.args), content=content, kwargs=cmd.kwargs)
+    CreateFileCommand(
+        language=language,
+        file_path=file_path,
+        root_path=get(cmd.kwargs, "root_path", ""),
+        content=content
+    )
 end
 
 function execute(cmd::CreateFileCommand; no_confirm=false)

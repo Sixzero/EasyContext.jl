@@ -25,10 +25,6 @@ workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG,    WORKSP
 julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,        JULIA_ELEMENT, scr_state, src_cont) 
 python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,       PYTHON_ELEMENT, scr_state, src_cont) 
 
-julia_format_description()      = "\
-The Julia function definitions in other existing installed packages will be in the user message and \
-wrapped in <$(JULIA_TAG)> and </$(JULIA_TAG)> tags, \
-with individual functions wrapped in <$(JULIA_ELEMENT)> and </$(JULIA_ELEMENT)> tags."
 python_format_description()     = "\
 The Python packages in other existing installed packages will be in the user message and \
 wrapped in <$(PYTHON_TAG)> and </$(PYTHON_TAG)> tags, \

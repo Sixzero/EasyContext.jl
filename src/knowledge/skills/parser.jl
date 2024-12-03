@@ -10,8 +10,7 @@ const allowed_commands::Set{String} = Set(["MODIFY", "CREATE", "EXECUTE", "SEARC
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
-
-function extract_commands(new_content::String, stream_parser::StreamParser; instant_return=false, preprocess=(v)->v)
+function extract_commands(new_content::String, stream_parser::StreamParser; instant_return=false, preprocess=(v)->v, root_path::String="")
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     processed_idx = stream_parser.last_processed_index[]
@@ -24,6 +23,7 @@ function extract_commands(new_content::String, stream_parser::StreamParser; inst
         
         if !isnothing(current_cmd) && startswith(line, "</" * current_cmd.name) # Closing tag
             current_cmd.content = join(current_content, '\n')
+            current_cmd.kwargs["root_path"] = root_path
             stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(current_cmd)
             current_content = String[]
             current_cmd = nothing
@@ -33,20 +33,23 @@ function extract_commands(new_content::String, stream_parser::StreamParser; inst
         elseif !isnothing(current_cmd) # Content
             push!(current_content, line)
             
-        elseif !startswith(line, '<') # Opening tag
-            parts = split(strip(line))
-            cmd_name = parts[1][2:end] # remove leading "<"
+        elseif startswith(line, '<') # Opening tag
+            cmd_end = findfirst(' ', line)
+            cmd_name = line[2:something(cmd_end, length(line))] # remove <
             if cmd_name ∈ allowed_commands
-                args, kwargs = length(parts) > 1 ? parse_arguments(parts[2:end]) : (String[], Dict{String,String}())
-                current_cmd = Command(cmd_name, args, kwargs, "")
+                remaining_args = isnothing(cmd_end) ? "" : line[cmd_end+1:end]
+                current_cmd = Command(cmd_name, "", remaining_args, Dict{String,String}())
             end
         end
     end
 
-    !isnothing(current_cmd) && warn("Unclosed tag: $(current_cmd.name)")
+    # !isnothing(current_cmd) && @warn("Unclosed tag: $(current_cmd.name)")
     return nothing
 end
-
+execute(t::Task) = begin
+    cmd = fetch(t)
+    isnothing(cmd) ? nothing : execute(convert_command(cmd))
+end
 function reset!(stream_parser::StreamParser)
     stream_parser.last_processed_index[] = 0
     empty!(stream_parser.command_tasks)
@@ -61,10 +64,11 @@ function execute_commands(stream_parser::StreamParser; no_confirm=false)
         if !isnothing(cmd)
             stream_parser.command_results[content] = cmd
             specific_cmd = convert_command(cmd)
-            if cmd.name in ["CREATE", "SHELL_RUN"]
-                cmd.kwargs["result"] = execute(specific_cmd; no_confirm)
+            if cmd.name in ["SHELL_RUN", "CREATE"]
+                res = execute(specific_cmd; no_confirm)
+                isa(specific_cmd, ShellCommand) && (specific_cmd.run_results = res)
             else
-                cmd.kwargs["result"] = execute(specific_cmd)
+                execute(specific_cmd)
             end
         else
             @warn "Failed to execute command: $content"

@@ -8,7 +8,7 @@ Assume all standard tools are available - do not attempt installations.
 
 Format:
 Each shell commands which you propose will be found in the corresponing next user message with the format like: 
-<$SHELL_RUN_TAG command $ONELINER_SS>
+<$SHELL_RUN_TAG `command` $ONELINER_SS>
 
 Feedback will be provided in the next message as:
 - Shell script: between ```sh and ``` tags
@@ -17,7 +17,7 @@ Feedback will be provided in the next message as:
 
 const shell_skill = Skill(
     name=SHELL_RUN_TAG,
-    skill_description=shell_run_skill,
+    description=shell_run_skill,
     stop_sequence=ONELINER_SS
 )
 
@@ -26,12 +26,12 @@ const shell_skill = Skill(
     language::String = "sh"
     content::String
     run_results::Vector{String} = []
-    kwargs::Dict{String,String} = Dict{String,String}()
 end
 
 function ShellCommand(cmd::Command)
-    language, content = parse_code_block(cmd.content)
-    ShellCommand(language=language, content=content, kwargs=cmd.kwargs)
+    args = strip(cmd.args)
+    content = startswith(args, "`") && endswith(args, "`") ? strip(args, '`') : args
+    ShellCommand(content=content)
 end
 
 function execute(cmd::ShellCommand; no_confirm=false)

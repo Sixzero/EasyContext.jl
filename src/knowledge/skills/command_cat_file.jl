@@ -10,7 +10,7 @@ or if you don't need immediately:
 
 const catfile_skill = Skill(
     name=CATFILE_TAG,
-    skill_description=cat_file_skill,
+    description=cat_file_skill,
     stop_sequence=ONELINER_SS,
 )
 
@@ -22,7 +22,7 @@ end
 
 function CatFileCommand(cmd::Command)
     CatFileCommand(
-        path=first(cmd.args),
+        path=cmd.args,
         content=""
     )
 end

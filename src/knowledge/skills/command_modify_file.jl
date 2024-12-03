@@ -28,23 +28,31 @@ code_changes_with_existing_code_comments
 
 const modify_file_skill = Skill(
     name="MODIFY",
-    skill_description=modify_file_skill_with_highlight,
+    description=modify_file_skill_with_highlight,
     stop_sequence=""
 )
 
 @kwdef struct ModifyFileCommand <: AbstractCommand
     id::UUID = uuid4()
-    language::String = "txt"
+    language::String = "sh"
     file_path::String
     root_path::String
     content::String
     postcontent::String
-    kwargs::Dict{String,String} = Dict{String,String}()
 end
 
 function ModifyFileCommand(cmd::Command)
+    # Clean up file path by removing trailing '>'
+    file_path = endswith(cmd.args[1], ">") ? chop(cmd.args[1]) : cmd.args[1]
+    
     language, content = parse_code_block(cmd.content)
-    ModifyFileCommand(language=language, file_path=first(cmd.args), content=content, kwargs=cmd.kwargs)
+    ModifyFileCommand(
+        language=language,
+        file_path=file_path,
+        root_path=get(cmd.kwargs, "root_path", ""),
+        content=content,
+        postcontent=""
+    )
 end
 
 

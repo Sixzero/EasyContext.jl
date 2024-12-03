@@ -9,7 +9,7 @@ export Session, initSession
     status::Symbol = :PENDING
 end
 Session(c::Conversation) = Session(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-initSession(;sys_msg::String) = Session(initConversation(;sys_msg))
+initSession(;sys_msg::String="") = Session(initConversation(;sys_msg))
 
 (conv::Session)(msg::Message) = (push!(conv.messages, msg); conv)
 

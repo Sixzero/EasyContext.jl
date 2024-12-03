@@ -55,6 +55,17 @@ function handle_text(state::SyntaxHighlightState, text::AbstractString)
     end
 end
 
+function is_opener_ticks(line::AbstractString, nesting_level::Int)
+    if nesting_level == 0
+        return startswith(line, "```")
+    else
+        return startswith(line, "```") && length(strip(line)) > 3
+    end
+end
+
+function is_closer_ticks(line::AbstractString)
+    return startswith(line, "```") && (length(line) == 3 || all(isspace, line[4:end]))
+end
 function process_line(state::SyntaxHighlightState)
     line = state.current_line
     if is_opener_ticks(line, state.in_code_block)

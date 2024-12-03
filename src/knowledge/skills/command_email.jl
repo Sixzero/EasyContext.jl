@@ -1,7 +1,6 @@
-
 const email_skill = Skill(
     name="EMAIL",
-    skill_description="""
+    description="""
 To create an email with a standardized format, use the EMAIL command:
 <EMAIL to=recipient@example.com subject="Email Subject">
 Dear Recipient,
@@ -20,15 +19,20 @@ Best regards,
     to::String
     subject::String
     content::String
-    kwargs::Dict{String,String} = Dict{String,String}()
 end
 
 function EmailCommand(cmd::Command)
+    # Parse kwargs string into Dict
+    kwargs_dict = Dict{String,String}()
+    for pair in split(cmd.args, " ")
+        key, value = split(pair, "=", limit=2)
+        kwargs_dict[key] = strip(value, ['"', ' '])
+    end
+    
     EmailCommand(
-        to=get(cmd.kwargs, "to", ""),
-        subject=get(cmd.kwargs, "subject", ""),
+        to=get(kwargs_dict, "to", ""),
+        subject=get(kwargs_dict, "subject", ""),
         content=cmd.content,
-        kwargs=cmd.kwargs
     )
 end
 
