@@ -1,13 +1,13 @@
 using ..EasyContext: Command
 
-export StreamParser, extract_commands, run_stream_parser
+export StreamParser, extract_commands, run_stream_parser, execute_last_command
 
 #  I think we will need a runner and parser separated...
 
 @kwdef mutable struct StreamParser
     last_processed_index::Ref{Int} = Ref(0)
     command_tasks::OrderedDict{String, Task} = OrderedDict{String, Task}()
-    command_results::OrderedDict{String, Command} = OrderedDict{String, Command}()
+    command_results::OrderedDict{String, String} = OrderedDict{String, String}()
     full_content::String = ""
     skip_execution::Bool = false
     no_confirm::Bool = false
@@ -15,7 +15,8 @@ end
 function process_immediate_command!(current_cmd, stream_parser, processed_idx)
     # @show current_cmd
     # @show convert_command(current_cmd)
-    stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(convert_command(current_cmd))
+    cmd = convert_command(current_cmd)
+    stream_parser.command_tasks[cmd.id] = @async_showerr preprocess(cmd)
     stream_parser.last_processed_index[] = processed_idx
 end
 
@@ -71,26 +72,38 @@ function reset!(stream_parser::StreamParser)
     return stream_parser
 end
 
+execute_single_command(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_command(fetch(task), stream_parser, no_confirm)
+function execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false)
+    has_stop_sequence(cmd) && return nothing
+    if isa(cmd, CreateFileCommand)
+        res = execute(cmd; no_confirm)
+    else
+        res = execute(cmd)
+    end
+    stream_parser.command_results[cmd.id] = res
+end
+
+function execute_last_command(stream_parser::StreamParser, no_confirm::Bool=false)
+    last_command = last(stream_parser.command_tasks)
+    specific_cmd = fetch(last_command.second)
+    
+    if !has_stop_sequence(specific_cmd)
+        @warn "Last command does not have a stop sequence"
+        return nothing
+    end
+    
+    execute_single_command(specific_cmd, stream_parser, no_confirm)
+end
+
+
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
-    local res
-    for (content, task) in stream_parser.command_tasks
-        specific_cmd = fetch(task)
-        if !isnothing(specific_cmd)
-            has_stop_sequence(specific_cmd) && continue
-            if isa(specific_cmd, CreateFileCommand)
-                res = execute(specific_cmd; no_confirm)
-            else
-                res = execute(specific_cmd)
-            end
-            # stream_parser.command_results[content] = res
-        else
-            @warn "Failed to execute command: $content"
-        end
+    for (id, task) in stream_parser.command_tasks
+        execute_single_command(task, stream_parser, no_confirm)
     end
     return stream_parser.command_results
 end
 
-run_stream_parser(stream_parser::StreamParser; no_confirm=false, async=false) = !stream_parser.skip_execution ? execute_commands(stream_parser; no_confirm) : OrderedDict{String, Command}()
+run_stream_parser(stream_parser::StreamParser; no_confirm=false, async=false) = !stream_parser.skip_execution ? execute_commands(stream_parser; no_confirm) : OrderedDict{String, String}()
 
 to_string(command_run_open::String, command_open::String, command_close::String, stream_parser::StreamParser) = to_string(command_run_open, command_open, command_close, stream_parser.command_results)
 function to_string(command_run_open::String, command_open::String, command_close::String, command_results::AbstractDict{String, Command})
@@ -112,5 +125,4 @@ function to_string(command_run_open::String, command_open::String, command_close
     end
     return output
 end
-
 
