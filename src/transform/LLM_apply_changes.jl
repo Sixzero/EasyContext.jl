@@ -6,14 +6,9 @@ using Base.Threads: @spawn
 include("instant_apply_logger.jl")
 include("apply_changes_prompts.jl")
 
-LLM_conditonal_apply_changes(ANYTHING) = ANYTHING
-function LLM_conditonal_apply_changes(cb::ModifyFileCommand)
-    cb.postcontent = (if cb.type==:MODIFY
-        original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
-        ai_generated_content
-    else
-        cb.content
-    end)
+function LLM_conditional_apply_changes(cb::ModifyFileCommand)
+    original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
+    cb.postcontent = ai_generated_content
     cb
 end
 

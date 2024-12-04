@@ -7,46 +7,30 @@ abstract type AbstractCommand end
     kwargs::Dict{String,String} = Dict{String,String}()
 end
 
-function parse_arguments(parts::Vector{SubString{String}})
-    args = String[]
-    kwargs = Dict{String,String}()
-    
-    for part in String.(parts)
-        # Skip stop sequence
-        endswith(part, "#RUN/>") && continue
-        endswith(part, "#RUN>") && continue
-        
-        if contains(part, "=")
-            key, value = split(part, "=")
-            kwargs[key] = replace(value, "\""=>"")
-        else
-            push!(args, part)
-        end
-    end
-    args, kwargs
-end
+
 
 # Convert raw Command to specific command types
 function convert_command(cmd::Command)
-    if cmd.name == "MODIFY"
+    if cmd.name == MODIFY_FILE_TAG
         return ModifyFileCommand(cmd)
-    elseif cmd.name == "SHELL_RUN"
+    elseif cmd.name == SHELL_RUN_TAG
         return ShellCommand(cmd)
-    elseif cmd.name == "CREATE"
+    elseif cmd.name == CREATE_FILE_TAG
         return CreateFileCommand(cmd)
-    elseif cmd.name == "CLICK"
+    elseif cmd.name == CLICK_TAG
         return ClickCommand(cmd)
-    elseif cmd.name == "KEY"
+    elseif cmd.name == SENDKEY_TAG
         return KeyCommand(cmd)
-    elseif cmd.name == "READFILE"
+    elseif cmd.name == CATFILE_TAG
         return CatFileCommand(cmd)
-    elseif cmd.name == "EMAIL"
+    elseif cmd.name == EMAIL_TAG
         return EmailCommand(cmd)
     else
         error("Unknown command type: $(cmd.name)")
     end
 end
 
+preprocess(cmd::T) where T <: AbstractCommand = cmd
 
 
 # <CLICK x y/>

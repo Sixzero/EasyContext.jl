@@ -49,7 +49,7 @@ function process_workspace_context(workspace_context, ctx_question; age_tracker=
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)
-    for cb in values(extractor.shell_results)
+    for cb in values(extractor.command_results)
         if cb.type == :MODIFY
             changes_tracker.changes[cb.file_path] = :UPDATED
             changes_tracker.content[cb.file_path] = cb.postcontent

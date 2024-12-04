@@ -91,35 +91,6 @@ function set_editor(editor_name::AbstractString)
     return true
 end
 
-function process_modify_command(file_path::String, content::String, root_path)
-    delimiter = get_unique_eof(content)
-    if CURRENT_EDITOR == VIMDIFF
-        content_esced = replace(content, "'" => "\\'")
-        "vimdiff $file_path <(echo -e '$content_esced')"
-    elseif CURRENT_EDITOR == MELD_PRO
-        if is_diff_service_available()
-            port = get(ENV, "MELD_PORT", "3000")
-            payload = Dict(
-                "leftPath" => file_path,
-                "rightContent" => content,
-                "pwd" => root_path
-            )
-            json_str = JSON3.write(payload)
-            json_str_for_shell = replace(json_str, "'" => "'\\''")
-            """curl -X POST http://localhost:$port/diff -H "Content-Type: application/json" -d '$(json_str_for_shell)'"""
-        else
-            # fallback to meld
-            "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
-        end
-    else  # MELD
-        "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
-    end
-end
-
-process_create_command(file_path::String, content::String) = begin
-	delimiter = get_unique_eof(content)
-	"cat > $(file_path) <<'$delimiter'\n$(content)\n$delimiter"
-end
 
 # function format_shell_results_to_context(shell_commands::AbstractDict{String, CodeBlock})
 # 	inner = join(["""<sh_script shortened>

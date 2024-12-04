@@ -1,6 +1,6 @@
 const click_skill = Skill(
     name=CLICK_TAG,
-    description="Click on the given coordinates using format: <$(CLICK_TAG) x y/>",
+    description="Click on the given coordinates using format: <$(CLICK_TAG) x y $(STOP_SEQUENCE)/>",
     stop_sequence=ONELINER_SS
 )
 
@@ -10,6 +10,7 @@ const click_skill = Skill(
     x::Int
     y::Int
 end
+has_stop_sequence(cmd::ClickCommand) = true
 
 function ClickCommand(cmd::Command)
     args = split(strip(cmd.args))

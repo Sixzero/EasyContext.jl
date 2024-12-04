@@ -12,29 +12,30 @@ export StreamParser, extract_commands, run_stream_parser
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
-function process_immediate_command!(current_cmd, stream_parser, processed_idx, preprocess)
-    @show current_cmd
-    @show convert_command(current_cmd)
+function process_immediate_command!(current_cmd, stream_parser, processed_idx)
+    # @show current_cmd
+    # @show convert_command(current_cmd)
     stream_parser.command_tasks[current_cmd.content] = @async_showerr preprocess(convert_command(current_cmd))
     stream_parser.last_processed_index[] = processed_idx
 end
 
-function extract_commands(new_content::String, stream_parser::StreamParser; instant_return=false, preprocess=(v)->v, root_path::String="")
+function extract_commands(new_content::String, stream_parser::StreamParser; root_path::String="")
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     processed_idx = stream_parser.last_processed_index[]
     current_content = String[]
     current_cmd = nothing
     for (i, line) in enumerate(lines)
+        i==length(lines) && break
         processed_idx += length(line) + 1  # +1 for the newline
         line = rstrip(line)
         
         if !isnothing(current_cmd) && startswith(line, "</" * current_cmd.name) # Closing tag
             current_cmd.content = join(current_content, '\n')
-            process_immediate_command!(convert(current_cmd), stream_parser, processed_idx, preprocess)
+            process_immediate_command!(current_cmd, stream_parser, processed_idx)
             current_content = String[]
             current_cmd = nothing
-            instant_return && return current_cmd
+            # instant_return && return current_cmd
             
         elseif !isnothing(current_cmd) # Content
             push!(current_content, line)
@@ -42,14 +43,14 @@ function extract_commands(new_content::String, stream_parser::StreamParser; inst
         elseif startswith(line, '<') # Opening tag
             cmd_end = findfirst(' ', line)
             cmd_name = line[2:something(cmd_end, length(line))-1] # remove <
-            @show cmd_name
             if cmd_name ∈ allowed_commands
                 remaining_args = isnothing(cmd_end) ? "" : line[cmd_end+1:end]
+                # @show line
+                # @show cmd_end
+                # @show remaining_args
                 current_cmd = Command(String(cmd_name), "", String(remaining_args), Dict{String,String}("root_path"=>root_path))
-                @show  "wefwef"
                 if cmd_name in ["CLICK", "SHELL_RUN", "SENDKEY", "CATFILE"]
-                    @show  "wefwef??"
-                    process_immediate_command!(current_cmd, stream_parser, processed_idx, preprocess)
+                    process_immediate_command!(current_cmd, stream_parser, processed_idx)
                     current_cmd = nothing
                 end
             end
@@ -71,18 +72,17 @@ function reset!(stream_parser::StreamParser)
 end
 
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
-    @show "???"
+    local res
     for (content, task) in stream_parser.command_tasks
-        cmd = fetch(task)
-        if !isnothing(cmd)
-            stream_parser.command_results[content] = cmd
-            specific_cmd = convert_command(cmd)
-            if cmd.name in ["SHELL_RUN", "CREATE"]
+        specific_cmd = fetch(task)
+        if !isnothing(specific_cmd)
+            has_stop_sequence(specific_cmd) && continue
+            if isa(specific_cmd, CreateFileCommand)
                 res = execute(specific_cmd; no_confirm)
-                isa(specific_cmd, ShellCommand) && (specific_cmd.run_results = res)
             else
-                execute(specific_cmd)
+                res = execute(specific_cmd)
             end
+            # stream_parser.command_results[content] = res
         else
             @warn "Failed to execute command: $content"
         end

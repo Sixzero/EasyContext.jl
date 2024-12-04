@@ -22,6 +22,7 @@ Best regards,
     subject::String
     content::String
 end
+has_stop_sequence(cmd::EmailCommand) = false
 
 function EmailCommand(cmd::Command)
     # Parse kwargs string into Dict

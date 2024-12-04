@@ -1,5 +1,5 @@
 using Test
-using EasyContext: Command, parse_tag, parse_arguments
+using EasyContext: Command, parse_tag
 
 @testset "Command Parser Tests" begin
     @testset "Basic Command Parsing" begin
@@ -62,17 +62,6 @@ using EasyContext: Command, parse_tag, parse_arguments
         """)
     end
 
-    @testset "Argument Parsing" begin
-        parts = split("arg1 key1=val1 arg2 key2=val2")
-        args, kwargs = parse_arguments(parts)
-        @test args == ["arg1", "arg2"]
-        @test kwargs == Dict("key1"=>"val1", "key2"=>"val2")
-
-        # Test quoted values
-        parts = split("path=\"/some/path\" flag=\"true\"")
-        args, kwargs = parse_arguments(parts)
-        @test kwargs == Dict("path"=>"/some/path", "flag"=>"true")
-    end
 
     @testset "Whitespace Handling" begin
         text = """

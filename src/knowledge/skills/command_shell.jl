@@ -7,11 +7,8 @@ Assume all standard tools are available - do not attempt installations.
 
 Format:
 Each shell commands which you propose will be found in the corresponing next user message with the format like: 
-<$SHELL_RUN_TAG `command` $ONELINER_SS>
+<$SHELL_RUN_TAG command $(STOP_SEQUENCE)/>
 
-Feedback will be provided in the next message as:
-- Shell script: between ```sh and ``` tags
-- Results: between ```sh_run_result and ``` tags
 """
 
 const shell_skill = Skill(
@@ -20,12 +17,13 @@ const shell_skill = Skill(
     stop_sequence=ONELINER_SS
 )
 
-@kwdef struct ShellCommand <: AbstractCommand
+@kwdef mutable struct ShellCommand <: AbstractCommand
     id::UUID = uuid4()
     language::String = "sh"
     content::String
     run_results::Vector{String} = []
 end
+has_stop_sequence(cmd::ShellCommand) = true
 
 function ShellCommand(cmd::Command)
     args = strip(cmd.args)
