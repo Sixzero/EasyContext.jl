@@ -85,14 +85,14 @@ end
 
 function execute_last_command(stream_parser::StreamParser, no_confirm::Bool=false)
     last_command = last(stream_parser.command_tasks)
-    specific_cmd = fetch(last_command.second)
+    cmd = fetch(last_command.second)
     
-    if !has_stop_sequence(specific_cmd)
+    if !has_stop_sequence(cmd)
         @warn "Last command does not have a stop sequence"
         return nothing
     end
-    
-    execute_single_command(specific_cmd, stream_parser, no_confirm)
+    no_confirm = no_confirm || LLM_safetorun(cmd.content)
+    execute_single_command(cmd, stream_parser, no_confirm)
 end
 
 
