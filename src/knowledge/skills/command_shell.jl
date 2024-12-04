@@ -1,3 +1,4 @@
+export truncate_output
 
 const shell_run_skill = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
@@ -60,3 +61,11 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     wait(process)
     return format_cmd_output(output, error, process)
 end
+
+function truncate_output(output)
+    if length(output) > 10000*4
+        return output[1:6000*4] * "\n...\n[Output truncated: exceeded token limit]\n...\n" * output[end-2000*4:end]
+    end
+    output
+end
+

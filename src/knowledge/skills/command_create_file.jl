@@ -17,12 +17,11 @@ new_file_content
     file_path::String
     root_path::String
     content::String
-    kwargs::Dict{String,String} = Dict{String,String}()
 end
 has_stop_sequence(cmd::CreateFileCommand) = false
 
 function CreateFileCommand(cmd::Command)
-    file_path = endswith(cmd.args[1], ">") ? chop(cmd.args[1]) : cmd.args[1]
+    file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
     language, content = parse_code_block(cmd.content)
     CreateFileCommand(
         language=language,
