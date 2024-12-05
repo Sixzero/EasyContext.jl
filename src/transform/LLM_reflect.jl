@@ -37,7 +37,7 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     and the shell results are here:
     $(ctx_shell)
     """
-    aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false, streamcallback=stdout) # gpt4om, claudeh
+    aigenerated = PromptingTools.aigenerate(prompt, model="gem15f", verbose=false, streamcallback=stdout) # gpt4om, claudeh
     resp = String(aigenerated.content)
     
     condition =REFLECT_CONDITION(resp)

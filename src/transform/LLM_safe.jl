@@ -17,7 +17,7 @@ function LLM_safetorun(content::String)
 	Shell command:
 	$(content)
 	"""
-	aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false) # gpt4om, claudeh
+	aigenerated = PromptingTools.aigenerate(prompt, model="gem15f", verbose=false) # gpt4om, claudeh
 	# @show "?!"
 	# println(aigenerated.content)
 	is_safe = SAFETORUN_CONDITION(aigenerated) == 1
