@@ -32,19 +32,19 @@ function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
     end
 end
 
-codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(cb.file_path, cb.postcontent, cb.root_path) :
+codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(parse_source(cb.file_path)[1], cb.postcontent, cb.root_path) :
                          cb.type == :CREATE  ? process_create_command(cb.file_path, cb.content) :
                          cb.type == :DEFAULT ? cb.content :
                          error("not known type for cb")
 
 get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring(3) : "EOF"
-
+const DEFAULT_MELD_PORT = "9000"
 function is_diff_service_available()
-    port = get(ENV, "MELD_PORT", "3000")
+    port = get(ENV, "MELD_PORT", DEFAULT_MELD_PORT)
     try
         HTTP.get("http://localhost:$port/health", readtimeout=1)
         return true
-    catch
+    catch e
         return false
     end
 end

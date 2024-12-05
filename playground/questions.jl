@@ -590,8 +590,6 @@ import PromptingTools
 const RAG = PromptingTools.Experimental.RAGTools
 RAG.build_context!(SimpleContextJoiner(), ctx)
 #%%
-@show typeof(ctx)
-#%%
 ctx.filtered_candidates
 ctx.reranked_candidates
 #%%

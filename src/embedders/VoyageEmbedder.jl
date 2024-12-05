@@ -61,14 +61,33 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
 
     process_batch_limited = with_rate_limiter_tpm(process_batch, embedder.rate_limiter)
 
-    max_batch_size = 128  # Voyage AI's max batch size
-    batches = [docs[i:min(i + max_batch_size - 1, end)] for i in 1:max_batch_size:length(docs)]
+    # Token and batch size limits
+    max_tokens_per_batch = 120_000
+    max_batch_size = 128
+    
+    # Create batches based on both token count and size limit
+    current_batch = String[]
+    current_tokens = 0
+    batches = Vector{String}[]
+
+    for doc in docs
+        doc_tokens = estimate_tokens(doc, CharCountDivTwo)
+        if current_tokens + doc_tokens > max_tokens_per_batch || length(current_batch) >= max_batch_size
+            push!(batches, current_batch)
+            current_batch = String[doc]
+            current_tokens = doc_tokens
+        else
+            push!(current_batch, doc)
+            current_tokens += doc_tokens
+        end
+    end
+    !isempty(current_batch) && push!(batches, current_batch)
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
     results = asyncmap(batches, ntasks=20) do batch
         embeddings, tokens = process_batch_limited(batch)
         embeddings_matrix = stack(embeddings, dims=2)
-        verbose && @info "Batch processed. Size: $(size(embeddings_matrix))"
+        verbose && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"
         next!(progress)
 
         return embeddings_matrix, tokens

@@ -43,3 +43,45 @@ function get_merge_prompt_v2(original_content, changes_content)
   Provide merged code between <final> and </final>.
   """
 end
+
+function get_replace_prompt(original_content, changes_content)
+  """You are a pattern matching specialist. Generate a list of search and replace pairs that will transform the <ORIGINAL> content to reflect what we write in <MODIFY> tags.
+  
+  # Important Guidelines:
+
+  1. Each pattern should be unique enough to match exactly what needs to be changed in <ORIGINAL> even if we need to remove something from <ORIGINAL>
+  2. Include enough context in patterns to ensure correct placement
+  3. Use complete code blocks when possible
+  4. If changes don't specify location add the changes at the most appropriate place
+  5. Only include necessary changes, but include contain all the changes we need to change
+  7. Do not escape any characters - provide the exact text to match and replace
+
+  Provide your response as MATCH/REPLACE tag pairs wrapped in <REPLACEMENTS> tag.
+
+  # Example:
+
+  <REPLACEMENTS>
+  <MATCH>
+  function to_find(exact::Code)
+      # with enough context
+  </MATCH>
+  <REPLACE>
+  function replaced_with(new::Code)
+      # new implementation
+  </REPLACE>
+  <MATCH>pattern2</MATCH>
+  <REPLACE>replacement2</REPLACE>
+  </REPLACEMENTS>
+
+  # Task
+
+  <ORIGINAL>
+  $original_content
+  </ORIGINAL>
+  
+  <MODIFY>
+  $changes_content
+  </MODIFY>
+  """
+end
+
