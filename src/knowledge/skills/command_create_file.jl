@@ -3,9 +3,7 @@ const create_file_skill = Skill(
     description="""
 To create new file write CREATE followed by the file_path like this:
 <CREATE file_path>
-```language
-new_file_content
-```
+$(code_format("new_file_content", "language"))
 </CREATE>
 """,
     stop_sequence=""

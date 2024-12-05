@@ -16,6 +16,7 @@ include("action/greet.jl")
 include("utils/TokenEstimationMethods.jl")
 
 include("protocol/CTX.jl")
+include("knowledge/formats/format.jl")
 include("knowledge/skills/skills.jl")
 include("knowledge/guides/guides.jl")
 include("ContextStructs.jl")

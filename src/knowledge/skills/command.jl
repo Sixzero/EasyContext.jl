@@ -1,3 +1,5 @@
+export print_tool_result
+
 abstract type AbstractCommand end
 
 @kwdef mutable struct Command <: AbstractCommand
@@ -25,6 +27,8 @@ function convert_command(cmd::Command)
         return CatFileCommand(cmd)
     elseif cmd.name == EMAIL_TAG
         return EmailCommand(cmd)
+    elseif cmd.name == WEB_SEARCH_TAG
+        return WebSearchCommand(cmd)
     else
         error("Unknown command type: $(cmd.name)")
     end
@@ -32,6 +36,11 @@ end
 
 preprocess(cmd::T) where T <: AbstractCommand = cmd
 
+print_tool_result(result) = begin
+    print(Crayon(background = (35, 61, 28)))  # Set background
+    print("\e[K")  # Clear to end of line with current background color
+    print(result, "\e[0m")
+end 
 
 # <CLICK x y/>
 # <CLICK x y #RUN/>

@@ -6,8 +6,8 @@ export StreamParser, extract_commands, run_stream_parser, execute_last_command
 
 @kwdef mutable struct StreamParser
     last_processed_index::Ref{Int} = Ref(0)
-    command_tasks::OrderedDict{String, Task} = OrderedDict{String, Task}()
-    command_results::OrderedDict{String, String} = OrderedDict{String, String}()
+    command_tasks::OrderedDict{UUID, Task} = OrderedDict{UUID, Task}()
+    command_results::OrderedDict{UUID, String} = OrderedDict{UUID, String}()
     full_content::String = ""
     skip_execution::Bool = false
     no_confirm::Bool = false
@@ -105,24 +105,23 @@ end
 
 run_stream_parser(stream_parser::StreamParser; no_confirm=false, async=false) = !stream_parser.skip_execution ? execute_commands(stream_parser; no_confirm) : OrderedDict{String, String}()
 
-to_string(command_run_open::String, command_open::String, command_close::String, stream_parser::StreamParser) = to_string(command_run_open, command_open, command_close, stream_parser.command_results)
-function to_string(command_run_open::String, command_open::String, command_close::String, command_results::AbstractDict{String, Command})
-    isempty(command_results) && return ""
-    
-    output = "Previous command executions and their results:\n"
-    for (content, command) in command_results
-        if command.name ∈ ["EXECUTE", "SEARCH", "SHELL_RUN"]  # and if it was no blocking!!
-            shortened_content = get_shortened_code(command2cmd(command))
-            output *= """
-            $(command_open)
-            $shortened_content
-            $(command_close)
-            $(command_run_open)
-            $(haskey(command.kwargs, "result") ? command.kwargs["result"] : "Missing output.")
-            $(command_close)
-            """
-        end
-    end
-    return output
+shell_ctx_2_string(stream_parser::StreamParser) = begin
+	isempty(stream_parser.command_results) && return ""
+	
+	output = "Previous command executions and their results:\n"
+	for (id, task) in stream_parser.command_tasks
+			cmd = fetch(task)
+			if isa(cmd, ShellCommand)  # and if it was no blocking!!
+					shortened_content = get_shortened_code(cmd.run_results)
+					output *= """
+					$(SHELL_BLOCK_OPEN)
+					$shortened_content
+					$(CODEBLOCK_CLOSE)
+					$(SHELL_RUN_RESULT)
+					$(cmd.run_results)
+					$(CODEBLOCK_CLOSE)
+					"""
+			end
+	end
+	return output
 end
-

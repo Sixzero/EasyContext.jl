@@ -1,7 +1,15 @@
 
 using PromptingTools
 
-export LLM_reflect, is_continue, LLM_reflect_condition
+export LLM_reflect, LLM_reflect_is_continue, LLM_reflect_condition
+
+
+const REFLECT_CONDITION = Condition(patterns=Dict{String,Symbol}(
+    "[DONE]"     => :DONE,
+    "[STUCKED]"  => :STUCKED,
+    "[WAITING]"  => :WAITING,
+    "[CONTINUE]" => :CONTINUE,
+));
 
 function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     prompt = """
@@ -30,19 +38,11 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     $(ctx_shell)
     """
     aigenerated = PromptingTools.aigenerate(prompt, model="claudeh", verbose=false, streamcallback=stdout) # gpt4om, claudeh
-    return String(aigenerated.content)
+    resp = String(aigenerated.content)
+    
+    condition =REFLECT_CONDITION(resp)
+    !(condition in [:DONE, :STUCKED, :WAITING, :CONTINUE]) && @warn "We couldn't identify direction! (maybe autostop with warning??)"
+    resp, condition
 end
 
-
-LLM_reflect_condition(resp) = begin
-    c=Condition(patterns=Dict{String,Symbol}(
-        "[DONE]"     => :DONE,
-        "[STUCKED]"  => :STUCKED,
-        "[WAITING]"  => :WAITING,
-    	"[CONTINUE]" => :CONTINUE,
-    ));
-    c.response=parse(c, resp)
-    !(c.response in [:DONE, :STUCKED, :WAITING, :CONTINUE]) && @warn "We couldn't identify direction! (maybe autostop with warning??)"
-    c
-end
-is_continue(c::Condition) = c.response == :CONTINUE 
+LLM_reflect_is_continue(resp) = resp == :CONTINUE 

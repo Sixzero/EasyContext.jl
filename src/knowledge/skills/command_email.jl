@@ -9,9 +9,11 @@ Dear Recipient,
 
 [Email content here]
 
-Best regards,
+Best,
 [Sender]
 </$(EMAIL_TAG)>
+or 
+$(email_format("to@recipient.com", "Topic subject", "Email content here"))
 """,
     stop_sequence=""
 )
@@ -39,6 +41,7 @@ function EmailCommand(cmd::Command)
     )
 end
 
+# TODO: create the draft email in the email provider
 execute(cmd::EmailCommand) = """
 Sending email:
 To: $(cmd.to)

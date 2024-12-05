@@ -25,11 +25,7 @@ CatFileCommand(cmd::Command) = CatFileCommand(id=uuid4(), file_path=cmd.args, ro
 execute(cmd::CatFileCommand) = let
     path = normpath(joinpath(cmd.root_path, cmd.file_path))
     # TODO: use STANDARD file print format! So don't redefine this again ang again... Also language detection to the tags would be nice to have
-    isfile(path) ? """File: $(path)
-    ```
-    $(read(path, String))
-    ```
-    """ : "cat: $(path): No such file or directory"
+    isfile(path) ? file_format(path, read(path, String)) : "cat: $(path): No such file or directory"
 end
 
 

@@ -6,24 +6,6 @@ end
 (ctx::Context)(new_ctx::OrderedDict{String, String}) = (merge!(ctx.d, new_ctx);   return ctx)
 Base.length(ctx::Context) = length(ctx.d)
 
-const TESTS              = "Testing"
-const TEST_CODE          = "TestCode"
-const TEST_RESULT        = "TestResults"
-const SHELL_ELEMENT_OPEN = "```sh"
-const CODEBLOCK_CLOSE    = "```"
-const SHELL_RUN_RESULT   = "```sh_run_result"
-const WORKSPACE_TAG      = "Codebase" 
-const WORKSPACE_ELEMENT  = "File" 
-const JULIA_TAG          = "JuliaFunctions" 
-const JULIA_ELEMENT      = "Function" 
-const PYTHON_TAG         = "PythonPackages" 
-const PYTHON_ELEMENT     = "Package" 
-
-# test_ctx_2_string(test_frame)               = to_string(TEST_RESULT,      TEST_CODE, test_frame) 
-shell_ctx_2_string(stream_parser)           = to_string(SHELL_RUN_RESULT, SHELL_ELEMENT_OPEN, CODEBLOCK_CLOSE, stream_parser) 
-workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG,    WORKSPACE_ELEMENT, scr_state, src_cont) 
-julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,        JULIA_ELEMENT, scr_state, src_cont) 
-python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,       PYTHON_ELEMENT, scr_state, src_cont) 
 
 python_format_description()     = "\
 The Python packages in other existing installed packages will be in the user message and \

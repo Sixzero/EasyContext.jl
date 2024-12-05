@@ -151,7 +151,33 @@ print_project_tree(w, path::String;          show_tokens::Bool=false) = begin
     print_tree(rel_paths, path; show_tokens)
 end
 
-function print_tree(paths::Vector{String}, root_path::String=""; show_tokens::Bool=false, pre="")
+function format_project(ws, path; show_files=false)
+    cd(ws) do
+        tree = show_files ?
+            join([print_tree(get_project_files(ws, path), path, show_tokens=ws.show_tokens, as_string=true)]) :
+            tree_string(path, ws.FILTERED_FOLDERS)
+        tree = isempty(tree) ? "└── (no subfolder)" : tree
+        """Project $(get_project_name(path)) [$(normpath(path))]
+        $tree
+        """
+    end
+end
+
+format_project(ws, path) = begin
+    folder_tree = tree_string(path, ws)
+    folder_tree == "" && (folder_tree="└── (no subfolder)")
+    """Project $(get_project_name(path)) [$(normpath(path))]
+    $(folder_tree)
+    """
+end
+
+function print_tree(paths::Vector{String}, root_path::String=""; show_tokens::Bool=false, pre="", as_string::Bool=false)
+    io = IOBuffer()
+    _print_tree(io, paths, root_path; show_tokens, pre)
+    as_string ? String(take!(io)) : print(String(take!(io)))
+end
+
+function _print_tree(io::IO, paths::Vector{String}, root_path::String=""; show_tokens::Bool=false, pre="")
     isempty(paths) && return
 
     groups = Dict{String, Vector{String}}()
@@ -164,22 +190,22 @@ function print_tree(paths::Vector{String}, root_path::String=""; show_tokens::Bo
 
     for (i, (dir, files)) in enumerate(sort(collect(groups)))
         is_last = i == length(groups)
-        
+
         if isempty(dir)
             for (j, file) in enumerate(sort(files))
-                print_file(joinpath(root_path, file), j == length(files) && is_last, pre; show_tokens)
+                print_file(io, joinpath(root_path, file), j == length(files) && is_last, pre; show_tokens)
             end
         else
-            println(pre * (is_last ? "└── " : "├── ") * dir * "/")
-            print_tree(files, joinpath(root_path, dir); show_tokens, pre=pre * (is_last ? "    " : "│   "))
+            println(io, pre * (is_last ? "└── " : "├── ") * dir * "/")
+            _print_tree(io, files, joinpath(root_path, dir); show_tokens, pre=pre * (is_last ? "    " : "│   "))
         end
     end
 end
 
-function print_file(full_path::String, is_last::Bool, pre::String=""; show_tokens::Bool=false)
+function print_file(io::IO, full_path::String, is_last::Bool, pre::String=""; show_tokens::Bool=false)
     symbol = is_last ? "└── " : "├── "
     name = basename(full_path)
-    
+
     if isfile(full_path)
         full_file = read(full_path, String)
         name *= show_tokens ? " ($(count_tokens(full_file)))" : ""
@@ -187,12 +213,12 @@ function print_file(full_path::String, is_last::Bool, pre::String=""; show_token
         if size_chars > 10000
             size_str = format_file_size(size_chars)
             color, reset = size_chars > 20000 ? ("\e[31m", "\e[0m") : ("", "") # Red color for files over 20k chars
-            println("$pre$symbol$name $color($size_str)$reset")
+            println(io, "$pre$symbol$name $color($size_str)$reset")
         else
-            println("$pre$symbol$name")
+            println(io, "$pre$symbol$name")
         end
     else
-        println("$pre$symbol$name")
+        println(io, "$pre$symbol$name")
     end
 end
 
@@ -210,18 +236,16 @@ end
 
 format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
 
-format_project(ws, path) = begin
-    folder_tree = tree_string(path, ws)
-    folder_tree == "" && (folder_tree="└── (no subfolder)")
-    """Project $(get_project_name(path)) [$(normpath(path))]
-    $(folder_tree)
-    """
-end
+
+
+
+
+
 workspace_format_description(ws::Workspace)  = """
-The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
-with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
+The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags,
+with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags.
 Our workspace has a root path: $(ws.root_path)
-The projects and their folders: 
-""" * join([format_project(ws, joinpath(ws.root_path, path)) for path in ws.rel_project_paths], "\n")
+The projects and their folders:
+""" * join([format_project(ws, joinpath(ws.root_path, path); false) for path in ws.rel_project_paths], "\n")
 
 get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))

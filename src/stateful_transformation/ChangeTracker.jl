@@ -91,14 +91,7 @@ to_string(tag::String, element::String, scr_state::ChangeTracker, src_cont::Orde
     end
     output
 end
-
-format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = begin
-    join(["""
-    <$element>
-    $content
-    </$element>
-    """ for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
-end
+format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = join(["""$(file_format(src, content))""" for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
 
 
 function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
