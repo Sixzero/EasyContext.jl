@@ -79,20 +79,6 @@ function (ws::Workspace)(chunker)
     return OrderedDict(zip(sources, chunks))
 end
 
-
-function get_filtered_files_and_folders(w::Workspace)
-    filtered_files = String[]
-    filtered_dirs  = String[]
-    cd(w) do
-        for path in w.rel_project_paths
-            files, dirs = get_filtered_files_and_folders(w, path)
-            append!(filtered_files, files)
-            append!(filtered_dirs,  dirs)
-        end
-    end
-    return filtered_files, filtered_dirs
-end
-
 function get_filtered_files_and_folders(w::Workspace, path::String)
     filtered_files = String[]
     filtered_dirs  = String[]
@@ -163,7 +149,6 @@ function print_project_tree(
     do_print::Bool = true
 )
     cd(w) do
-        # Get filtered files and folders
         filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
         # Generate header
         header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
@@ -235,9 +220,7 @@ function _print_tree(
 
     # Count total entries to determine when to use "└──"
     total_entries = length(dirs) + (only_dirs ? 0 : length(files))
-    if total_entries == 0
-        return  # No entries to display
-    end
+    total_entries == 0 && return
 
     # Print files if only_dirs is false
     idx = 0
@@ -300,9 +283,7 @@ function print_file(
 
         # Format the size string
         size_str = ""
-        if size_chars > 10_000
-            size_str = format_file_size(size_chars)
-        end
+        size_chars > 10_000 && (size_str = format_file_size(size_chars))
 
         # Apply coloring for large files if filewarning is true
         colored_size_str = ""
@@ -323,7 +304,7 @@ function print_file(
     end
 end
 
-format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
+format_file_size(size_chars) = size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars"
 
 workspace_format_description(ws::Workspace)  = """
 The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
