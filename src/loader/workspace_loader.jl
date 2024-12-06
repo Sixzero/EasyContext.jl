@@ -20,9 +20,7 @@ include("resolution_methods.jl")
         "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", 
-        "proto", "proto3", "graphql", "prisma", "yml",
-        "jld2",
-        "so",
+        "proto", "proto3", "graphql", "prisma", "yml"
     ]
     FILTERED_FOLDERS::Vector{String} = [
         "build",
@@ -76,99 +74,107 @@ function Workspace(project_paths::Vector{<:AbstractString};
 
     return workspace
 end
-
-(ws::Workspace)()::Vector{String} = return vcat(get_project_files(ws)...)
 function (ws::Workspace)(chunker)
     chunks, sources = RAGTools.get_chunks(chunker, ws())
     return OrderedDict(zip(sources, chunks))
 end
 
-function get_project_files(w::Workspace)
-    all_files = String[]
+
+function get_filtered_files_and_folders(w::Workspace)
+    filtered_files = String[]
+    filtered_dirs  = String[]
     cd(w) do
         for path in w.rel_project_paths
-            append!(all_files, get_project_files(w, path))
+            files, dirs = get_filtered_files_and_folders(w, path)
+            append!(filtered_files, files)
+            append!(filtered_dirs,  dirs)
         end
     end
-    return all_files
+    return filtered_files, filtered_dirs
 end
 
-function get_project_files(w::Workspace, path::String)
-    files = String[]
-    ignore_cache = Dict{String, Vector{String}}()
-    ignore_stack = Pair{String, Vector{String}}[]
-    
+function get_filtered_files_and_folders(w::Workspace, path::String)
+    filtered_files = String[]
+    filtered_dirs  = String[]
+
     for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
-        any(d -> d in w.FILTERED_FOLDERS, splitpath(root)) && (empty!(dirs); continue)
-        
-        # Read and cache ignore patterns for this directory
-        if !haskey(ignore_cache, root)
-            res = parse_ignore_files(root, w.IGNORE_FILES)
-            if !isempty(res)
-                ignore_cache[root] = res
-                push!(ignore_stack, root => res)
+        # Check if current root is in FILTERED_FOLDERS
+        if any(d -> d in w.FILTERED_FOLDERS, splitpath(relpath(root)))
+            push!(filtered_dirs, root)
+            empty!(dirs)  # Do not recurse into this directory
+            continue
+        end
+
+        ignore_patterns = parse_ignore_files(root, w.IGNORE_FILES)
+
+        # Collect directories that are ignored by patterns
+        for d in dirs
+            if is_ignored_by_patterns(joinpath(root, d), ignore_patterns, root)
+                push!(filtered_dirs, joinpath(root, d))
+                filter!(x -> x != d, dirs)
             end
         end
-        
-        # Use the most recent ignore patterns
-        ignore_patterns = isempty(ignore_stack) ? String[] : last(ignore_stack).second
-        ignore_root = isempty(ignore_stack) ? "" : last(ignore_stack).first
-        
+
+        # Collect filtered files
         for file in files_in_dir
             file_path = joinpath(root, file)
-            if is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS) && 
-               !ignore_file(file_path, w.IGNORED_FILE_PATTERNS) && 
-               !is_ignored_by_patterns(file_path, ignore_patterns, ignore_root)
-                push!(files, file_path)
+            if !(is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS) && 
+                !ignore_file(file_path, w.IGNORED_FILE_PATTERNS) && 
+                !is_ignored_by_patterns(file_path, ignore_patterns, root))
+                push!(filtered_files, file_path)
             end
         end
-        
-        # Filter out ignored directories to prevent unnecessary recursion
-        filter!(d -> !is_ignored_by_patterns(joinpath(root, d), ignore_patterns, ignore_root), dirs)
-        
-        # Remove ignore patterns from the stack when moving out of their directory
-        while !isempty(ignore_stack) && !startswith(root, first(last(ignore_stack)))
-            pop!(ignore_stack)
-        end
+
     end
-    return files
+    return filtered_files, filtered_dirs
 end
 
 # set_project_path(w::Workspace) = cd_rootpath(w)
 # set_project_path(w::Workspace, paths) = begin
-#     w.root_path, w.rel_project_paths = resolve(w.resolution_method, paths)
+#     w.path, w.rel_project_paths = resolve(w.resolution_method, paths)
 #     set_project_path(w)
-
 #     if verbose
 #         print_project_tree(workspace)
 #     end
-
 # end
 
 default_summary_callback(full_file::String) = ""
 
-print_project_tree(w::Workspace) = print_project_tree(w, w.rel_project_paths)
-print_project_tree(w, paths::Vector{String}; show_tokens::Bool=false, show_files::Bool=true, filewarning::Bool=true, summary_callback::Function=default_summary_callback, do_print::Bool=true) = 
+print_project_tree(w::Workspace; 
+                    show_tokens::Bool=false, 
+                    show_files::Bool=true, 
+                    filewarning::Bool=true, 
+                    summary_callback::Function=default_summary_callback, 
+                    do_print::Bool=true) = print_project_tree(w, w.rel_project_paths; show_tokens, show_files, filewarning, summary_callback, do_print)
+print_project_tree(w, paths::Vector{String}; 
+                    show_tokens::Bool=false, 
+                    show_files::Bool=true, 
+                    filewarning::Bool=true, 
+                    summary_callback::Function=default_summary_callback, 
+                    do_print::Bool=true) = 
     [print_project_tree(w, path; show_tokens, show_files, filewarning, summary_callback, do_print) for path in paths]
 function print_project_tree(
     w::Workspace, 
     path::String; 
-    show_tokens::Bool=false, 
-    show_files::Bool=true, 
-    filewarning::Bool=true,
-    summary_callback::Function=default_summary_callback,
-    do_print::Bool=true
+    show_tokens::Bool = false, 
+    show_files::Bool = true, 
+    filewarning::Bool = true,
+    summary_callback::Function = default_summary_callback,
+    do_print::Bool = true
 )
     cd(w) do
+        # Get filtered files and folders
+        filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
         # Generate header
         header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
         tree_str = generate_tree_string(
             path; 
-            show_tokens=show_tokens, 
-            only_dirs=!show_files, 
-            filtered_folders=w.FILTERED_FOLDERS, 
-            filewarning=filewarning,
-            summary_callback=summary_callback
+            show_tokens = show_tokens, 
+            only_dirs = !show_files, 
+            filtered_folders = filtered_folders, 
+            filtered_files = filtered_files,
+            filewarning = filewarning,
+            summary_callback = summary_callback
         )
         isempty(tree_str) && (tree_str = "└── (no subfolder)")
         # Combine header and tree
@@ -191,31 +197,41 @@ function generate_tree_string(
     show_tokens::Bool = false,
     only_dirs::Bool = false,
     filtered_folders::Vector{String} = String[],
+    filtered_files::Vector{String} = String[],
     filewarning::Bool = true,
     summary_callback::Function = default_summary_callback
 )
     io = IOBuffer()
     _print_tree(
         io,
-        String[],
         path;
+        pre = "",
         show_tokens = show_tokens,
-        only_dirs,
+        only_dirs = only_dirs,
         filtered_folders = filtered_folders,
+        filtered_files = filtered_files,
         filewarning = filewarning,
         summary_callback = summary_callback
     )
     return String(take!(io))
 end
 
-function _print_tree(io::IO, paths::Vector{String}, root_path::String=""; 
-                     show_tokens::Bool=false, pre="", only_dirs::Bool=false, 
-                     filtered_folders::Vector{String}=String(), filewarning::Bool=true, summary_callback::Function=default_summary_callback)
+function _print_tree(
+    io::IO, 
+    path::String; 
+    pre::String = "", 
+    show_tokens::Bool = false, 
+    only_dirs::Bool = false,
+    filtered_folders::Vector{String} = String[],
+    filtered_files::Vector{String} = String[],
+    filewarning::Bool = true,
+    summary_callback::Function = default_summary_callback
+)
     # Read entries in the current directory
-    entries = readdir(root_path)
-    entries = filter(e -> !(e in filtered_folders || startswith(e, ".")), entries)
-    dirs = sort([e for e in entries if isdir(joinpath(root_path, e))])
-    files = sort([e for e in entries if isfile(joinpath(root_path, e))])
+    entries = readdir(path)
+    dirs = sort([e for e in entries if isdir(joinpath(path, e))])
+    files = sort([e for e in entries if isfile(joinpath(path, e))])
+
 
     # Count total entries to determine when to use "└──"
     total_entries = length(dirs) + (only_dirs ? 0 : length(files))
@@ -223,26 +239,27 @@ function _print_tree(io::IO, paths::Vector{String}, root_path::String="";
         return  # No entries to display
     end
 
-    idx = 0
     # Print files if only_dirs is false
+    idx = 0
     if !only_dirs
         for file in files
             idx += 1
-            is_last = idx == total_entries
-            print_file(io, joinpath(root_path, file), is_last, pre; show_tokens=show_tokens, filewarning=filewarning, summary_callback=summary_callback)
+            joinpath(path, file) in filtered_files && continue
+            is_last = isempty(dirs) && idx == length(files)
+            print_file(io, joinpath(path, file), is_last, pre; show_tokens, filewarning, summary_callback)
         end
     end
 
     # Print directories
+    idx = 0
     for dir in dirs
         idx += 1
-        is_last = idx == total_entries
-        next_pre = pre * (is_last ? "    " : "│   ")
+        joinpath(path, dir) in filtered_folders && continue
+        is_last = idx == length(dirs)
+        next_pre  = pre * (is_last ? "    " : "│   ")
         println(io, pre * (is_last ? "└── " : "├── ") * dir * "/")
         # Recursively print subdirectories
-        _print_tree(io, String[], joinpath(root_path, dir); 
-                    show_tokens=show_tokens, pre=next_pre, only_dirs=only_dirs, 
-                    filtered_folders=filtered_folders, filewarning=filewarning)
+        _print_tree(io, joinpath(path, dir); pre=next_pre, show_tokens, only_dirs, filtered_folders, filtered_files, filewarning, summary_callback)
     end
 end
 
@@ -311,6 +328,6 @@ format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars"
 workspace_format_description(ws::Workspace)  = """
 The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
-Our workspace has a root path: $(ws.root_path)
+Our workspace has a root path: $(ws.path)
 The projects and their folders:
-""" * join([format_project(ws, joinpath(ws.root_path, path), show_files=false) for path in ws.rel_project_paths], "\n")
+""" * join([format_project(ws, joinpath(ws.path, path), show_files=false) for path in ws.rel_project_paths], "\n")
