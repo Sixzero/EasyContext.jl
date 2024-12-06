@@ -41,36 +41,6 @@ get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring
 
 
 
-function set_editor(editor_name::AbstractString)
-    global CURRENT_EDITOR
-    # Handle editor:port format
-    editor_base, port = if occursin(':', editor_name)
-        parts = split(editor_name, ':')
-        if length(parts) != 2 || isnothing(tryparse(Int, parts[2]))
-            println("Error: Invalid port number")
-            return false
-        end
-        parts[1], parts[2]
-    else
-        editor_name, nothing
-    end
-    @show editor_base
-    
-    # Validate and set editor
-    editor = get(EDITOR_MAP, lowercase(editor_base), MELD_PRO)
-    if isnothing(editor)
-        println("Error: Unknown editor. Available editors: $(join(keys(EDITOR_MAP), ", "))")
-        return false
-    end
-    
-    # Set the editor and port
-    CURRENT_EDITOR = editor
-    @show CURRENT_EDITOR
-    !isnothing(port) && (ENV["MELD_PORT"] = port)
-    
-    return true
-end
-
 
 # function format_shell_results_to_context(shell_commands::AbstractDict{String, CodeBlock})
 # 	inner = join(["""<sh_script shortened>

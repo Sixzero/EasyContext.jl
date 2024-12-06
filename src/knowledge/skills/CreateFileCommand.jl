@@ -1,10 +1,11 @@
 const create_file_skill = Skill(
     name=CREATE_FILE_TAG,
     description="""
-To create new file write CREATE followed by the file_path like this:
-<CREATE file_path>
+To create new file you can use <$(CREATE_FILE_TAG)> tag with file_path like this:
+<$(CREATE_FILE_TAG) path/to/file>
 $(code_format("new_file_content", "language"))
-</CREATE>
+</$(CREATE_FILE_TAG)>
+It is important you ALWAYS close the tag with </$(CREATE_FILE_TAG)>.
 """,
     stop_sequence=""
 )
@@ -45,8 +46,6 @@ function execute(cmd::CreateFileCommand; no_confirm=false)
         "\nOperation cancelled by user."
     end
 end
-
-
 
 process_create_command(file_path::String, content::String) = begin
 	delimiter = get_unique_eof(content)

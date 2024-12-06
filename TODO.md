@@ -1,0 +1,64 @@
+ - [✓] implement Jina/Voyager embedder. 
+ - [✓] worktree relative path, worktree cleanup mistakes...
+ - [✓] create airepl. 
+ - [✓] színezés meld-pro, #34502e zöld, #592e30 red, highlihgh green: #5c8c54, highlight red: #8b4749
+ - [✓] cache probléma megoldás a cut-nál
+ - [?] generikus api
+ - [✓] meld ready-t írjon ha nicnsen több diff.
+ - [✓] fixálni kell a parse-ot az LLM_apply-ban. végül meld-ben lett a matching.
+ - [-] SHIFT + ENTER in airepl -> SHIFT is not working as a modifier?
+ - [✓] meld close should ask for Save & close, Close, Cancel. FONTOS
+ - [✓] CTRL + Z didn't work with the applied code chunk which was deletion.
+ - [✓] change PORT in airepl
+ - [✓] option to use jl_ctx in airepl
+ - [✓] option to use planner in airepl
+ - [✓] we need airepl reset, which resets the contexts the change tracker and the conversation and session. and age_tracker.
+ - [✓] delete line not working in monacomeld
+ - [✓] more distinguishable comment from the background.
+ - [✓] kafka feature ellenörzése, valami https
+ - [ ] julia context index creation only if it is really used, because it is a timeconsuming procedure to create the index.
+ - [✓] modify with big files support.
+ - [✓] modify with big files support inmemory and not with files. (we need an inmemory `patch` thing.)
+ - [✓] TAG based modify
+ - [ ] handle MODIFY ../AISH.jl/src/workflow/STD_loop.jl -> ../AISH.jl/src/workflow/llm_flow.jl
+ - [ ] Foghagymanoymót venni. Fülvédőt. Szörpöt, házit!, ajándékot, masszírozó?
+ - [✓] atreplinit használata airepl inicializálásra not pool sleep.
+ - [ ] airepl path autocomplete to ignore lowercase
+ - [✓] airepl cli with automatically a starting command. current command is: alias aish='julia --banner=no -i -e '\''using AISH; AISH.airepl(auto_switch=true)'\' maybe we could add a -msg or some flag which contains the initial message.
+ - [ ] ios bluetooth fix.
+ - [ ] too long files... over 8000 tokens not embeddable, wrong calculation.
+ - [ ] jeleneleg a print nincsen. illetve talán nothing-gal kéne visszatérjen, vagy semmivel... 
+ - [ ] áttérés promtingtools-ra, de úgy hogy legyen cache. !!!
+ - [ ] képi bemenet működtetése.
+ - [ ] EXECUTION PLAN markdown.
+ - [ ] modularizáció
+   - [ ] IndexLogging
+   - [ ] Log Instant Apply !!
+   - [ ] Pcache megvizsgálása...
+   - [ ] MonacoMeld
+   - [ ] ExecutionPlanner?
+   - [ ] ApplyChanges
+ - [ ] RAG benchmarking !!
+ - [ ] Message aggregator
+   - [ ] github chat utánkövetés
+   - [ ] email utánkövetés
+   - [ ] github PR kreálás és karbantartás/chatelés.
+ - [ ] web-es felületen accept és reject gombok nem látszanak monacomeld.
+ - [ ] monacomeld a backend url-t őrizze meg. vite/web-en !
+ - [✓] monacomeld bal oldali view read and write not read only.
+ - [ ] CTRL + V issua mikor belenyomtam a második ablakba, akkor az elsőbe copyzta...
+   - [ ] Fel le swipe kell legyen csak a go to prev/next chunk/changes-hez.
+ - [ ] large_file1.js teszt megoldása.
+ - [ ] diacoach condition módosítható
+ - [ ] diacoach fordítás valamiért nem működik.
+ - [ ] diacoach várja meg mindig a választ. a user, ne tudjon entereket ütni.
+ - [ ] lehessen fontosságot megadni a condition-hoz. (fontos, normál, érdekesség)
+ - [ ] nem fordította le a sokadik üzenetet... lehet van rá limit?
+ - [ ] időket is irassuk ki a diacoach chat-ben... a szöveggel szembeni oldalon.
+ - [ ] kiírhatná, hogy van már hozzá egy testcase. esetleg meg is mutathatná.
+ - [ ] a long file chunkingnál fontos, hogy ott legyen a cut, ahol nem kód közepén vagyunk.
+ - [ ] 
+
+
+TODO ai web.
+ ez a todo input mezővel indul

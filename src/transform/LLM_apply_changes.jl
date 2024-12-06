@@ -15,9 +15,13 @@ end
 function LLM_apply_changes_to_file(cb::ModifyFileCommand)
     local original_content
     cd(cb.root_path) do
-        !isfile(cb.file_path) && @warn "UNEXISTING file $(cb.file_path) pwd: $(pwd())"
-        file_path, line_range = parse_source(cb.file_path)
-        original_content = read(file_path, String)
+        if isfile(cb.file_path)
+            file_path, line_range = parse_source(cb.file_path)
+            original_content = read(file_path, String)
+        else
+            @warn "WARNING! Unexisting file! $(cb.file_path) pwd: $(pwd())"
+            return cb.content, cb.content
+        end
     end
     
     # Check file size and choose appropriate method

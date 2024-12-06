@@ -11,7 +11,7 @@ Each shell commands which you propose will be found in the corresponing next use
 $(code_format("command", "sh"))
 """
 
-const shell_skill = Skill(
+const shellblock_skill = Skill(
     name=SHELL_BLOCK_TAG,
     description=shell_block_skill,
     stop_sequence=""
