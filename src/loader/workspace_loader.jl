@@ -35,7 +35,7 @@ include("resolution_methods.jl")
     ]
     show_tokens::Bool = false
 end
-Base.cd(f::Function, workspace::Workspace)        = !isempty(workspace.root_path)               ? cd(f, workspace.root_path)               : f()
+Base.cd(f::Function, workspace::Workspace) = !isempty(workspace.root_path) ? cd(f, workspace.root_path) : f()
 
 # cd_rootpath(ws::Workspace) = begin
 #     curr_rel_path  = [normpath(joinpath(pwd(),rel_path)) for rel_path in ws.rel_project_paths]
@@ -43,9 +43,9 @@ Base.cd(f::Function, workspace::Workspace)        = !isempty(workspace.root_path
 #     new_rel_path = relpath.(ideal_rel_path, curr_rel_path)
 #     cd(root_path)
 #     println("Project path initialized: $(path)")
-
 #     ws.rel_project_paths = new_rel_path
 # end
+
 function Workspace(project_paths::Vector{<:AbstractString}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
                     virtual_ws=nothing,
@@ -75,25 +75,36 @@ function Workspace(project_paths::Vector{<:AbstractString};
     return workspace
 end
 function (ws::Workspace)(chunker)
-    chunks, sources = RAGTools.get_chunks(chunker, ws())
+    chunks, sources = RAGTools.get_chunks(chunker, get_project_files(ws))
     return OrderedDict(zip(sources, chunks))
 end
 
+function get_project_files(w::Workspace)
+    all_files = String[]
+    cd(w) do
+        for path in w.rel_project_paths
+            append!(all_files, get_filtered_files_and_folders(w, path)[1])
+        end
+    end
+    return all_files
+end
+
 function get_filtered_files_and_folders(w::Workspace, path::String)
+    project_files = String[]
     filtered_files = String[]
     filtered_dirs  = String[]
 
     for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
-        # Check if current root is in FILTERED_FOLDERS
+        # Handle filtered folders
         if any(d -> d in w.FILTERED_FOLDERS, splitpath(relpath(root)))
             push!(filtered_dirs, root)
-            empty!(dirs)  # Do not recurse into this directory
+            empty!(dirs)
             continue
         end
 
         ignore_patterns = parse_ignore_files(root, w.IGNORE_FILES)
 
-        # Collect directories that are ignored by patterns
+        # Process directories
         for d in dirs
             if is_ignored_by_patterns(joinpath(root, d), ignore_patterns, root)
                 push!(filtered_dirs, joinpath(root, d))
@@ -101,30 +112,33 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
             end
         end
 
-        # Collect filtered files
+        # Process files
         for file in files_in_dir
             file_path = joinpath(root, file)
-            if !(is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS) && 
-                !ignore_file(file_path, w.IGNORED_FILE_PATTERNS) && 
-                !is_ignored_by_patterns(file_path, ignore_patterns, root))
+            if is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS) && 
+               !ignore_file(file_path, w.IGNORED_FILE_PATTERNS) && 
+               !is_ignored_by_patterns(file_path, ignore_patterns, root)
+                push!(project_files, file_path)
+            else
                 push!(filtered_files, file_path)
             end
         end
-
     end
-    return filtered_files, filtered_dirs
+    
+    return project_files, filtered_files, filtered_dirs
 end
 
 # set_project_path(w::Workspace) = cd_rootpath(w)
 # set_project_path(w::Workspace, paths) = begin
-#     w.path, w.rel_project_paths = resolve(w.resolution_method, paths)
+#     w.root_path, w.rel_project_paths = resolve(w.resolution_method, paths)
 #     set_project_path(w)
 #     if verbose
 #         print_project_tree(workspace)
 #     end
 # end
 
-default_summary_callback(full_file::String) = ""
+default_summary_callback(fullpath, full_file::String) = ""
+get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))
 
 print_project_tree(w::Workspace; 
                     show_tokens::Bool=false, 
@@ -173,9 +187,6 @@ function print_project_tree(
         return output
     end
 end
-
-get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))
-
 
 function generate_tree_string(
     path::String;
@@ -269,7 +280,8 @@ function print_file(
             name *= show_tokens ? " ($(count_tokens(full_file)))" : ""
 
             # Call the summary callback if provided
-            !isnothing(summary_callback) && (content_summary = summary_callback(full_file))
+            content_summary = summary_callback(full_path, full_file)
+            content_summary = isempty(content_summary) ? "" : " - $content_summary"
         catch e
             if isa(e, Base.InvalidCharError{Char})
                 # If the file contains invalid UTF-8, treat it as binary
@@ -295,7 +307,6 @@ function print_file(
         end
 
         # Append content summary if available
-        content_summary = content_summary != "" ? " - $content_summary" : ""
 
         # Print the file line
         println(io, "$pre$symbol$name$colored_size_str$content_summary")
@@ -309,6 +320,6 @@ format_file_size(size_chars) = size_chars < 1000 ? "$(size_chars) chars" : "$(ro
 workspace_format_description(ws::Workspace)  = """
 The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
-Our workspace has a root path: $(ws.path)
+Our workspace has a root path: $(ws.root_path)
 The projects and their folders:
-""" * join([format_project(ws, joinpath(ws.path, path), show_files=false) for path in ws.rel_project_paths], "\n")
+""" * join(print_project_tree(ws, show_files=false, do_print=true), "\n")
