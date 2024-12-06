@@ -6,19 +6,6 @@ using Base.Threads: @spawn
 include("instant_apply_logger.jl")
 include("apply_changes_prompts.jl")
 
-# Helper for retrying functions with different models
-function retry_with_models(f::Function, models::Vector{String}; verbose=false)
-    last_error = nothing
-    for (i, model) in enumerate(models)
-        try
-            return f(model)
-        catch e
-            last_error = e
-            i < length(models) && verbose && @warn "Failed with model $model, retrying with $(models[i+1])" exception=e
-        end
-    end
-    throw(last_error)  # Re-throw the last error if all attempts failed
-end
 function LLM_conditional_apply_changes(cb::ModifyFileCommand)
     original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
     cb.postcontent = ai_generated_content
@@ -84,7 +71,6 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
         try
             verbose && println("\e[38;5;240mGenerating replacement patterns with AI ($model)...\e[0m")
             aigenerated = aigenerate(prompt, model=model, api_kwargs=(; temperature), verbose=false)
-            println(aigenerated.content)
             replacements = extract_tagged_content(aigenerated.content, "REPLACEMENTS")
             matches = extract_all_tagged_pairs(replacements)
 

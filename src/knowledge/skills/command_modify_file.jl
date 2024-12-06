@@ -50,9 +50,8 @@ function ModifyFileCommand(cmd::Command)
     )
 end
 
-
 function execute(cmd::ModifyFileCommand; no_confirm=false)
-    cmd_code = process_modify_command(cmd.file_path, cmd.content, cmd.root_path)
+    cmd_code = process_modify_command(cmd.file_path, cmd.postcontent, cmd.root_path)
     shortened_code = startswith(cmd_code, "curl") ? "curl diff..." : get_shortened_code(cmd_code, 1, 1)
     print_code(shortened_code)
     cmd_all_info_modify(`zsh -c $cmd_code`)
