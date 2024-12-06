@@ -57,19 +57,40 @@ function execute(cmd::ModifyFileCommand; no_confirm=false)
     print_code(shortened_code)
     cmd_all_info_modify(`zsh -c $cmd_code`)
 end
-
 preprocess(cmd::ModifyFileCommand) = LLM_conditional_apply_changes(cmd)
 
-function process_modify_command(file_path::String, content::String, root_path)
+@enum Editor MELD VIMDIFF MELD_PRO
+global CURRENT_EDITOR::Editor = MELD  # Default editor
+
+const EDITOR_MAP = Dict{String, Editor}(
+    "meld" => MELD,
+    "vimdiff" => VIMDIFF,
+    "meld-pro" => MELD_PRO,
+    "meld_pro" => MELD_PRO,
+    "monacomeld" => MELD_PRO,  # Alias for MELD_PRO
+    "monaco" => MELD_PRO       # Another alias
+)
+
+const DEFAULT_MELD_PORT = "9000"
+function is_diff_service_available()
+    port = get(ENV, "MELD_PORT", DEFAULT_MELD_PORT)
+    try
+        HTTP.get("http://localhost:$port/health", readtimeout=1)
+        return true
+    catch e
+        return false
+    end
+end
+function process_modify_command(file_path::AbstractString, content::String, root_path)
     delimiter = get_unique_eof(content)
     if CURRENT_EDITOR == VIMDIFF
         content_esced = replace(content, "'" => "\\'")
         "vimdiff $file_path <(echo -e '$content_esced')"
     elseif CURRENT_EDITOR == MELD_PRO
+        port = get(ENV, "MELD_PORT", DEFAULT_MELD_PORT)
         if is_diff_service_available()
-            port = get(ENV, "MELD_PORT", "3000")
             payload = Dict(
-                "leftPath" => file_path,
+                "leftPath" => string(file_path),
                 "rightContent" => content,
                 "pwd" => root_path
             )
@@ -77,6 +98,7 @@ function process_modify_command(file_path::String, content::String, root_path)
             json_str_for_shell = replace(json_str, "'" => "'\\''")
             """curl -X POST http://localhost:$port/diff -H "Content-Type: application/json" -d '$(json_str_for_shell)'"""
         else
+            @info "No monacomeld running on: http://localhost:$port"
             # fallback to meld
             "meld $file_path <(cat <<'$delimiter'\n$content\n$delimiter\n)"
         end

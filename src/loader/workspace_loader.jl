@@ -236,16 +236,11 @@ end
 
 format_file_size(size_chars) = return (size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars")
 
-
-
-
-
-
 workspace_format_description(ws::Workspace)  = """
-The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags,
-with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags.
+The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
+with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
 Our workspace has a root path: $(ws.root_path)
-The projects and their folders:
-""" * join([format_project(ws, joinpath(ws.root_path, path); false) for path in ws.rel_project_paths], "\n")
+The projects and their folders: 
+""" * join([format_project(ws, joinpath(ws.root_path, path)) for path in ws.rel_project_paths], "\n")
 
 get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))

@@ -74,7 +74,6 @@ end
 
 execute_single_command(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_command(fetch(task), stream_parser, no_confirm)
 function execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false)
-    has_stop_sequence(cmd) && return nothing
     if isa(cmd, CreateFileCommand)
         res = execute(cmd; no_confirm)
     else
@@ -91,14 +90,17 @@ function execute_last_command(stream_parser::StreamParser, no_confirm::Bool=fals
         @warn "Last command does not have a stop sequence"
         return nothing
     end
-    no_confirm = no_confirm || LLM_safetorun(cmd.content)
-    execute_single_command(cmd, stream_parser, no_confirm)
+    no_confirm = no_confirm || LLM_safetorun(cmd)
+    res = execute_single_command(cmd, stream_parser, no_confirm)
+    res
 end
 
 
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
     for (id, task) in stream_parser.command_tasks
-        execute_single_command(task, stream_parser, no_confirm)
+        cmd=fetch(task)
+        has_stop_sequence(cmd) && return nothing
+        execute_single_command(cmd, stream_parser, no_confirm)
     end
     return stream_parser.command_results
 end
@@ -111,8 +113,8 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 	output = "Previous command executions and their results:\n"
 	for (id, task) in stream_parser.command_tasks
 			cmd = fetch(task)
-			if isa(cmd, ShellCommand)  # and if it was no blocking!!
-					shortened_content = get_shortened_code(cmd.run_results)
+			if isa(cmd, ShellCommand) && !isempty(cmd.run_results)  # and if it was no blocking!!
+					shortened_content = get_shortened_code(cmd.run_results[end])
 					output *= """
 					$(SHELL_BLOCK_OPEN)
 					$shortened_content

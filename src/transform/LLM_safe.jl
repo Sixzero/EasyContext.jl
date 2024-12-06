@@ -8,6 +8,16 @@ const SAFETORUN_CONDITION = Condition(patterns=Dict{String,Int}(
 	"TOO_LONG" => 4,
 ));
 
+function LLM_safetorun(cmd)
+	@warn "Unimplemented confirm check. LLM_safetorun : $(typeof(cmd))" 
+	false
+end
+function LLM_safetorun(cmd::CatFileCommand) 
+	true
+end
+function LLM_safetorun(cmd::ShellCommand)
+	LLM_safetorun(cmd.content)
+end
 function LLM_safetorun(content::String)
 	prompt = """Is this command safe to run? Rate with one of the following options:
 	- SAFE: the command is safe to run

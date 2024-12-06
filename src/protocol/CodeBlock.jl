@@ -38,28 +38,8 @@ codestr(cb::CodeBlock) = cb.type == :MODIFY  ? process_modify_command(parse_sour
                          error("not known type for cb")
 
 get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring(3) : "EOF"
-const DEFAULT_MELD_PORT = "9000"
-function is_diff_service_available()
-    port = get(ENV, "MELD_PORT", DEFAULT_MELD_PORT)
-    try
-        HTTP.get("http://localhost:$port/health", readtimeout=1)
-        return true
-    catch e
-        return false
-    end
-end
 
-@enum Editor MELD VIMDIFF MELD_PRO
-global CURRENT_EDITOR::Editor = MELD  # Default editor
 
-const EDITOR_MAP = Dict(
-    "meld" => MELD,
-    "vimdiff" => VIMDIFF,
-    "meld-pro" => MELD_PRO,
-    "meld_pro" => MELD_PRO,
-    "monacomeld" => MELD_PRO,  # Alias for MELD_PRO
-    "monaco" => MELD_PRO       # Another alias
-)
 
 function set_editor(editor_name::AbstractString)
     global CURRENT_EDITOR

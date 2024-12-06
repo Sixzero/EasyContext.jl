@@ -32,7 +32,7 @@ end
 function execute(cmd::CreateFileCommand; no_confirm=false)
     path = normpath(joinpath(cmd.root_path, cmd.file_path))
     cmd_code = process_create_command(path, cmd.content)
-    shortened_code = startswith(cmd_code, "curl") ? "curl diff..." : get_shortened_code(cmd_code, 4, 2)
+    shortened_code = get_shortened_code(cmd_code, 4, 2)
     print_code(shortened_code)
     
     dir = dirname(path)
