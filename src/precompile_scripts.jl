@@ -59,7 +59,7 @@ using DataStructures: OrderedDict
         # encoded = base64encode(\"Hello, World!\")
         # println(encoded)
         # ```"
-        # extract_and_preprocess_codeblocks(dummy_text, extractor, preprocess=(cb)->LLM_conditonal_apply_changes(cb))
+        # extract_and_preprocess_codeblocks(dummy_text, extractor, preprocess=(cb)->LLM_conditional_apply_changes(cb))
         # conv_ctx(create_AI_message("Dummy AI message"))
         # codeblock_runner(extractor)
         

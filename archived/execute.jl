@@ -61,19 +61,19 @@ end
 function format_cmd_output(output, error, err, process; debug_msg=nothing)
     # Try to parse JSON from raw stdout if present
     stdout_str, error_str = String(take!(output)), String(take!(error))
-    if startswith(stdout_str, "{")
-        try
-            response = JSON3.read(stdout_str)
-            if haskey(response, "error")
-                @info "Server returned error" response.error
-                println(error_str)
-                println("The debug msg:")
-                println(debug_msg)
-            end
-        catch e
-            @info "Failed to parse JSON response" error=e
-        end
-    end
+    # if startswith(stdout_str, "{")
+    #     try
+    #         response = JSON3.read(stdout_str)
+    #         if haskey(response, "error")
+    #             @info "Server returned error" response.error
+    #             println(error_str)
+    #             println("The debug msg:")
+    #             println(debug_msg)
+    #         end
+    #     catch e
+    #         @info "Failed to parse JSON response" error=e
+    #     end
+    # end
     
     # Return formatted output
     join(["$name=$str" for (name, str) in [
