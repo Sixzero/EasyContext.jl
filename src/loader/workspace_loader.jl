@@ -163,7 +163,7 @@ function print_project_tree(
     do_print::Bool = true
 )
     cd(w) do
-        filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
+        project_files, filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
         # Generate header
         header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
         tree_str = generate_tree_string(
