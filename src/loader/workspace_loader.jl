@@ -164,6 +164,10 @@ function print_project_tree(
 )
     cd(w) do
         project_files, filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
+        
+        # Create async tasks for summaries
+        summary_tasks = Dict{String, Task}()
+        
         # Generate header
         header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
         tree_str = generate_tree_string(
@@ -173,9 +177,23 @@ function print_project_tree(
             filtered_folders = filtered_folders, 
             filtered_files = filtered_files,
             filewarning = filewarning,
-            summary_callback = summary_callback
+            summary_callback = summary_callback,
+            summary_tasks = summary_tasks  # Pass the tasks dictionary
         )
         isempty(tree_str) && (tree_str = "└── (no subfolder)")
+        
+        # Wait for all summaries to complete
+        summaries = Dict{String, String}()
+        for (filepath, task) in summary_tasks
+            summaries[filepath] = fetch(task)
+        end
+        
+        # Replace placeholders with actual summaries
+        for (filepath, summary) in summaries
+            placeholder = "{{SUMMARY:$filepath}}"
+            tree_str = replace(tree_str, placeholder => summary)
+        end
+        
         # Combine header and tree
         output = """$header
                     $tree_str
@@ -195,7 +213,8 @@ function generate_tree_string(
     filtered_folders::Vector{String} = String[],
     filtered_files::Vector{String} = String[],
     filewarning::Bool = true,
-    summary_callback::Function = default_summary_callback
+    summary_callback::Function = default_summary_callback,
+    summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
     io = IOBuffer()
     _print_tree(
@@ -207,7 +226,8 @@ function generate_tree_string(
         filtered_folders = filtered_folders,
         filtered_files = filtered_files,
         filewarning = filewarning,
-        summary_callback = summary_callback
+        summary_callback = summary_callback,
+        summary_tasks = summary_tasks
     )
     return String(take!(io))
 end
@@ -221,7 +241,8 @@ function _print_tree(
     filtered_folders::Vector{String} = String[],
     filtered_files::Vector{String} = String[],
     filewarning::Bool = true,
-    summary_callback::Function = default_summary_callback
+    summary_callback::Function = default_summary_callback,
+    summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
     # Read entries in the current directory
     entries = readdir(path)
@@ -238,9 +259,15 @@ function _print_tree(
     if !only_dirs
         for file in files
             idx += 1
-            joinpath(path, file) in filtered_files && continue
+            filepath = joinpath(path, file)
+            filepath in filtered_files && continue
             is_last = isempty(dirs) && idx == length(files)
-            print_file(io, joinpath(path, file), is_last, pre; show_tokens, filewarning, summary_callback)
+            print_file(io, filepath, is_last, pre; 
+                show_tokens, 
+                filewarning, 
+                summary_callback,
+                summary_tasks
+            )
         end
     end
 
@@ -250,10 +277,10 @@ function _print_tree(
         idx += 1
         joinpath(path, dir) in filtered_folders && continue
         is_last = idx == length(dirs)
-        next_pre  = pre * (is_last ? "    " : "│   ")
+        next_pre = pre * (is_last ? "    " : "│   ")
         println(io, pre * (is_last ? "└── " : "├── ") * dir * "/")
         # Recursively print subdirectories
-        _print_tree(io, joinpath(path, dir); pre=next_pre, show_tokens, only_dirs, filtered_folders, filtered_files, filewarning, summary_callback)
+        _print_tree(io, joinpath(path, dir); pre=next_pre, show_tokens, only_dirs, filtered_folders, filtered_files, filewarning, summary_callback, summary_tasks)
     end
 end
 
@@ -264,31 +291,31 @@ function print_file(
     pre::String = "";
     show_tokens::Bool = false,
     filewarning::Bool = true,
-    summary_callback::Function = nothing
+    summary_callback::Function = nothing,
+    summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
     symbol = is_last ? "└── " : "├── "
     name = basename(full_path)
 
     if isfile(full_path)
         size_chars = 0
-        content_summary = ""
+        content_summary = " - {{SUMMARY:$full_path}}"  # placeholder
 
         try
-            # Try reading the file as text
             full_file = read(full_path, String)
             size_chars = count(c -> !isspace(c), full_file)
             name *= show_tokens ? " ($(count_tokens(full_file)))" : ""
 
-            # Call the summary callback if provided
-            content_summary = summary_callback(full_path, full_file)
-            content_summary = isempty(content_summary) ? "" : " - $content_summary"
+            # Create async task for summary
+            if summary_callback !== nothing
+                summary_tasks[full_path] = @async summary_callback(full_path, full_file)
+            end
         catch e
             if isa(e, Base.InvalidCharError{Char})
                 # If the file contains invalid UTF-8, treat it as binary
                 size_chars = filesize(full_path)
                 name *= " (binary or invalid UTF-8)"
             else
-                # Handle other exceptions
                 rethrow(e)
             end
         end
@@ -306,9 +333,6 @@ function print_file(
             colored_size_str = " ($size_str)"
         end
 
-        # Append content summary if available
-
-        # Print the file line
         println(io, "$pre$symbol$name$colored_size_str$content_summary")
     else
         println(io, "$pre$symbol$name")
