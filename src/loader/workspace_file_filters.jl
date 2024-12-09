@@ -22,6 +22,10 @@ function parse_ignore_files(root, IGNORE_FILES)
 end
 
 function gitignore_to_regex(pattern)
+    pattern = strip(pattern)
+    isempty(pattern) && return r""
+    startswith(pattern, "#") && return r""  # Skip comments
+
     if pattern == "**"
         return r".*"
     end
@@ -35,10 +39,17 @@ function gitignore_to_regex(pattern)
 end
 
 function is_ignored_by_patterns(file, ignore_patterns, root)
-    root=="" && return false
+    root == "" && return false
+    isempty(ignore_patterns) && return false
+
     rel_path = relpath(file, root)
     for pattern in ignore_patterns
+        isempty(pattern) && continue
+        startswith(pattern, "#") && continue
+
         regex = gitignore_to_regex(pattern)
+        isempty(string(regex.pattern)) && continue
+
         if occursin(regex, rel_path) || occursin(regex, basename(rel_path))
             return true
         end

@@ -94,7 +94,13 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
     filtered_files = String[]
     filtered_dirs  = String[]
 
+    # Parse gitignore at root path first
+    ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
+
     for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
+        # Add patterns from any .gitignore found in subdirectories
+        local_ignore_patterns = vcat(ignore_patterns, parse_ignore_files(root, w.IGNORE_FILES))
+
         # Handle filtered folders
         if any(d -> d in w.FILTERED_FOLDERS, splitpath(relpath(root)))
             push!(filtered_dirs, root)
@@ -102,12 +108,11 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
             continue
         end
 
-        ignore_patterns = parse_ignore_files(root, w.IGNORE_FILES)
-
         # Process directories
         for d in dirs
-            if is_ignored_by_patterns(joinpath(root, d), ignore_patterns, root)
-                push!(filtered_dirs, joinpath(root, d))
+            dir_path = joinpath(root, d)
+            if is_ignored_by_patterns(dir_path, local_ignore_patterns, path)
+                push!(filtered_dirs, dir_path)
                 filter!(x -> x != d, dirs)
             end
         end
@@ -115,16 +120,17 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
         # Process files
         for file in files_in_dir
             file_path = joinpath(root, file)
-            if is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS) && 
-               !ignore_file(file_path, w.IGNORED_FILE_PATTERNS) && 
-               !is_ignored_by_patterns(file_path, ignore_patterns, root)
-                push!(project_files, file_path)
-            else
+            # First check if it's ignored, then check if it's a project file
+            if is_ignored_by_patterns(file_path, local_ignore_patterns, path) ||
+               ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||
+               !is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS)
                 push!(filtered_files, file_path)
+            else
+                push!(project_files, file_path)
             end
         end
     end
-    
+
     return project_files, filtered_files, filtered_dirs
 end
 
@@ -190,8 +196,10 @@ function print_project_tree(
         
         # Replace placeholders with actual summaries
         for (filepath, summary) in summaries
-            placeholder = "{{SUMMARY:$filepath}}"
-            tree_str = replace(tree_str, placeholder => summary)
+            if !empty(summary)
+                placeholder = "{{SUMMARY:$filepath}}"
+                tree_str = replace(tree_str, placeholder => " - $summary")
+            end
         end
         
         # Combine header and tree
@@ -299,7 +307,7 @@ function print_file(
 
     if isfile(full_path)
         size_chars = 0
-        content_summary = " - {{SUMMARY:$full_path}}"  # placeholder
+        content_summary = "{{SUMMARY:$full_path}}"  # placeholder
 
         try
             full_file = read(full_path, String)
@@ -346,4 +354,4 @@ The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WO
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
 Our workspace has a root path: $(ws.root_path)
 The projects and their folders:
-""" * join(print_project_tree(ws, show_files=false, do_print=true), "\n")
+""" * join(print_project_tree(ws, show_files=true, summary_callback=LLM_summary,  do_print=true), "\n")
