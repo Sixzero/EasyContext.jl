@@ -48,8 +48,10 @@ function LLM_solve(conv, cache;
 
     try
         msg = aigenerate(to_PT_messages(conv);
-            model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p),
-        verbose=false,)
+            model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p), verbose=false,)
+        update_last_user_message_meta(flow.conv_ctx, cb)
+        !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) && ((toolcall = true);(msg.content *= cb.run_info.stop_sequence))
+        flow.conv_ctx(msg)
         return msg, cb
     catch e
         e isa InterruptException && rethrow(e)
