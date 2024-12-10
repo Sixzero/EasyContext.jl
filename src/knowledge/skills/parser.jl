@@ -32,7 +32,7 @@ function process_command_opening!(line::AbstractString, root_path::String)
     !is_valid && return nothing
 
     cmd = Command(String(cmd_name), "", String(remaining_args), Dict{String,String}("root_path"=>root_path))
-    return cmd_name in ["CLICK", "SHELL_RUN", "SENDKEY", "CATFILE"] ? (cmd, true) : (cmd, false)
+    return cmd_name in [CLICK_TAG, SHELL_RUN_TAG, SENDKEY_TAG, CATFILE_TAG] ? (cmd, true) : (cmd, false)
 end
 
 function extract_commands(new_content::String, stream_parser::StreamParser; root_path::String="")
