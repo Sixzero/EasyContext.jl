@@ -196,9 +196,11 @@ function print_project_tree(
         
         # Replace placeholders with actual summaries
         for (filepath, summary) in summaries
-            if !empty(summary)
+            if !isempty(summary)
                 placeholder = "{{SUMMARY:$filepath}}"
                 tree_str = replace(tree_str, placeholder => " - $summary")
+            else
+                tree_str = replace(tree_str, "{{SUMMARY:$filepath}}" => "") 
             end
         end
         

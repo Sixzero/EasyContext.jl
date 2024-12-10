@@ -49,11 +49,11 @@ function process_workspace_context(workspace_context, ctx_question; age_tracker=
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)
-    for cb in values(extractor.command_results)
-        if cb.type == :MODIFY
-            changes_tracker.changes[cb.file_path] = :UPDATED
-            changes_tracker.content[cb.file_path] = cb.postcontent
-        end
+    for task in values(extractor.command_tasks)
+        cb = fetch(task)
+        !isa(cb, ModifyFileCommand) && continue
+        changes_tracker.changes[cb.file_path] = :UPDATED
+        changes_tracker.content[cb.file_path] = cb.postcontent
     end
 end
 
