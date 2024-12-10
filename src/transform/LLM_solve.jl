@@ -3,6 +3,8 @@ using StreamCallbacksExt
 using StreamCallbacksExt: format_ai_message, format_user_message
 
 function LLM_solve(conv, cache;
+    extractor,
+    root_path,
     stop_sequences=[],
     model::String="claude",
     on_text=noop,
@@ -11,6 +13,7 @@ function LLM_solve(conv, cache;
     on_start=noop,
     top_p=0.8,)
 
+    reset!(extractor)
     highlight_state = SyntaxHighlightState()
 
     # Create callback with hooks
@@ -18,7 +21,7 @@ function LLM_solve(conv, cache;
         content_formatter = text -> begin
             handle_text(highlight_state, text)
             on_text(text)
-            nothing
+            extract_commands(text, extractor, root_path=root_path)
         end,
         on_meta_usr = (tokens, cost, elapsed) -> begin
             flush_highlight(highlight_state)
@@ -35,7 +38,8 @@ function LLM_solve(conv, cache;
         end,
         on_done = () -> begin
             flush_highlight(highlight_state)
-            on_text("\n")
+            extract_commands("\n", extractor, root_path=root_path)
+            flush!(extractor)
             on_done()
         end,
         on_stop_sequence = (stop_sequence) -> handle_text(highlight_state, stop_sequence),
@@ -53,8 +57,8 @@ function LLM_solve(conv, cache;
         on_error(e)
         # Create AIMessage with error and partial response
         error_msg = AIMessage(
-            "Error: $(sprint(showerror, e))\n\nPartial response: (cb.full_response)",
-            Dict("error" => e, "partial_response" => "cb.full_response")
+            "Error: $(sprint(showerror, e))\n\nPartial response: $(extractor.full_content)",
+            Dict("error" => e, "partial_response" => extractor.full_response)
         )
         return error_msg, cb
     end
