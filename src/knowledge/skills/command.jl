@@ -18,12 +18,14 @@ function convert_command(cmd::Command)
         return ModifyFileCommand(cmd)
     elseif cmd.name == SHELL_RUN_TAG
         return ShellCommand(cmd)
+    elseif cmd.name == SHELL_BLOCK_TAG
+        return ShellBlockCommand(cmd)
     elseif cmd.name == CREATE_FILE_TAG
         return CreateFileCommand(cmd)
     elseif cmd.name == CLICK_TAG
         return ClickCommand(cmd)
     elseif cmd.name == SENDKEY_TAG
-        return KeyCommand(cmd)
+        return SendKeyCommand(cmd)
     elseif cmd.name == CATFILE_TAG
         return CatFileCommand(cmd)
     elseif cmd.name == EMAIL_TAG
@@ -43,25 +45,34 @@ print_tool_result(result) = begin
     print(result, "\e[0m")
 end 
 
-# <CLICK x y/>
-# <CLICK x y #RUN/>
-# <KEY asdf #RUN/>
-# <READFILE path/to/file #RUN/>
-# <MODIFY path/to/file>
+# CLICK x y
+# CLICK x y #RUN
+# SENDKEY asdf #RUN
+# READFILE path/to/file #RUN
+# MODIFY path/to/file
 # '''programming language
 # content
 # '''
-# </MODIFY #RUN>
-# <CREATE path="path/to/space in filename">
+# ENDOFFILE
+# 
+# CREATE path="path/to/space in filename"
 # '''language
 # content
 # '''
-# </CREATE #RUN>
-# <CREATE path/to/space in filename>
+# ENDOFFILE
+# CREATE path/to/file
 # '''language
 # content
 # '''
-# </CREATE #RUN>
-# <SHELL_RUN command #RUN/>
-
-# <CLICK x y runresult=Success>
+# ENDOFFILE
+#
+# SHELL_RUN command #RUN/>
+# SHELL_BLOCK
+# '''sh
+# content
+# '''
+# ENDOFFILE
+#
+# CLICK x y LEFT
+# CLICK x y RIGHT
+# CLICK x y MIDDLE

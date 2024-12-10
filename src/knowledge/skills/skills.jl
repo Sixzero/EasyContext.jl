@@ -8,28 +8,29 @@ const CATFILE_TAG 	  = "CATFILE"
 const SENDKEY_TAG 	  = "SENDKEY"
 const CLICK_TAG  		  = "CLICK"
 const SHELL_RUN_TAG   = "SHELL_RUN"
+const SHELL_BLOCK_TAG = "SHELL_BLOCK"
 const CREATE_FILE_TAG = "CREATE"
 const MODIFY_FILE_TAG = "MODIFY"
-# const SHELL_BLOCK_TAG = "sh"
 const EMAIL_TAG     	= "EMAIL"
 const WEB_SEARCH_TAG  = "WEB_SEARCH"
+const END_OF_FILE_TAG = "ENDOFFILE"
 const allowed_commands::Set{String} = Set([MODIFY_FILE_TAG, CREATE_FILE_TAG, EMAIL_TAG, CLICK_TAG, SHELL_RUN_TAG, SENDKEY_TAG, CATFILE_TAG])
 
 include("skill.jl")
 include("utils.jl")
 include("command.jl")
-include("command_click.jl")
-include("command_sendkey.jl")
-include("command_shell.jl")
-include("command_cat_file.jl")
+include("ClickCommand.jl")
+include("SendKeyCommand.jl")
+include("ShellCommand.jl")
+include("CatFileCommand.jl")
 include("CreateFileCommand.jl")
 include("ModifyFileCommand.jl")
-include("command_websearch.jl")
-include("command_email.jl")
+include("WebSearchCommand.jl")
+include("EmailCommand.jl")
 
 include("parser.jl")
 
-export ShellCommand, KeyCommand, CatFileCommand, ClickCommand, CreateFileCommand, ModifyFileCommand, EmailCommand
+export ShellCommand, SendKeyCommand, CatFileCommand, ClickCommand, CreateFileCommand, ModifyFileCommand, EmailCommand
 export shell_skill, key_skill, catfile_skill, click_skill, create_file_skill, modify_file_skill, email_skill
 export shell_block_skill
 
