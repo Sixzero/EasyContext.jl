@@ -7,7 +7,7 @@ function LLM_summary(path::String, content::String)
 	$(file_format(path, content))
 	"""
 	aigenerated = PromptingTools.aigenerate(prompt, model="gem15f", verbose=false) # gpt4om, claudeh
-	println(path)
-	println(aigenerated.content)
+	# println(path)
+	# println(aigenerated.content)
 	return String(aigenerated.content)
 end
