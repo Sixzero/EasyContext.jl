@@ -15,7 +15,7 @@ initSession(;sys_msg::String="") = Session(initConversation(;sys_msg))
         conv.messages[end].content *= "\n" * msg.content
         conv
     else
-        push!(conv.messages, create_user_message(msg.content))
+        push!(conv.messages, create_AI_message(String(msg.content)))
         conv
     end
 end
@@ -24,7 +24,7 @@ end
         conv.messages[end].content *= "\n" * msg.content
         conv
     else
-        push!(conv.messages, create_AI_message(msg.content))
+        push!(conv.messages, create_user_message(String(msg.content)))
         conv
     end
 end

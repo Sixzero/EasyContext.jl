@@ -160,7 +160,7 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 	return output
 end
 
-function find_code_block_end(lines::Vector{String}, start_idx::Int=1)
+function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
     nesting_level = 0
     in_docstring = false
 
