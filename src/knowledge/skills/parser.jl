@@ -115,7 +115,10 @@ function execute_last_command(stream_parser::StreamParser, no_confirm::Bool=fals
     end
     no_confirm = no_confirm || LLM_safetorun(cmd)
     res = execute_single_command(cmd, stream_parser, no_confirm)
-    res
+    if res =="\nOperation cancelled by user."
+        return nothing
+    end
+    return res
 end
 
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
