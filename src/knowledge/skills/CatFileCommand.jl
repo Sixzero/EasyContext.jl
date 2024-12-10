@@ -1,7 +1,7 @@
 
 
 const cat_file_skill = """
-when you need the content of a file to solve the task you can use the CATFILE command:
+Whenever you need the content of a file to solve the task you can use the CATFILE command:
 To get the content of a file you can use the CATFILE command:
 <$CATFILE_TAG path/to/file $(STOP_SEQUENCE)/>
 <$CATFILE_TAG filepath $(STOP_SEQUENCE)/>

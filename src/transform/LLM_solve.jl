@@ -49,9 +49,9 @@ function LLM_solve(conv, cache;
     try
         msg = aigenerate(to_PT_messages(conv);
             model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p), verbose=false,)
-        update_last_user_message_meta(flow.conv_ctx, cb)
+        update_last_user_message_meta(conv, cb)
         !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) && ((toolcall = true);(msg.content *= cb.run_info.stop_sequence))
-        flow.conv_ctx(msg)
+        conv(msg)
         return msg, cb
     catch e
         e isa InterruptException && rethrow(e)
@@ -60,7 +60,7 @@ function LLM_solve(conv, cache;
         # Create AIMessage with error and partial response
         error_msg = AIMessage(
             "Error: $(sprint(showerror, e))\n\nPartial response: $(extractor.full_content)",
-            Dict("error" => e, "partial_response" => extractor.full_response)
+            Dict("error" => e, "partial_response" => extractor.full_content)
         )
         return error_msg, cb
     end
