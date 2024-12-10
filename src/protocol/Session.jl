@@ -10,6 +10,24 @@ end
 Session(c::Conversation) = Session(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
 initSession(;sys_msg::String="") = Session(initConversation(;sys_msg))
 
+(conv::Session)(msg::AIMessage) = begin
+    if !isempty(conv.messages) && conv.messages[end].role == :assistant
+        conv.messages[end].content *= "\n" * msg.content
+        conv
+    else
+        push!(conv.messages, create_user_message(msg.content))
+        conv
+    end
+end
+(conv::Session)(msg::UserMessage) = begin
+    if !isempty(conv.messages) && conv.messages[end].role != :assistant
+        conv.messages[end].content *= "\n" * msg.content
+        conv
+    else
+        push!(conv.messages, create_AI_message(msg.content))
+        conv
+    end
+end
 (conv::Session)(msg::Message) = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
         conv.messages[end].content *= "\n" * msg.content
@@ -30,4 +48,12 @@ conversaion_file(p,conv::Session) = joinpath(conversaion_path(p, conv), "convers
     mkpath_if_missing(conversaion_path(p, conv))
     save_conversation(conversaion_file(p, conv), conv)
     conv
+end
+function to_PT_messages(session::Session)
+    return [
+        SystemMessage(session.system_message.content),
+        [msg.role == :user ? UserMessage(msg.content) :
+         msg.role == :assistant ? AIMessage(msg.content) : UserMessage(msg.content)
+         for msg in session.messages]...
+    ]
 end

@@ -2,6 +2,7 @@ export print_tool_result
 
 abstract type AbstractCommand end
 
+has_stop_sequence(cmd::AbstractCommand) = (@warn("UNIMPLEMENTED has_stop_sequence for: $(typeof(cmd))"); false)
 @kwdef mutable struct Command <: AbstractCommand
     name::String
     content::String = ""

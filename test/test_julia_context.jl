@@ -103,4 +103,27 @@ using DataStructures: OrderedDict
         @test !isempty(result_with_age_tracker)
     end
 end
+@testset "JuliaCTX Tests" begin
+    @testset "Lazy Index Initialization" begin
+        # Initialize context
+        julia_ctx = init_julia_context(verbose=false)
+
+        # Check that index is initially nothing
+        @test isnothing(julia_ctx.jl_pkg_index)
+
+        # Process a query which should trigger index creation
+        result = process_julia_context(julia_ctx, "How to use arrays?")
+
+        # Check that index is now created
+        @test !isnothing(julia_ctx.jl_pkg_index)
+        @test julia_ctx.jl_pkg_index isa Task
+
+        # Process another query - should use existing index
+        prev_index = julia_ctx.jl_pkg_index
+        result2 = process_julia_context(julia_ctx, "How to use strings?")
+
+        # Verify same index is used
+        @test julia_ctx.jl_pkg_index === prev_index
+    end
+end
 ;

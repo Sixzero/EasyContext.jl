@@ -20,40 +20,63 @@ function process_immediate_command!(current_cmd, stream_parser, processed_idx)
     stream_parser.last_processed_index[] = processed_idx
 end
 
+function is_valid_command(line::AbstractString)
+    startswith(line, '<') || return false
+    cmd_end = findfirst(' ', line)
+    cmd_name = line[2:something(cmd_end, length(line))-1] # remove <
+    return cmd_name ∈ allowed_commands, cmd_name, isnothing(cmd_end) ? "" : line[cmd_end+1:end]
+end
+
+function process_command_opening!(line::AbstractString, root_path::String)
+    is_valid, cmd_name, remaining_args = is_valid_command(line)
+    !is_valid && return nothing
+
+    cmd = Command(String(cmd_name), "", String(remaining_args), Dict{String,String}("root_path"=>root_path))
+    return cmd_name in ["CLICK", "SHELL_RUN", "SENDKEY", "CATFILE"] ? (cmd, true) : (cmd, false)
+end
+
 function extract_commands(new_content::String, stream_parser::StreamParser; root_path::String="")
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     processed_idx = stream_parser.last_processed_index[]
     current_content = String[]
     current_cmd = nothing
+
     for (i, line) in enumerate(lines)
         i==length(lines) && break
-        processed_idx += length(line) + 1  # +1 for the newline
+        processed_idx += length(line) + 1  # +1 for newline
         line = rstrip(line)
-        
-        if !isnothing(current_cmd) && startswith(line, "</" * current_cmd.name) # Closing tag
-            current_cmd.content = join(current_content, '\n')
-            process_immediate_command!(current_cmd, stream_parser, processed_idx)
-            current_content = String[]
-            current_cmd = nothing
-            # instant_return && return current_cmd
-            
-        elseif !isnothing(current_cmd) # Content
-            push!(current_content, line)
-            
-        elseif startswith(line, '<') # Opening tag
-            cmd_end = findfirst(' ', line)
-            cmd_name = line[2:something(cmd_end, length(line))-1] # remove <
-            if cmd_name ∈ allowed_commands
-                remaining_args = isnothing(cmd_end) ? "" : line[cmd_end+1:end]
-                # @show line
-                # @show cmd_end
-                # @show remaining_args
-                current_cmd = Command(String(cmd_name), "", String(remaining_args), Dict{String,String}("root_path"=>root_path))
-                if cmd_name in ["CLICK", "SHELL_RUN", "SENDKEY", "CATFILE"]
-                    process_immediate_command!(current_cmd, stream_parser, processed_idx)
-                    current_cmd = nothing
+
+        if !isnothing(current_cmd)
+            if startswith(line, "</" * current_cmd.name) # Closing tag
+                current_cmd.content = join(current_content, '\n')
+                process_immediate_command!(current_cmd, stream_parser, processed_idx)
+                current_content = String[]
+                current_cmd = nothing
+            elseif startswith(line, '<') # New tag found before closing current
+                is_valid, = is_valid_command(line)
+                if is_valid && !isempty(current_content)
+                    # Find last code block end if exists
+                    code_block_end = findlast(l->l=="```", current_content)
+                    if !isnothing(code_block_end)
+                        current_cmd.content = join(current_content[1:code_block_end], '\n')
+                        process_immediate_command!(current_cmd, stream_parser, processed_idx)
+                        current_content = current_content[code_block_end+1:end]
+                        current_cmd = nothing
+                    end
                 end
+            end
+
+            !isnothing(current_cmd) && push!(current_content, line)
+
+        elseif startswith(line, '<') # Opening tag
+            cmd_result = process_command_opening!(line, root_path)
+            isnothing(cmd_result) && continue
+
+            current_cmd, immediate = cmd_result
+            if immediate
+                process_immediate_command!(current_cmd, stream_parser, processed_idx)
+                current_cmd = nothing
             end
         end
     end
@@ -95,17 +118,23 @@ function execute_last_command(stream_parser::StreamParser, no_confirm::Bool=fals
     res
 end
 
-
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
     for (id, task) in stream_parser.command_tasks
-        cmd=fetch(task)
+        cmd = fetch(task)
         has_stop_sequence(cmd) && return nothing
+        isnothing(cmd) && continue # TODO it signals error in a task, shouldn't really happen.
         execute_single_command(cmd, stream_parser, no_confirm)
     end
     return stream_parser.command_results
 end
 
-run_stream_parser(stream_parser::StreamParser; no_confirm=false, async=false) = !stream_parser.skip_execution ? execute_commands(stream_parser; no_confirm) : OrderedDict{String, String}()
+function run_stream_parser(stream_parser::StreamParser; root_path=".", no_confirm=false, async=false)
+    if !stream_parser.skip_execution 
+        cd(root_path) do 
+            execute_commands(stream_parser; no_confirm)
+        end
+    end
+end
 
 shell_ctx_2_string(stream_parser::StreamParser) = begin
 	isempty(stream_parser.command_results) && return ""
@@ -126,4 +155,64 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 			end
 	end
 	return output
+end
+
+function find_code_block_end(lines::Vector{String}, start_idx::Int=1)
+    nesting_level = 0
+    in_docstring = false
+
+    for (i, line) in enumerate(lines[start_idx:end])
+        stripped = strip(line)
+
+        # Handle docstring boundaries
+        if occursin(r"^\"\"\"", stripped)
+            in_docstring = !in_docstring
+        end
+
+        # Skip processing inside docstrings unless it's a boundary
+        stripped == "\"\"\"" && continue
+
+        if startswith(stripped, "```")
+            if !in_docstring && length(stripped) > 3  # Opening with language
+                nesting_level += 1
+            elseif length(stripped) == 3 || all(isspace, stripped[4:end])  # Closing
+                nesting_level -= 1
+                nesting_level == 0 && return start_idx + i - 1
+            end
+        end
+    end
+    return nothing
+end
+
+function flush!(stream_parser::StreamParser)
+    lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
+    isempty(lines) && return
+
+    processed_idx = stream_parser.last_processed_index[]
+    current_content = String[]
+
+    for (i, line) in enumerate(lines)
+        processed_idx += length(line) + 1
+
+        if startswith(line, '<')
+            cmd_result = process_command_opening!(line, "")
+            if !isnothing(cmd_result)
+                current_content = String[]
+                current_cmd, immediate = cmd_result
+                immediate && continue
+
+                # Look for code block in remaining lines
+                if i < length(lines)
+                    remaining_lines = lines[i+1:end]
+                    if !isempty(remaining_lines) && startswith(first(remaining_lines), "```")
+                        block_end = find_code_block_end(remaining_lines)
+                        if !isnothing(block_end)
+                            current_cmd.content = join(remaining_lines[1:block_end], '\n')
+                            process_immediate_command!(current_cmd, stream_parser, processed_idx)
+                        end
+                    end
+                end
+            end
+        end
+    end
 end

@@ -1,23 +1,57 @@
 include("syntax_highlight.jl")
+using StreamCallbacksExt
+using StreamCallbacksExt: format_ai_message, format_user_message
 
-function LLM_solve(conv, cache; model::String="claude-3-5-sonnet-20241022", stop_sequences=[], on_meta_usr=noop, on_text=noop, on_meta_ai=noop, on_error=noop, on_done=noop, on_start=noop, top_p=0.8)
-    # display([(m.role, m.content) for m in conv.messages])
-    channel = ai_stream(conv; model, cache, top_p, printout=false, stop_sequences)
+function LLM_solve(conv, cache;
+    stop_sequences=[],
+    model::String="claude",
+    on_text=noop,
+    on_error=noop,
+    on_done=noop,
+    on_start=noop,
+    top_p=0.8,)
+
     highlight_state = SyntaxHighlightState()
-    
+
+    # Create callback with hooks
+    cb = StreamCallbackWithHooks(
+        content_formatter = text -> begin
+            handle_text(highlight_state, text)
+            on_text(text)
+            nothing
+        end,
+        on_meta_usr = (tokens, cost, elapsed) -> begin
+            flush_highlight(highlight_state)
+            format_user_message(tokens, cost, elapsed)
+        end,
+        on_meta_ai = (tokens, cost, elapsed) -> begin
+            flush_highlight(highlight_state)
+            format_ai_message(tokens, cost, elapsed)
+        end,
+        on_error = e -> begin
+            on_error(e)
+            e isa InterruptException && rethrow(e)
+            @error "Error executing code block: $(sprint(showerror, e))" exception=(e, catch_backtrace())
+        end,
+        on_done = () -> begin
+            flush_highlight(highlight_state)
+            on_text("\n")
+            on_done()
+        end,
+        on_stop_sequence = (stop_sequence) -> handle_text(highlight_state, stop_sequence),
+        on_start = on_start,
+    )
+
     try
-        process_stream(channel; 
-                on_text     = text -> (handle_text(highlight_state, text); on_text(text)),
-                on_meta_usr = meta -> (flush_highlight(highlight_state); on_meta_usr(meta); print_user_message(meta)),
-                on_meta_ai  = (meta, full_msg) -> (handle_text(highlight_state, meta["stop_sequence"]); flush_highlight(highlight_state); on_meta_ai(create_AI_message(full_msg, meta)); print_ai_message(meta)),
-                on_error,
-                on_done     = () -> (flush_highlight(highlight_state); on_text("\n"); on_done()), # add a newline to mark the last line to be closed and is processable
-                on_start)
+        msg = aigenerate(to_PT_messages(conv);
+            model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p),
+        verbose=false,)
+        return msg, cb
     catch e
         e isa InterruptException && rethrow(e)
         @error "Error executing code block: $(sprint(showerror, e))" exception=(e, catch_backtrace())
         on_error(e)
-        return e
+        return e, cb
     end
 end
 

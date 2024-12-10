@@ -2,6 +2,15 @@ using Test
 using EasyContext
 using EasyContext: CodeBlock, LLM_conditonal_apply_changes
 
+include("large_file1.modify.jl")
+
+@time modified_cb = LLM_conditonal_apply_changes(cb)
+;
+# save_pattern = nothing
+# file_content = read("test/transform/large_file1.js", String)
+# println(file_content[8230:8400])
+# searching = Main.save_pattern
+#%%
 #%%
 @testset "Large file modification test" begin
     # Create a temporary large file

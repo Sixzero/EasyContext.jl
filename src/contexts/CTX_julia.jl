@@ -17,11 +17,9 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
     
     # Wrap the jl_simi_filter with CachedIndexBuilder
     cached_jl_simi_filter = CachedIndexBuilder(jl_simi_filter)
-    
-    # Use the provided package_scope
-    julia_loader = CachedLoader(loader=JuliaLoader(package_scope=package_scope), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
-    
-    jl_pkg_index = @async_showerr get_index(cached_jl_simi_filter, julia_loader)
+
+    # Initialize with nothing, will be lazily created on first use
+    jl_pkg_index = nothing
     tracker_context = Context()
     changes_tracker = ChangeTracker(;need_source_reparse=false, verbose=verbose)
     jl_reranker_filterer = ReduceRankGPTReranker(batch_size=40, top_n=10, model="gpt4om")
@@ -45,16 +43,25 @@ function process_julia_context(julia_context::JuliaCTX, ctx_question; age_tracke
     changes_tracker      = julia_context.changes_tracker
     jl_reranker_filterer = julia_context.jl_reranker_filterer
     index_logger         = julia_context.index_logger
+
+    # Lazy initialization of the index if not yet created
+    if isnothing(jl_pkg_index)
+        # Use the provided package_scope - need to recreate loader here
+        julia_loader = CachedLoader(loader=JuliaLoader(), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
+        julia_context.jl_pkg_index = @async_showerr get_index(jl_simi_filter, julia_loader)
+    end
+    jl_pkg_index = julia_context.jl_pkg_index
+
     index::Union{Vector{RAG.AbstractChunkIndex}, RAG.AbstractChunkIndex} = fetch(jl_pkg_index)
     file_chunks_selected = jl_simi_filter(index, ctx_question)
     @time "rerank" file_chunks_reranked = jl_reranker_filterer(file_chunks_selected, ctx_question)
     merged_file_chunks = tracker_context(file_chunks_reranked)
     scr_content = changes_tracker(merged_file_chunks)
-    
+
     !isnothing(age_tracker) && age_tracker(changes_tracker)
-    
+
     # Log the index and question
     @time "index_logging" log_index(index_logger, index, ctx_question)
-    
+
     return julia_ctx_2_string(changes_tracker, scr_content)
 end

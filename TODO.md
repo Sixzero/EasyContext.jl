@@ -16,21 +16,27 @@
  - [✓] delete line not working in monacomeld
  - [✓] more distinguishable comment from the background.
  - [✓] kafka feature ellenörzése, valami https
- - [ ] julia context index creation only if it is really used, because it is a timeconsuming procedure to create the index.
+ - [✓] Fel le swipe kell legyen csak a go to prev/next chunk/changes-hez.
+ - [✓] diacoach condition módosítható
+ - [✓] diacoach fordítás valamiért nem működik.
+ - [✓] lehessen fontosságot megadni a condition-hoz. (fontos, normál, érdekesség)
+ - [✓] nem fordította le a sokadik üzenetet... lehet van rá limit?
+ - [✓] időket is irassuk ki a diacoach chat-ben... a szöveggel szembeni oldalon.
  - [✓] modify with big files support.
  - [✓] modify with big files support inmemory and not with files. (we need an inmemory `patch` thing.)
  - [✓] TAG based modify
+ - [ ] julia context index creation only if it is really used, because it is a timeconsuming procedure to create the index.
  - [ ] handle MODIFY ../AISH.jl/src/workflow/STD_loop.jl -> ../AISH.jl/src/workflow/llm_flow.jl
  - [ ] Foghagymanoymót venni. Fülvédőt. Szörpöt, házit!, ajándékot, masszírozó?
  - [✓] atreplinit használata airepl inicializálásra not pool sleep.
  - [ ] airepl path autocomplete to ignore lowercase
  - [✓] airepl cli with automatically a starting command. current command is: alias aish='julia --banner=no -i -e '\''using AISH; AISH.airepl(auto_switch=true)'\' maybe we could add a -msg or some flag which contains the initial message.
- - [ ] ios bluetooth fix.
- - [ ] too long files... over 8000 tokens not embeddable, wrong calculation.
- - [ ] jeleneleg a print nincsen. illetve talán nothing-gal kéne visszatérjen, vagy semmivel... 
+ - [✓] ios bluetooth fix.
+ - [✓] too long files... over 8000 tokens not embeddable, wrong calculation.
+   - [ ] jeleneleg a print nincsen. illetve talán nothing-gal kéne visszatérjen, vagy semmivel... 
  - [ ] áttérés promtingtools-ra, de úgy hogy legyen cache. !!!
  - [ ] képi bemenet működtetése.
- - [ ] EXECUTION PLAN markdown.
+ - [✓] EXECUTION PLAN markdown.
  - [ ] modularizáció
    - [ ] IndexLogging
    - [ ] Log Instant Apply !!
@@ -43,21 +49,17 @@
    - [ ] github chat utánkövetés
    - [ ] email utánkövetés
    - [ ] github PR kreálás és karbantartás/chatelés.
- - [ ] web-es felületen accept és reject gombok nem látszanak monacomeld.
- - [ ] monacomeld a backend url-t őrizze meg. vite/web-en !
+ - [✓] web-es felületen accept és reject gombok nem látszanak monacomeld.
+ - [✓] monacomeld a backend url-t őrizze meg. vite/web-en !
  - [✓] monacomeld bal oldali view read and write not read only.
  - [ ] CTRL + V issua mikor belenyomtam a második ablakba, akkor az elsőbe copyzta...
-   - [ ] Fel le swipe kell legyen csak a go to prev/next chunk/changes-hez.
  - [ ] large_file1.js teszt megoldása.
- - [ ] diacoach condition módosítható
- - [ ] diacoach fordítás valamiért nem működik.
  - [ ] diacoach várja meg mindig a választ. a user, ne tudjon entereket ütni.
- - [ ] lehessen fontosságot megadni a condition-hoz. (fontos, normál, érdekesség)
- - [ ] nem fordította le a sokadik üzenetet... lehet van rá limit?
- - [ ] időket is irassuk ki a diacoach chat-ben... a szöveggel szembeni oldalon.
  - [ ] kiírhatná, hogy van már hozzá egy testcase. esetleg meg is mutathatná.
  - [ ] a long file chunkingnál fontos, hogy ott legyen a cut, ahol nem kód közepén vagyunk.
- - [ ] 
+ - [ ] TAG without /TAG should fallback to ```language parsing.
+ - [ ] hotkey fix for repl, with base solution. https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/docs/src/index.md
+ - [ ] airepl --plan to work with model names... and never continue with the user message, I mean never run the flow
 
 
 TODO ai web.

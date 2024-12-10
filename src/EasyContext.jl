@@ -10,6 +10,7 @@ using Dates
 using UUIDs
 
 using PromptingTools
+using PromptingTools: UserMessage, AIMessage, SystemMessage
 
 include("utils/utils.jl")
 include("action/greet.jl")
