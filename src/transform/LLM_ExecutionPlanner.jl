@@ -1,6 +1,6 @@
 using PromptingTools: SystemMessage, UserMessage
 
-export ExecutionPlannerContext,Z LLM_ExecutionPlanner
+export ExecutionPlannerContext, LLM_ExecutionPlanner
 
 Base.@kwdef mutable struct ExecutionPlannerContext
     model::String = "oro1"
@@ -46,7 +46,7 @@ Remember to:
 - Propose alternatives when needed
 """
  
-LLM_ExecutionPlanner(ctx::ExecutionPlannerContext, session::Session, user_question::AbstractString; history_count::Union{Int,Nothing}=nothing)
+LLM_ExecutionPlanner(ctx::ExecutionPlannerContext, session::Session, user_question::AbstractString; history_count::Union{Int,Nothing}=nothing) = begin
     history_len = something(history_count, ctx.history_count)
     relevant_history = join([msg.content for msg in session.messages[max(1, end-history_len+1):end]], "\n")
     
