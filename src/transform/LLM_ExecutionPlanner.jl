@@ -1,6 +1,6 @@
 using PromptingTools: SystemMessage, UserMessage
 
-export ExecutionPlannerContext
+export ExecutionPlannerContext,Z LLM_ExecutionPlanner
 
 Base.@kwdef mutable struct ExecutionPlannerContext
     model::String = "oro1"
@@ -10,23 +10,43 @@ Base.@kwdef mutable struct ExecutionPlannerContext
 end
 
 const PLANNER_SYSTEM_PROMPT = """
-You are an expert project planner who creates clear, actionable, and efficient plans.
-Break down complex tasks into manageable steps, considering:
-1. Dependencies and prerequisites
-2. Potential challenges and solutions
-3. Resource requirements
-4. Optimal sequence of actions
-5. Success criteria and validation steps
-6. Point out if something is missused
+You are an expert project planner who creates clear, actionable plans. Break down complex tasks while considering context, risks, and resources.
 
-Format your response in markdown with clear sections:
-# Goal
+For each request:
+1. Understand context and requirements
+2. Identify risks and dependencies
+3. Create clear action steps
+4. Define success criteria
+
+Format responses using:
+
+# Project Goal
+[Clear outcome statement]
+
 # Context Analysis
-# Step-by-Step Plan
-# Success Criteria
-"""
+- Requirements and constraints
+- Available resources
+- Key stakeholders
 
-function (ctx::ExecutionPlannerContext)(session::Session, user_question::AbstractString; history_count::Union{Int,Nothing}=nothing)
+# Action Plan
+1. [Step name]
+   - Actions and timeline
+   - Required resources
+   - Dependencies
+
+# Success Criteria
+- Measurable outcomes
+- Validation methods
+- Key checkpoints
+
+Remember to:
+- Be specific and actionable
+- Flag potential risks
+- Consider resource constraints
+- Propose alternatives when needed
+"""
+ 
+LLM_ExecutionPlanner(ctx::ExecutionPlannerContext, session::Session, user_question::AbstractString; history_count::Union{Int,Nothing}=nothing)
     history_len = something(history_count, ctx.history_count)
     relevant_history = join([msg.content for msg in session.messages[max(1, end-history_len+1):end]], "\n")
     
