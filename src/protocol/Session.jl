@@ -10,32 +10,29 @@ end
 Session(c::Conversation) = Session(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
 initSession(;sys_msg::String="") = Session(initConversation(;sys_msg))
 
-(conv::Session)(msg::AIMessage) = begin
+(conv::Session)(msg::AIMessage, stop_sequence::String="") = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant
-        conv.messages[end].content *= "\n" * msg.content
-        conv
+        conv.messages[end].content *= "\n" * msg.content * stop_sequence
     else
         push!(conv.messages, create_AI_message(String(msg.content)))
-        conv
     end
+    conv
 end
 (conv::Session)(msg::UserMessage) = begin
     if !isempty(conv.messages) && conv.messages[end].role != :assistant
         conv.messages[end].content *= "\n" * msg.content
-        conv
     else
         push!(conv.messages, create_user_message(String(msg.content)))
-        conv
     end
+    conv
 end
-(conv::Session)(msg::Message) = begin
+(conv::Session)(msg::Message, stop_sequence::String="") = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
-        conv.messages[end].content *= "\n" * msg.content
-        conv
+        conv.messages[end].content *= "\n" * msg.content * stop_sequence
     else
         push!(conv.messages, msg)
-        conv
     end
+    conv
 end
 
 abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")

@@ -9,7 +9,7 @@ $(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
 const web_search_skill = Skill(
     name=WEB_SEARCH_TAG,
     description=web_search_skill_desc,
-    stop_sequence=ONELINER_SS
+    stop_sequence=STOP_SEQUENCE
 )
 
 @kwdef mutable struct WebSearchCommand <: AbstractCommand

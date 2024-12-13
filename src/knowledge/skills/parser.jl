@@ -69,12 +69,7 @@ end
 
 execute_single_command(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_command(fetch(task), stream_parser, no_confirm)
 function execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false)
-    if isa(cmd, CreateFileCommand)
-        res = execute(cmd; no_confirm)
-    else
-        res = execute(cmd)
-    end
-    stream_parser.command_results[cmd.id] = res
+    stream_parser.command_results[cmd.id] = isa(cmd, CreateFileCommand) ? execute(cmd; no_confirm) : execute(cmd)
 end
 
 function get_last_command_result(stream_parser::StreamParser, no_confirm::Bool=false)

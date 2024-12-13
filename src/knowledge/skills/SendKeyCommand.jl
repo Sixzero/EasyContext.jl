@@ -1,7 +1,7 @@
 const key_skill = Skill(
     name="SENDKEY",
     description="Send keyboard input using format: $(SENDKEY_TAG) text $(STOP_SEQUENCE)",
-    stop_sequence=ONELINER_SS
+    stop_sequence=STOP_SEQUENCE
 )
 
 @kwdef struct SendKeyCommand <: AbstractCommand

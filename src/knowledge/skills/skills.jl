@@ -1,7 +1,5 @@
 
 const STOP_SEQUENCE = "#RUN"
-const MULTILINER_SS = STOP_SEQUENCE*">"
-const ONELINER_SS   = STOP_SEQUENCE*"/>"
 
 
 const CATFILE_TAG 	   = "CATFILE"

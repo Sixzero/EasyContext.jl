@@ -7,9 +7,9 @@ using StreamCallbacksExt: RunInfo, get_cost
 end
 initConversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 
-(conv::Conversation)(msg::Message) = begin
+(conv::Conversation)(msg::Message, stop_sequence::String="") = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
-        conv.messages[end].content *= "\n" * msg.content
+        conv.messages[end].content *= "\n" * msg.content * stop_sequence
         conv
     else
         println("adding message to conversation : $(msg.content)")

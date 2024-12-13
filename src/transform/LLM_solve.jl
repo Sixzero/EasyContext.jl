@@ -41,16 +41,15 @@ function LLM_solve(conv, cache;
             extract_commands("\n", extractor, root_path=root_path)
             on_done()
         end,
-        on_stop_sequence = (stop_sequence) -> handle_text(highlight_state, stop_sequence),
+        on_stop_sequence = (stop_sequence) -> (handle_text(highlight_state, stop_sequence)),
         on_start = on_start,
     )
 
     try
-        msg = aigenerate(to_PT_messages(conv);
-            model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p, max_tokens=8192), verbose=false,)
+        msg = aigenerate(to_PT_messages(conv); model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p, max_tokens=8192), verbose=false,)
         update_last_user_message_meta(conv, cb)
-        !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) && (msg.content *= cb.run_info.stop_sequence)
-        conv(msg)
+        stopsig = !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) ? cb.run_info.stop_sequence : ""
+        conv(msg, stopsig)  
         return msg, cb
     catch e
         e isa InterruptException && rethrow(e)

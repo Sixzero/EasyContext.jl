@@ -11,7 +11,7 @@ or if you don't need immediat result from it then you can use it without $STOP_S
 const catfile_skill = Skill(
     name=CATFILE_TAG,
     description=cat_file_skill_prompt,
-    stop_sequence=ONELINER_SS,
+    stop_sequence=STOP_SEQUENCE,
 )
 
 @kwdef struct CatFileCommand <: AbstractCommand
