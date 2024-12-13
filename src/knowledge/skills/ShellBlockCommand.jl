@@ -26,7 +26,7 @@ const shell_block_skill = Skill(
     content::String
     run_results::Vector{String} = []
 end
-has_stop_sequence(cmd::ShellBlockCommand) = false
+has_stop_sequence(cmd::ShellBlockCommand) = true
 
 function ShellBlockCommand(cmd::Command)
     language, content = parse_code_block(cmd.content)
@@ -37,7 +37,7 @@ function execute(cmd::ShellBlockCommand; no_confirm=false)
     !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
     print_code(cmd.content)
     
-    if no_confirm || get_user_confirmation()
+    if no_confirm || LLM_safetorun(cmd) || get_user_confirmation()
         print_output_header()
         cmd_all_info_stream(`zsh -c $(cmd.content)`)
     else

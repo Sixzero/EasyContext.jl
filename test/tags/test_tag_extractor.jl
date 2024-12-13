@@ -47,7 +47,7 @@ using EasyContext: Command, extract_commands, reset!, to_string
         @test extractor.full_content == ""
     end
 
-    @testset "to_string" begin
+    @testset "to_string Command Results Formatting" begin  # Changed from just "to_string"
         extractor = TagExtractor()
         tag1 = Command("SHELL", String[], Dict("result" => "output1"), "command1")
         tag2 = Command("TEST", String[], Dict("result" => "output2"), "command2")

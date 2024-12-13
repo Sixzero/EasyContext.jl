@@ -1,6 +1,6 @@
 using ..EasyContext: Command
 
-export StreamParser, extract_commands, run_stream_parser, execute_last_command
+export StreamParser, extract_commands, run_stream_parser, get_last_command_result
 
 #  I think we will need a runner and parser separated...
 
@@ -12,7 +12,7 @@ export StreamParser, extract_commands, run_stream_parser, execute_last_command
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
-function process_immediate_command!(line::String, content::String="", stream_parser::StreamParser; root_path::String="")
+function process_immediate_command!(line::String, stream_parser::StreamParser, content::String=""; root_path::String="")
     current_cmd = parse_command(line, content, kwargs=Dict("root_path"=>root_path))
     cmd = convert_command(current_cmd)
     stream_parser.command_tasks[cmd.id] = @async_showerr preprocess(cmd)
@@ -29,7 +29,7 @@ function extract_commands(new_content::String, stream_parser::StreamParser; root
         # Handle single-line commands
         if startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]) |> any
             stream_parser.last_processed_index[] += length(line) + 1
-            process_immediate_command!(line, "", stream_parser; root_path)
+            process_immediate_command!(line, stream_parser, ""; root_path)
             i += 1
             continue
         end
@@ -43,7 +43,7 @@ function extract_commands(new_content::String, stream_parser::StreamParser; root
                         content = join(lines[i+1:i+block_end], '\n') 
                         total_length = length(line)+1 + length(content)+1 + length(END_OF_BLOCK_TAG) + 1  # +1 for newline after tag
                         stream_parser.last_processed_index[] += total_length
-                        process_immediate_command!(line, content, stream_parser; root_path)
+                        process_immediate_command!(line, stream_parser, content; root_path)
                         i += block_end + 2
                         continue
                     end
@@ -77,16 +77,14 @@ function execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bo
     stream_parser.command_results[cmd.id] = res
 end
 
-function execute_last_command(stream_parser::StreamParser, no_confirm::Bool=false)
+function get_last_command_result(stream_parser::StreamParser, no_confirm::Bool=false)
     last_command = last(stream_parser.command_tasks)
     cmd = fetch(last_command.second)
-    
     if !has_stop_sequence(cmd)
         @warn "Last command does not have a stop sequence"
         return nothing
     end
-    no_confirm = no_confirm || LLM_safetorun(cmd)
-    res = execute_single_command(cmd, stream_parser, no_confirm)
+    res= stream_parser.command_results[cmd.id]
     if res =="\nOperation cancelled by user."
         return nothing
     end
@@ -96,8 +94,8 @@ end
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
     for (id, task) in stream_parser.command_tasks
         cmd = fetch(task)
-        has_stop_sequence(cmd) && return nothing
         isnothing(cmd) && continue # TODO it signals error in a task, shouldn't really happen.
+        cmd.id in keys(stream_parser.command_results) && continue
         execute_single_command(cmd, stream_parser, no_confirm)
     end
     return stream_parser.command_results
