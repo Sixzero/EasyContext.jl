@@ -15,7 +15,7 @@ end
 function LLM_safetorun(cmd::CatFileCommand) 
 	true
 end
-function LLM_safetorun(cmd::ShellCommand)
+function LLM_safetorun(cmd::ShellBlockCommand)
 	LLM_safetorun(cmd.content)
 end
 function LLM_safetorun(content::String)

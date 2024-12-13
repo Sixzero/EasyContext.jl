@@ -1,11 +1,11 @@
 const create_file_skill = Skill(
     name=CREATE_FILE_TAG,
     description="""
-To create new file you can use <$(CREATE_FILE_TAG)> tag with file_path like this:
-<$(CREATE_FILE_TAG) path/to/file>
+To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
+$(CREATE_FILE_TAG) path/to/file
 $(code_format("new_file_content", "language"))
-</$(CREATE_FILE_TAG)>
-It is important you ALWAYS close the tag with </$(CREATE_FILE_TAG)>.
+$(END_OF_BLOCK_TAG)
+It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 """,
     stop_sequence=""
 )

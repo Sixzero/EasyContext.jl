@@ -1,6 +1,6 @@
 export truncate_output
 
-const shell_block_skill = """
+const shell_block_skill_prompt = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
 You propose the sh script that should be run in a most concise short way and wait for feedback!
 
@@ -8,12 +8,15 @@ Assume all standard tools are available - do not attempt installations.
 
 Format:
 Each shell commands which you propose will be found in the corresponing next user message with the format like: 
+$(SHELL_BLOCK_TAG)
 $(code_format("command", "sh"))
+$(END_OF_BLOCK_TAG)
+
 """
 
-const shellblock_skill = Skill(
+const shell_block_skill = Skill(
     name=SHELL_BLOCK_TAG,
-    description=shell_block_skill,
+    description=shell_block_skill_prompt,
     stop_sequence=""
 )
 
@@ -26,9 +29,8 @@ end
 has_stop_sequence(cmd::ShellBlockCommand) = false
 
 function ShellBlockCommand(cmd::Command)
-    args = strip(cmd.args)
-    content = startswith(args, "`") && endswith(args, "`") ? strip(args, '`') : args
-    ShellBlockCommand(content=content)
+    language, content = parse_code_block(cmd.content)
+    ShellBlockCommand(language=language, content=content)
 end
 
 function execute(cmd::ShellBlockCommand; no_confirm=false)
@@ -67,4 +69,3 @@ function truncate_output(output)
     end
     output
 end
-

@@ -1,24 +1,24 @@
-const modify_file_skill_with_highlight = """
+const modify_file_skill_with_highlight_prompt = """
 To modify the file, always try to highlight the changes and relevant cmd_code and use comment like: 
 // ... existing cmd_code ... 
 comments indicate where unchanged cmd_code has been skipped and spare rewriting the whole cmd_code base again. 
-To modify or update an existing file <$(MODIFY_FILE_TAG)></$(MODIFY_FILE_TAG)> tags followed by the filepath and the codeblock like this:
-<$(MODIFY_FILE_TAG) path/to/file1>
+To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and closed with an "$(END_OF_BLOCK_TAG)":
+$(MODIFY_FILE_TAG) path/to/file1
 $(code_format("code_changes", "language"))
-</$(MODIFY_FILE_TAG)>
+$(END_OF_BLOCK_TAG)
 
 So to update and modify existing files use this pattern to virtually create a file changes that is then applied by an external tool comments like:
 // ... existing cmd_code ... 
 
-<$(MODIFY_FILE_TAG) path/to/file2>
+$(MODIFY_FILE_TAG) path/to/file2
 $(code_format("code_changes_with_existing_code_comments", "language"))
-</$(MODIFY_FILE_TAG)>
+$(END_OF_BLOCK_TAG)
 
 To modify the codebase with changes try to focus on changes and indicate if codes are unchanged and skipped:
-<$(MODIFY_FILE_TAG) filepath>
+$(MODIFY_FILE_TAG) filepath
 $(code_format("code_changes_without_unchanged_code", "language"))
-</$(MODIFY_FILE_TAG)>
-It is important you ALWAYS close the tag with </$(MODIFY_FILE_TAG)>.
+$(END_OF_BLOCK_TAG)
+It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 """
 abstract type AbstractDiffView end
 keywords(::Type{<:AbstractDiffView}) = String[]
@@ -42,7 +42,7 @@ include("../../building_block/DiffViews.jl")
 
 const modify_file_skill = Skill(
     name=MODIFY_FILE_TAG,
-    description=modify_file_skill_with_highlight,
+    description=modify_file_skill_with_highlight_prompt,
     stop_sequence=""
 )
 

@@ -2,8 +2,8 @@ export truncate_output
 
 const web_search_skill_desc = """
 Search the web for information. Provide a search query and get relevant results.
-Format: Use $(WEB_SEARCH_TAG) followed by your search query or URL link. 
-<$(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)/>
+Format: Use "$(WEB_SEARCH_TAG)" followed by your search query or URL link. 
+$(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
 """
 
 const web_search_skill = Skill(

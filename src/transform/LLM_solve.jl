@@ -39,7 +39,6 @@ function LLM_solve(conv, cache;
         on_done = () -> begin
             flush_highlight(highlight_state)
             extract_commands("\n", extractor, root_path=root_path)
-            flush!(extractor)
             on_done()
         end,
         on_stop_sequence = (stop_sequence) -> handle_text(highlight_state, stop_sequence),
@@ -48,9 +47,9 @@ function LLM_solve(conv, cache;
 
     try
         msg = aigenerate(to_PT_messages(conv);
-            model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p), verbose=false,)
+            model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p, max_tokens=8192), verbose=false,)
         update_last_user_message_meta(conv, cb)
-        !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) && ((toolcall = true);(msg.content *= cb.run_info.stop_sequence))
+        !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) && (msg.content *= cb.run_info.stop_sequence)
         conv(msg)
         return msg, cb
     catch e

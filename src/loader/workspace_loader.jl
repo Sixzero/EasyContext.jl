@@ -191,17 +191,9 @@ function print_project_tree(
         # Wait for all summaries to complete
         summaries = Dict{String, String}()
         for (filepath, task) in summary_tasks
-            summaries[filepath] = fetch(task)
-        end
-        
-        # Replace placeholders with actual summaries
-        for (filepath, summary) in summaries
-            if !isempty(summary)
-                placeholder = "{{SUMMARY:$filepath}}"
-                tree_str = replace(tree_str, placeholder => " - $summary")
-            else
-                tree_str = replace(tree_str, "{{SUMMARY:$filepath}}" => "") 
-            end
+            summary = fetch(task)
+            placeholder = "{{SUMMARY:$filepath}}"
+            tree_str = replace(tree_str, placeholder => !isempty(summary) ? " - $summary" : "")
         end
         
         # Combine header and tree

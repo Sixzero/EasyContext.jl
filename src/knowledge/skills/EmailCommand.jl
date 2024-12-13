@@ -4,14 +4,14 @@ const email_skill = Skill(
     name=EMAIL_TAG,
     description="""
 To create an email with a standardized format, use the $(EMAIL_TAG) command:
-<$(EMAIL_TAG) to=recipient@example.com subject="Email Subject">
+$(EMAIL_TAG) to=recipient@example.com subject="Email Subject"
 Dear Recipient,
 
 [Email content here]
 
 Best,
 [Sender]
-</$(EMAIL_TAG)>
+$(END_OF_BLOCK_TAG)
 or 
 $(email_format("to@recipient.com", "Topic subject", "Email content here"))
 """,

@@ -1,16 +1,16 @@
 
 
-const cat_file_skill = """
+const cat_file_skill_prompt = """
 Whenever you need the content of a file to solve the task you can use the CATFILE command:
 To get the content of a file you can use the CATFILE command:
-<$CATFILE_TAG path/to/file $(STOP_SEQUENCE)/>
-<$CATFILE_TAG filepath $(STOP_SEQUENCE)/>
+$(CATFILE_TAG) path/to/file $(STOP_SEQUENCE)
+$(CATFILE_TAG) filepath $(STOP_SEQUENCE)
 or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE:
 """
 
 const catfile_skill = Skill(
     name=CATFILE_TAG,
-    description=cat_file_skill,
+    description=cat_file_skill_prompt,
     stop_sequence=ONELINER_SS,
 )
 

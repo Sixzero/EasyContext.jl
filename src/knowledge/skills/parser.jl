@@ -12,76 +12,48 @@ export StreamParser, extract_commands, run_stream_parser, execute_last_command
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
-function process_immediate_command!(current_cmd, stream_parser, processed_idx)
-    # @show current_cmd
-    # @show convert_command(current_cmd)
+function process_immediate_command!(line::String, content::String="", stream_parser::StreamParser; root_path::String="")
+    current_cmd = parse_command(line, content, kwargs=Dict("root_path"=>root_path))
     cmd = convert_command(current_cmd)
     stream_parser.command_tasks[cmd.id] = @async_showerr preprocess(cmd)
-    stream_parser.last_processed_index[] = processed_idx
-end
-
-function is_valid_command(line::AbstractString)
-    startswith(line, '<') || return false
-    cmd_end = findfirst(' ', line)
-    cmd_name = line[2:something(cmd_end, length(line))-1] # remove <
-    return cmd_name ∈ allowed_commands, cmd_name, isnothing(cmd_end) ? "" : line[cmd_end+1:end]
-end
-
-function process_command_opening!(line::AbstractString, root_path::String)
-    is_valid, cmd_name, remaining_args = is_valid_command(line)
-    !is_valid && return nothing
-
-    cmd = Command(String(cmd_name), "", String(remaining_args), Dict{String,String}("root_path"=>root_path))
-    return cmd_name in [CLICK_TAG, SHELL_RUN_TAG, SENDKEY_TAG, CATFILE_TAG] ? (cmd, true) : (cmd, false)
 end
 
 function extract_commands(new_content::String, stream_parser::StreamParser; root_path::String="")
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
-    processed_idx = stream_parser.last_processed_index[]
-    current_content = String[]
-    current_cmd = nothing
-
-    for (i, line) in enumerate(lines)
-        i==length(lines) && break
-        processed_idx += length(line) + 1  # +1 for newline
-        line = rstrip(line)
-
-        if !isnothing(current_cmd)
-            if startswith(line, "</" * current_cmd.name) # Closing tag
-                current_cmd.content = join(current_content, '\n')
-                process_immediate_command!(current_cmd, stream_parser, processed_idx)
-                current_content = String[]
-                current_cmd = nothing
-            elseif startswith(line, '<') # New tag found before closing current
-                is_valid, = is_valid_command(line)
-                if is_valid && !isempty(current_content)
-                    # Find last code block end if exists
-                    code_block_end = findlast(l->l=="```", current_content)
-                    if !isnothing(code_block_end)
-                        current_cmd.content = join(current_content[1:code_block_end], '\n')
-                        process_immediate_command!(current_cmd, stream_parser, processed_idx)
-                        current_content = current_content[code_block_end+1:end]
-                        current_cmd = nothing
+    
+    i = 1
+    while i <= length(lines)-1
+        line = String(strip(lines[i]))
+        
+        # Handle single-line commands
+        if startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]) |> any
+            stream_parser.last_processed_index[] += length(line) + 1
+            process_immediate_command!(line, "", stream_parser; root_path)
+            i += 1
+            continue
+        end
+        
+        # Handle multiline commands
+        if startswith.(line, [MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]) |> any
+            if i < length(lines) 
+                if startswith(strip(lines[i+1]), "```")
+                    block_end = find_code_block_end(lines[i+1:end])
+                    if !isnothing(block_end)
+                        content = join(lines[i+1:i+block_end], '\n') 
+                        total_length = length(line)+1 + length(content)+1 + length(END_OF_BLOCK_TAG) + 1  # +1 for newline after tag
+                        stream_parser.last_processed_index[] += total_length
+                        process_immediate_command!(line, content, stream_parser; root_path)
+                        i += block_end + 2
+                        continue
                     end
+                else
+                    @warn "No opening ``` tag found for multiline command: $line"
                 end
             end
-
-            !isnothing(current_cmd) && push!(current_content, line)
-
-        elseif startswith(line, '<') # Opening tag
-            cmd_result = process_command_opening!(line, root_path)
-            isnothing(cmd_result) && continue
-
-            current_cmd, immediate = cmd_result
-            if immediate
-                process_immediate_command!(current_cmd, stream_parser, processed_idx)
-                current_cmd = nothing
-            end
         end
+        i += 1
     end
-
-    return nothing
 end
 execute(t::Task) = begin
     cmd = fetch(t)
@@ -145,7 +117,7 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 	output = "Previous command executions and their results:\n"
 	for (id, task) in stream_parser.command_tasks
 			cmd = fetch(task)
-			if isa(cmd, ShellCommand) && !isempty(cmd.run_results)  # and if it was no blocking!!
+			if isa(cmd, ShellBlockCommand) && !isempty(cmd.run_results)  # and if it was no blocking!!
 					shortened_content = get_shortened_code(cmd.run_results[end])
 					output *= """
 					$(SHELL_BLOCK_OPEN)
@@ -166,19 +138,17 @@ function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
 
     for (i, line) in enumerate(lines[start_idx:end])
         stripped = strip(line)
-
+        
         # Handle docstring boundaries
         if occursin(r"^\"\"\"", stripped)
             in_docstring = !in_docstring
         end
-
-        # Skip processing inside docstrings unless it's a boundary
         stripped == "\"\"\"" && continue
 
-        if startswith(stripped, "```")
-            if !in_docstring && length(stripped) > 3  # Opening with language
+        if startswith(stripped, "```") || stripped == END_OF_BLOCK_TAG
+            if !in_docstring && length(stripped) > 3 && !endswith(stripped, END_OF_BLOCK_TAG)
                 nesting_level += 1
-            elseif length(stripped) == 3 || all(isspace, stripped[4:end])  # Closing
+            else
                 nesting_level -= 1
                 nesting_level == 0 && return start_idx + i - 1
             end
@@ -187,35 +157,9 @@ function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
     return nothing
 end
 
-function flush!(stream_parser::StreamParser)
-    lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
-    isempty(lines) && return
-
-    processed_idx = stream_parser.last_processed_index[]
-    current_content = String[]
-
-    for (i, line) in enumerate(lines)
-        processed_idx += length(line) + 1
-
-        if startswith(line, '<')
-            cmd_result = process_command_opening!(line, "")
-            if !isnothing(cmd_result)
-                current_content = String[]
-                current_cmd, immediate = cmd_result
-                immediate && continue
-
-                # Look for code block in remaining lines
-                if i < length(lines)
-                    remaining_lines = lines[i+1:end]
-                    if !isempty(remaining_lines) && startswith(first(remaining_lines), "```")
-                        block_end = find_code_block_end(remaining_lines)
-                        if !isnothing(block_end)
-                            current_cmd.content = join(remaining_lines[1:block_end], '\n')
-                            process_immediate_command!(current_cmd, stream_parser, processed_idx)
-                        end
-                    end
-                end
-            end
-        end
-    end
+function parse_command(first_line::String, content::String=""; kwargs::Dict{String,String})
+    tag_end = findfirst(' ', first_line)
+    name = String(strip(first_line[1:something(tag_end, length(first_line))]))
+    args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))
+    Command(name=name, args=args, content=content, kwargs=kwargs)
 end

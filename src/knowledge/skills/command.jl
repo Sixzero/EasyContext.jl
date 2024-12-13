@@ -16,8 +16,6 @@ end
 function convert_command(cmd::Command)
     if cmd.name == MODIFY_FILE_TAG
         return ModifyFileCommand(cmd)
-    elseif cmd.name == SHELL_RUN_TAG
-        return ShellCommand(cmd)
     elseif cmd.name == SHELL_BLOCK_TAG
         return ShellBlockCommand(cmd)
     elseif cmd.name == CREATE_FILE_TAG

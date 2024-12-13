@@ -1,6 +1,6 @@
 const click_skill = Skill(
     name=CLICK_TAG,
-    description="Click on the given coordinates using format: <$(CLICK_TAG) x y $(STOP_SEQUENCE)/>",
+    description="Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)",
     stop_sequence=ONELINER_SS
 )
 

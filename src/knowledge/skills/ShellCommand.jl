@@ -1,6 +1,6 @@
 export truncate_output
 
-const shell_run_skill = """
+const shell_run_skill_prompt = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
 You propose the sh script that should be run in a most concise short way and wait for feedback!
 
@@ -8,13 +8,13 @@ Assume all standard tools are available - do not attempt installations.
 
 Format:
 Each shell commands which you propose will be found in the corresponing next user message with the format like: 
-<$SHELL_RUN_TAG command $(STOP_SEQUENCE)/>
+$(SHELL_RUN_TAG) command $(STOP_SEQUENCE)
 
 """
 
 const shell_skill = Skill(
     name=SHELL_RUN_TAG,
-    description=shell_run_skill,
+    description=shell_run_skill_prompt,
     stop_sequence=ONELINER_SS
 )
 
