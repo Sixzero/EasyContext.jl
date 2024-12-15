@@ -55,11 +55,7 @@ function LLM_solve(conv, cache;
         e isa InterruptException && rethrow(e)
         @error "Error executing code block: $(sprint(showerror, e))" exception=(e, catch_backtrace())
         on_error(e)
-        # Create AIMessage with error and partial response
-        error_msg = AIMessage(
-            "Error: $(sprint(showerror, e))\n\nPartial response: $(extractor.full_content)",
-            Dict("error" => e, "partial_response" => extractor.full_content)
-        )
+        error_msg = AIMessage("Error: $(sprint(showerror, e))\n\nPartial response: $(extractor.full_content)")
         return error_msg, cb
     end
 end
