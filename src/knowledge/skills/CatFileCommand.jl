@@ -1,6 +1,11 @@
 
 
-
+@kwdef struct CatFileCommand <: AbstractCommand
+    id::UUID = uuid4()
+    file_path::String
+    root_path::String
+end
+CatFileCommand(cmd::CommandTag) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
 commandname(cmd::Type{<:CatFileCommand}) = CATFILE_TAG
 get_description(cmd::CatFileCommand) = """
 Whenever you need the content of a file to solve the task you can use the CATFILE command:
@@ -12,12 +17,6 @@ or if you don't need immediat result from it then you can use it without $STOP_S
 stop_sequence(cmd::Type{<:CatFileCommand}) = STOP_SEQUENCE
 has_stop_sequence(cmd::CatFileCommand) = true
 
-@kwdef struct CatFileCommand <: AbstractCommand
-    id::UUID = uuid4()
-    file_path::String
-    root_path::String
-end
-CatFileCommand(cmd::CommandTag) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
 
 execute(cmd::CatFileCommand) = let
     path = normpath(joinpath(cmd.root_path, cmd.file_path))

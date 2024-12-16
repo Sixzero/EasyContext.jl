@@ -1,4 +1,10 @@
 
+@kwdef struct EmailCommand <: AbstractCommand
+    id::UUID = uuid4()
+    to::String
+    subject::String
+    content::String
+end
 commandname(cmd::Type{<:EmailCommand}) = EMAIL_TAG
 get_description(cmd::EmailCommand) = """
 To create an email with a standardized format, use the $(EMAIL_TAG) command:
@@ -16,12 +22,6 @@ $(email_format("to@recipient.com", "Topic subject", "Email content here"))
 stop_sequence(cmd::Type{<:EmailCommand}) = STOP_SEQUENCE
 has_stop_sequence(cmd::EmailCommand) = false
 
-@kwdef struct EmailCommand <: AbstractCommand
-    id::UUID = uuid4()
-    to::String
-    subject::String
-    content::String
-end
 
 function EmailCommand(cmd::CommandTag)
     # Parse kwargs string into Dict

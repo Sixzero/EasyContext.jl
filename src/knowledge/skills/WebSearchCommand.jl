@@ -5,7 +5,7 @@
     query::String
     results::Vector{String} = []
 end
-
+WebSearchCommand(cmd::CommandTag) = WebSearchCommand(query=strip(cmd.args))
 commandname(cmd::Type{<:WebSearchCommand}) = WEB_SEARCH_TAG
 get_description(cmd::WebSearchCommand) = """
 Search the web for information. Provide a search query and get relevant results.
@@ -15,10 +15,6 @@ $(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
 stop_sequence(cmd::Type{<:WebSearchCommand}) = STOP_SEQUENCE
 has_stop_sequence(cmd::WebSearchCommand) = true
 
-function WebSearchCommand(cmd::CommandTag)
-    query = strip(cmd.args)
-    WebSearchCommand(query=query)
-end
 
 function execute(cmd::WebSearchCommand; no_confirm=false)
     print_query(cmd.query)

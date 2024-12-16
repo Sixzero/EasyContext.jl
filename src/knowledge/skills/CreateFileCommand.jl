@@ -1,4 +1,21 @@
 
+@kwdef struct CreateFileCommand <: AbstractCommand
+    id::UUID = uuid4()
+    language::String = "txt"
+    file_path::String
+    root_path::String
+    content::String
+end
+function CreateFileCommand(cmd::CommandTag)
+    file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
+    language, content = parse_code_block(cmd.content)
+    CreateFileCommand(
+        language=language,
+        file_path=file_path,
+        root_path=get(cmd.kwargs, "root_path", ""),
+        content=content
+    )
+end
 commandname(cmd::Type{<:CreateFileCommand}) = CREATE_FILE_TAG
 get_description(cmd::CreateFileCommand) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
@@ -10,24 +27,7 @@ It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 stop_sequence(cmd::Type{<:CreateFileCommand}) = ""
 has_stop_sequence(cmd::CreateFileCommand) = false
 
-@kwdef struct CreateFileCommand <: AbstractCommand
-    id::UUID = uuid4()
-    language::String = "txt"
-    file_path::String
-    root_path::String
-    content::String
-end
 
-function CreateFileCommand(cmd::CommandTag)
-    file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
-    language, content = parse_code_block(cmd.content)
-    CreateFileCommand(
-        language=language,
-        file_path=file_path,
-        root_path=get(cmd.kwargs, "root_path", ""),
-        content=content
-    )
-end
 
 function execute(cmd::CreateFileCommand; no_confirm=false)
     path = normpath(joinpath(cmd.root_path, cmd.file_path))

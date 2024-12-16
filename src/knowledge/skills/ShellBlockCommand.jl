@@ -1,6 +1,13 @@
 export truncate_output
 
 
+@kwdef mutable struct ShellBlockCommand <: AbstractCommand
+    id::UUID = uuid4()
+    language::String = "sh"
+    content::String
+    run_results::Vector{String} = []
+end
+ShellBlockCommand(cmd::CommandTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockCommand(language=language, content=content) end
 commandname(cmd::Type{<:ShellBlockCommand}) = SHELL_BLOCK_TAG
 get_description(cmd::ShellBlockCommand) = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
@@ -18,16 +25,6 @@ $(END_OF_BLOCK_TAG)
 stop_sequence(cmd::Type{<:ShellBlockCommand}) = ""
 has_stop_sequence(cmd::ShellBlockCommand) = true
 
-@kwdef mutable struct ShellBlockCommand <: AbstractCommand
-    id::UUID = uuid4()
-    language::String = "sh"
-    content::String
-    run_results::Vector{String} = []
-end
-function ShellBlockCommand(cmd::CommandTag)
-    language, content = parse_code_block(cmd.content)
-    ShellBlockCommand(language=language, content=content)
-end
 
 function execute(cmd::ShellBlockCommand; no_confirm=false)
     !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""

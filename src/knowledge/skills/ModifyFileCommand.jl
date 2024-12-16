@@ -1,4 +1,25 @@
 
+@kwdef mutable struct ModifyFileCommand <: AbstractCommand
+    id::UUID = uuid4()
+    language::String = "sh"
+    file_path::String
+    root_path::String
+    content::String
+    postcontent::String
+end
+function ModifyFileCommand(cmd::CommandTag)
+    # Clean up file path by removing trailing '>'
+    file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
+
+    language, content = parse_code_block(cmd.content)
+    ModifyFileCommand(
+        language=language,
+        file_path=file_path,
+        root_path=get(cmd.kwargs, "root_path", ""),
+        content=content,
+        postcontent=""
+    )
+end
 commandname(cmd::Type{<:ModifyFileCommand}) = MODIFY_FILE_TAG
 get_description(cmd::ModifyFileCommand) = """
 To modify the file, always try to highlight the changes and relevant cmd_code and use comment like: 
@@ -25,30 +46,9 @@ It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 stop_sequence(cmd::Type{<:ModifyFileCommand}) = ""
 has_stop_sequence(cmd::ModifyFileCommand) = false
 
-@kwdef mutable struct ModifyFileCommand <: AbstractCommand
-    id::UUID = uuid4()
-    language::String = "sh"
-    file_path::String
-    root_path::String
-    content::String
-    postcontent::String
-end
 
 
 
-function ModifyFileCommand(cmd::CommandTag)
-    # Clean up file path by removing trailing '>'
-    file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
-
-    language, content = parse_code_block(cmd.content)
-    ModifyFileCommand(
-        language=language,
-        file_path=file_path,
-        root_path=get(cmd.kwargs, "root_path", ""),
-        content=content,
-        postcontent=""
-    )
-end
 
 
 execute(cmd::ModifyFileCommand; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
