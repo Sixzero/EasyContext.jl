@@ -19,7 +19,7 @@ It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 end
 has_stop_sequence(cmd::CreateFileCommand) = false
 
-function CreateFileCommand(cmd::Command)
+function CreateFileCommand(cmd::CommandTag)
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
     language, content = parse_code_block(cmd.content)
     CreateFileCommand(

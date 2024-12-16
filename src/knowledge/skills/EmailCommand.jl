@@ -26,7 +26,7 @@ $(email_format("to@recipient.com", "Topic subject", "Email content here"))
 end
 has_stop_sequence(cmd::EmailCommand) = false
 
-function EmailCommand(cmd::Command)
+function EmailCommand(cmd::CommandTag)
     # Parse kwargs string into Dict
     kwargs_dict = Dict{String,String}()
     for pair in split(cmd.args, " ")

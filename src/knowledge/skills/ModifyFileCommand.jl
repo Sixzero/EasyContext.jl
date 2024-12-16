@@ -48,7 +48,7 @@ const modify_file_skill = Skill(
 
 has_stop_sequence(cmd::ModifyFileCommand) = false
 
-function ModifyFileCommand(cmd::Command)
+function ModifyFileCommand(cmd::CommandTag)
     # Clean up file path by removing trailing '>'
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
 

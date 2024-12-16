@@ -19,8 +19,12 @@ const catfile_skill = Skill(
     file_path::String
     root_path::String
 end
+CatFileCommand(cmd::CommandTag) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
+
 has_stop_sequence(cmd::CatFileCommand) = true
-CatFileCommand(cmd::Command) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
+get_description(cmd::CatFileCommand) = cat_file_skill_prompt
+stop_sequence(cmd::CatFileCommand) = STOP_SEQUENCE
+name(cmd::CatFileCommand) = CATFILE_TAG
 
 execute(cmd::CatFileCommand) = let
     path = normpath(joinpath(cmd.root_path, cmd.file_path))

@@ -12,7 +12,7 @@ const click_skill = Skill(
 end
 has_stop_sequence(cmd::ClickCommand) = true
 
-function ClickCommand(cmd::Command)
+function ClickCommand(cmd::CommandTag)
     args = split(strip(cmd.args))
     if length(args) == 3
         ClickCommand(button=Symbol(args[1]), x=parse(Int, args[2]), y=parse(Int, args[3]))

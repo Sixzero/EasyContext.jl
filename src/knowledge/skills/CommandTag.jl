@@ -1,19 +1,17 @@
 export print_tool_result
 
-abstract type AbstractCommand end
+include("CommandInterface.jl")
 
-has_stop_sequence(cmd::AbstractCommand) = (@warn("UNIMPLEMENTED has_stop_sequence for: $(typeof(cmd))"); false)
-@kwdef mutable struct Command <: AbstractCommand
+
+@kwdef mutable struct CommandTag <: AbstractTag
     name::String
     content::String = ""
     args::String = ""
     kwargs::Dict{String,String} = Dict{String,String}()
 end
 
-
-
-# Convert raw Command to specific command types
-function convert_command(cmd::Command)
+# Convert raw CommandTag to specific command types
+function convert_command(cmd::CommandTag)
     if cmd.name == MODIFY_FILE_TAG
         return ModifyFileCommand(cmd)
     elseif cmd.name == SHELL_BLOCK_TAG
@@ -35,7 +33,6 @@ function convert_command(cmd::Command)
     end
 end
 
-preprocess(cmd::T) where T <: AbstractCommand = cmd
 
 print_tool_result(result) = begin
     print(Crayon(background = (35, 61, 28)))  # Set background

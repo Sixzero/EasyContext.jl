@@ -19,7 +19,7 @@ const web_search_skill = Skill(
 end
 has_stop_sequence(cmd::WebSearchCommand) = true
 
-function WebSearchCommand(cmd::Command)
+function WebSearchCommand(cmd::CommandTag)
     query = strip(cmd.args)
     WebSearchCommand(query=query)
 end

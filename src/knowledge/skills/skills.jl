@@ -15,7 +15,7 @@ const allowed_commands::Set{String} = Set([MODIFY_FILE_TAG, CREATE_FILE_TAG, EMA
 
 include("skill.jl")
 include("utils.jl")
-include("command.jl")
+include("CommandTag.jl")
 include("ClickCommand.jl")
 include("SendKeyCommand.jl")
 include("ShellBlockCommand.jl")

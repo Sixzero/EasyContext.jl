@@ -28,7 +28,7 @@ const shell_block_skill = Skill(
 end
 has_stop_sequence(cmd::ShellBlockCommand) = true
 
-function ShellBlockCommand(cmd::Command)
+function ShellBlockCommand(cmd::CommandTag)
     language, content = parse_code_block(cmd.content)
     ShellBlockCommand(language=language, content=content)
 end

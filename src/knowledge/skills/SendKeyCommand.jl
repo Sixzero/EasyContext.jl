@@ -10,6 +10,6 @@ const key_skill = Skill(
 end
 has_stop_sequence(cmd::SendKeyCommand) = true
 
-SendKeyCommand(cmd::Command) = SendKeyCommand(text=cmd.args)
+SendKeyCommand(cmd::CommandTag) = SendKeyCommand(text=cmd.args)
 
 execute(cmd::SendKeyCommand) = "Sending keys: $(cmd.text)"

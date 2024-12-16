@@ -25,7 +25,7 @@
  - [✓] modify with big files support.
  - [✓] modify with big files support inmemory and not with files. (we need an inmemory `patch` thing.)
  - [✓] TAG based modify
- - [ ] julia context index creation only if it is really used, because it is a timeconsuming procedure to create the index.
+ - [✓] julia context index creation only if it is really used, because it is a timeconsuming procedure to create the index.
  - [ ] handle MODIFY ../AISH.jl/src/workflow/STD_loop.jl -> ../AISH.jl/src/workflow/llm_flow.jl
  - [ ] Foghagymanoymót venni. Fülvédőt. Szörpöt, házit!, ajándékot, masszírozó?
  - [✓] atreplinit használata airepl inicializálásra not pool sleep.
@@ -34,7 +34,7 @@
  - [✓] ios bluetooth fix.
  - [✓] too long files... over 8000 tokens not embeddable, wrong calculation.
    - [ ] jeleneleg a print nincsen. illetve talán nothing-gal kéne visszatérjen, vagy semmivel... 
- - [ ] áttérés promtingtools-ra, de úgy hogy legyen cache. !!!
+ - [✓] áttérés promtingtools-ra, de úgy hogy legyen cache. !!!
  - [ ] képi bemenet működtetése.
  - [✓] EXECUTION PLAN markdown.
  - [ ] modularizáció
@@ -52,7 +52,7 @@
  - [✓] web-es felületen accept és reject gombok nem látszanak monacomeld.
  - [✓] monacomeld a backend url-t őrizze meg. vite/web-en !
  - [✓] monacomeld bal oldali view read and write not read only.
- - [ ] CTRL + V issua mikor belenyomtam a második ablakba, akkor az elsőbe copyzta...
+ - [ ] CTRL + V issue mikor belenyomtam a második ablakba, akkor az elsőbe copyzta...
  - [ ] large_file1.js teszt megoldása.
  - [ ] diacoach várja meg mindig a választ. a user, ne tudjon entereket ütni.
  - [ ] kiírhatná, hogy van már hozzá egy testcase. esetleg meg is mutathatná.
@@ -60,6 +60,10 @@
  - [ ] TAG without /TAG should fallback to ```language parsing.
  - [ ] hotkey fix for repl, with base solution. https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/docs/src/index.md
  - [ ] airepl --plan to work with model names... and never continue with the user message, I mean never run the flow
+ - [ ] test_tag_extractor.jl error-ok fixálása. the fallback test is the msot important, probably a flush is missing in the end in llm_solve.
+ - [ ] facebook discussion figyelész és válaszolás.
+ - [ ] email figyelés és válaszolás
+ - [ ] RAG flows need an interface.
 
 
 TODO ai web.

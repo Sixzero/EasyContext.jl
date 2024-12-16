@@ -62,10 +62,10 @@ using EasyContext: CodeBlockExtractor, CodeBlock, extract_and_preprocess_codeblo
         extractor.shell_results["test1"] = cb1
         extractor.shell_results["test2"] = cb2
 
-        result = to_string("ShellResults", "Command", extractor)
+        result = to_string("ShellResults", "CommandTag", extractor)
         
         @test occursin("<ShellResults>", result)
-        @test occursin("<Command shortened>", result)
+        @test occursin("<CommandTag shortened>", result)
         @test occursin("<$SHELL_RUN_RESULT>", result)
         @test occursin("1", result)
         @test occursin("2", result)

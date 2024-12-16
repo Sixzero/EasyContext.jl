@@ -1,5 +1,3 @@
-using ..EasyContext: Command
-
 export StreamParser, extract_commands, run_stream_parser, get_last_command_result
 
 #  I think we will need a runner and parser separated...
@@ -154,5 +152,5 @@ function parse_command(first_line::String, content::String=""; kwargs::Dict{Stri
     tag_end = findfirst(' ', first_line)
     name = String(strip(first_line[1:something(tag_end, length(first_line))]))
     args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))
-    Command(name=name, args=args, content=content, kwargs=kwargs)
+    CommandTag(name=name, args=args, content=content, kwargs=kwargs)
 end

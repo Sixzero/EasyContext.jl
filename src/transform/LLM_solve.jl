@@ -44,9 +44,11 @@ function LLM_solve(conv, cache;
         on_stop_sequence = (stop_sequence) -> (handle_text(highlight_state, stop_sequence)),
         on_start = on_start,
     )
+    cb_wrapper = StreamCallbackChannelWrapper(callback=cb) # this simplifies stacktraces with channels.
 
     try
-        msg = aigenerate(to_PT_messages(conv); model, cache, streamcallback=cb, api_kwargs=(; stop_sequences=stop_sequences, top_p=top_p, max_tokens=8192), verbose=false,)
+        msg = aigenerate(to_PT_messages(conv); 
+            model, cache, streamcallback=cb_wrapper, api_kwargs=(; stop_sequences, top_p=top_p, max_tokens=8192), verbose=false,)
         update_last_user_message_meta(conv, cb)
         stopsig = !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) ? cb.run_info.stop_sequence : ""
         conv(msg, stopsig)  

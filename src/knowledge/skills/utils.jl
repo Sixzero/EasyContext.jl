@@ -11,7 +11,6 @@ function parse_code_block(content::String)
     return "sh", content
 end
 
-
 function get_user_confirmation()
     print("\e[34mContinue? (y) \e[0m")
     readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0"
