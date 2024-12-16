@@ -13,10 +13,9 @@ function ClickCommand(cmd::CommandTag)
         ClickCommand(button=:left, x=parse(Int, args[1]), y=parse(Int, args[2]))
     end
 end
-has_stop_sequence(cmd::ClickCommand) = true
-get_description(cmd::ClickCommand) = "Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)"
-stop_sequence(cmd::Type{<:ClickCommand}) = STOP_SEQUENCE
-commandname(cmd::Type{<:ClickCommand}) = CLICK_TAG
+commandname(cmd::Type{ClickCommand}) = CLICK_TAG
+get_description(cmd::Type{ClickCommand}) = "Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)"
+stop_sequence(cmd::Type{ClickCommand}) = STOP_SEQUENCE
 
 
 execute(cmd::ClickCommand) = "Clicking at coordinates ($(cmd.x), $(cmd.y)) with $(cmd.button) button"

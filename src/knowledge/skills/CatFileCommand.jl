@@ -6,16 +6,15 @@
     root_path::String
 end
 CatFileCommand(cmd::CommandTag) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
-commandname(cmd::Type{<:CatFileCommand}) = CATFILE_TAG
-get_description(cmd::CatFileCommand) = """
+commandname(cmd::Type{CatFileCommand}) = CATFILE_TAG
+get_description(cmd::Type{CatFileCommand}) = """
 Whenever you need the content of a file to solve the task you can use the CATFILE command:
 To get the content of a file you can use the CATFILE command:
 $(CATFILE_TAG) path/to/file $(STOP_SEQUENCE)
 $(CATFILE_TAG) filepath $(STOP_SEQUENCE)
 or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE:
 """
-stop_sequence(cmd::Type{<:CatFileCommand}) = STOP_SEQUENCE
-has_stop_sequence(cmd::CatFileCommand) = true
+stop_sequence(cmd::Type{CatFileCommand}) = STOP_SEQUENCE
 
 
 execute(cmd::CatFileCommand) = let

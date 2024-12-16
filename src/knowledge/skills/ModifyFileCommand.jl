@@ -20,8 +20,8 @@ function ModifyFileCommand(cmd::CommandTag)
         postcontent=""
     )
 end
-commandname(cmd::Type{<:ModifyFileCommand}) = MODIFY_FILE_TAG
-get_description(cmd::ModifyFileCommand) = """
+commandname(cmd::Type{ModifyFileCommand}) = MODIFY_FILE_TAG
+get_description(cmd::Type{ModifyFileCommand}) = """
 To modify the file, always try to highlight the changes and relevant cmd_code and use comment like: 
 // ... existing cmd_code ... 
 comments indicate where unchanged cmd_code has been skipped and spare rewriting the whole cmd_code base again. 
@@ -43,8 +43,7 @@ $(code_format("code_changes_without_unchanged_code", "language"))
 $(END_OF_BLOCK_TAG)
 It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 """
-stop_sequence(cmd::Type{<:ModifyFileCommand}) = ""
-has_stop_sequence(cmd::ModifyFileCommand) = false
+stop_sequence(cmd::Type{ModifyFileCommand}) = ""
 
 
 

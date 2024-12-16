@@ -16,16 +16,15 @@ function CreateFileCommand(cmd::CommandTag)
         content=content
     )
 end
-commandname(cmd::Type{<:CreateFileCommand}) = CREATE_FILE_TAG
-get_description(cmd::CreateFileCommand) = """
+commandname(cmd::Type{CreateFileCommand}) = CREATE_FILE_TAG
+get_description(cmd::Type{CreateFileCommand}) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
 $(CREATE_FILE_TAG) path/to/file
 $(code_format("new_file_content", "language"))
 $(END_OF_BLOCK_TAG)
 It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 """
-stop_sequence(cmd::Type{<:CreateFileCommand}) = ""
-has_stop_sequence(cmd::CreateFileCommand) = false
+stop_sequence(cmd::Type{CreateFileCommand}) = ""
 
 
 

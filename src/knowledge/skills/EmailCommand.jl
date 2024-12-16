@@ -5,8 +5,8 @@
     subject::String
     content::String
 end
-commandname(cmd::Type{<:EmailCommand}) = EMAIL_TAG
-get_description(cmd::EmailCommand) = """
+commandname(cmd::Type{EmailCommand}) = EMAIL_TAG
+get_description(cmd::Type{EmailCommand}) = """
 To create an email with a standardized format, use the $(EMAIL_TAG) command:
 $(EMAIL_TAG) to=recipient@example.com subject="Email Subject"
 Dear Recipient,
@@ -19,8 +19,7 @@ $(END_OF_BLOCK_TAG)
 or 
 $(email_format("to@recipient.com", "Topic subject", "Email content here"))
 """
-stop_sequence(cmd::Type{<:EmailCommand}) = STOP_SEQUENCE
-has_stop_sequence(cmd::EmailCommand) = false
+stop_sequence(cmd::Type{EmailCommand}) = STOP_SEQUENCE
 
 
 function EmailCommand(cmd::CommandTag)

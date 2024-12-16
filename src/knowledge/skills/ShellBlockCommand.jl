@@ -8,8 +8,8 @@ export truncate_output
     run_results::Vector{String} = []
 end
 ShellBlockCommand(cmd::CommandTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockCommand(language=language, content=content) end
-commandname(cmd::Type{<:ShellBlockCommand}) = SHELL_BLOCK_TAG
-get_description(cmd::ShellBlockCommand) = """
+commandname(cmd::Type{ShellBlockCommand}) = SHELL_BLOCK_TAG
+get_description(cmd::Type{ShellBlockCommand}) = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
 You propose the sh script that should be run in a most concise short way and wait for feedback!
 
@@ -22,8 +22,7 @@ $(code_format("command", "sh"))
 $(END_OF_BLOCK_TAG)
 
 """
-stop_sequence(cmd::Type{<:ShellBlockCommand}) = ""
-has_stop_sequence(cmd::ShellBlockCommand) = true
+stop_sequence(cmd::Type{ShellBlockCommand}) = ""
 
 
 function execute(cmd::ShellBlockCommand; no_confirm=false)

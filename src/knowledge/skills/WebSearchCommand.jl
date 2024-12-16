@@ -6,14 +6,13 @@
     results::Vector{String} = []
 end
 WebSearchCommand(cmd::CommandTag) = WebSearchCommand(query=strip(cmd.args))
-commandname(cmd::Type{<:WebSearchCommand}) = WEB_SEARCH_TAG
-get_description(cmd::WebSearchCommand) = """
+commandname(cmd::Type{WebSearchCommand}) = WEB_SEARCH_TAG
+get_description(cmd::Type{WebSearchCommand}) = """
 Search the web for information. Provide a search query and get relevant results.
 Format: Use "$(WEB_SEARCH_TAG)" followed by your search query or URL link. 
 $(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
 """
-stop_sequence(cmd::Type{<:WebSearchCommand}) = STOP_SEQUENCE
-has_stop_sequence(cmd::WebSearchCommand) = true
+stop_sequence(cmd::Type{WebSearchCommand}) = STOP_SEQUENCE
 
 
 function execute(cmd::WebSearchCommand; no_confirm=false)
