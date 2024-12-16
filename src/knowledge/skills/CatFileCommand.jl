@@ -1,18 +1,16 @@
 
 
-const cat_file_skill_prompt = """
+
+commandname(cmd::Type{<:CatFileCommand}) = CATFILE_TAG
+get_description(cmd::CatFileCommand) = """
 Whenever you need the content of a file to solve the task you can use the CATFILE command:
 To get the content of a file you can use the CATFILE command:
 $(CATFILE_TAG) path/to/file $(STOP_SEQUENCE)
 $(CATFILE_TAG) filepath $(STOP_SEQUENCE)
 or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE:
 """
-
-const catfile_skill = Skill(
-    name=CATFILE_TAG,
-    description=cat_file_skill_prompt,
-    stop_sequence=STOP_SEQUENCE,
-)
+stop_sequence(cmd::Type{<:CatFileCommand}) = STOP_SEQUENCE
+has_stop_sequence(cmd::CatFileCommand) = true
 
 @kwdef struct CatFileCommand <: AbstractCommand
     id::UUID = uuid4()
@@ -20,11 +18,6 @@ const catfile_skill = Skill(
     root_path::String
 end
 CatFileCommand(cmd::CommandTag) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
-
-has_stop_sequence(cmd::CatFileCommand) = true
-get_description(cmd::CatFileCommand) = cat_file_skill_prompt
-stop_sequence(cmd::CatFileCommand) = STOP_SEQUENCE
-name(cmd::CatFileCommand) = CATFILE_TAG
 
 execute(cmd::CatFileCommand) = let
     path = normpath(joinpath(cmd.root_path, cmd.file_path))

@@ -1,8 +1,3 @@
-const click_skill = Skill(
-    name=CLICK_TAG,
-    description="Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)",
-    stop_sequence=STOP_SEQUENCE
-)
 
 @kwdef struct ClickCommand <: AbstractCommand
     id::UUID = uuid4()
@@ -11,6 +6,9 @@ const click_skill = Skill(
     y::Int
 end
 has_stop_sequence(cmd::ClickCommand) = true
+get_description(cmd::ClickCommand) = "Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)"
+stop_sequence(cmd::Type{<:ClickCommand}) = STOP_SEQUENCE
+commandname(cmd::Type{<:ClickCommand}) = CLICK_TAG
 
 function ClickCommand(cmd::CommandTag)
     args = split(strip(cmd.args))

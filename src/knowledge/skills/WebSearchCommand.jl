@@ -1,22 +1,18 @@
-export truncate_output
 
-const web_search_skill_desc = """
-Search the web for information. Provide a search query and get relevant results.
-Format: Use "$(WEB_SEARCH_TAG)" followed by your search query or URL link. 
-$(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
-"""
-
-const web_search_skill = Skill(
-    name=WEB_SEARCH_TAG,
-    description=web_search_skill_desc,
-    stop_sequence=STOP_SEQUENCE
-)
 
 @kwdef mutable struct WebSearchCommand <: AbstractCommand
     id::UUID = uuid4()
     query::String
     results::Vector{String} = []
 end
+
+commandname(cmd::Type{<:WebSearchCommand}) = WEB_SEARCH_TAG
+get_description(cmd::WebSearchCommand) = """
+Search the web for information. Provide a search query and get relevant results.
+Format: Use "$(WEB_SEARCH_TAG)" followed by your search query or URL link. 
+$(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
+"""
+stop_sequence(cmd::Type{<:WebSearchCommand}) = STOP_SEQUENCE
 has_stop_sequence(cmd::WebSearchCommand) = true
 
 function WebSearchCommand(cmd::CommandTag)

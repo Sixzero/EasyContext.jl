@@ -1,4 +1,6 @@
-const modify_file_skill_with_highlight_prompt = """
+
+commandname(cmd::Type{<:ModifyFileCommand}) = MODIFY_FILE_TAG
+get_description(cmd::ModifyFileCommand) = """
 To modify the file, always try to highlight the changes and relevant cmd_code and use comment like: 
 // ... existing cmd_code ... 
 comments indicate where unchanged cmd_code has been skipped and spare rewriting the whole cmd_code base again. 
@@ -20,9 +22,8 @@ $(code_format("code_changes_without_unchanged_code", "language"))
 $(END_OF_BLOCK_TAG)
 It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
 """
-abstract type AbstractDiffView end
-keywords(::Type{<:AbstractDiffView}) = String[]
-keywords(view::AbstractDiffView) = keywords(typeof(view))
+stop_sequence(cmd::Type{<:ModifyFileCommand}) = ""
+has_stop_sequence(cmd::ModifyFileCommand) = false
 
 @kwdef mutable struct ModifyFileCommand <: AbstractCommand
     id::UUID = uuid4()
@@ -33,20 +34,7 @@ keywords(view::AbstractDiffView) = keywords(typeof(view))
     postcontent::String
 end
 
-const DIFFVIEW_SUBTYPES = Vector{Type{<:AbstractDiffView}}()
-function register_diffview_subtype!(T::Type{<:AbstractDiffView})
-    push!(DIFFVIEW_SUBTYPES, T)
-end
 
-include("../../building_block/DiffViews.jl")
-
-const modify_file_skill = Skill(
-    name=MODIFY_FILE_TAG,
-    description=modify_file_skill_with_highlight_prompt,
-    stop_sequence=""
-)
-
-has_stop_sequence(cmd::ModifyFileCommand) = false
 
 function ModifyFileCommand(cmd::CommandTag)
     # Clean up file path by removing trailing '>'
@@ -62,12 +50,27 @@ function ModifyFileCommand(cmd::CommandTag)
     )
 end
 
+
+execute(cmd::ModifyFileCommand; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
+preprocess(cmd::ModifyFileCommand) = LLM_conditional_apply_changes(cmd)
+
+
+
+abstract type AbstractDiffView end
+keywords(::Type{<:AbstractDiffView}) = String[]
+keywords(view::AbstractDiffView) = keywords(typeof(view))
+
+const DIFFVIEW_SUBTYPES = Vector{Type{<:AbstractDiffView}}()
+function register_diffview_subtype!(T::Type{<:AbstractDiffView})
+    push!(DIFFVIEW_SUBTYPES, T)
+end
+
+include("../../building_block/DiffViews.jl")
+
 # Interface for AbstractDiffView
 execute(cmd::ModifyFileCommand, editor::AbstractDiffView; no_confirm=false) =
     @warn "Unimplemented execute(::ModifyFileCommand, ::$(typeof(editor)))!"
 
-execute(cmd::ModifyFileCommand; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
-preprocess(cmd::ModifyFileCommand) = LLM_conditional_apply_changes(cmd)
 
 function get_available_editors()
     return sort(unique(vcat([keywords(T) for T in DIFFVIEW_SUBTYPES]...)))
@@ -111,5 +114,5 @@ function set_editor(editor_name::AbstractString)
 
     return true
 end
-
+    
 CURRENT_EDITOR = MonacoMeldDiffView()  # Default editor

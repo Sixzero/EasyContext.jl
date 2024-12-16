@@ -1,8 +1,6 @@
 
-
-const email_skill = Skill(
-    name=EMAIL_TAG,
-    description="""
+commandname(cmd::Type{<:EmailCommand}) = EMAIL_TAG
+get_description(cmd::EmailCommand) = """
 To create an email with a standardized format, use the $(EMAIL_TAG) command:
 $(EMAIL_TAG) to=recipient@example.com subject="Email Subject"
 Dear Recipient,
@@ -14,9 +12,9 @@ Best,
 $(END_OF_BLOCK_TAG)
 or 
 $(email_format("to@recipient.com", "Topic subject", "Email content here"))
-""",
-    stop_sequence=""
-)
+"""
+stop_sequence(cmd::Type{<:EmailCommand}) = STOP_SEQUENCE
+has_stop_sequence(cmd::EmailCommand) = false
 
 @kwdef struct EmailCommand <: AbstractCommand
     id::UUID = uuid4()
@@ -24,7 +22,6 @@ $(email_format("to@recipient.com", "Topic subject", "Email content here"))
     subject::String
     content::String
 end
-has_stop_sequence(cmd::EmailCommand) = false
 
 function EmailCommand(cmd::CommandTag)
     # Parse kwargs string into Dict

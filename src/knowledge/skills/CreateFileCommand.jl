@@ -1,14 +1,14 @@
-const create_file_skill = Skill(
-    name=CREATE_FILE_TAG,
-    description="""
+
+commandname(cmd::Type{<:CreateFileCommand}) = CREATE_FILE_TAG
+get_description(cmd::CreateFileCommand) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
 $(CREATE_FILE_TAG) path/to/file
 $(code_format("new_file_content", "language"))
 $(END_OF_BLOCK_TAG)
 It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
-""",
-    stop_sequence=""
-)
+"""
+stop_sequence(cmd::Type{<:CreateFileCommand}) = ""
+has_stop_sequence(cmd::CreateFileCommand) = false
 
 @kwdef struct CreateFileCommand <: AbstractCommand
     id::UUID = uuid4()
@@ -17,7 +17,6 @@ It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
     root_path::String
     content::String
 end
-has_stop_sequence(cmd::CreateFileCommand) = false
 
 function CreateFileCommand(cmd::CommandTag)
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
