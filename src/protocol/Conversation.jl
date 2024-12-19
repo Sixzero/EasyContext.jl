@@ -6,6 +6,7 @@ using StreamCallbacksExt: RunInfo, get_cost
     messages::Vector{M}
 end
 initConversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
+initConversation(messages::Vector{M}; sys_msg::String) where M <: Message = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), messages)
 
 (conv::Conversation)(msg::Message, stop_sequence::String="") = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant

@@ -9,6 +9,7 @@ export Session, initSession
 end
 Session(c::Conversation) = Session(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
 initSession(;sys_msg::String="") = Session(initConversation(;sys_msg))
+initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
 
 (conv::Session)(msg::AIMessage, stop_sequence::String="") = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant
