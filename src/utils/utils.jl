@@ -1,5 +1,6 @@
 using ULID: encoderandom, encodetime
 
+export stream_event!
 
 noop() = nothing
 noop(_) = nothing
@@ -33,6 +34,10 @@ function simplified_dependencies(project_file::String)
 			for (name, uuid) in project.deps
 	)
 end
+
+stream_event!(::Nothing, type::String, data) = nothing
+stream_event!(io::IO,    type::String, data) = write(io, JSON3.write(Dict("type" => type, "data" => data)), "\n")
+
 
 # #%%
 # import Pkg

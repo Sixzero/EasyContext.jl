@@ -1,4 +1,3 @@
-
 export process_workspace_context, init_workspace_context
 
 using EasyRAGStore: IndexLogger, log_index
@@ -28,7 +27,7 @@ function init_workspace_context(project_paths; show_tokens=false, verbose=true, 
     return WorkspaceCTX(workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger )
 end
 
-function process_workspace_context(workspace_context, ctx_question; age_tracker=nothing, extractor=nothing)
+function process_workspace_context(workspace_context, ctx_question; age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
     workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger = workspace_context.workspace, workspace_context.tracker_context, workspace_context.changes_tracker, workspace_context.ws_simi_filterer, workspace_context.ws_reranker_filterer, workspace_context.index_logger
     @time "the cd" scr_content = cd(workspace_context) do
         file_chunks = workspace(FullFileChunker()) 
@@ -45,7 +44,10 @@ function process_workspace_context(workspace_context, ctx_question; age_tracker=
     end
     isa(scr_content,String) && return ""
     
-    return workspace_ctx_2_string(changes_tracker, scr_content)
+    stream_event!(io, "workspace_context", scr_content)
+    result = workspace_ctx_2_string(changes_tracker, scr_content)
+    
+    return result
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)

@@ -36,7 +36,7 @@ function init_julia_context(; package_scope=:installed, verbose=true, index_logg
     )
 end
 
-function process_julia_context(julia_context::JuliaCTX, ctx_question; age_tracker=nothing)
+function process_julia_context(julia_context::JuliaCTX, ctx_question; age_tracker=nothing, io::Union{IO, Nothing}=nothing)
     jl_simi_filter       = julia_context.jl_simi_filter
     jl_pkg_index         = julia_context.jl_pkg_index
     tracker_context      = julia_context.tracker_context
@@ -63,5 +63,10 @@ function process_julia_context(julia_context::JuliaCTX, ctx_question; age_tracke
     # Log the index and question
     @time "index_logging" log_index(index_logger, index, ctx_question)
 
-    return julia_ctx_2_string(changes_tracker, scr_content)
+    result = julia_ctx_2_string(changes_tracker, scr_content)
+    
+    # Stream the result if IO is provided
+    stream_event!(io, "julia_context", result)
+    
+    return result
 end
