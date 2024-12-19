@@ -16,6 +16,7 @@ function CreateFileCommand(cmd::CommandTag)
         content=content
     )
 end
+instantiate(::Val{Symbol(CREATE_FILE_TAG)}, cmd::CommandTag) = CreateFileCommand(cmd)
 commandname(cmd::Type{CreateFileCommand}) = CREATE_FILE_TAG
 get_description(cmd::Type{CreateFileCommand}) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:

@@ -20,6 +20,8 @@ function ModifyFileCommand(cmd::CommandTag)
         postcontent=""
     )
 end
+instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::CommandTag) = ModifyFileCommand(cmd)
+
 commandname(cmd::Type{ModifyFileCommand}) = MODIFY_FILE_TAG
 get_description(cmd::Type{ModifyFileCommand}) = """
 To modify the file, always try to highlight the changes and relevant cmd_code and use comment like: 

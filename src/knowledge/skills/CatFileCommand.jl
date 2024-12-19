@@ -6,6 +6,8 @@
     root_path::String
 end
 CatFileCommand(cmd::CommandTag) = CatFileCommand(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
+instantiate(::Val{Symbol(CATFILE_TAG)}, cmd::CommandTag) = CatFileCommand(cmd)
+
 commandname(cmd::Type{CatFileCommand}) = CATFILE_TAG
 get_description(cmd::Type{CatFileCommand}) = """
 Whenever you need the content of a file to solve the task you can use the CATFILE command:
@@ -22,5 +24,4 @@ execute(cmd::CatFileCommand) = let
     # TODO: use STANDARD file print format! So don't redefine this again ang again... Also language detection to the tags would be nice to have
     isfile(path) ? file_format(path, read(path, String)) : "cat: $(path): No such file or directory"
 end
-
 

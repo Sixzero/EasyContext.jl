@@ -16,6 +16,7 @@ end
 commandname(cmd::Type{ClickCommand}) = CLICK_TAG
 get_description(cmd::Type{ClickCommand}) = "Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)"
 stop_sequence(cmd::Type{ClickCommand}) = STOP_SEQUENCE
+instantiate(::Val{Symbol(CLICK_TAG)}, cmd::CommandTag) = ClickCommand(cmd)
 
 
 execute(cmd::ClickCommand) = "Clicking at coordinates ($(cmd.x), $(cmd.y)) with $(cmd.button) button"

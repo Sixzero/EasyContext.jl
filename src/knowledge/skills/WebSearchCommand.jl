@@ -6,6 +6,7 @@
     results::Vector{String} = []
 end
 WebSearchCommand(cmd::CommandTag) = WebSearchCommand(query=strip(cmd.args))
+instantiate(::Val{Symbol(WEB_SEARCH_TAG)}, cmd::CommandTag) = WebSearchCommand(cmd)
 commandname(cmd::Type{WebSearchCommand}) = WEB_SEARCH_TAG
 get_description(cmd::Type{WebSearchCommand}) = """
 Search the web for information. Provide a search query and get relevant results.

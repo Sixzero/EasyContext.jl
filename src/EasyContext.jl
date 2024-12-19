@@ -53,6 +53,7 @@ include("PkgLister.jl")
 include("MainUtils.jl")
 include("stateful_transformation/StatefulTransformators.jl")
 include("transform/transformations.jl")
+include("transform/QueryTransformers.jl")
 
 
 include("contexts/Contexts.jl")

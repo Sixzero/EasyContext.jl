@@ -8,6 +8,8 @@ export truncate_output
     run_results::Vector{String} = []
 end
 ShellBlockCommand(cmd::CommandTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockCommand(language=language, content=content) end
+instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::CommandTag) = ShellBlockCommand(cmd)
+
 commandname(cmd::Type{ShellBlockCommand}) = SHELL_BLOCK_TAG
 get_description(cmd::Type{ShellBlockCommand}) = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
