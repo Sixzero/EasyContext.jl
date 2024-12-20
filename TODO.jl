@@ -179,4 +179,4 @@ webview is a "GUI" to see AGENT process
 #
 - [ ] cat_file_skill
 - [ ] benchmarking
-- [ ] 
+- [ ] LLM summary caching
