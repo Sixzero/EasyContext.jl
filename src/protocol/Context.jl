@@ -7,10 +7,10 @@ end
 Base.length(ctx::Context) = length(ctx.d)
 
 
-python_format_description()     = "\
-The Python packages in other existing installed packages will be in the user message and \
-wrapped in <$(PYTHON_TAG)> and </$(PYTHON_TAG)> tags, \
-with individual chunks wrapped in <$(PYTHON_ELEMENT)> and </$(PYTHON_ELEMENT)> tags."
+# python_format_description()     = "\
+# The Python packages in other existing installed packages will be in the user message and \
+# wrapped in <$(PYTHON_TAG)> and </$(PYTHON_TAG)> tags, \
+# with individual chunks wrapped in <$(PYTHON_ELEMENT)> and </$(PYTHON_ELEMENT)> tags."
 # test_format_description(t)      = """
 # We have a buildin testframework which has a testfile: $(t.filepath) 
 # We run the test file: $(t.run_test_command) 

@@ -27,6 +27,10 @@ const JULIA_ELEMENT      = "Function"
 const PYTHON_TAG         = "PythonPackages"
 const PYTHON_ELEMENT     = "Package"
 
-workspace_ctx_2_string(scr_state, src_cont) = to_string(WORKSPACE_TAG, WORKSPACE_ELEMENT, scr_state, src_cont)
-julia_ctx_2_string(scr_state, src_cont)     = to_string(JULIA_TAG,     JULIA_ELEMENT, scr_state, src_cont)
-python_ctx_2_string(scr_state, src_cont)    = to_string(PYTHON_TAG,    PYTHON_ELEMENT, scr_state, src_cont)
+workspace_ctx_2_string(ctx_codebase)        = workspace_ctx_2_string(ctx_codebase[1], ctx_codebase[2])
+workspace_ctx_2_string(scr_state, src_cont) = serialize(WORKSPACE_TAG, WORKSPACE_ELEMENT, scr_state, src_cont)
+julia_ctx_2_string(ctx_julia)               = julia_ctx_2_string(ctx_julia[1], ctx_julia[2])
+julia_ctx_2_string(scr_state, src_cont)     = serialize(JULIA_TAG,     JULIA_ELEMENT, scr_state, src_cont)
+python_ctx_2_string(ctx_python)             = python_ctx_2_string(ctx_python[1], ctx_python[2])
+python_ctx_2_string(scr_state, src_cont)    = serialize(PYTHON_TAG,    PYTHON_ELEMENT, scr_state, src_cont)
+

@@ -17,7 +17,7 @@ Base.display(ctx::ExecutionPlannerContext, content::AbstractString) =
     display(Markdown.parse("# EXECUTION_PLAN\n" * content))
 
 function transform(ctx::ExecutionPlannerContext, query, session::Session)
-    !ctx.enabled && return nothing
+    !ctx.enabled && return ""
     history_len = ctx.history_count
     relevant_history = join([msg.content for msg in session.messages[max(1, end-history_len+1):end]], "\n")
     
@@ -39,7 +39,7 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session)
     
     content = response.content
     display(ctx, content)
-    "<EXECUTION_PLAN>\n" * content * "\n</EXECUTION_PLAN>"
+    "\n\n<EXECUTION_PLAN>\n" * content * "\n</EXECUTION_PLAN>\n\n"
 end
 
 const PLANNER_SYSTEM_PROMPT = """

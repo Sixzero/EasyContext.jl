@@ -1,7 +1,7 @@
 using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
-using EasyContext: StreamParser, CommandTag, extract_commands, reset!, to_string
+using EasyContext: StreamParser, CommandTag, extract_commands, reset!, serialize
 
 @testset failfast=true "StreamParser Tests" begin
     @testset "Constructor" begin

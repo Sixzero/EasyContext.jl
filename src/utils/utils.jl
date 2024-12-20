@@ -1,6 +1,6 @@
 using ULID: encoderandom, encodetime
 
-export stream_event!
+export write_event!
 
 noop() = nothing
 noop(_) = nothing
@@ -35,8 +35,8 @@ function simplified_dependencies(project_file::String)
 	)
 end
 
-stream_event!(::Nothing, type::String, data) = nothing
-stream_event!(io::IO,    type::String, data) = write(io, JSON3.write(Dict("type" => type, "data" => data)), "\n")
+write_event!(::Nothing, type::String, data) = nothing
+write_event!(io::IO,    type::String, data) = write(io, JSON3.write(Dict("type" => type, "data" => data)), "\n")
 
 
 # #%%

@@ -50,8 +50,8 @@ end
 function to_PT_messages(session::Session)
     return [
         SystemMessage(session.system_message.content),
-        [msg.role == :user ? UserMessage(msg.content) :
-         msg.role == :assistant ? AIMessage(msg.content) : UserMessage(msg.content)
+        [msg.role == :user ?      UserMessage(context_combiner!(msg.content, msg.context)) :
+         msg.role == :assistant ? AIMessage(  context_combiner!(msg.content, msg.context)) : UserMessage(context_combiner!(msg.content, msg.context))
          for msg in session.messages]...
     ]
 end

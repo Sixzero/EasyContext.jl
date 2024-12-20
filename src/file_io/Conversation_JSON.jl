@@ -1,6 +1,6 @@
 using JSON3
 
-JSON3.StructTypes.StructType(::Type{WebMessage}) = JSON3.StructTypes.Struct()
+JSON3.StructTypes.StructType(::Type{Message}) = JSON3.StructTypes.Struct()
 JSON3.StructTypes.StructType(::Type{<:Session})  = JSON3.StructTypes.Mutable()
 
 save_conversation(filepath::String, conv::Session) = write(filepath, json_pretty(conv) * "\n")
@@ -8,8 +8,9 @@ load_conversation(filepath::String) = begin
     json = JSON3.read(read(filepath, String), Dict)
     Session(
         id = json["id"],
-        timestamp = DateTime(json["timestamp"]),
-        system_message = WebMessage(; 
+        timestamp = DateTime(json["id"]),
+        system_message = Message(; 
+            id=json["system_message"]["id"],
             timestamp=DateTime(json["system_message"]["timestamp"]),
             role=Symbol(json["system_message"]["role"]),
             content=json["system_message"]["content"],
@@ -20,7 +21,8 @@ load_conversation(filepath::String) = begin
             price=json["system_message"]["price"],
             elapsed=json["system_message"]["elapsed"]
         ),
-        messages = [WebMessage(;
+        messages = [Message(;
+            id=m["id"],
             timestamp=DateTime(m["timestamp"]),
             role=Symbol(m["role"]),
             content=m["content"],
@@ -41,3 +43,12 @@ function json_pretty(obj)
     String(take!(buf))
 end
 
+
+load_conv(p::PersistableState, conv_id::String) = begin
+    filename = get_conversation_filename(p, conv_id)
+    isnothing(filename) && return "", String[]
+    return filename, load_conv(filename)
+end
+load_conv(filename::String) = @load filename conv
+save_file(p::PersistableState, conv::Session) = save_file(get_conversation_filename(p, conv.id), conv)
+save_file(filename::String, conv::Session)    = @save filename conv

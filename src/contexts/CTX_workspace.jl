@@ -44,8 +44,8 @@ function process_workspace_context(workspace_context, ctx_question; age_tracker=
     end
     isa(scr_content,String) && return ""
     
-    stream_event!(io, "workspace_context", scr_content)
     result = workspace_ctx_2_string(changes_tracker, scr_content)
+    write_event!(io, "workspace_context", result)
     
     return result
 end

@@ -51,7 +51,7 @@ function LLM_solve(conv, cache;
             model, cache, streamcallback=cb_wrapper, api_kwargs=(; stop_sequences, top_p=top_p, max_tokens=8192), verbose=false,)
         update_last_user_message_meta(conv, cb)
         stopsig = !isnothing(cb.run_info.stop_sequence) && !isempty(cb.run_info.stop_sequence) ? cb.run_info.stop_sequence : ""
-        conv(msg, stopsig)  
+        conv(msg, stopsig)
         return msg, cb
     catch e
         e isa InterruptException && rethrow(e)
