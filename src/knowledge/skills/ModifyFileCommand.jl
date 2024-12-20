@@ -65,7 +65,20 @@ const DIFFVIEW_SUBTYPES = Vector{Type{<:AbstractDiffView}}()
 function register_diffview_subtype!(T::Type{<:AbstractDiffView})
     push!(DIFFVIEW_SUBTYPES, T)
 end
+        
 
+function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
+    lines = split(code, '\n')
+    total_lines = length(lines)
+    
+    if total_lines <= head_lines + tail_lines
+        return code
+    else
+        head = join(lines[1:head_lines], '\n')
+        tail = join(lines[end-tail_lines+1:end], '\n')
+        return "$head\n...\n$tail"
+    end
+end
 include("../../building_block/DiffViews.jl")
 
 # Interface for AbstractDiffView
