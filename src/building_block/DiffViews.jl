@@ -1,6 +1,8 @@
 using HTTP
 using JSON3
 
+get_unique_eof(content::String) = occursin("EOF", content) ? "EOF_" * randstring(3) : "EOF"
+
 @kwdef struct MeldDiffView <: AbstractDiffView end
 keywords(::Type{MeldDiffView}) = ["meld"]
 
