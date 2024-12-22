@@ -64,6 +64,7 @@
  - [ ] facebook discussion figyelész és válaszolás.
  - [ ] email figyelés és válaszolás
  - [ ] RAG flows need an interface.
+ - [ ] AsyncString
 
 
 TODO ai web.
