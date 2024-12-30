@@ -24,10 +24,8 @@ instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::CommandTag) = ModifyFileCommand
 
 commandname(cmd::Type{ModifyFileCommand}) = MODIFY_FILE_TAG
 get_description(cmd::Type{ModifyFileCommand}) = """
-To modify the file, always try to highlight the changes and relevant code and use comment like: 
-// ... existing code ... 
-comments indicate where unchanged code has been skipped and spare rewriting the whole codebase again. 
-To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and closed with an "$(END_OF_BLOCK_TAG)":
+To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "$(END_OF_BLOCK_TAG)":
+
 $(MODIFY_FILE_TAG) path/to/file1
 $(code_format("code_changes", "language"))
 $(END_OF_BLOCK_TAG)
@@ -43,7 +41,12 @@ To modify the codebase with changes try to focus on changes and indicate if code
 $(MODIFY_FILE_TAG) filepath
 $(code_format("code_changes_without_unchanged_code", "language"))
 $(END_OF_BLOCK_TAG)
-It is important you ALWAYS close the tag with "$(END_OF_BLOCK_TAG)".
+
+To modify the file, always try to highlight the changes and relevant code and use comment like: 
+// ... existing code ... 
+comments indicate where unchanged code has been skipped and spare rewriting the whole codebase again. 
+
+It is important you ALWAYS close the code block with "$(END_OF_BLOCK_TAG)" in the next line.
 """
 stop_sequence(cmd::Type{ModifyFileCommand}) = ""
 

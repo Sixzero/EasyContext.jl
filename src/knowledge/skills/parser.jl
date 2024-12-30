@@ -16,32 +16,41 @@ function process_immediate_command!(line::String, stream_parser::StreamParser, c
     stream_parser.command_tasks[cmd.id] = @async_showerr preprocess(cmd)
 end
 
+function update_processed_index!(stream_parser::StreamParser, lines, last_saved_i::Int, current_i::Int)
+    if last_saved_i < current_i
+        previous_lines_length = sum(length.(lines[last_saved_i:current_i-1])) + (current_i - last_saved_i)
+        stream_parser.last_processed_index[] += previous_lines_length
+    end
+end
+
 function extract_commands(new_content::String, stream_parser::StreamParser; root_path::String="")
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
     i = 1
+    last_saved_i = 1
     while i <= length(lines)-1
         line = String(strip(lines[i]))
         
         # Handle single-line commands
         if startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]) |> any
+            update_processed_index!(stream_parser, lines, last_saved_i, i)
             stream_parser.last_processed_index[] += length(line) + 1
             process_immediate_command!(line, stream_parser, ""; root_path)
+            last_saved_i = i + 1
             i += 1
             continue
-        end
-        
-        # Handle multiline commands
-        if startswith.(line, [MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]) |> any
+        elseif startswith.(line, [MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]) |> any
+            update_processed_index!(stream_parser, lines, last_saved_i, i)
             if i < length(lines) 
                 if startswith(strip(lines[i+1]), "```")
                     block_end = find_code_block_end(lines[i+1:end])
                     if !isnothing(block_end)
-                        content = join(lines[i+1:i+block_end], '\n') 
-                        total_length = length(line)+1 + length(content)+1 + length(END_OF_BLOCK_TAG) + 1  # +1 for newline after tag
+                        content = join(lines[i+1:i+block_end-1], '\n')
+                        total_length = length(line) + 1 + length(content) + 1 + length(END_OF_BLOCK_TAG) + 1  # +1 for newline after tag
                         stream_parser.last_processed_index[] += total_length
                         process_immediate_command!(line, stream_parser, content; root_path)
+                        last_saved_i = i + block_end + 1
                         i += block_end + 2
                         continue
                     end
@@ -74,7 +83,7 @@ function get_last_command_result(stream_parser::StreamParser, no_confirm::Bool=f
     last_command = last(stream_parser.command_tasks)
     cmd = fetch(last_command.second)
     if !has_stop_sequence(cmd)
-        @warn "Last command does not have a stop sequence"
+        @assert false "Last command should have a stop sequence or we shouldn't enter here.. i think"  
         return nothing
     end
     res= stream_parser.command_results[cmd.id]
@@ -125,24 +134,17 @@ end
 
 function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
     nesting_level = 0
-    in_docstring = false
-
+    
     for (i, line) in enumerate(lines[start_idx:end])
         stripped = strip(line)
         
-        # Handle docstring boundaries
-        if occursin(r"^\"\"\"", stripped)
-            in_docstring = !in_docstring
-        end
-        stripped == "\"\"\"" && continue
-
-        if startswith(stripped, "```") || stripped == END_OF_BLOCK_TAG
-            if !in_docstring && length(stripped) > 3 && !endswith(stripped, END_OF_BLOCK_TAG)
-                nesting_level += 1
-            else
-                nesting_level -= 1
-                nesting_level == 0 && return start_idx + i - 1
+        if stripped == END_OF_BLOCK_TAG
+            if nesting_level > 0
+                @warn "Found END_OF_BLOCK_TAG but code block is not properly closed (nesting_level = $nesting_level)"
             end
+            return start_idx + i - 1
+        elseif startswith(stripped, "```")
+            nesting_level += length(stripped) > 3 ? 1 : -1
         end
     end
     return nothing

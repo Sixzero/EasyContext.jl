@@ -2,8 +2,7 @@
 code_format(content::String, language::String="") = ""*
 """```$language
 $content
-```
-"""
+```"""
 
 file_format(filepath::String, content::String, language::String="") = ""*
 """File: $filepath
@@ -11,9 +10,9 @@ $(code_format(content, language))
 """
 
 email_format(to::String, subject::String, content::String) = ""*
-"""<$(EMAIL_TAG) to=$to subject="$subject">
+"""$(EMAIL_TAG) to=$to subject="$subject"
 $content
-</$(EMAIL_TAG)>
+$(END_OF_BLOCK_TAG)
 """
 
 

@@ -14,6 +14,7 @@ initConversation(messages::Vector{M}; sys_msg::String) where M <: Message = Conv
         conv
     else
         println("adding message to conversation : $(msg.content)")
+        msg.content *= stop_sequence
         push!(conv.messages, msg)
         conv
     end

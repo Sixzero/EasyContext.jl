@@ -20,7 +20,7 @@ include("resolution_methods.jl")
         "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", 
-        "proto", "proto3", "graphql", "prisma", "yml"
+        "proto", "proto3", "graphql", "prisma", "yml", "yaml"
     ]
     FILTERED_FOLDERS::Vector{String} = [
         "build",
