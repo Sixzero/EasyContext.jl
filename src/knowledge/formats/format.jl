@@ -2,7 +2,7 @@
 code_format(content::String, language::String="") = ""*
 """```$language
 $content
-```"""
+```$(END_OF_CODE_BLOCK)"""
 
 file_format(filepath::String, content::String, language::String="") = ""*
 """File: $filepath

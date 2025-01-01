@@ -44,18 +44,18 @@ function extract_commands(new_content::String, stream_parser::StreamParser; root
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             if i < length(lines) 
                 if startswith(strip(lines[i+1]), "```")
-                    block_end = find_code_block_end(lines[i+1:end])
+                    block_end = find_code_block_end(lines, i+1)
                     if !isnothing(block_end)
-                        content = join(lines[i+1:i+block_end-1], '\n')
-                        total_length = length(line) + 1 + length(content) + 1 + length(END_OF_BLOCK_TAG) + 1  # +1 for newline after tag
+                        content = join(lines[i+1:block_end], '\n')
+                        total_length = length(line) + 1 + length(content) + 1  # +1 for newline after tag
                         stream_parser.last_processed_index[] += total_length
                         process_immediate_command!(line, stream_parser, content; root_path)
-                        last_saved_i = i + block_end + 1
-                        i += block_end + 2
+                        last_saved_i = block_end + 1
+                        i = block_end + 1
                         continue
                     end
                 else
-                    @warn "No opening ``` tag found for multiline command: $line"
+                    # @warn "No opening ``` tag found for multiline command: $line"
                 end
             end
         end
@@ -75,27 +75,20 @@ function reset!(stream_parser::StreamParser)
 end
 
 execute_single_command(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_command(fetch(task), stream_parser, no_confirm)
-function execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false)
-    stream_parser.command_results[cmd.id] = isa(cmd, CreateFileCommand) ? execute(cmd; no_confirm) : execute(cmd)
+execute_single_command(cmd::ModifyFileCommand, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd)
+execute_single_command(cmd::CreateFileCommand, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
+function execute_single_command(cmd::ShellBlockCommand, stream_parser::StreamParser, no_confirm::Bool=false)
+    stream_parser.command_results[cmd.id] = execute(cmd; no_confirm)
+    !isempty(stream_parser.command_results[cmd.id]) && push!(cmd.run_results, stream_parser.command_results[cmd.id])
 end
+execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
 
-function get_last_command_result(stream_parser::StreamParser, no_confirm::Bool=false)
-    last_command = last(stream_parser.command_tasks)
-    cmd = fetch(last_command.second)
-    if !has_stop_sequence(cmd)
-        @assert false "Last command should have a stop sequence or we shouldn't enter here.. i think"  
-        return nothing
-    end
-    res= stream_parser.command_results[cmd.id]
-    if res =="\nOperation cancelled by user."
-        return nothing
-    end
-    return res
-end
 
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
+    @show length(stream_parser.command_tasks)
     for (id, task) in stream_parser.command_tasks
         cmd = fetch(task)
+        # Show the most relevant command information
         isnothing(cmd) && continue # TODO it signals error in a task, shouldn't really happen.
         cmd.id in keys(stream_parser.command_results) && continue
         execute_single_command(cmd, stream_parser, no_confirm)
@@ -111,20 +104,26 @@ function run_stream_parser(stream_parser::StreamParser; root_path=".", no_confir
     end
 end
 
+function get_last_command_result(stream_parser::StreamParser, no_confirm::Bool=false)
+    cmd = fetch(last(stream_parser.command_tasks).second)
+    @assert has_stop_sequence(cmd) "Last command should have a stop sequence or we shouldn't enter here.. i think"
+    res = stream_parser.command_results[cmd.id]
+    return res == "\nOperation cancelled by user." ? nothing : res
+end
+
 shell_ctx_2_string(stream_parser::StreamParser) = begin
 	isempty(stream_parser.command_results) && return ""
 	
-	output = "Previous command executions and their results:\n"
+	output = "Previous commands and their results:\n"
 	for (id, task) in stream_parser.command_tasks
 			cmd = fetch(task)
-			if isa(cmd, ShellBlockCommand) && !isempty(cmd.run_results)  # and if it was no blocking!!
-					shortened_content = get_shortened_code(cmd.run_results[end])
-					output *= """
-					$(SHELL_BLOCK_OPEN)
+			if isa(cmd, ShellBlockCommand) && !isempty(cmd.run_results) && !isempty(cmd.run_results[end])  # and if it was noblocking!
+					shortened_content = get_shortened_code(cmd.content)
+					output *= """$(SHELL_BLOCK_OPEN)
 					$shortened_content
 					$(CODEBLOCK_CLOSE)
 					$(SHELL_RUN_RESULT)
-					$(cmd.run_results)
+					$(cmd.run_results[end])
 					$(CODEBLOCK_CLOSE)
 					"""
 			end
@@ -133,21 +132,41 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 end
 
 function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
-    nesting_level = 0
-    
+    nesting_level = 1  # Start at 1 since we're already inside a code block
+    in_docstring = false
+    fallback_end = nothing
+
     for (i, line) in enumerate(lines[start_idx:end])
         stripped = strip(line)
         
-        if stripped == END_OF_BLOCK_TAG
-            if nesting_level > 0
-                @warn "Found END_OF_BLOCK_TAG but code block is not properly closed (nesting_level = $nesting_level)"
+        # Handle docstring boundaries
+        if occursin(r"^\"\"\"", stripped)
+            in_docstring = !in_docstring
+            continue
+        end
+
+        # Skip processing if we're in a docstring
+        if in_docstring
+            continue
+        end
+
+        # Check for code block markers
+        if startswith(stripped, "```")
+            if stripped == "```$(END_OF_CODE_BLOCK)"
+                return start_idx + i - 1
+            elseif length(stripped) > 3
+                nesting_level += 1
+            else
+                nesting_level -= 1
+                if nesting_level == 0
+                    fallback_end = start_idx + i - 1
+                end
             end
-            return start_idx + i - 1
-        elseif startswith(stripped, "```")
-            nesting_level += length(stripped) > 3 ? 1 : -1
         end
     end
-    return nothing
+    
+    # Return fallback position if found, otherwise nothing
+    return fallback_end
 end
 
 function parse_command(first_line::String, content::String=""; kwargs::Dict{String,String})

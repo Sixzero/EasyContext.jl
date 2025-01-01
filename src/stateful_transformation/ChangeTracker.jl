@@ -91,7 +91,7 @@ serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::Orde
 end
 format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = join(["""$(file_format(src, content))""" for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
 
-function deserialize(input::String)
+function deserialize(::Type{ChangeTracker}, input::String)
     pattern = r"<(\w+)\s+(\w+)>(.*?)</\1>"
     file_pattern = r"File: (.*?)\n```.*?\n(.*?)\n```"s
     

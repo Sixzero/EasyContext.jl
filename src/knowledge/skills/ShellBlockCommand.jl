@@ -9,7 +9,6 @@ export truncate_output
 end
 ShellBlockCommand(cmd::CommandTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockCommand(language=language, content=content) end
 instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::CommandTag) = ShellBlockCommand(cmd)
-
 commandname(cmd::Type{ShellBlockCommand}) = SHELL_BLOCK_TAG
 get_description(cmd::Type{ShellBlockCommand}) = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
@@ -21,14 +20,13 @@ Format:
 Each shell commands which you propose will be found in the corresponing next user message with the format like: 
 $(SHELL_BLOCK_TAG)
 $(code_format("command", "sh"))
-$(END_OF_BLOCK_TAG)
 
 """
 stop_sequence(cmd::Type{ShellBlockCommand}) = ""
 
 
 function execute(cmd::ShellBlockCommand; no_confirm=false)
-    !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
+    # !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
     print_code(cmd.content)
     
     if no_confirm || LLM_safetorun(cmd) || get_user_confirmation()

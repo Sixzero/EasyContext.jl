@@ -22,9 +22,8 @@ get_description(cmd::Type{CreateFileCommand}) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
 $(CREATE_FILE_TAG) path/to/file
 $(code_format("new_file_content", "language"))
-$(END_OF_BLOCK_TAG)
 
-It is important you ALWAYS close with "$(END_OF_BLOCK_TAG) after the code block!".
+It is important you ALWAYS close with "```$(END_OF_CODE_BLOCK) after the code block!".
 """
 stop_sequence(cmd::Type{CreateFileCommand}) = ""
 

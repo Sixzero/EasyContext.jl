@@ -64,7 +64,7 @@ function is_opener_ticks(line::AbstractString, nesting_level::Int)
 end
 
 function is_closer_ticks(line::AbstractString)
-    return startswith(line, "```") && (length(line) == 3 || all(isspace, line[4:end]))
+    return startswith(line, "```$(END_OF_CODE_BLOCK)") || (strip(line)=="```")
 end
 function process_line(state::SyntaxHighlightState)
     line = state.current_line
