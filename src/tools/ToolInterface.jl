@@ -7,32 +7,32 @@ Tool execution flow and safety checks:
   LLM Output
   then     
   Parse ToolTag structs     
-└─ ─ ─ ┬ ─ ─ ─ ─ ─ ─ ─ ─┘
-       │
--------▼------------ Tool Interface Implementation 
-┌──────────────┐
-│ instantiate()│ Creates Tool instance from ToolTag
-└──────┬───────┘
-       │
-       ▼
-┌─ ─ ─ ┴ ─ ─ ─┐
- LLM_safetorun  Optional AI safety check before auto-execution
-└─ ─ ─ ┬ ─ ─ ─┘   (e.g. verify shell commands without user prompt)
-       │
-       ▼
-┌─ ─ ─ ┴ ─ ─ ─┐
- preprocess()   Optional content preparation
-└─ ─ ─ ┬ ─ ─ ─┘   (e.g. LLM modifications, cursor-like instant apply)
-       │
-       ▼
-┌──────────────┐
-│  execute()   │ Performs the actual operation
-└──────┬───────┘
--------│------------ End of Interface
-       ▼
-┌ ─ ─ ─┴─ ─ ─ ┐
-  Results        Collected for LLM context
-└ ─ ─ ─ ─ ─ ─ ┘
+└─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
+        │
+--------▼------------ Tool Interface Implementation 
+┌───────────────┐
+│ instantiate() │ Creates Tool instance from ToolTag
+└───────┬───────┘
+        │
+        ▼
+┌─ ─ ─ ─┴─ ─ ─ ─┐
+  LLM_safetorun   Optional AI safety check before auto-execution
+└─ ─ ─ ─┬─ ─ ─ ─┘   (e.g. verify shell commands without user prompt)
+        │
+        ▼
+┌─ ─ ─ ─┴─ ─ ─ ─┐
+  preprocess()    Optional content preparation
+└─ ─ ─ ─┬─ ─ ─ ─┘   (e.g. LLM modifications, cursor-like instant apply)
+        │
+        ▼
+┌───────────────┐
+│ execute()     │ Performs the actual operation
+└───────┬───────┘
+--------│----------- End of Interface
+        ▼
+┌─ ─ ─ ─┴─ ─ ─ ─┐
+  Results         Collected for LLM context
+└─ ─ ─ ─ ─ ─ ─ ─┘
 
 Interface methods:
 - `instantiate(::Val{T}, cmd::ToolTag)` - Factory method for tool creation from parsed tag
