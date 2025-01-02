@@ -3,19 +3,13 @@
 """
 Tool execution flow and safety checks:
 
-External Processing:
-┌──────────────┐
-│  LLM Output  │ (via LLM_solve.jl)
-└──────┬───────┘
+┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐
+  LLM Output
+  then     
+  Parse ToolTag structs     
+└─ ─ ─ ┬ ─ ─ ─ ─ ─ ─ ─ ─┘
        │
-       ▼
-┌──────────────┐
-│ Parse Input  │ (via transform/parser.jl)
-└──────┬───────┘
-       │
-       ▼
-Tool Interface Implementation:
-=========================
+-------▼------------ Tool Interface Implementation 
 ┌──────────────┐
 │ instantiate()│ Creates concrete tool instance
 └──────┬───────┘
@@ -33,8 +27,12 @@ Tool Interface Implementation:
        ▼
 ┌──────────────┐
 │  execute()   │ Performs the actual operation
-└──────────────┘
-=========================
+└──────┬───────┘
+-------│------------ End of Interface
+       ▼
+┌ ─ ─ ─┴─ ─ ─ ┐
+  Results        Collected for LLM context
+└ ─ ─ ─ ─ ─ ─ ┘
 
 Interface methods:
 - `instantiate(::Val{T}, cmd::ToolTag)` - Factory method for tool creation from parsed tag
