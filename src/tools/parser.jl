@@ -85,7 +85,6 @@ execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false)
 
 
 function execute_commands(stream_parser::StreamParser; no_confirm=false)
-    @show length(stream_parser.command_tasks)
     for (id, task) in stream_parser.command_tasks
         cmd = fetch(task)
         # Show the most relevant command information
