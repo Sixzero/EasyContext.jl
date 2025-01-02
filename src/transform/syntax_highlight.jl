@@ -59,7 +59,7 @@ function is_opener_ticks(line::AbstractString, nesting_level::Int)
     if nesting_level == 0
         return startswith(line, "```")
     else
-        return startswith(line, "```") && length(strip(line)) > 3
+        return line !== "```$(END_OF_CODE_BLOCK)" || (startswith(line, "```") && length(strip(line)) > 3)
     end
 end
 
