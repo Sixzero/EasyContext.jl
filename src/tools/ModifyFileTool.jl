@@ -89,7 +89,6 @@ function get_editor(editor_name::AbstractString)
 end
 
 function set_editor(editor_name::AbstractString)
-    @show editor_name
     global CURRENT_EDITOR
     # Handle editor:port format
     editor_base, port = if occursin(':', editor_name)
@@ -112,7 +111,6 @@ function set_editor(editor_name::AbstractString)
     end
 
     # Set the editor and port
-    @show typeof(editor)
     CURRENT_EDITOR = editor
     !isnothing(port) && (ENV["MELD_PORT"] = port)
 
@@ -149,4 +147,4 @@ function LLM_apply_changes_to_file(cb::ModifyFileTool)
     original_content, ai_generated_content
 end
 
-CURRENT_EDITOR::AbstractDiffView = MonacoMeldDiffView()  # Default editor
+CURRENT_EDITOR = MonacoMeldDiffView()  # Default editor

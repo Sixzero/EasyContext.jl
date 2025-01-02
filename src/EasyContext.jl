@@ -18,7 +18,7 @@ include("utils/TokenEstimationMethods.jl")
 
 include("protocol/Context.jl")
 include("tools/formats/format.jl")
-include("tools/skills.jl")
+include("tools/tools.jl")
 include("prompts/guides.jl")
 include("ContextStructs.jl")
 include("file_io/custom_format.jl")

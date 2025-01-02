@@ -1,5 +1,53 @@
 # Command interfaces.
 
+"""
+Tool execution flow and safety checks:
+
+External Processing:
+┌──────────────┐
+│  LLM Output  │ (via LLM_solve.jl)
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│ Parse Input  │ (via transform/parser.jl)
+└──────┬───────┘
+       │
+       ▼
+Tool Interface Implementation:
+=========================
+┌──────────────┐
+│ instantiate()│ Creates concrete tool instance
+└──────┬───────┘
+       │
+       ▼
+┌─ ─ ─ ┴ ─ ─ ─┐
+ LLM_safetorun  Optional AI safety verification
+└─ ─ ─ ┬ ─ ─ ─┘
+       │
+       ▼
+┌──────────────┐
+│ preprocess() │ Data preparation, LLM processing
+└──────┬───────┘
+       │
+       ▼
+┌──────────────┐
+│  execute()   │ Performs the actual operation
+└──────────────┘
+=========================
+
+Interface methods:
+- `instantiate(::Val{T}, cmd::ToolTag)` - Factory method for tool creation from parsed tag
+- `preprocess(cmd::AbstractTool)` - Data preparation (e.g. LLM content modifications)
+- `execute(cmd::AbstractTool)` - Main operation implementation
+- `LLM_safetorun(cmd::AbstractTool)` - Optional AI safety verification
+- `commandname(cmd)` - Tool's unique identifier
+- `stop_sequence(cmd)` - Command termination marker (if needed)
+- `get_description(cmd)` - Tool's usage documentation
+
+Note: The LLM output generation and ToolTag parsing are handled externally by the LLM_solve.jl 
+and parser.jl modules. This interface focuses on the tool implementation after a ToolTag is received.
+"""
 abstract type AbstractTag end
 abstract type AbstractTool end
 
