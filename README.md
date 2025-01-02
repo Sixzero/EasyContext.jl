@@ -111,7 +111,7 @@ println(shell_context)
   Parse ToolTag structs     
 └─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
         │
---------▼------------ Tool Interface Implementation 
+--------▼----------- Tool Interface Implementation 
 ┌───────────────┐
 │ instantiate() │ Creates Tool instance from ToolTag
 └───────┬───────┘

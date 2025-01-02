@@ -9,7 +9,7 @@ Tool execution flow and safety checks:
   Parse ToolTag structs     
 └─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
         │
---------▼------------ Tool Interface Implementation 
+--------▼----------- Tool Interface Implementation 
 ┌───────────────┐
 │ instantiate() │ Creates Tool instance from ToolTag
 └───────┬───────┘
