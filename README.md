@@ -5,6 +5,7 @@ Docs is lacking behind! Literally everything is changed... so you can check the 
 
 EasyContext.jl is a Julia package that enhances the context-aware capabilities of AI-powered applications. It provides tools for efficient document indexing, embedding, and retrieval, making it easier to build robust Retrieval-Augmented Generation (RAG) systems.
 
+
 ## Features
 
 - **Flexible Embedding Options**: Supports multiple embedding models, including Jina AI's embedding services.
@@ -101,6 +102,40 @@ println(shell_context)
 - **Multi-Index Support**: Combine different indexing strategies for more comprehensive retrieval.
 - **Asynchronous Processing**: Utilize Julia's multi-threading capabilities for faster embedding and retrieval.
 - **Caching**: Implement caching mechanisms to speed up repeated queries and reduce API calls.
+
+## Tool Interface Flow
+```
+┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐
+  LLM Output
+  then     
+  Parse ToolTag structs     
+└─ ─ ─ ┬ ─ ─ ─ ─ ─ ─ ─ ─┘
+       │
+-------▼------------ Tool Interface Implementation 
+┌──────────────┐
+│ instantiate()│ Creates Tool instance from ToolTag
+└──────┬───────┘
+       │
+       ▼
+┌─ ─ ─ ┴ ─ ─ ─┐
+ LLM_safetorun  Optional AI safety check before auto-execution
+└─ ─ ─ ┬ ─ ─ ─┘   (e.g. verify shell commands without user prompt)
+       │
+       ▼
+┌─ ─ ─ ┴ ─ ─ ─┐
+ preprocess()   Optional content preparation
+└─ ─ ─ ┬ ─ ─ ─┘   (e.g. LLM modifications, cursor-like instant apply)
+       │
+       ▼
+┌──────────────┐
+│  execute()   │ Performs the actual operation
+└──────┬───────┘
+-------│------------ End of Interface
+       ▼
+┌ ─ ─ ─┴─ ─ ─ ┐
+  Results        Collected for LLM context
+└ ─ ─ ─ ─ ─ ─ ┘
+```
 
 ## Contributing
 

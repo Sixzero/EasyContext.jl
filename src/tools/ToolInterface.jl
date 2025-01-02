@@ -11,18 +11,18 @@ Tool execution flow and safety checks:
        │
 -------▼------------ Tool Interface Implementation 
 ┌──────────────┐
-│ instantiate()│ Creates concrete tool instance
+│ instantiate()│ Creates Tool instance from ToolTag
 └──────┬───────┘
        │
        ▼
 ┌─ ─ ─ ┴ ─ ─ ─┐
- LLM_safetorun  Optional AI safety verification
-└─ ─ ─ ┬ ─ ─ ─┘
+ LLM_safetorun  Optional AI safety check before auto-execution
+└─ ─ ─ ┬ ─ ─ ─┘   (e.g. verify shell commands without user prompt)
        │
        ▼
-┌──────────────┐
-│ preprocess() │ Data preparation, LLM processing
-└──────┬───────┘
+┌─ ─ ─ ┴ ─ ─ ─┐
+ preprocess()   Optional content preparation
+└─ ─ ─ ┬ ─ ─ ─┘   (e.g. LLM modifications, cursor-like instant apply)
        │
        ▼
 ┌──────────────┐
@@ -36,9 +36,9 @@ Tool execution flow and safety checks:
 
 Interface methods:
 - `instantiate(::Val{T}, cmd::ToolTag)` - Factory method for tool creation from parsed tag
-- `preprocess(cmd::AbstractTool)` - Data preparation (e.g. LLM content modifications)
+- `preprocess(cmd::AbstractTool)` - Optional data preparation (e.g. cursor-like instant apply)
 - `execute(cmd::AbstractTool)` - Main operation implementation
-- `LLM_safetorun(cmd::AbstractTool)` - Optional AI safety verification
+- `LLM_safetorun(cmd::AbstractTool)` - Optional AI safety verification, to skip user confirmation before execute
 - `commandname(cmd)` - Tool's unique identifier
 - `stop_sequence(cmd)` - Command termination marker (if needed)
 - `get_description(cmd)` - Tool's usage documentation
