@@ -158,7 +158,7 @@ function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
                 nesting_level += 1
             else
                 nesting_level -= 1
-                if nesting_level == 0
+                if nesting_level == 1
                     fallback_end = start_idx + i - 1
                 end
             end
