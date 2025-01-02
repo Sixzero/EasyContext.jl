@@ -65,6 +65,7 @@
  - [ ] email figyelés és válaszolás
  - [ ] RAG flows need an interface.
  - [ ] AsyncString
+ - [ ] reranking to limit batch size not just with batch size but token counts, it shouldn't exceed 40k tokens a reranking request if possible.
 
 
 TODO ai web.

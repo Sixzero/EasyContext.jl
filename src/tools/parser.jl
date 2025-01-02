@@ -75,9 +75,9 @@ function reset!(stream_parser::StreamParser)
 end
 
 execute_single_command(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_command(fetch(task), stream_parser, no_confirm)
-execute_single_command(cmd::ModifyFileCommand, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd)
-execute_single_command(cmd::CreateFileCommand, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
-function execute_single_command(cmd::ShellBlockCommand, stream_parser::StreamParser, no_confirm::Bool=false)
+execute_single_command(cmd::ModifyFileTool, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd)
+execute_single_command(cmd::CreateFileTool, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
+function execute_single_command(cmd::ShellBlockTool, stream_parser::StreamParser, no_confirm::Bool=false)
     stream_parser.command_results[cmd.id] = execute(cmd; no_confirm)
     !isempty(stream_parser.command_results[cmd.id]) && push!(cmd.run_results, stream_parser.command_results[cmd.id])
 end
@@ -117,7 +117,7 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 	output = "Previous commands and their results:\n"
 	for (id, task) in stream_parser.command_tasks
 			cmd = fetch(task)
-			if isa(cmd, ShellBlockCommand) && !isempty(cmd.run_results) && !isempty(cmd.run_results[end])  # and if it was noblocking!
+			if isa(cmd, ShellBlockTool) && !isempty(cmd.run_results) && !isempty(cmd.run_results[end])  # and if it was noblocking!
 					shortened_content = get_shortened_code(cmd.content)
 					output *= """$(SHELL_BLOCK_OPEN)
 					$shortened_content
@@ -173,5 +173,5 @@ function parse_command(first_line::String, content::String=""; kwargs::Dict{Stri
     tag_end = findfirst(' ', first_line)
     name = String(strip(first_line[1:something(tag_end, length(first_line))]))
     args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))
-    CommandTag(name=name, args=args, content=content, kwargs=kwargs)
+    ToolTag(name=name, args=args, content=content, kwargs=kwargs)
 end

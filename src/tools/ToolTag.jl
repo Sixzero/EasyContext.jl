@@ -1,17 +1,17 @@
 export print_tool_result
 
-include("CommandInterface.jl")
+include("ToolInterface.jl")
 
 
-@kwdef mutable struct CommandTag <: AbstractTag
+@kwdef mutable struct ToolTag <: AbstractTag
     name::String
     content::String = ""
     args::String = ""
     kwargs::Dict{String,String} = Dict{String,String}()
 end
 
-# Convert raw CommandTag to specific command types
-function convert_command(cmd::CommandTag)
+# Convert raw ToolTag to specific tool types
+function convert_command(cmd::ToolTag)
     return instantiate(Val(Symbol(cmd.name)), cmd)
 end
 

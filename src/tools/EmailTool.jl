@@ -1,11 +1,11 @@
 
-@kwdef struct EmailCommand <: AbstractCommand
+@kwdef struct EmailTool <: AbstractTool
     id::UUID = uuid4()
     to::String
     subject::String
     content::String
 end
-function EmailCommand(cmd::CommandTag)
+function EmailTool(cmd::ToolTag)
     # Parse kwargs string into Dict
     kwargs_dict = Dict{String,String}()
     for pair in split(cmd.args, " ")
@@ -13,16 +13,16 @@ function EmailCommand(cmd::CommandTag)
         kwargs_dict[key] = strip(value, ['"', ' '])
     end
     
-    EmailCommand(
+    EmailTool(
         to=get(kwargs_dict, "to", ""),
         subject=get(kwargs_dict, "subject", ""),
         content=cmd.content,
     )
 end
-instantiate(::Val{Symbol(EMAIL_TAG)}, cmd::CommandTag) = EmailCommand(cmd)
+instantiate(::Val{Symbol(EMAIL_TAG)}, cmd::ToolTag) = EmailTool(cmd)
 
-commandname(cmd::Type{EmailCommand}) = EMAIL_TAG
-get_description(cmd::Type{EmailCommand}) = """
+commandname(cmd::Type{EmailTool}) = EMAIL_TAG
+get_description(cmd::Type{EmailTool}) = """
 To create an email with a standardized format, use the $(EMAIL_TAG) command:
 $(EMAIL_TAG) to=recipient@example.com subject="Email Subject"
 Dear Recipient,
@@ -35,10 +35,10 @@ $(END_OF_BLOCK_TAG)
 or 
 $(email_format("to@recipient.com", "Topic subject", "Email content here"))
 """
-stop_sequence(cmd::Type{EmailCommand}) = STOP_SEQUENCE
+stop_sequence(cmd::Type{EmailTool}) = STOP_SEQUENCE
 
 # TODO: create the draft email in the email provider
-execute(cmd::EmailCommand) = """
+execute(cmd::EmailTool) = """
 Sending email:
 To: $(cmd.to)
 Subject: $(cmd.subject)

@@ -15,18 +15,17 @@ const END_OF_CODE_BLOCK = "endblock"
 const allowed_commands::Set{String} = Set([MODIFY_FILE_TAG, CREATE_FILE_TAG, EMAIL_TAG, CLICK_TAG, SHELL_BLOCK_TAG, SENDKEY_TAG, CATFILE_TAG])
 
 include("utils.jl")
-include("CommandTag.jl")
-include("ClickCommand.jl")
-include("SendKeyCommand.jl")
-include("ShellBlockCommand.jl")
-include("CatFileCommand.jl")
-include("ModifyFileCommand.jl")
-include("CreateFileCommand.jl")
-include("WebSearchCommand.jl")
-include("EmailCommand.jl")
+include("ToolTag.jl")
+include("ClickTool.jl")
+include("SendKeyTool.jl")
+include("ShellBlockTool.jl")
+include("CatFileTool.jl")
+include("ModifyFileTool.jl")
+include("CreateFileTool.jl")
+include("WebSearchTool.jl")
+include("EmailTool.jl")
 
 include("parser.jl")
 
-
-export ShellBlockCommand, SendKeyCommand, CatFileCommand, ClickCommand, CreateFileCommand, ModifyFileCommand, EmailCommand, WebSearchCommand
+export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, EmailTool, WebSearchTool
 export commandname, get_description, stop_sequence, has_stop_sequence

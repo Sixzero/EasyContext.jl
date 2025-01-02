@@ -11,7 +11,8 @@ function LLM_solve(conv, cache;
     on_error=noop,
     on_done=noop,
     on_start=noop,
-    top_p=0.8,)
+    top_p=0.8,
+    image=nothing,)
 
     reset!(extractor)
     highlight_state = SyntaxHighlightState()

@@ -24,7 +24,7 @@ function log_instant_apply(extractor::StreamParser, question::String)
     end
 end
 log_instant_apply(cb, question) = nothing
-function log_instant_apply(cb::ModifyFileCommand, question::String)
+function log_instant_apply(cb::ModifyFileTool, question::String)
     original_content = cd(cb.root_path) do
         default_source_parser(cb.file_path, "")
     end

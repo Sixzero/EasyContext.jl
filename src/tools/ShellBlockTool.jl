@@ -1,16 +1,16 @@
 export truncate_output
 
 
-@kwdef mutable struct ShellBlockCommand <: AbstractCommand
+@kwdef mutable struct ShellBlockTool <: AbstractTool
     id::UUID = uuid4()
     language::String = "sh"
     content::String
     run_results::Vector{String} = []
 end
-ShellBlockCommand(cmd::CommandTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockCommand(language=language, content=content) end
-instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::CommandTag) = ShellBlockCommand(cmd)
-commandname(cmd::Type{ShellBlockCommand}) = SHELL_BLOCK_TAG
-get_description(cmd::Type{ShellBlockCommand}) = """
+ShellBlockTool(cmd::ToolTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockTool(language=language, content=content) end
+instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::ToolTag) = ShellBlockTool(cmd)
+commandname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
+get_description(cmd::Type{ShellBlockTool}) = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
 You propose the sh script that should be run in a most concise short way and wait for feedback!
 
@@ -22,14 +22,14 @@ $(SHELL_BLOCK_TAG)
 $(code_format("command", "sh"))
 
 """
-stop_sequence(cmd::Type{ShellBlockCommand}) = ""
+stop_sequence(cmd::Type{ShellBlockTool}) = ""
 
 
-function execute(cmd::ShellBlockCommand; no_confirm=false)
+function execute(cmd::ShellBlockTool; no_confirm=false)
     # !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
     print_code(cmd.content)
     
-    if no_confirm || LLM_safetorun(cmd) || get_user_confirmation()
+    if no_confirm || get_user_confirmation()
         print_output_header()
         cmd_all_info_stream(`zsh -c $(cmd.content)`)
     else
@@ -60,4 +60,8 @@ function truncate_output(output)
         return output[1:6000*4] * "\n...\n[Output truncated: exceeded token limit]\n...\n" * output[end-2000*4:end]
     end
     output
+end
+
+function LLM_safetorun(cmd::ShellBlockTool)
+	LLM_safetorun(cmd.content)
 end

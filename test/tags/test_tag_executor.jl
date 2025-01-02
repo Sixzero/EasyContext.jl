@@ -1,10 +1,10 @@
 using Test
-using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
+using EasyContext: ToolTag, execute, tag2cmd, command2codeblock, CodeBlock
 
-@testset "CommandTag Executor Tests" begin
+@testset "ToolTag Executor Tests" begin
     @testset "command2codeblock Generation" begin
         # Test MODIFY tag with language
-        modify_tag = CommandTag(
+        modify_tag = ToolTag(
             name="MODIFY",
             args=["test.txt"],
             kwargs=Dict{String,String}(),
@@ -18,7 +18,7 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
         @test cb.language == "julia"
 
         # Test CREATE tag with language
-        create_tag = CommandTag(
+        create_tag = ToolTag(
             name="CREATE",
             args=["new.txt"],
             kwargs=Dict{String,String}(),
@@ -32,7 +32,7 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
         @test cb.language == "python"
 
         # Test shell command tag without explicit language
-        shell_tag = CommandTag(
+        shell_tag = ToolTag(
             name="SHELL",
             args=String[],
             kwargs=Dict{String,String}(),
@@ -45,7 +45,7 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
         @test cb.language == "sh"  # defaults to sh
 
         # Test MODIFY tag
-        modify_tag = CommandTag(
+        modify_tag = ToolTag(
             name="MODIFY",
             args=["test.txt"],
             kwargs=Dict{String,String}(),
@@ -58,7 +58,7 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
         @test cb.content == "test content"
 
         # Test CREATE tag
-        create_tag = CommandTag(
+        create_tag = ToolTag(
             name="CREATE",
             args=["new.txt"],
             kwargs=Dict{String,String}(),
@@ -71,7 +71,7 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
         @test cb.content == "new content"
 
         # Test shell command tag
-        shell_tag = CommandTag(
+        shell_tag = ToolTag(
             name="SHELL",
             args=String[],
             kwargs=Dict{String,String}(),
@@ -83,10 +83,10 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
         @test cb.content == "echo 'test'"
     end
 
-    @testset "Execute CommandTag with Mocks" begin
+    @testset "Execute ToolTag with Mocks" begin
         mktempdir() do dir
             # Test CREATE
-            create_tag = CommandTag(
+            create_tag = ToolTag(
                 name="CREATE",
                 args=[joinpath(dir, "test.txt")],
                 kwargs=Dict{String,String}(),
@@ -97,7 +97,7 @@ using EasyContext: CommandTag, execute, tag2cmd, command2codeblock, CodeBlock
             @test read(joinpath(dir, "test.txt"), String) == "test content\n"
 
             # Test MODIFY
-            modify_tag = CommandTag(
+            modify_tag = ToolTag(
                 name="MODIFY",
                 args=[joinpath(dir, "test.txt")],
                 kwargs=Dict{String,String}(),

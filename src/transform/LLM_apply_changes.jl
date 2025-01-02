@@ -1,39 +1,10 @@
 
 using PromptingTools
 using Random
-using Base.Threads: @spawn
 
 include("instant_apply_logger.jl")
-include("apply_changes_prompts.jl")
+include("../prompts/prompt_instant_apply.jl")
 
-function LLM_conditional_apply_changes(cb::ModifyFileCommand)
-    original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
-    cb.postcontent = ai_generated_content
-    cb
-end
-
-function LLM_apply_changes_to_file(cb::ModifyFileCommand)
-    original_content = ""
-    cd(cb.root_path) do
-        if isfile(cb.file_path)
-            file_path, line_range = parse_source(cb.file_path)
-            original_content = read(file_path, String)
-        else
-            @warn "WARNING! Unexisting file! $(cb.file_path) pwd: $(pwd())"
-            cb.content
-        end
-    end
-    isempty(original_content) && return cb.content, cb.content
-    
-    # Check file size and choose appropriate method
-    if length(original_content) > 10_000
-        ai_generated_content = apply_modify_by_replace(original_content, cb.content)
-    else
-        ai_generated_content = apply_modify_by_llm(original_content, cb.content)
-    end
-    
-    original_content, ai_generated_content
-end
 
 function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::String="gem15f", temperature=0, verbose=false, get_merge_prompt::Function=get_merge_prompt_v1)
     prompt = get_merge_prompt(original_content, changes_content)

@@ -1,5 +1,6 @@
+include("diffviews/DiffViews.jl")
 
-@kwdef mutable struct ModifyFileCommand <: AbstractCommand
+@kwdef mutable struct ModifyFileTool <: AbstractTool
     id::UUID = uuid4()
     language::String = "sh"
     file_path::String
@@ -7,12 +8,12 @@
     content::String
     postcontent::String
 end
-function ModifyFileCommand(cmd::CommandTag)
+function ModifyFileTool(cmd::ToolTag)
     # Clean up file path by removing trailing '>'
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
 
     language, content = parse_code_block(cmd.content)
-    ModifyFileCommand(
+    ModifyFileTool(
         language=language,
         file_path=file_path,
         root_path=get(cmd.kwargs, "root_path", ""),
@@ -20,10 +21,10 @@ function ModifyFileCommand(cmd::CommandTag)
         postcontent=""
     )
 end
-instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::CommandTag) = ModifyFileCommand(cmd)
+instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::ToolTag) = ModifyFileTool(cmd)
 
-commandname(cmd::Type{ModifyFileCommand}) = MODIFY_FILE_TAG
-get_description(cmd::Type{ModifyFileCommand}) = """
+commandname(cmd::Type{ModifyFileTool}) = MODIFY_FILE_TAG
+get_description(cmd::Type{ModifyFileTool}) = """
 To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)":
 
 $(MODIFY_FILE_TAG) path/to/file1
@@ -45,27 +46,13 @@ comments indicate where unchanged code has been skipped and spare rewriting the 
 
 It is important you ALWAYS close the code block with "```$(END_OF_CODE_BLOCK)" in the next line.
 """
-stop_sequence(cmd::Type{ModifyFileCommand}) = ""
+stop_sequence(cmd::Type{ModifyFileTool}) = ""
 
 
+execute(cmd::ModifyFileTool; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
+preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
 
 
-
-
-execute(cmd::ModifyFileCommand; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
-preprocess(cmd::ModifyFileCommand) = LLM_conditional_apply_changes(cmd)
-
-
-
-abstract type AbstractDiffView end
-keywords(::Type{<:AbstractDiffView}) = String[]
-keywords(view::AbstractDiffView) = keywords(typeof(view))
-
-const DIFFVIEW_SUBTYPES = Vector{Type{<:AbstractDiffView}}()
-function register_diffview_subtype!(T::Type{<:AbstractDiffView})
-    push!(DIFFVIEW_SUBTYPES, T)
-end
-        
 
 function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
     lines = split(code, '\n')
@@ -79,11 +66,14 @@ function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
         return "$head\n...\n$tail"
     end
 end
-include("../../building_block/DiffViews.jl")
 
 # Interface for AbstractDiffView
-execute(cmd::ModifyFileCommand, editor::AbstractDiffView; no_confirm=false) =
-    @warn "Unimplemented execute(::ModifyFileCommand, ::$(typeof(editor)))!"
+execute(cmd::ModifyFileTool, editor::AbstractDiffView; no_confirm=false) =
+    @warn "Unimplemented execute(::ModifyFileTool, ::$(typeof(editor)))!"
+    
+include("diffviews/MeldDiff.jl")
+include("diffviews/VimDiff.jl")
+include("diffviews/MonacoMeldDiff.jl")
 
 
 function get_available_editors()
@@ -128,5 +118,35 @@ function set_editor(editor_name::AbstractString)
 
     return true
 end
+
+
+function LLM_conditional_apply_changes(cb::ModifyFileTool)
+    original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
+    cb.postcontent = ai_generated_content
+    cb
+end
+
+function LLM_apply_changes_to_file(cb::ModifyFileTool)
+    original_content = ""
+    cd(cb.root_path) do
+        if isfile(cb.file_path)
+            file_path, line_range = parse_source(cb.file_path)
+            original_content = read(file_path, String)
+        else
+            @warn "WARNING! Unexisting file! $(cb.file_path) pwd: $(pwd())"
+            cb.content
+        end
+    end
+    isempty(original_content) && return cb.content, cb.content
     
-CURRENT_EDITOR = MonacoMeldDiffView()  # Default editor
+    # Check file size and choose appropriate method
+    if length(original_content) > 10_000
+        ai_generated_content = apply_modify_by_replace(original_content, cb.content)
+    else
+        ai_generated_content = apply_modify_by_llm(original_content, cb.content)
+    end
+    
+    original_content, ai_generated_content
+end
+
+CURRENT_EDITOR::AbstractDiffView = MonacoMeldDiffView()  # Default editor

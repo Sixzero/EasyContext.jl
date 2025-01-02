@@ -1,7 +1,7 @@
 using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
-using EasyContext: StreamParser, CommandTag, extract_commands, reset!, serialize
+using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
 
 @testset failfast=true "StreamParser Tests" begin
     @testset "Constructor" begin
@@ -53,10 +53,10 @@ using EasyContext: StreamParser, CommandTag, extract_commands, reset!, serialize
         @test parser.full_content == ""
     end
 
-    @testset "to_string CommandTag Results Formatting" begin
+    @testset "to_string ToolTag Results Formatting" begin
         parser = StreamParser()
-        cmd1 = CommandTag("SHELL", "command1", Dict{String,String}("result" => "output1"))  # Fixed constructor args
-        cmd2 = CommandTag("TEST", "command2", Dict{String,String}("result" => "output2"))   # Fixed constructor args
+        cmd1 = ToolTag("SHELL", "command1", Dict{String,String}("result" => "output1"))  # Fixed constructor args
+        cmd2 = ToolTag("TEST", "command2", Dict{String,String}("result" => "output2"))   # Fixed constructor args
         parser.command_results[cmd1.id] = "output1"
         parser.command_results[cmd2.id] = "output2"
 
