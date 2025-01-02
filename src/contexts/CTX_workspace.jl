@@ -13,14 +13,14 @@ using EasyRAGStore: IndexLogger, log_index
 end
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
-function init_workspace_context(project_paths; show_tokens=false, verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing)
+function init_workspace_context(project_paths; show_tokens=false, verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing, model="gpt4om")
     workspace            = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     tracker_context      = Context()
     changes_tracker      = ChangeTracker()
     # openai_embedder      = create_voyage_embedder(cache_prefix="workspace")
     openai_embedder      = create_openai_embedder(cache_prefix="workspace")
     ws_simi_filterer     = create_combined_index_builder(openai_embedder, top_k=50)
-    ws_reranker_filterer = ReduceRankGPTReranker(batch_size=30, top_n=12, model="gpt4om")
+    ws_reranker_filterer = ReduceRankGPTReranker(batch_size=30, top_n=12; model)
     
     index_logger = IndexLogger(index_logger_path)
 
@@ -53,7 +53,7 @@ end
 function update_changes_from_extractor!(changes_tracker, extractor)
     for task in values(extractor.command_tasks)
         cb = fetch(task)
-        !isa(cb, ModifyFileCommand) && continue
+        !isa(cb, ModifyFileTool) && continue
         changes_tracker.changes[cb.file_path] = :UPDATED
         changes_tracker.content[cb.file_path] = cb.postcontent
     end

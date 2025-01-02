@@ -13,9 +13,6 @@
 			"path": "../EasyRAGStore.jl"
 		},
 		{
-			"path": "../Anthropic.jl"
-		},
-		{
 			"path": "../PromptingTools.jl"
 		},
 		{
