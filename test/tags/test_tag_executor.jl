@@ -1,8 +1,8 @@
 using Test
-using EasyContext: ToolTag, execute, tag2cmd, command2codeblock, CodeBlock
+using EasyContext: ToolTag, execute, tag2cmd, tool2codeblock, CodeBlock
 
 @testset "ToolTag Executor Tests" begin
-    @testset "command2codeblock Generation" begin
+    @testset "tool2codeblock Generation" begin
         # Test MODIFY tag with language
         modify_tag = ToolTag(
             name="MODIFY",
@@ -10,7 +10,7 @@ using EasyContext: ToolTag, execute, tag2cmd, command2codeblock, CodeBlock
             kwargs=Dict{String,String}(),
             content="```julia\ntest content\n```"
         )
-        cb = command2codeblock(modify_tag)
+        cb = tool2codeblock(modify_tag)
         @test cb isa CodeBlock
         @test cb.type == :MODIFY
         @test cb.file_path == "test.txt"
@@ -24,21 +24,21 @@ using EasyContext: ToolTag, execute, tag2cmd, command2codeblock, CodeBlock
             kwargs=Dict{String,String}(),
             content="```python\nnew content\n```"
         )
-        cb = command2codeblock(create_tag)
+        cb = tool2codeblock(create_tag)
         @test cb isa CodeBlock
         @test cb.type == :CREATE
         @test cb.file_path == "new.txt"
         @test cb.content == "new content"
         @test cb.language == "python"
 
-        # Test shell command tag without explicit language
+        # Test shell tool tag without explicit language
         shell_tag = ToolTag(
             name="SHELL",
             args=String[],
             kwargs=Dict{String,String}(),
             content="```\necho 'test'\n```"
         )
-        cb = command2codeblock(shell_tag)
+        cb = tool2codeblock(shell_tag)
         @test cb isa CodeBlock
         @test cb.type == :SHELL
         @test cb.content == "echo 'test'"
@@ -51,7 +51,7 @@ using EasyContext: ToolTag, execute, tag2cmd, command2codeblock, CodeBlock
             kwargs=Dict{String,String}(),
             content="test content"
         )
-        cb = command2codeblock(modify_tag)
+        cb = tool2codeblock(modify_tag)
         @test cb isa CodeBlock
         @test cb.type == :MODIFY
         @test cb.file_path == "test.txt"
@@ -64,20 +64,20 @@ using EasyContext: ToolTag, execute, tag2cmd, command2codeblock, CodeBlock
             kwargs=Dict{String,String}(),
             content="new content"
         )
-        cb = command2codeblock(create_tag)
+        cb = tool2codeblock(create_tag)
         @test cb isa CodeBlock
         @test cb.type == :CREATE
         @test cb.file_path == "new.txt"
         @test cb.content == "new content"
 
-        # Test shell command tag
+        # Test shell tool tag
         shell_tag = ToolTag(
             name="SHELL",
             args=String[],
             kwargs=Dict{String,String}(),
             content="echo 'test'"
         )
-        cb = command2codeblock(shell_tag)
+        cb = tool2codeblock(shell_tag)
         @test cb isa CodeBlock
         @test cb.type == :SHELL
         @test cb.content == "echo 'test'"

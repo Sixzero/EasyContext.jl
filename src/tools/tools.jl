@@ -12,7 +12,7 @@ const EMAIL_TAG         = "EMAIL"
 const WEB_SEARCH_TAG    = "WEB_SEARCH"
 const END_OF_BLOCK_TAG  = "END_OF_BLOCK"
 const END_OF_CODE_BLOCK = "endblock"
-const allowed_commands::Set{String} = Set([MODIFY_FILE_TAG, CREATE_FILE_TAG, EMAIL_TAG, CLICK_TAG, SHELL_BLOCK_TAG, SENDKEY_TAG, CATFILE_TAG])
+const allowed_tools::Set{String} = Set([MODIFY_FILE_TAG, CREATE_FILE_TAG, EMAIL_TAG, CLICK_TAG, SHELL_BLOCK_TAG, SENDKEY_TAG, CATFILE_TAG])
 
 include("utils.jl")
 include("ToolTag.jl")
@@ -28,4 +28,4 @@ include("EmailTool.jl")
 include("parser.jl")
 
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, EmailTool, WebSearchTool
-export commandname, get_description, stop_sequence, has_stop_sequence
+export toolname, get_description, stop_sequence, has_stop_sequence

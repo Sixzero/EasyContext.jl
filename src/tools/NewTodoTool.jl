@@ -17,8 +17,7 @@ Create a new todo with title and description using format:
 $(NEW_TODO_TAG) project_name message
 """
 stop_sequence(cmd::Type{NewTodoTool}) = ""
-commandname(cmd::Type{NewTodoTool}) = NEW_TODO_TAG
+toolname(cmd::Type{NewTodoTool}) = NEW_TODO_TAG
 
-
-execute(cmd::ClickCommand) = "Clicking at coordinates ($(cmd.x), $(cmd.y)) with $(cmd.button) button"
+execute(cmd::NewTodoTool) = "Creating todo: $(cmd.title) - $(cmd.description)"
 

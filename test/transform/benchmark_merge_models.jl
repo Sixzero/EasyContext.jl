@@ -50,6 +50,7 @@ configs = [
     (;model="tqwen25b72", temperature=0),
     (;model="tqwen25b7", temperature=0),
     (;model="grok", temperature=0),
+    (;model="dscode", temperature=0),
     # (;model="fqwen32B", temperature=0),
     # (;model="fqwen72B", temperature=0),
     (;model="gpt4o", temperature=0),

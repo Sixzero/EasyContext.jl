@@ -9,7 +9,7 @@ export truncate_output
 end
 ShellBlockTool(cmd::ToolTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockTool(language=language, content=content) end
 instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::ToolTag) = ShellBlockTool(cmd)
-commandname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
+toolname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
 get_description(cmd::Type{ShellBlockTool}) = """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
 You propose the sh script that should be run in a most concise short way and wait for feedback!

@@ -7,10 +7,10 @@ end
 CatFileTool(cmd::ToolTag) = CatFileTool(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
 instantiate(::Val{Symbol(CATFILE_TAG)}, cmd::ToolTag) = CatFileTool(cmd)
 
-commandname(cmd::Type{CatFileTool}) = CATFILE_TAG
+toolname(cmd::Type{CatFileTool}) = CATFILE_TAG
 get_description(cmd::Type{CatFileTool}) = """
-Whenever you need the content of a file to solve the task you can use the CATFILE command:
-To get the content of a file you can use the CATFILE command:
+Whenever you need the content of a file to solve the task you can use the CATFILE tool:
+To get the content of a file you can use the CATFILE tool:
 $(CATFILE_TAG) path/to/file $(STOP_SEQUENCE)
 $(CATFILE_TAG) filepath $(STOP_SEQUENCE)
 or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE:

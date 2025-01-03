@@ -1,20 +1,20 @@
 using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
-using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
+using EasyContext: StreamParser, ToolTag, extract_tool_calls, reset!, serialize
 
 @testset failfast=true "StreamParser Tests" begin
     @testset "Constructor" begin
         parser = StreamParser()
         @test parser.last_processed_index[] == 0
-        @test isempty(parser.command_tasks)
-        @test isempty(parser.command_results)
+        @test isempty(parser.tool_tasks)
+        @test isempty(parser.tool_results)
         @test parser.full_content == ""
         @test !parser.skip_execution
         @test !parser.no_confirm
     end
 
-    @testset "extract_commands" begin
+    @testset "extract_tool_calls" begin
         parser = StreamParser()
         content = """
         Some text before
@@ -32,24 +32,24 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         Some text after
         """
 
-        result = extract_commands(content, parser; root_path="")
+        result = extract_tool_calls(content, parser; root_path="")
 
-        @test length(parser.command_tasks) == 2
+        @test length(parser.tool_tasks) == 2
     end
 
     @testset "reset!" begin
         parser = StreamParser()
         parser.last_processed_index[] = 100
         test_id = uuid4()  # Create a proper UUID
-        parser.command_tasks[test_id] = @task nothing
-        parser.command_results[test_id] = "test result"
+        parser.tool_tasks[test_id] = @task nothing
+        parser.tool_results[test_id] = "test result"
         parser.full_content = "Some content"
 
         reset!(parser)
 
         @test parser.last_processed_index[] == 0
-        @test isempty(parser.command_tasks)
-        @test isempty(parser.command_results)
+        @test isempty(parser.tool_tasks)
+        @test isempty(parser.tool_results)
         @test parser.full_content == ""
     end
 
@@ -57,8 +57,8 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         parser = StreamParser()
         cmd1 = ToolTag("SHELL", "command1", Dict{String,String}("result" => "output1"))  # Fixed constructor args
         cmd2 = ToolTag("TEST", "command2", Dict{String,String}("result" => "output2"))   # Fixed constructor args
-        parser.command_results[cmd1.id] = "output1"
-        parser.command_results[cmd2.id] = "output2"
+        parser.tool_results[cmd1.id] = "output1"
+        parser.tool_results[cmd2.id] = "output2"
 
         result = shell_ctx_2_string(parser)
 
@@ -80,7 +80,7 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         /OUTER
         """
 
-        @test_throws ErrorException extract_commands(content, parser)
+        @test_throws ErrorException extract_tool_calls(content, parser)
     end
 
     @testset "Unclosed tags handling" begin
@@ -95,8 +95,8 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         ```
         Some text after
         """
-        extract_commands(content, parser)
-        @test isempty(parser.command_tasks) # Should not create command without closing tag
+        extract_tool_calls(content, parser)
+        @test isempty(parser.tool_tasks) # Should not create command without closing tag
 
         # Test unclosed MODIFY tag
         content = """
@@ -108,8 +108,8 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         Some text after
         """
         reset!(parser)
-        extract_commands(content, parser)
-        @test isempty(parser.command_tasks) # Should not create command without closing tag
+        extract_tool_calls(content, parser)
+        @test isempty(parser.tool_tasks) # Should not create command without closing tag
 
         # Test unclosed code block
         content = """
@@ -121,8 +121,8 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         Some text after
         """
         reset!(parser)
-        extract_commands(content, parser)
-        @test isempty(parser.command_tasks) # Should not create command with unclosed code block
+        extract_tool_calls(content, parser)
+        @test isempty(parser.tool_tasks) # Should not create command with unclosed code block
     end
 
     @testset "Partial streaming extraction" begin
@@ -140,11 +140,11 @@ using EasyContext: StreamParser, ToolTag, extract_commands, reset!, serialize
         /MODIFY
         """
 
-        extract_commands(content1, parser)
-        @test isempty(parser.command_tasks) # Should not create command from partial content
+        extract_tool_calls(content1, parser)
+        @test isempty(parser.tool_tasks) # Should not create command from partial content
 
-        extract_commands(content2, parser)
-        @test length(parser.command_tasks) == 1 # Should create command when complete
+        extract_tool_calls(content2, parser)
+        @test length(parser.tool_tasks) == 1 # Should create command when complete
     end
 end
 ;

@@ -23,7 +23,7 @@ function ModifyFileTool(cmd::ToolTag)
 end
 instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::ToolTag) = ModifyFileTool(cmd)
 
-commandname(cmd::Type{ModifyFileTool}) = MODIFY_FILE_TAG
+toolname(cmd::Type{ModifyFileTool}) = MODIFY_FILE_TAG
 get_description(cmd::Type{ModifyFileTool}) = """
 To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)":
 
@@ -118,30 +118,30 @@ function set_editor(editor_name::AbstractString)
 end
 
 
-function LLM_conditional_apply_changes(cb::ModifyFileTool)
-    original_content, ai_generated_content = LLM_apply_changes_to_file(cb)
-    cb.postcontent = ai_generated_content
-    cb
+function LLM_conditional_apply_changes(tool::ModifyFileTool)
+    original_content, ai_generated_content = LLM_apply_changes_to_file(tool)
+    tool.postcontent = ai_generated_content
+    tool
 end
 
-function LLM_apply_changes_to_file(cb::ModifyFileTool)
+function LLM_apply_changes_to_file(tool::ModifyFileTool)
     original_content = ""
-    cd(cb.root_path) do
-        if isfile(cb.file_path)
-            file_path, line_range = parse_source(cb.file_path)
+    cd(tool.root_path) do
+        if isfile(tool.file_path)
+            file_path, line_range = parse_source(tool.file_path)
             original_content = read(file_path, String)
         else
-            @warn "WARNING! Unexisting file! $(cb.file_path) pwd: $(pwd())"
-            cb.content
+            @warn "WARNING! Unexisting file! $(tool.file_path) pwd: $(pwd())"
+            tool.content
         end
     end
-    isempty(original_content) && return cb.content, cb.content
+    isempty(original_content) && return tool.content, tool.content
     
     # Check file size and choose appropriate method
     if length(original_content) > 10_000
-        ai_generated_content = apply_modify_by_replace(original_content, cb.content)
+        ai_generated_content = apply_modify_by_replace(original_content, tool.content)
     else
-        ai_generated_content = apply_modify_by_llm(original_content, cb.content)
+        ai_generated_content = apply_modify_by_llm(original_content, tool.content)
     end
     
     original_content, ai_generated_content

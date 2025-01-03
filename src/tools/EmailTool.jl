@@ -21,9 +21,9 @@ function EmailTool(cmd::ToolTag)
 end
 instantiate(::Val{Symbol(EMAIL_TAG)}, cmd::ToolTag) = EmailTool(cmd)
 
-commandname(cmd::Type{EmailTool}) = EMAIL_TAG
+toolname(cmd::Type{EmailTool}) = EMAIL_TAG
 get_description(cmd::Type{EmailTool}) = """
-To create an email with a standardized format, use the $(EMAIL_TAG) command:
+To create an email with a standardized format, use the $(EMAIL_TAG) tool:
 $(EMAIL_TAG) to=recipient@example.com subject="Email Subject"
 Dear Recipient,
 

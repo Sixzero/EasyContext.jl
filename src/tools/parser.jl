@@ -1,19 +1,19 @@
-export StreamParser, extract_commands, run_stream_parser, get_last_command_result
+export StreamParser, extract_tool_calls, run_stream_parser, get_last_tool_result
 
 #  I think we will need a runner and parser separated...
 
 @kwdef mutable struct StreamParser
     last_processed_index::Ref{Int} = Ref(0)
-    command_tasks::OrderedDict{UUID, Task} = OrderedDict{UUID, Task}()
-    command_results::OrderedDict{UUID, String} = OrderedDict{UUID, String}()
+    tool_tasks::OrderedDict{UUID, Task} = OrderedDict{UUID, Task}()
+    tool_results::OrderedDict{UUID, String} = OrderedDict{UUID, String}()
     full_content::String = ""
     skip_execution::Bool = false
     no_confirm::Bool = false
 end
-function process_immediate_command!(line::String, stream_parser::StreamParser, content::String=""; root_path::String="")
-    current_cmd = parse_command(line, content, kwargs=Dict("root_path"=>root_path))
-    cmd = convert_command(current_cmd)
-    stream_parser.command_tasks[cmd.id] = @async_showerr preprocess(cmd)
+function process_immediate_tool!(line::String, stream_parser::StreamParser, content::String=""; root_path::String="")
+    tool_tag = parse_tool(line, content, kwargs=Dict("root_path"=>root_path))
+    tool = convert_tool(tool_tag)
+    stream_parser.tool_tasks[tool.id] = @async_showerr preprocess(tool)
 end
 
 function update_processed_index!(stream_parser::StreamParser, lines, last_saved_i::Int, current_i::Int)
@@ -23,7 +23,7 @@ function update_processed_index!(stream_parser::StreamParser, lines, last_saved_
     end
 end
 
-function extract_commands(new_content::String, stream_parser::StreamParser; root_path::String="")
+function extract_tool_calls(new_content::String, stream_parser::StreamParser; root_path::String="", is_flush::Bool=false)
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
@@ -32,11 +32,11 @@ function extract_commands(new_content::String, stream_parser::StreamParser; root
     while i <= length(lines)-1
         line = String(strip(lines[i]))
         
-        # Handle single-line commands
+        # Handle single-line tools
         if startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             stream_parser.last_processed_index[] += length(line) + 1
-            process_immediate_command!(line, stream_parser, ""; root_path)
+            process_immediate_tool!(line, stream_parser, ""; root_path)
             last_saved_i = i + 1
             i += 1
             continue
@@ -44,12 +44,12 @@ function extract_commands(new_content::String, stream_parser::StreamParser; root
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             if i < length(lines) 
                 if startswith(strip(lines[i+1]), "```")
-                    block_end = find_code_block_end(lines, i+1)
+                    block_end = find_code_block_end(lines, i+1, is_flush)  # Pass is_flush here
                     if !isnothing(block_end)
                         content = join(lines[i+1:block_end], '\n')
                         total_length = length(line) + 1 + length(content) + 1  # +1 for newline after tag
                         stream_parser.last_processed_index[] += total_length
-                        process_immediate_command!(line, stream_parser, content; root_path)
+                        process_immediate_tool!(line, stream_parser, content; root_path)
                         last_saved_i = block_end + 1
                         i = block_end + 1
                         continue
@@ -64,65 +64,64 @@ function extract_commands(new_content::String, stream_parser::StreamParser; root
 end
 execute(t::Task) = begin
     cmd = fetch(t)
-    isnothing(cmd) ? nothing : execute(convert_command(cmd))
+    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
 end
 function reset!(stream_parser::StreamParser)
     stream_parser.last_processed_index[] = 0
-    empty!(stream_parser.command_tasks)
-    empty!(stream_parser.command_results)
+    empty!(stream_parser.tool_tasks)
+    empty!(stream_parser.tool_results)
     stream_parser.full_content = ""
     return stream_parser
 end
 
-execute_single_command(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_command(fetch(task), stream_parser, no_confirm)
-execute_single_command(cmd::ModifyFileTool, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd)
-execute_single_command(cmd::CreateFileTool, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
-function execute_single_command(cmd::ShellBlockTool, stream_parser::StreamParser, no_confirm::Bool=false)
-    stream_parser.command_results[cmd.id] = execute(cmd; no_confirm)
-    !isempty(stream_parser.command_results[cmd.id]) && push!(cmd.run_results, stream_parser.command_results[cmd.id])
+execute_single_tool(task::Task, stream_parser::StreamParser, no_confirm::Bool=false) = execute_single_tool(fetch(task), stream_parser, no_confirm)
+execute_single_tool(cmd::ModifyFileTool, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd)
+execute_single_tool(cmd::CreateFileTool, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
+function execute_single_tool(cmd::ShellBlockTool, stream_parser::StreamParser, no_confirm::Bool=false)
+    stream_parser.tool_results[cmd.id] = execute(cmd; no_confirm)
+    !isempty(stream_parser.tool_results[cmd.id]) && push!(cmd.run_results, stream_parser.tool_results[cmd.id])
 end
-execute_single_command(cmd, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
+execute_single_tool(cmd, stream_parser::StreamParser, no_confirm::Bool=false) = execute(cmd; no_confirm)
 
 
-function execute_commands(stream_parser::StreamParser; no_confirm=false)
-    for (id, task) in stream_parser.command_tasks
-        cmd = fetch(task)
-        # Show the most relevant command information
-        isnothing(cmd) && continue # TODO it signals error in a task, shouldn't really happen.
-        cmd.id in keys(stream_parser.command_results) && continue
-        execute_single_command(cmd, stream_parser, no_confirm)
+function execute_tools(stream_parser::StreamParser; no_confirm=false)
+    for (id, task) in stream_parser.tool_tasks
+        tool = fetch(task)
+        isnothing(tool) && continue
+        tool.id in keys(stream_parser.tool_results) && continue
+        execute_single_tool(tool, stream_parser, no_confirm)
     end
-    return stream_parser.command_results
+    return stream_parser.tool_results
 end
 
 function run_stream_parser(stream_parser::StreamParser; root_path=".", no_confirm=false, async=false)
     if !stream_parser.skip_execution 
         cd(root_path) do 
-            execute_commands(stream_parser; no_confirm)
+            execute_tools(stream_parser; no_confirm)
         end
     end
 end
 
-function get_last_command_result(stream_parser::StreamParser, no_confirm::Bool=false)
-    cmd = fetch(last(stream_parser.command_tasks).second)
-    @assert has_stop_sequence(cmd) "Last command should have a stop sequence or we shouldn't enter here.. i think"
-    res = stream_parser.command_results[cmd.id]
+function get_last_tool_result(stream_parser::StreamParser, no_confirm::Bool=false)
+    tool = fetch(last(stream_parser.tool_tasks).second)
+    @assert has_stop_sequence(tool) "Last tool should have a stop sequence or we shouldn't enter here.. i think"
+    res = stream_parser.tool_results[tool.id]
     return res == "\nOperation cancelled by user." ? nothing : res
 end
 
 shell_ctx_2_string(stream_parser::StreamParser) = begin
-	isempty(stream_parser.command_results) && return ""
+	isempty(stream_parser.tool_results) && return ""
 	
-	output = "Previous commands and their results:\n"
-	for (id, task) in stream_parser.command_tasks
-			cmd = fetch(task)
-			if isa(cmd, ShellBlockTool) && !isempty(cmd.run_results) && !isempty(cmd.run_results[end])  # and if it was noblocking!
-					shortened_content = get_shortened_code(cmd.content)
+	output = "Previous tools and their results:\n"
+	for (id, task) in stream_parser.tool_tasks
+			tool = fetch(task)
+			if isa(tool, ShellBlockTool) && !isempty(tool.run_results) && !isempty(tool.run_results[end])  # and if it was noblocking!
+					shortened_content = get_shortened_code(tool.content)
 					output *= """$(SHELL_BLOCK_OPEN)
 					$shortened_content
 					$(CODEBLOCK_CLOSE)
 					$(SHELL_RUN_RESULT)
-					$(cmd.run_results[end])
+					$(tool.run_results[end])
 					$(CODEBLOCK_CLOSE)
 					"""
 			end
@@ -130,16 +129,19 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 	return output
 end
 
-function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
+function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1, is_flush=false)
     nesting_level = 1  # Start at 1 since we're already inside a code block
     in_docstring = false
-    fallback_end = nothing
+    last_block_end = nothing
 
-    for (i, line) in enumerate(lines[start_idx:end])
-        stripped = strip(line)
-        
+    for (i, line) in enumerate(lines[start_idx:end]) # no need for strip
+        # Check if we hit another tool
+        if any(startswith.(line, allowed_tools))
+            return isnothing(last_block_end) ? nothing : last_block_end
+        end
+
         # Handle docstring boundaries
-        if occursin(r"^\"\"\"", stripped)
+        if occursin(r"^\"\"\"", line)
             in_docstring = !in_docstring
             continue
         end
@@ -150,25 +152,22 @@ function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1)
         end
 
         # Check for code block markers
-        if startswith(stripped, "```")
-            if stripped == "```$(END_OF_CODE_BLOCK)"
+        if startswith(line, "```")
+            if line == "```$(END_OF_CODE_BLOCK)"
                 return start_idx + i - 1
-            elseif length(stripped) > 3
+            elseif length(line) > 3
                 nesting_level += 1
             else
                 nesting_level -= 1
-                if nesting_level == 1
-                    fallback_end = start_idx + i - 1
-                end
+                last_block_end = start_idx + i - 1
             end
         end
     end
     
-    # Return fallback position if found, otherwise nothing
-    return fallback_end
+    return is_flush ? last_block_end : nothing
 end
 
-function parse_command(first_line::String, content::String=""; kwargs::Dict{String,String})
+function parse_tool(first_line::String, content::String=""; kwargs::Dict{String,String})
     tag_end = findfirst(' ', first_line)
     name = String(strip(first_line[1:something(tag_end, length(first_line))]))
     args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))

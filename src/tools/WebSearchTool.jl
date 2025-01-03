@@ -4,9 +4,9 @@
     query::String
     results::Vector{String} = []
 end
-WebSearchTool(cmd::ToolTag) = WebSearchTool(query=strip(cmd.args))
-instantiate(::Val{Symbol(WEB_SEARCH_TAG)}, cmd::ToolTag) = WebSearchTool(cmd)
-commandname(cmd::Type{WebSearchTool}) = WEB_SEARCH_TAG
+WebSearchTool(tag::ToolTag) = WebSearchTool(query=strip(tag.args))
+instantiate(::Val{Symbol(WEB_SEARCH_TAG)}, tag::ToolTag) = WebSearchTool(tag)
+toolname(::Type{WebSearchTool}) = WEB_SEARCH_TAG
 
 
 

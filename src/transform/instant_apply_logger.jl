@@ -18,7 +18,7 @@ function log_instant_apply(original::String, proposed::String, filepath::String,
 end
 
 function log_instant_apply(extractor::StreamParser, question::String)
-    @async_showerr for (_, task) in extractor.command_tasks
+    @async_showerr for (_, task) in extractor.tool_tasks
         cb = fetch(task)
         log_instant_apply(cb, question)
     end

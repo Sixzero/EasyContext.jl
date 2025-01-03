@@ -22,7 +22,7 @@ function LLM_solve(conv, cache;
         content_formatter = text -> begin
             handle_text(highlight_state, text)
             on_text(text)
-            extract_commands(text, extractor, root_path=root_path)
+            extract_tool_calls(text, extractor, root_path=root_path)
         end,
         on_meta_usr = (tokens, cost, elapsed) -> begin
             flush_highlight(highlight_state)
@@ -39,7 +39,7 @@ function LLM_solve(conv, cache;
         end,
         on_done = () -> begin
             flush_highlight(highlight_state)
-            extract_commands("\n", extractor, root_path=root_path)
+            extract_tool_calls("\n", extractor, root_path=root_path; is_flush=true)
             on_done()
         end,
         on_stop_sequence = (stop_sequence) -> (handle_text(highlight_state, stop_sequence)),

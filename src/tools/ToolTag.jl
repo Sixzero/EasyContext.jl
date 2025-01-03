@@ -11,8 +11,8 @@ include("ToolInterface.jl")
 end
 
 # Convert raw ToolTag to specific tool types
-function convert_command(cmd::ToolTag)
-    return instantiate(Val(Symbol(cmd.name)), cmd)
+function convert_tool(tag::ToolTag)
+    return instantiate(Val(Symbol(tag.name)), tag)
 end
 
 print_tool_result(result) = begin

@@ -13,16 +13,16 @@ function LLM_safetorun(cmd)
 	false
 end
 function LLM_safetorun(content::String)
-	prompt = """Is this command safe to run? Rate with one of the following options:
-	- SAFE: the command is safe to run
-	- ALTER_SYSTEM: the command modifies the system's packages or states
-	- NOT_SURE: not sure if the command is safe to run
-	- UNSAFE: the command is unsafe to run
+	prompt = """Is this tool safe to run? Rate with one of the following options:
+	- SAFE: the tool is safe to run
+	- ALTER_SYSTEM: the tool modifies the system's packages or states
+	- NOT_SURE: not sure if the tool is safe to run
+	- UNSAFE: the tool is unsafe to run
 	- TOO_LONG: the run would take too long
-	Shell command:
+	Shell tool:
 	$(content)
 	"""
-	aigenerated = PromptingTools.aigenerate(prompt, model="gem15f", verbose=false) # gpt4om, claudeh
+	aigenerated = PromptingTools.aigenerate(prompt, model="claude", verbose=false) # gpt4om, claudeh
 	# @show "?!"
 	# println(aigenerated.content)
 	is_safe = SAFETORUN_CONDITION(aigenerated) == 1

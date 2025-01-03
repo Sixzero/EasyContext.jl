@@ -5,7 +5,7 @@ export ExecutionPlannerContext, LLM_ExecutionPlanner
 
 Base.@kwdef mutable struct ExecutionPlannerContext
     enabled::Bool = true
-    model::String = "oro1"
+    model::String = "dscode"
     temperature::Float64 = 0.8
     top_p::Float64 = 0.8
     history_count::Int = 3
@@ -50,6 +50,7 @@ For each request:
 2. Identify risks and dependencies
 3. Create clear action steps
 4. Define success criteria
+5. Add confidence level [Confident|Probable|Uncertain|Speculative] after each suggestion
 
 Format responses using:
 
@@ -63,14 +64,14 @@ Format responses using:
 
 # Action Plan
 1. [Step name]
-   - Actions and timeline
-   - Required resources
-   - Dependencies
+   - Actions and timeline [Confidence]
+   - Required resources [Confidence]
+   - Dependencies [Confidence]
 
 # Success Criteria
-- Measurable outcomes
-- Validation methods
-- Key checkpoints
+- Measurable outcomes [Confidence]
+- Validation methods [Confidence]
+- Key checkpoints [Confidence]
 
 Remember to:
 - Be specific and actionable

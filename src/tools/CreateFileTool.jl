@@ -17,7 +17,7 @@ function CreateFileTool(cmd::ToolTag)
     )
 end
 instantiate(::Val{Symbol(CREATE_FILE_TAG)}, cmd::ToolTag) = CreateFileTool(cmd)
-commandname(cmd::Type{CreateFileTool}) = CREATE_FILE_TAG
+toolname(cmd::Type{CreateFileTool}) = CREATE_FILE_TAG
 get_description(cmd::Type{CreateFileTool}) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
 $(CREATE_FILE_TAG) path/to/file
@@ -27,10 +27,10 @@ It is important you ALWAYS close with "```$(END_OF_CODE_BLOCK) after the code bl
 """
 stop_sequence(cmd::Type{CreateFileTool}) = ""
 
-function execute(cmd::CreateFileTool; no_confirm=false)
-    path = normpath(joinpath(cmd.root_path, cmd.file_path))
-    cmd_code = process_create_command(path, cmd.content)
-    shortened_code = get_shortened_code(cmd_code, 4, 2)
+function execute(tool::CreateFileTool; no_confirm=false)
+    path = normpath(joinpath(tool.root_path, tool.file_path))
+    shell_cmd = process_create_command(path, tool.content)
+    shortened_code = get_shortened_code(shell_cmd, 4, 2)
     print_code(shortened_code)
     
     dir = dirname(path)
@@ -38,7 +38,7 @@ function execute(cmd::CreateFileTool; no_confirm=false)
     
     if no_confirm || get_user_confirmation()
         print_output_header()
-        cmd_all_info_modify(`zsh -c $cmd_code`)
+        cmd_all_info_modify(`zsh -c $shell_cmd`)
     else
         "\nOperation cancelled by user."
     end

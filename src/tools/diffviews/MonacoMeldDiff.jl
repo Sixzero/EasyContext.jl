@@ -6,12 +6,12 @@ end
 keywords(::Type{MonacoMeldDiffView}) = ["meld-pro", "meld_pro", "monacomeld", "monaco"]
 register_diffview_subtype!(MonacoMeldDiffView)
 
-function execute(cmd::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=false)
+function execute(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=false)
     if is_diff_service_available(view.port)
         payload = Dict(
-            "leftPath" => string(cmd.file_path),
-            "rightContent" => cmd.postcontent,
-            "pwd" => cmd.root_path
+            "leftPath" => string(tool.file_path),
+            "rightContent" => tool.postcontent,
+            "pwd" => tool.root_path
         )
         json_str = JSON3.write(payload)
         json_str_for_shell = replace(json_str, "'" => "'\\''")
@@ -21,7 +21,7 @@ function execute(cmd::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=false
     else
         @info "No monacomeld running on: http://localhost:$(view.port)"
         # Fallback to meld
-        execute(cmd, MeldDiffView(); no_confirm)
+        execute(tool, MeldDiffView(); no_confirm)
     end
 end
 
