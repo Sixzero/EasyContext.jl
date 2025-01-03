@@ -17,7 +17,7 @@ function execute(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=fals
         json_str_for_shell = replace(json_str, "'" => "'\\''")
         cmd_code = """curl -X POST http://localhost:$(view.port)/diff -H "Content-Type: application/json" -d '$(json_str_for_shell)'"""
         print_code("curl diff...")
-        cmd_all_info_modify(`zsh -c $cmd_code`)
+        execute_with_output(`zsh -c $cmd_code`)
     else
         @info "No monacomeld running on: http://localhost:$(view.port)"
         # Fallback to meld

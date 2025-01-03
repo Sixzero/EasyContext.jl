@@ -91,27 +91,6 @@ serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::Orde
 end
 format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = join(["""$(file_format(src, content))""" for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
 
-function deserialize(::Type{ChangeTracker}, input::String)
-    pattern = r"<(\w+)\s+(\w+)>(.*?)</\1>"
-    file_pattern = r"File: (.*?)\n```.*?\n(.*?)\n```"s
-    
-    content = OrderedDict{String, String}()
-    changes = OrderedDict{String, Symbol}()
-    
-    for match in eachmatch(pattern, input, DOTALL)
-        tag, state = match[1], Symbol(match[2])
-        files_block = match[3]
-        
-        for file_match in eachmatch(file_pattern, files_block)
-            filepath = file_match[1]
-            file_content = file_match[2]
-            content[filepath] = file_content
-            changes[filepath] = state
-        end
-    end
-    
-    return content, changes
-end
 
 function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
     

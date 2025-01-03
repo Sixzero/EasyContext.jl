@@ -1,6 +1,8 @@
 # ./src/transform/LLM_CodeCriticsArchitect.jl
 using PromptingTools: SystemMessage, UserMessage
 using Markdown
+using StreamCallbacksExt
+using StreamCallbacksExt: format_ai_message, format_user_message
 
 export CodeCriticsArchitectContext, LLM_CodeCriticsArchitect
 
@@ -38,10 +40,12 @@ function transform(ctx::CodeCriticsArchitectContext, query, session::Session)
     Be minimal, focus only on important issues.
     """
     
+    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false))
+
     response = aigenerate([
         SystemMessage(CRITICS_SYSTEM_PROMPT),
         UserMessage(prompt)
-    ], model=ctx.model, api_kwargs=(temperature=ctx.temperature, top_p=ctx.top_p))
+    ], model=ctx.model, api_kwargs=(temperature=ctx.temperature, top_p=ctx.top_p), streamcallback=cb)
     
     content = response.content
     display(ctx, content)

@@ -63,6 +63,8 @@ end
 function to_dict_nosys_detailed(conv::CONV)
     [to_dict(message) for message in conv.messages]
 end
+# just unwrap it.
+update_last_user_message_meta(conv::CONV, callback::StreamCallbackChannelWrapper) = update_last_user_message_meta(conv, callback.callback)
 function update_last_user_message_meta(conv::CONV, callback::Union{StreamCallbackWithHooks, StreamCallbackWithTokencounts})
     tokens::TokenCounts, run_info::RunInfo, flavor, model = callback.total_tokens, callback.run_info, callback.flavor, callback.model
     elapsed = run_info.last_message_time - run_info.creation_time

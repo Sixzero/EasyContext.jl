@@ -63,6 +63,6 @@ stop_sequence(tool::AbstractTool)::String = stop_sequence(typeof(tool))
 get_description(::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(typeof(tool))"; return "unknown skill! $(typeof(tool))")
 get_description(tool::AbstractTool)::String = get_description(typeof(tool))
 
-has_stop_sequence(::Type{<:AbstractTool})::Bool = stop_sequence(tool_type) != "" #This line was causing an error, assuming tool_type should be replaced with the type itself.
+has_stop_sequence(tool::Type{<:AbstractTool})::Bool = stop_sequence(tool) != "" #This line was causing an error, assuming tool_type should be replaced with the type itself.
 has_stop_sequence(tool::AbstractTool)::Bool = has_stop_sequence(typeof(tool))
 

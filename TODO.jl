@@ -160,6 +160,8 @@ later- [ ] julia discouse issue tracker solver
 later- [ ] julia github issue tracker solver
 later- [ ] docker shipping...
 
+- [x] ENV["REVISE"]="disable" before airepl starts.
+
 - using COMPUTER is a skill: Click + Keyboard + image understanding
 
 #

@@ -4,9 +4,6 @@ using DataStructures
 using BoilerplateCvikli: @async_showerr
 using LLMRateLimiters: TokenEstimationMethod, airatelimited, RateLimiterRPM, RateLimiterTPM, CharCountDivTwo, estimate_tokens
 
-using Anthropic
-import Anthropic: ai_stream_safe, ai_ask_safe
-
 using Dates
 using UUIDs
 

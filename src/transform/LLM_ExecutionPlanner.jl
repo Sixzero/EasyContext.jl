@@ -32,10 +32,13 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session)
 
     Based on the above PREVIOUS_CONTEXT USER_QUESTION, create a detailed execution plan, which is sufficient to answer user question.
     """
+    
+    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false))
+
     response = aigenerate([
         SystemMessage(PLANNER_SYSTEM_PROMPT),
         UserMessage(prompt)
-    ], model=ctx.model, api_kwargs=(temperature=ctx.temperature, top_p=ctx.top_p))
+    ], model=ctx.model, api_kwargs=(temperature=ctx.temperature, top_p=ctx.top_p), streamcallback=cb)
     
     content = response.content
     display(ctx, content)

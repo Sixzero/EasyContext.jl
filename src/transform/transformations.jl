@@ -3,6 +3,7 @@ include("context_combiner.jl")
 include("condition_parser.jl")
 # include("code_runner.jl")
 
+include("StreamingHighlight.jl")
 include("readline.jl")
 include("LLM_apply_changes.jl")
 include("LLM_solve.jl")

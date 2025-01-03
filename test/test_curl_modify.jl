@@ -1,6 +1,6 @@
 using Test
 using EasyContext
-using EasyContext: CodeBlock, codestr, cmd_all_info_modify
+using EasyContext: CodeBlock, codestr, execute_with_output
 using JSON3
 using HTTP
 
@@ -28,10 +28,10 @@ using HTTP
     @test occursin(file_path, cmd)
     @test occursin("test content", cmd)
 
-    # Test actual curl command execution with cmd_all_info_modify
+    # Test actual curl command execution with execute_with_output
     @testset "curl command execution" begin
         curl_cmd = `zsh -c $cmd`
-        output = cmd_all_info_modify(curl_cmd)
+        output = execute_with_output(curl_cmd)
         @show output
         
         # If server is running, we expect a JSON response

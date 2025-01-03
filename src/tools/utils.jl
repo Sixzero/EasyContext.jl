@@ -24,7 +24,7 @@ function print_output_header()
     println("\n\e[36mOutput:\e[0m")
 end
 
-function cmd_all_info_modify(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
+function execute_with_output(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     process = run(pipeline(ignorestatus(cmd), stdout=output, stderr=error))
     return format_cmd_output(output, error, process, debug_msg=cmd)
 end

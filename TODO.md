@@ -65,6 +65,8 @@
  - [ ] email figyelés és válaszolás
  - [ ] RAG flows need an interface.
  - [ ] AsyncString
+ - [ ] We could probably completely remove the extrator from std_flow. Only the workspace should get passed over to the agent...
+ - [ ] revise if written in airepl then it should call revise()
  - [ ] reranking to limit batch size not just with batch size but token counts, it shouldn't exceed 40k tokens a reranking request if possible.
 
 

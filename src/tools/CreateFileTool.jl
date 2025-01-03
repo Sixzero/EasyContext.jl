@@ -38,7 +38,7 @@ function execute(tool::CreateFileTool; no_confirm=false)
     
     if no_confirm || get_user_confirmation()
         print_output_header()
-        cmd_all_info_modify(`zsh -c $shell_cmd`)
+        execute_with_output(`zsh -c $shell_cmd`)
     else
         "\nOperation cancelled by user."
     end
