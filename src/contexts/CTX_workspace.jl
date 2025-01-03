@@ -51,7 +51,7 @@ function process_workspace_context(workspace_context, ctx_question; age_tracker=
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)
-    for task in values(extractor.command_tasks)
+    for task in values(extractor.tool_tasks)
         cb = fetch(task)
         !isa(cb, ModifyFileTool) && continue
         changes_tracker.changes[cb.file_path] = :UPDATED

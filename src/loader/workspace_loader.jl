@@ -9,7 +9,7 @@ include("resolution_methods.jl")
     original_dir::String
     PROJECT_FILES::Vector{String} = [
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
-        "README.md", 
+        "README.md", "app.json", 
         "Gemfile", "Cargo.toml"# , "Project.toml"
     ]
     FILE_EXTENSIONS::Vector{String} = [

@@ -11,7 +11,12 @@ using EasyRAGStore: IndexLogger, log_index
     index_logger::IndexLogger
 end
 
-function init_julia_context(; package_scope=:installed, verbose=true, index_logger_path="julia_context_log")
+function init_julia_context(; 
+    package_scope=:installed, 
+    verbose=true, 
+    index_logger_path="julia_context_log",
+    excluded_packages=String[]
+)
     voyage_embedder = create_voyage_embedder(model="voyage-code-2", cache_prefix="juliapkgs")
     jl_simi_filter = create_combined_index_builder(voyage_embedder; top_k=120)
     
@@ -48,7 +53,7 @@ function process_julia_context(enabled, julia_context::JuliaCTX, ctx_question; a
     # Lazy initialization of the index if not yet created
     if isnothing(jl_pkg_index)
         # Use the provided package_scope - need to recreate loader here
-        julia_loader = CachedLoader(loader=JuliaLoader(), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
+        julia_loader = CachedLoader(loader=JuliaLoader(; excluded_packages=excluded_packages), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
         julia_context.jl_pkg_index = @async_showerr get_index(jl_simi_filter, julia_loader)
     end
     jl_pkg_index = julia_context.jl_pkg_index
