@@ -1,7 +1,7 @@
 export LLM_safetorun
 
 
-const SAFETORUN_CONDITION = Condition(patterns=Dict{String,Int}(
+const SAFETORUN = Classify(patterns=Dict{String,Int}(
 	"SAFE"     => 1,
 	"NOTSURE"  => 2,
 	"UNSAFE"  => 3,
@@ -25,7 +25,7 @@ function LLM_safetorun(content::String)
 	aigenerated = PromptingTools.aigenerate(prompt, model="claude", verbose=false) # gpt4om, claudeh
 	# @show "?!"
 	# println(aigenerated.content)
-	is_safe = SAFETORUN_CONDITION(aigenerated) == 1
+	is_safe = SAFETORUN(aigenerated) == 1
 	is_safe && println("Safe command: ", content)
 	return is_safe
 end

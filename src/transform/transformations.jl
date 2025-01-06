@@ -1,6 +1,6 @@
 
 include("context_combiner.jl")
-include("condition_parser.jl")
+include("classifier.jl")
 # include("code_runner.jl")
 
 include("StreamingHighlight.jl")

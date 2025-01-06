@@ -4,7 +4,7 @@ using PromptingTools
 export LLM_reflect, LLM_reflect_is_continue, LLM_reflect_condition
 
 
-const REFLECT_CONDITION = Condition(patterns=Dict{String,Symbol}(
+const REFLECT_CLASSIFICATION = Classify(patterns=Dict{String,Symbol}(
     "[DONE]"     => :DONE,
     "[STUCKED]"  => :STUCKED,
     "[WAITING]"  => :WAITING,
@@ -40,9 +40,8 @@ function LLM_reflect(ctx_question, ctx_shell, new_ai_msg)
     aigenerated = PromptingTools.aigenerate(prompt, model="gem15f", verbose=false, streamcallback=stdout) # gpt4om, claudeh
     resp = String(aigenerated.content)
     
-    condition =REFLECT_CONDITION(resp)
-    !(condition in [:DONE, :STUCKED, :WAITING, :CONTINUE]) && @warn "We couldn't identify direction! (maybe autostop with warning??)"
-    resp, condition
+    command = REFLECT_CLASSIFICATION(resp)
+    resp, command
 end
 
 LLM_reflect_is_continue(resp) = resp == :CONTINUE 
