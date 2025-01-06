@@ -30,7 +30,7 @@ function extract_tool_calls(new_content::String, stream_parser::StreamParser; ro
     i = 1
     last_saved_i = 1
     while i <= length(lines)-1
-        line = String(strip(lines[i]))
+        line = String(lines[i])
         
         # Handle single-line tools
         if startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]) |> any
@@ -43,7 +43,7 @@ function extract_tool_calls(new_content::String, stream_parser::StreamParser; ro
         elseif startswith.(line, [MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             if i < length(lines) 
-                if startswith(strip(lines[i+1]), "```")
+                if startswith(lines[i+1], "```")
                     block_end = find_code_block_end(lines, i+1, is_flush)  # Pass is_flush here
                     if !isnothing(block_end)
                         content = join(lines[i+1:block_end], '\n')
