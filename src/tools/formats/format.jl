@@ -4,10 +4,18 @@ code_format(content::String, language::String="") = ""*
 $content
 ```$(END_OF_CODE_BLOCK)"""
 
+raw_format(content::String) = """```
+$content
+```"""
+
 file_format(filepath::String, content::String, language::String="") = ""*
 """File: $filepath
 $(code_format(content, language))
 """
+
+source_format(tag::String, filepath::String, content::String) = """$tag $filepath
+$(raw_format(content))"""
+
 
 email_format(to::String, subject::String, content::String) = ""*
 """$(EMAIL_TAG) to=$to subject="$subject"
