@@ -2,7 +2,6 @@ using StreamCallbacksExt
 
 function LLM_solve(conv, cache;
     extractor,
-    root_path,
     stop_sequences=[],
     model::String="claude",
     on_text=noop,
@@ -12,7 +11,8 @@ function LLM_solve(conv, cache;
     top_p=0.8,
     image=nothing,
     highlight_enabled::Bool=true,
-    process_enabled::Bool=true,)
+    process_enabled::Bool=true,
+    tool_kwargs=Dict())
 
     reset!(extractor)
     
@@ -21,10 +21,10 @@ function LLM_solve(conv, cache;
         on_error = on_error,
         on_start = on_start,
         on_done = () -> begin
-            process_enabled && extract_tool_calls("\n", extractor, root_path=root_path; is_flush=true)
+            process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
             on_done()
         end,
-        content_processor = text -> process_enabled ? extract_tool_calls(text, extractor, root_path=root_path) : nothing,
+        content_processor = text -> process_enabled ? extract_tool_calls(text, extractor; kwargs=tool_kwargs) : nothing,
         highlight_enabled = highlight_enabled,
         process_enabled = process_enabled
     ))

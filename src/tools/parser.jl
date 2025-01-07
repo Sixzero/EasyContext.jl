@@ -9,9 +9,11 @@ export StreamParser, extract_tool_calls, run_stream_parser, get_last_tool_result
     full_content::String = ""
     skip_execution::Bool = false
     no_confirm::Bool = false
+    single_line_tags::Vector{String} = String[CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]
+    multi_line_tags::Vector{String} = String[MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]
 end
-function process_immediate_tool!(line::String, stream_parser::StreamParser, content::String=""; root_path::String="")
-    tool_tag = parse_tool(line, content, kwargs=Dict("root_path"=>root_path))
+function process_immediate_tool!(line::String, stream_parser::StreamParser, content::String=""; kwargs=Dict())
+    tool_tag = parse_tool(line, content; kwargs)
     tool = convert_tool(tool_tag)
     stream_parser.tool_tasks[tool.id] = @async_showerr preprocess(tool)
 end
@@ -23,33 +25,34 @@ function update_processed_index!(stream_parser::StreamParser, lines, last_saved_
     end
 end
 
-function extract_tool_calls(new_content::String, stream_parser::StreamParser; root_path::String="", is_flush::Bool=false)
+function extract_tool_calls(new_content::String, stream_parser::StreamParser; kwargs=Dict(), is_flush::Bool=false)
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
+    allowed_tools = union(stream_parser.single_line_tags,stream_parser.multi_line_tags)
     i = 1
     last_saved_i = 1
     while i <= length(lines)-1
         line = String(lines[i])
         
         # Handle single-line tools
-        if startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]) |> any
+        if startswith.(line, stream_parser.single_line_tags) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             stream_parser.last_processed_index[] += length(line) + 1
-            process_immediate_tool!(line, stream_parser, ""; root_path)
+            process_immediate_tool!(line, stream_parser, ""; kwargs)
             last_saved_i = i + 1
             i += 1
             continue
-        elseif startswith.(line, [MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]) |> any
+        elseif startswith.(line, stream_parser.multi_line_tags) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             if i < length(lines) 
                 if startswith(lines[i+1], "```")
-                    block_end = find_code_block_end(lines, i+1, is_flush)  # Pass is_flush here
+                    block_end = find_code_block_end(lines, allowed_tools, i+1, is_flush)  # Pass is_flush here
                     if !isnothing(block_end)
                         content = join(lines[i+1:block_end], '\n')
                         total_length = length(line) + 1 + length(content) + 1  # +1 for newline after tag
                         stream_parser.last_processed_index[] += total_length
-                        process_immediate_tool!(line, stream_parser, content; root_path)
+                        process_immediate_tool!(line, stream_parser, content; kwargs)
                         last_saved_i = block_end + 1
                         i = block_end + 1
                         continue
@@ -129,7 +132,8 @@ shell_ctx_2_string(stream_parser::StreamParser) = begin
 	return output
 end
 
-function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1, is_flush=false)
+
+function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,start_idx::Int=1, is_flush=false)
     nesting_level = 1  # Start at 1 since we're already inside a code block
     in_docstring = false
     last_block_end = nothing
@@ -141,7 +145,7 @@ function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1, 
         end
 
         # Handle docstring boundaries
-        if occursin(r"^\"\"\"", line)
+        if occursin("\"\"\"", line)
             in_docstring = !in_docstring
             continue
         end
@@ -167,7 +171,7 @@ function find_code_block_end(lines::Vector{<:AbstractString}, start_idx::Int=1, 
     return is_flush ? last_block_end : nothing
 end
 
-function parse_tool(first_line::String, content::String=""; kwargs::Dict{String,String})
+function parse_tool(first_line::String, content::String=""; kwargs=Dict())
     tag_end = findfirst(' ', first_line)
     name = String(strip(first_line[1:something(tag_end, length(first_line))]))
     args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))

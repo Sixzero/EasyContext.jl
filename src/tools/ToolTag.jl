@@ -3,11 +3,11 @@ export print_tool_result
 include("ToolInterface.jl")
 
 
-@kwdef mutable struct ToolTag <: AbstractTag
+@kwdef mutable struct ToolTag{DICT} <: AbstractTag
     name::String
     content::String = ""
     args::String = ""
-    kwargs::Dict{String,String} = Dict{String,String}()
+    kwargs::DICT = Dict{String,String}()
 end
 
 # Convert raw ToolTag to specific tool types

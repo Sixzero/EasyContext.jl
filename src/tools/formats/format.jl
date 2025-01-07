@@ -1,4 +1,3 @@
-
 code_format(content::String, language::String="") = ""*
 """```$language
 $content
@@ -22,6 +21,27 @@ email_format(to::String, subject::String, content::String) = ""*
 $content
 $(END_OF_BLOCK_TAG)
 """
+
+function parse_code_block(content::String)
+	lines = split(content, '\n')
+	first_line = first(lines)
+	
+	if startswith(first_line, "```")
+			language = length(first_line) > 3 ? first_line[4:end] : "sh"
+			content = join(lines[2:end-1], '\n')
+			return language, content
+	end
+	
+	return "sh", content
+end
+
+function parse_raw_block(content::String)
+	lines = split(content, '\n')
+	if startswith(first(lines), "```")
+		return join(lines[2:end-1], '\n')
+	end
+	return content
+end
 
 
 const SHELL_BLOCK_OPEN = "```sh"

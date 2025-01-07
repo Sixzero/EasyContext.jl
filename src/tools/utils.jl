@@ -1,15 +1,3 @@
-function parse_code_block(content::String)
-    lines = split(content, '\n')
-    first_line = first(lines)
-    
-    if startswith(first_line, "```")
-        language = length(first_line) > 3 ? first_line[4:end] : "sh"
-        content = join(lines[2:end-1], '\n')
-        return language, content
-    end
-    
-    return "sh", content
-end
 
 function get_user_confirmation()
     print("\e[34mContinue? (y) \e[0m")
