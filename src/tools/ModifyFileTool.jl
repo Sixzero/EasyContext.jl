@@ -127,11 +127,11 @@ end
 function LLM_apply_changes_to_file(tool::ModifyFileTool)
     original_content = ""
     cd(tool.root_path) do
-        if isfile(tool.file_path)
-            file_path, line_range = parse_source(tool.file_path)
+        file_path, line_range = parse_source(tool.file_path)
+        if isfile(file_path)
             original_content = read(file_path, String)
         else
-            @warn "WARNING! Unexisting file! $(tool.file_path) pwd: $(pwd())"
+            @warn "WARNING! Unexisting file! $(file_path) pwd: $(pwd())"
             tool.content
         end
     end
