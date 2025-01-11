@@ -9,13 +9,15 @@ using EasyRAGStore: IndexLogger, log_index
     changes_tracker::ChangeTracker
     jl_reranker_filterer
     index_logger::IndexLogger
+    excluded_packages::Vector{String} = String[]  # Add this field
 end
 
 function init_julia_context(; 
     package_scope=:installed, 
     verbose=true, 
     index_logger_path="julia_context_log",
-    excluded_packages=String[]
+    excluded_packages=String[],
+    model="dscode"
 )
     voyage_embedder = create_voyage_embedder(model="voyage-code-2", cache_prefix="juliapkgs")
     jl_simi_filter = create_combined_index_builder(voyage_embedder; top_k=120)
@@ -27,7 +29,7 @@ function init_julia_context(;
     jl_pkg_index = nothing
     tracker_context = Context()
     changes_tracker = ChangeTracker(;need_source_reparse=false, verbose=verbose)
-    jl_reranker_filterer = ReduceRankGPTReranker(batch_size=40, top_n=10, model="gpt4om")
+    jl_reranker_filterer = ReduceRankGPTReranker(batch_size=40, top_n=10; model)
 
     index_logger = IndexLogger(index_logger_path)
 
@@ -38,6 +40,7 @@ function init_julia_context(;
         changes_tracker,
         jl_reranker_filterer,
         index_logger,
+        excluded_packages, # Pass excluded_packages to the struct
     )
 end
 
@@ -49,6 +52,7 @@ function process_julia_context(enabled, julia_context::JuliaCTX, ctx_question; a
     changes_tracker      = julia_context.changes_tracker
     jl_reranker_filterer = julia_context.jl_reranker_filterer
     index_logger         = julia_context.index_logger
+    excluded_packages    = julia_context.excluded_packages  # Get it from the struct
 
     # Lazy initialization of the index if not yet created
     if isnothing(jl_pkg_index)

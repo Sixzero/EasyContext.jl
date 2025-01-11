@@ -40,7 +40,7 @@ end
 # replace_models = ["tqwen25b72"]
 function apply_modify_by_replace(original_content::AbstractString, changes_content::AbstractString; models=["gem15f", "tqwen25b72", "gpt4om", ], temperature=0, verbose=false)
     best_result = original_content
-    min_missing = typemax(Int)
+    best_missing_patterns = String[]
     prompt = get_replace_prompt(original_content, changes_content)
 
     for (i, model) in enumerate(models)
@@ -50,18 +50,25 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
             replacements = extract_tagged_content(aigenerated.content, "REPLACEMENTS")
             matches = extract_all_tagged_pairs(replacements)
 
-            result, missing_count = apply_replacements(original_content, matches)
+            result, missing_patterns = apply_replacements(original_content, matches)
             
-            if missing_count < min_missing
+            if length(missing_patterns) < length(best_missing_patterns) || isempty(best_missing_patterns)
                 best_result = result
-                min_missing = missing_count
-                missing_count == 0 && return best_result # Perfect match found
+                best_missing_patterns = missing_patterns
+                isempty(missing_patterns) && return best_result # Perfect match found
             end
         catch e
             i < length(models) && verbose && @warn "Failed with model $model, retrying with $(models[i+1])" exception=e
         end
     end
-    return best_result # Return best attempt
+    
+    if !isempty(best_missing_patterns)
+        @warn "Some patterns not found!" patterns=best_missing_patterns
+        for miss in best_missing_patterns
+            println("MISSING:\n$miss")
+        end
+    end
+    return best_result
 end
 
 function apply_replacements(content::AbstractString, matches::Vector{Pair{String,String}})
@@ -69,17 +76,13 @@ function apply_replacements(content::AbstractString, matches::Vector{Pair{String
     
     # Check missing patterns
     missing_patterns = [pattern for (pattern, _) in matches if !occursin(pattern, content)]
-    !isempty(missing_patterns) && @warn "Some patterns not found!" patterns=missing_patterns
-    for miss in missing_patterns
-        println("MISSING:\n$miss")
-    end
     
     # Apply all replacements anyway
     for (pattern, replacement) in matches
         modified_content = replace(modified_content, pattern => replacement)
     end
     
-    return modified_content, length(missing_patterns)
+    return modified_content, missing_patterns
 end
 
 function extract_all_tagged_pairs(content::AbstractString)
@@ -107,6 +110,3 @@ function extract_all_tagged_pairs(content::AbstractString)
     
     return pairs
 end
-
-
-

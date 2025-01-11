@@ -3,6 +3,8 @@ using JSON3
 using PromptingTools
 using PromptingTools.Experimental.RAGTools: get_embeddings
 using ProgressMeter
+using LLMRateLimiters
+using LLMRateLimiters: retry_on_rate_limit
 
 """
     VoyageEmbedder <: AbstractEasyEmbedder

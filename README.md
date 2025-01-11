@@ -106,15 +106,13 @@ println(shell_context)
 ## Tool Interface Flow
 ```
 ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐
-  LLM Output
-  then     
-  Parse ToolTag structs     
+  ToolTag                 Parsed from the LLM output, e.g. ToolTag(name="CALC", args="2 + 2") 
 └─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
         │
 --------▼----------- Tool Interface Implementation 
-┌───────────────┐
-│ instantiate() │ Creates Tool instance from ToolTag
-└───────┬───────┘
+┌────────────────────────┐
+│ instantiate(::ToolTag) │ Creates Tool instance from ToolTag
+└───────┬────────────────┘
         │
         ▼
 ┌─ ─ ─ ─┴─ ─ ─ ─┐
@@ -135,6 +133,50 @@ println(shell_context)
 ┌─ ─ ─ ─┴─ ─ ─ ─┐
   Results         Collected for LLM context
 └─ ─ ─ ─ ─ ─ ─ ─┘
+```
+
+### Example: Creating a Simple Tool
+
+Here's an example of implementing a basic calculator tool:
+
+```julia
+# Define tool struct
+@kwdef struct CalcTool <: AbstractTool
+    id::UUID = uuid4()
+    expression::String
+end
+
+# Create tool from tag
+CalcTool(cmd::ToolTag) = CalcTool(expression=cmd.args)
+
+# Define tool metadata
+toolname(::Type{CalcTool}) = "CALC"
+get_description(::Type{CalcTool}) = """
+Calculate mathematical expressions:
+CALC 2 + 2 #RUN
+"""
+stop_sequence(::Type{CalcTool}) = "#RUN"
+
+# Implement main operation
+function execute(tool::CalcTool)
+    try
+        result = eval(Meta.parse(tool.expression))
+        return "Result: $result"
+    catch e
+        return "Error: Invalid expression"
+    end
+end
+```
+
+Usage example:
+```julia
+# Parse tool tag
+tag = ToolTag(name="CALC", args="2 + 2")
+
+# Create and execute tool
+calc = instantiate(Val(:CALC), tag) 
+result = execute(calc)
+# => "Result: 4"
 ```
 
 ## Contributing
