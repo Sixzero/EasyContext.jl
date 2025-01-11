@@ -8,8 +8,9 @@ register_diffview_subtype!(MonacoMeldDiffView)
 
 function execute(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=false)
     if is_diff_service_available(view.port)
+        file_path, line_range = parse_source(tool.file_path)
         payload = Dict(
-            "leftPath" => string(tool.file_path),
+            "leftPath" => string(file_path),
             "rightContent" => tool.postcontent,
             "pwd" => tool.root_path
         )
