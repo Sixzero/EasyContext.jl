@@ -17,8 +17,8 @@ function init_workspace_context(project_paths; show_tokens=false, verbose=true, 
     workspace            = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     tracker_context      = Context()
     changes_tracker      = ChangeTracker()
-    # openai_embedder      = create_voyage_embedder(cache_prefix="workspace")
-    openai_embedder      = create_openai_embedder(cache_prefix="workspace")
+    openai_embedder      = create_voyage_embedder(cache_prefix="workspace")
+    # openai_embedder      = create_openai_embedder(cache_prefix="workspace")
     ws_simi_filterer     = create_combined_index_builder(openai_embedder, top_k=50)
     ws_reranker_filterer = ReduceRankGPTReranker(batch_size=30, top_n=12; model)
     

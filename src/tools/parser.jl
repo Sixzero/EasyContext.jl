@@ -4,6 +4,7 @@ export StreamParser, extract_tool_calls, run_stream_parser, get_last_tool_result
 
 @kwdef mutable struct StreamParser
     last_processed_index::Ref{Int} = Ref(0)
+    tool_tags::Vector{ToolTag}=ToolTag[]
     tool_tasks::OrderedDict{UUID, Task} = OrderedDict{UUID, Task}()
     tool_results::OrderedDict{UUID, String} = OrderedDict{UUID, String}()
     full_content::String = ""
@@ -14,6 +15,7 @@ export StreamParser, extract_tool_calls, run_stream_parser, get_last_tool_result
 end
 function process_immediate_tool!(line::String, stream_parser::StreamParser, content::String=""; kwargs=Dict())
     tool_tag = parse_tool(line, content; kwargs)
+    push!(stream_parser.tool_tags, tool_tag)
     tool = convert_tool(tool_tag)
     stream_parser.tool_tasks[tool.id] = @async_showerr preprocess(tool)
 end
@@ -71,6 +73,7 @@ execute(t::Task) = begin
 end
 function reset!(stream_parser::StreamParser)
     stream_parser.last_processed_index[] = 0
+    empty!(stream_parser.tool_tags)
     empty!(stream_parser.tool_tasks)
     empty!(stream_parser.tool_results)
     stream_parser.full_content = ""
@@ -135,7 +138,7 @@ end
 
 function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,start_idx::Int=1, is_flush=false)
     nesting_level = 1  # Start at 1 since we're already inside a code block
-    in_docstring = false
+    is_in_multiline_str = false
     last_block_end = nothing
 
     for (i, line) in enumerate(lines[start_idx:end]) # no need for strip
@@ -146,12 +149,12 @@ function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,star
 
         # Handle docstring boundaries
         if occursin("\"\"\"", line)
-            in_docstring = !in_docstring
+            is_in_multiline_str = !is_in_multiline_str
             continue
         end
 
         # Skip processing if we're in a docstring
-        if in_docstring
+        if is_in_multiline_str
             continue
         end
 
