@@ -4,7 +4,7 @@ using JLD2
 
 function get_embedding_context(index::RAG.AbstractChunkIndex, question::String)
     rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model="claude", verbose=true)
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
+    reranker = ReduceGPTReranker(;batch_size=50, model="gpt4om")
     retriever = RAG.AdvancedRetriever(;
         finder=RAG.CosineSimilarity(), 
         reranker, 
@@ -30,7 +30,7 @@ function get_context(builder::EmbeddingIndexBuilder, question::String; data::Uni
     rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude", verbose=true)
     rephraser = RAG.NoRephraser() # RAG.HyDERephraser()
     # reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
+    reranker = ReduceGPTReranker(;batch_size=50, model="gpt4om")
     retriever = RAG.AdvancedRetriever(;
         finder=RAG.CosineSimilarity(),
         reranker,
@@ -55,7 +55,7 @@ function get_context(builder::BM25IndexBuilder, question::String; data::Union{No
     processor = RAG.KeywordsProcessor()
     finder = RAG.BM25Similarity()
     reranker = RAG.CohereReranker()
-    reranker = ReduceRankGPTReranker(;batch_size=50, model="gpt4om")
+    reranker = ReduceGPTReranker(;batch_size=50, model="gpt4om")
     # Create a SimpleBM25Retriever
     retriever = RAG.SimpleBM25Retriever(;processor=processor, finder=finder, reranker)
 
@@ -111,7 +111,7 @@ function get_rag_config(;
     end
 
     rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude", verbose=true)
-    reranker = ReduceRankGPTReranker(;batch_size=batch_size, model="gpt4om")
+    reranker = ReduceGPTReranker(;batch_size=batch_size, model="gpt4om")
     retriever = RAG.AdvancedRetriever(;
         finder=RAG.CosineSimilarity(),
         reranker,

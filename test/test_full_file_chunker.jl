@@ -2,6 +2,7 @@ using Test
 using EasyContext
 using EasyContext: FullFileChunker, RAGTools
 using EasyContext: GPT2Approximation, CharCount, get_chunk_standard_format
+using LLMRateLimiters: estimate_tokens, CharCountDivTwo
 using Random
 
 const RAG = RAGTools
@@ -10,7 +11,7 @@ const RAG = RAGTools
     @testset "Constructor" begin
         chunker = FullFileChunker()
         @test chunker.max_tokens == 8000
-        @test chunker.estimation_method == GPT2Approximation
+        @test chunker.estimation_method == CharCountDivTwo
         @test chunker.line_number_token_estimate == 10
 
         custom_chunker = FullFileChunker(max_tokens=5000, estimation_method=CharCount, line_number_token_estimate=15)

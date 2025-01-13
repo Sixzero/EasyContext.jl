@@ -29,7 +29,7 @@ function init_julia_context(;
     jl_pkg_index = nothing
     tracker_context = Context()
     changes_tracker = ChangeTracker(;need_source_reparse=false, verbose=verbose)
-    jl_reranker_filterer = ReduceRankGPTReranker(batch_size=40, top_n=10; model)
+    jl_reranker_filterer = ReduceGPTReranker(batch_size=40, top_n=10; model)
 
     index_logger = IndexLogger(index_logger_path)
 

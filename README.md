@@ -93,7 +93,7 @@ println(shell_context)
 1. **JinaEmbedder**: A struct for embedding documents using Jina AI's embedding models.
 2. **FullFileChunker**: A chunker that processes entire files as single chunks.
 3. **SourceChunker**: A specialized chunker for Julia source code.
-4. **ReduceRankGPTReranker**: A reranker that uses GPT models to improve retrieval results.
+4. **ReduceGPTReranker**: A reranker that uses GPT models to improve retrieval results.
 5. **AsyncContextJoiner**: A component that runs multiple context processors in parallel.
 6. **Various Context Processors**: Including CodebaseContext, ShellContext, and JuliaLoader.
 
