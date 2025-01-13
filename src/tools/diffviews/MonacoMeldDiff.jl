@@ -26,12 +26,26 @@ function execute(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=fals
     end
 end
 
-# Service availability check
+# Service availability check with auto-start capability
 function is_diff_service_available(port::AbstractString)
   try
     HTTP.get("http://localhost:$port/health", readtimeout=1)
-    true
+    return true
   catch
-    false
+    # Try to start monacomeld if command exists
+    try
+      if success(`which monacomeld`)
+        run(`gnome-terminal -- bash -c "monacomeld; exec bash"`)
+        sleep(1)  # Give it a second to start
+        try
+          HTTP.get("http://localhost:$port/health", readtimeout=1)
+          return true
+        catch
+          return false
+        end
+      end
+    catch
+      return false
+    end
   end
 end
