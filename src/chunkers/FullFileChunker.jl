@@ -26,7 +26,7 @@ function RAG.get_chunks(chunker::FullFileChunker,
     for i in eachindex(files_or_docs, sources)
         doc_raw, source = RAG.load_text(chunker, files_or_docs[i]; source = sources[i])
         if isempty(doc_raw)
-            push!(output_chunks, chunk.formatter(source, ""))  # Return empty string for empty files
+            push!(output_chunks, chunker.formatter(source, ""))  # Return empty string for empty files
             push!(output_sources, source)
             continue
         end

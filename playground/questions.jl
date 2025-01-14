@@ -214,7 +214,7 @@ question = """
 file_indexer = SimpleIndexer(;chunker, embedder=NoEmbedder())
 files_index = build_index(file_indexer, files)
 
-reranker = ReduceRankGPTReranker(;batch_size=batchsize, model="gpt4om")  # or RankGPTReranker(), or FlashRanker(model)
+reranker = ReduceGPTReranker(;batch_size=batchsize, model="gpt4om")  # or RankGPTReranker(), or FlashRanker(model)
 retriever = RAG.AdvancedRetriever(;reranker, rephraser=JuliacodeRephraser(), )
 
 result = retrieve(retriever, files_index, question; 
@@ -224,7 +224,7 @@ result = retrieve(retriever, files_index, question;
     top_n=5     # number of final reranked results
 )
 
-Is there a way to run this with NoEmbedder but just with a reranker? So the ReduceRankGPTReranker runs on every chunk.
+Is there a way to run this with NoEmbedder but just with a reranker? So the ReduceGPTReranker runs on every chunk.
 """
 question = """
 
@@ -233,7 +233,7 @@ files_index = build_index(file_indexer, files)
 
 retriever = SimpleRetriever(;
   embedder=NoEmbedder(), 
-  reranker = ReduceRankGPTReranker(;batch_size=batchsize, model="gpt4om"))
+  reranker = ReduceGPTReranker(;batch_size=batchsize, model="gpt4om"))
 
 result = retrieve(retriever, files_index, question; 
   # kwargs.retriever_kwargs..., 
@@ -241,7 +241,7 @@ result = retrieve(retriever, files_index, question;
   top_n = 5     # number of final reranked results
 )
 
-Is there a way to run this with NoEmbedder but just with a reranker? So the ReduceRankGPTReranker runs on every chunk.
+Is there a way to run this with NoEmbedder but just with a reranker? So the ReduceGPTReranker runs on every chunk.
 MethodError: no method matching find_closest(::PromptingTools.Experimental.RAGTools.CosineSimilarity, ::PromptingTools.Experimental.RAGTools.ChunkEmbeddingsIndex{…}, ::Nothing, ::Vector{…}; verbose::Bool, top_k::Int64)
 """
 question = """
@@ -290,7 +290,7 @@ ai"Are you here?"claudeh
 using EasyContext
 using EasyContext: get_answer, get_context, JuliaLoader, format_context_node
 using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, Pipe
-import EasyContext: get_context, RAGContext, ReduceRankGPTReranker
+import EasyContext: get_context, RAGContext, ReduceGPTReranker
 using PromptingTools: pprint
 # question = "I need to walk packages. I also want to track whether I could trace in a stack which modules I am in currently."
 question = "How to use BM25 for retrieval?"
@@ -322,7 +322,7 @@ using EasyContext: create_voyage_embedder, create_combined_index_builder
 #     #     # JinaEmbeddingIndexBuilder(),
 #     #     # BM25IndexBuilder(),
 #     # ]),
-#     ReduceRankGPTReranker(),
+#     ReduceGPTReranker(),
 #     ContextNode(),
 # ])
 using EasyContext: QuestionCTX
@@ -335,7 +335,7 @@ using EasyContext: QuestionCTX
 #     # EmbeddingIndexBuilder(top_k=50),
 #     create_combined_index_builder(),
 #     # create_voyage_embedder(),
-#     ReduceRankGPTReranker(;batch_size=30, model="gpt4om"),
+#     ReduceGPTReranker(;batch_size=30, model="gpt4om"),
 #     ContextNode(tag="Codebase", element="File"),
 # ])
 # ctxer = CodebaseContextV2()
@@ -353,7 +353,7 @@ question_acc    = QuestionCTX()
 ctx_question    = question_acc(question) 
 file_chunks     = Workspace(["."])(FullFileChunker())
 file_chunks_selected = create_combined_index_builder(top_k=30)(file_chunks, ctx_question)
-file_chunks_reranked = ReduceRankGPTReranker(batch_size=30, model="gpt4om")(file_chunks_selected, ctx_question)
+file_chunks_reranked = ReduceGPTReranker(batch_size=30, model="gpt4om")(file_chunks_selected, ctx_question)
 @show file_chunks_reranked
 # @time msg = get_context(ctxer, question, aistate_mock)
 # println(format_context_node(msg))

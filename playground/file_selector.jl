@@ -1,7 +1,7 @@
 using PromptingTools
 using PromptingTools.Experimental.RAGTools: FileChunker, get_chunks, SimpleIndexer, build_index, CohereReranker, SimpleRetriever, retrieve, RankGPTReranker, NoEmbedder
 using AISH: is_project_file
-using EasyContext: FullFileChunker, ReduceRankGPTReranker, CachedBatchEmbedder, NoSimilarityCheck
+using EasyContext: FullFileChunker, ReduceGPTReranker, CachedBatchEmbedder, NoSimilarityCheck
 const RAG = PromptingTools.Experimental.RAGTools
 
 batchsize = 30
@@ -25,8 +25,8 @@ file_indexer = SimpleIndexer(;chunker, embedder=NoEmbedder())
 files_index = build_index(file_indexer, files)
 
 reranker = RAG.CohereReranker()  # or RankGPTReranker(), or FlashRanker(model)
-reranker = ReduceRankGPTReranker(;batch_size=batchsize, model="gpt4om")
-# reranker = ReduceRankGPTReranker(;batch_size=batchsize, model="claudeh")
+reranker = ReduceGPTReranker(;batch_size=batchsize, model="gpt4om")
+# reranker = ReduceGPTReranker(;batch_size=batchsize, model="claudeh")
 # reranker = RAG.NoReranker()
 retriever = SimpleRetriever(;reranker = CohereReranker())
 retriever = SimpleRetriever(;embedder=NoEmbedder(), finder=NoSimilarityCheck(), reranker)
