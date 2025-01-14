@@ -36,17 +36,10 @@ end
     conv
 end
 
-abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(p.path)), conv.id, "conversations")
-conversaion_path(p,conv::Session) = joinpath(p.path, conv.id, "conversations")
-conversaion_file(p,conv::Session) = joinpath(conversaion_path(p, conv), "conversation.json")
+abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv.id, "conversations")
+conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
+conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
 
-(p::PersistableState)(conv::Session) = begin
-    println(conversaion_path(p, conv))
-    mkpath_if_missing(joinpath(p.path, conv.id))
-    mkpath_if_missing(conversaion_path(p, conv))
-    save_conversation(conversaion_file(p, conv), conv)
-    conv
-end
 function to_PT_messages(session::Session)
     return [
         SystemMessage(session.system_message.content),

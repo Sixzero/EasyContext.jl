@@ -21,7 +21,7 @@ end
 	todo::String=""
 end
 
-GitTracker!(ws, p::PersistableState, conv) = begin
+GitTracker!(ws, path::String, conv) = begin
 	# clean_unnamed()
   # TODO if there is branch name collision then regerenrate extending the list what we 'don't want' 
 	gits = WorkTree[]
@@ -32,7 +32,7 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 
 		# proj_name = basename(normpath(project_path))
 		proj_name           = get_project_name(expanded_project_path)
-		worktreepath        = joinpath(p.path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
+		worktreepath        = joinpath(path, conv.id, proj_name) # workpath cannot be ~ ... it MUST be expanded 
 		ws.project_paths[i] = worktreepath
 
 		create_worktree(expanded_project_path, worktreepath)
@@ -40,7 +40,7 @@ GitTracker!(ws, p::PersistableState, conv) = begin
 		push!(gits, WorkTree(LibGit2.GitRepo(worktreepath)))
 	end
 	ws.root_path, ws.rel_project_paths = resolve(ws.resolution_method, ws.project_paths)
-	conv_path = abs_conversaion_path(p, conv)
+	conv_path = abs_conversaion_path(path, conv)
 
 	init_git(conv_path)
 	conv_repo = LibGit2.GitRepo(conv_path)

@@ -75,7 +75,6 @@ update_last_user_message_meta(conv::CONV, itok::Int, otok::Int, cached::Int, cac
 last_msg(conv::CONV) = conv.messages[end].content
 
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
-get_conversation_filename(p::PersistableState,conv_id::String) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))
 
 function parse_conversation_filename(filename)
     m = match(CONVERSATION_FILE_REGEX, filename)
@@ -86,12 +85,6 @@ function parse_conversation_filename(filename)
     )
 end
 
-
-function generate_overview(conv::CONV, conv_id::String, p::PersistableState)
-    @assert false
-    sanitized_chars = strip(replace(replace(first(conv.messages[1].content, 32), r"[^\w\s-]" => "_"), r"\s+" => "_"), '_')
-    return joinpath(p.path, "$(date_format(conv.timestamp))_$(sanitized_chars)_$(conv_id).log")
-end
 
 @kwdef mutable struct TODO <: CONV
     overview::String         # max 20 token thing

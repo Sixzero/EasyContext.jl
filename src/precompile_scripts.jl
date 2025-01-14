@@ -36,7 +36,6 @@ using DataStructures: OrderedDict
         # age_tracker = AgeTracker(max_history=14, cut_to=6)
         
         # question_acc = QuestionCTX()
-        # persister = PersistableState(logdir)
 
         # # Simulate usage of EasyContext functions
         # # print_project_tree(workspace_context.workspace, show_tokens=show_tokens)

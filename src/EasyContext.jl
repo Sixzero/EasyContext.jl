@@ -18,14 +18,11 @@ include("tools/formats/format.jl")
 include("tools/tools.jl")
 include("prompts/guides.jl")
 include("ContextStructs.jl")
-include("file_io/custom_format.jl")
-include("file_io/Persistable.jl")
 include("protocol/AbstractTypes.jl")
 include("protocol/Message.jl")
 # include("protocol/CodeBlock.jl")
 include("protocol/Conversation.jl")
 include("protocol/Session.jl")
-include("file_io/Conversation_JSON.jl")
 include("anthropic_extension.jl")
 include("Rephrase.v1.jl")
 include("chunkers/SourceChunks.jl")
@@ -55,12 +52,6 @@ include("contexts/Contexts.jl")
 
 
 
-
-# Automation
-include("automation/selector_llm.jl")
-include("automation/condition_llm.jl")
-
-include("model/persistence.jl")
 
 include("precompile_scripts.jl")
 
