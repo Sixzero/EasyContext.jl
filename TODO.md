@@ -37,38 +37,36 @@
  - [✓] test_tag_extractor.jl error-ok fixálása. the fallback test is the msot important, probably a flush is missing in the end in llm_solve.
  - [✓] EXECUTION PLAN markdown.
  - [✓] -r if written in airepl then it should call revise()
+ - [✓] large_file1.js teszt megoldása.
+ - [✓] airepl --plan to work with model names... and never continue with the user message, I mean never run the flow
+ - [✓] reranking to limit batch size not just with batch size but token counts, it shouldn't exceed 40k tokens a reranking request if possible.
+ - [?] kiírhatná, hogy van már hozzá egy testcase. esetleg meg is mutathatná. MI?
+ - [-] airepl path autocomplete to ignore lowercase
+    - Does not support it
+ - [-] handle MODIFY ../AISH.jl/src/workflow/STD_loop.jl -> ../AISH.jl/src/workflow/llm_flow.jl
+    - No need.
+ - [-] hotkey fix for repl, with base solution. https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/docs/src/index.md
  - [✓] too long files... over 8000 tokens not embeddable, wrong calculation.
    - [ ] jeleneleg a print nincsen. illetve talán nothing-gal kéne visszatérjen, vagy semmivel... 
- - [ ] handle MODIFY ../AISH.jl/src/workflow/STD_loop.jl -> ../AISH.jl/src/workflow/llm_flow.jl
  - [ ] Foghagymanoymót venni. Fülvédőt. Szörpöt, házit!, ajándékot, masszírozó?, sütőkesztyű
  - [ ] Miki mikrofonja, egy hintaszék vagy valami szék. 
- - [ ] airepl path autocomplete to ignore lowercase
  - [ ] képi bemenet működtetése.
  - [ ] modularizáció
    - [ ] IndexLogging
    - [ ] Log Instant Apply !!
    - [ ] Pcache megvizsgálása...
-   - [ ] MonacoMeld
-   - [ ] ExecutionPlanner?
-   - [ ] ApplyChanges
- - [ ] RAG benchmarking !!
- - [ ] Message aggregator
-   - [ ] github chat utánkövetés
-   - [ ] email utánkövetés
-   - [ ] github PR kreálás és karbantartás/chatelés.
- - [ ] CTRL + V issue mikor belenyomtam a második ablakba, akkor az elsőbe copyzta...
- - [ ] large_file1.js teszt megoldása.
- - [ ] diacoach várja meg mindig a választ. a user, ne tudjon entereket ütni.
- - [ ] kiírhatná, hogy van már hozzá egy testcase. esetleg meg is mutathatná.
+   - [✓] MonacoMeld
+   - [✓] ExecutionPlanner?
+   - [✓] ApplyChanges
  - [ ] a long file chunkingnál fontos, hogy ott legyen a cut, ahol nem kód közepén vagyunk.
- - [ ] hotkey fix for repl, with base solution. https://github.com/JuliaLang/julia/blob/master/stdlib/REPL/docs/src/index.md
- - [ ] airepl --plan to work with model names... and never continue with the user message, I mean never run the flow
- - [ ] facebook discussion figyelés és válaszolás.
  - [ ] email figyelés és válaszolás
+ - [ ] RAG benchmarking !!
  - [ ] RAG flows need an interface.
  - [ ] AsyncString
- - [ ] We could probably completely remove the extrator from std_flow. Only the workspace should get passed over to the agent...
- - [ ] reranking to limit batch size not just with batch size but token counts, it shouldn't exceed 40k tokens a reranking request if possible.
+ - [-] We could probably completely remove the extrator from std_flow. Only the workspace should get passed over to the agent...
+   - [✓] FluidAgent kezdetek implementálva.
+   - [ ] Fluid agent streaming support not implemented based on current solution
+ - [ ] -c `shell command` execution to airepl
 
 
 TODO ai web.
