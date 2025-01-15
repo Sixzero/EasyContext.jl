@@ -74,8 +74,7 @@ function process_julia_context(enabled, julia_context::JuliaCTX, ctx_question; a
     @time "index_logging" log_index(index_logger, index, ctx_question)
 
     result = julia_ctx_2_string(changes_tracker, scr_content)
-    
-    write_event!(io, "julia_context", result)
+    # write_event!(io, "julia_context", result)
     
     return result
 end
