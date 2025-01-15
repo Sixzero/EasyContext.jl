@@ -1,9 +1,22 @@
 using PromptingTools
 using PromptingTools.Experimental.RAGTools: extract_ranking, AbstractReranker
 using Base.Threads
+using HTTP.Exceptions: TimeoutError
 const RAG = RAGTools
 const PT = PromptingTools
 
+# Helper function to handle model fallback
+function aigenerate_with_fallback(prompt; model="dscode", fallback_model="gpt4om", readtimeout=10, kwargs...)
+    try
+        return aigenerate(prompt; model, http_kwargs=(; readtimeout), kwargs...)
+    catch e
+        if e isa TimeoutError
+            @warn "Model '$model' timed out after $(e.timeout)s. Falling back to '$fallback_model'..."
+            return aigenerate(prompt; model=fallback_model, http_kwargs=(; readtimeout=30), kwargs...)
+        end
+        rethrow(e)
+    end
+end
 
 Base.@kwdef struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
@@ -14,6 +27,7 @@ Base.@kwdef struct ReduceGPTReranker <: AbstractReranker
     rank_gpt_prompt_fn::Function = create_rankgpt_prompt_v2
     verbose::Int=1
     batching_strategy::BatchingStrategy = LinearGrowthBatcher()
+    # timeout::Int=3  # Timeout in seconds
 end
 
 function (reranker::ReduceGPTReranker)(chunks::OrderedDict{<:AbstractString, <:AbstractString}, query::AbstractString)
@@ -28,8 +42,7 @@ function rerank(
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
-    ai_fn::Function = airatelimited,
-    max_iterations::Int = 10  # Add max iterations parameter
+    ai_fn::Function = aigenerate_with_fallback,
 )
     sources = collect(keys(chunks))
     contents = collect(values(chunks))
@@ -37,74 +50,81 @@ function rerank(
     verbose>1 && @info "Starting RankGPT reranking with reduce for $total_docs documents"
     
     # Rerank function for each batch
-    function rerank_batch(doc_batch)        
+    function rerank_batch(doc_batch)
         max_retries = 2
         for attempt in 1:max_retries
             prompt = reranker.rank_gpt_prompt_fn(query, doc_batch, top_n)
-            try_temperature = attempt == 0 ? reranker.temperature : 0.5
-            response = ai_fn(prompt; model=reranker.model, api_kwargs=(;temperature=try_temperature), verbose=false)
+            temperature = attempt == 1 ? reranker.temperature : 0.5
+
+            response = ai_fn(prompt; 
+                model=reranker.model,
+                api_kwargs=(; temperature, top_p=0.1),
+                verbose=false
+            )
             rankings = extract_ranking(response.content)
 
             if all(1 .<= rankings .<= length(doc_batch))
                 Threads.atomic_add!(cost_tracker, response.cost)
                 return rankings
             end
-            attempt < max_retries && @warn "Invalid rankings (attempt $attempt). Retrying..."
+            @info "Invalid rankings (attempt $attempt). Retrying..."
         end
         
         @error "Failed to get valid rankings after $max_retries attempts."
         return 1:length(doc_batch)  # Return sequential ranking as fallback
     end
     
-    remaining_docs = collect(1:total_docs)
+    remaining_doc_idxs = collect(1:total_docs)
     doc_counts = [total_docs]
     iteration_count = 0
 
     is_last_multibatch = false
     # the reduction
-    while length(remaining_docs) > top_n
+    while length(remaining_doc_idxs) > top_n
         iteration_count += 1
-        if iteration_count > max_iterations
-            @warn "Reached maximum iterations ($max_iterations). Forcing final rerank."
-            break
-        end
-
+        
         batches = create_batches(
             reranker.batching_strategy,
-            contents[remaining_docs],
+            contents[remaining_doc_idxs],
             query,
             reranker.rank_gpt_prompt_fn,
             reranker.max_batch_tokens,
             reranker.batch_size;
-            verbose=verbose  # Pass verbose here
+            verbose=verbose
         )
         
         batch_rankings = asyncmap(batches) do batch_indices
-            rankings = rerank_batch(contents[remaining_docs[batch_indices]])
+            rankings = rerank_batch(contents[remaining_doc_idxs[batch_indices]])
             if verbose > 1
-                selected = remaining_docs[batch_indices[rankings[1:min(top_n, length(rankings))]]]
+                selected = remaining_doc_idxs[batch_indices[rankings[1:min(top_n, length(rankings))]]]
                 println("\nSelected from batch (source IDs): ", join(sources[selected], ", "))
-                @show rankings
             end
-            return remaining_docs[batch_indices[rankings]]
+            return remaining_doc_idxs[batch_indices[rankings]]
         end
         
-        is_last_multibatch = length(batches) > 1
+        is_last_multibatch = sum(arr->length(arr)>0, batch_rankings, init=0) > 1
         # Flatten and take top results from each batch
-        remaining_docs = reduce(vcat, [batch[1:min(top_n, length(batch))] for batch in batch_rankings])
+        idk = [batch[1:min(top_n, length(batch))] for batch in batch_rankings]
+        remaining_doc_idxs = reduce(vcat, batch_rankings)
         
-        push!(doc_counts, length(remaining_docs))
+        push!(doc_counts, length(remaining_doc_idxs))
+        
+        # Check if we're stuck (no reduction in document count)
+        if length(doc_counts)>1 && doc_counts[end] >= doc_counts[end-1]
+            @warn "No reduction in document count detected, forcing final rerank."
+            break
+        end
     end
 
     if is_last_multibatch
         # We will do a final rerank, to let the model have full context in the last decision.
         verbose > 1 && @info "Final rerank to get the top $top_n documents."
         # Final ranking of the remaining documents
-        final_rankings = rerank_batch(contents[remaining_docs])
-        remaining_docs = remaining_docs[final_rankings]
-        push!(doc_counts, length(remaining_docs))
+        final_rankings = rerank_batch(contents[remaining_doc_idxs])
+        remaining_doc_idxs = remaining_doc_idxs[final_rankings]
+        push!(doc_counts, length(remaining_doc_idxs))
     end
-    final_top_n = remaining_docs[1:min(top_n, length(remaining_docs))]
+    final_top_n = remaining_doc_idxs[1:min(top_n, length(remaining_doc_idxs))]
     
     reranked_sources = sources[final_top_n]
     reranked_chunks = contents[final_top_n]

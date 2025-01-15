@@ -11,9 +11,7 @@ function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:Abs
   If a selected document uses a function we probably need, it's preferred to include it in the ranking.
   </instruction>
 
-  <documents>
-  $document_context
-  </documents>
+  $(DOCS_FORMAT(documents))
   $OUTPUT_FORMAT
   """
   return prompt
@@ -21,7 +19,6 @@ end
 # Helper function to create the RankGPT prompt
 function create_rankgpt_prompt_v1(question::AbstractString, documents::Vector{<:AbstractString}, top_n::Int)
   top_n = min(top_n, length(documents))
-  document_context = join(["<doc id=\"$i\">$doc</doc>" for (i, doc) in enumerate(documents)], "\n")
   prompt = """
   <instruction>
   $(BASIC_INSTRUCT(documents, top_n))
@@ -94,7 +91,7 @@ QUESTION_FORMAT(question) = """<question>
 $question
 </question>"""
 function DOCS_FORMAT(docs)
-  document_context = join(["<doc id=\"$i\">\n$doc\n</doc>" for (i, doc) in enumerate(docs)], "\n")
+  document_context = join(("<doc id=\"$i\">\n$doc\n</doc>" for (i, doc) in enumerate(docs)), "\n")
   """<documents>
   $document_context
   </documents>

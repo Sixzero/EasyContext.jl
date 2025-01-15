@@ -35,8 +35,8 @@ function is_diff_service_available(port::AbstractString)
     # Try to start monacomeld if command exists
     try
       if success(`which monacomeld`)
-        run(`gnome-terminal -- bash -c "monacomeld; exec bash"`)
-        sleep(1)  # Give it a second to start
+        run(`bash -c "unset GTK_PATH; gnome-terminal -- bash -c 'monacomeld; exec bash'"`)
+        sleep(2)  # Give it a second to start
         try
           HTTP.get("http://localhost:$port/health", readtimeout=1)
           return true
