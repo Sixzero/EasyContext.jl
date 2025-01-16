@@ -27,7 +27,7 @@ function init_workspace_context(project_paths; show_tokens=false, verbose=true, 
     return WorkspaceCTX(workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger )
 end
 
-function process_workspace_context(workspace_context, ctx_question; enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
+function process_workspace_context(workspace_context, ctx_question; rerank_query=ctx_question, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
     !enabled && return ""
     workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger = workspace_context.workspace, workspace_context.tracker_context, workspace_context.changes_tracker, workspace_context.ws_simi_filterer, workspace_context.ws_reranker_filterer, workspace_context.index_logger
     @time "the cd" scr_content = cd(workspace_context) do
@@ -35,12 +35,12 @@ function process_workspace_context(workspace_context, ctx_question; enabled=true
         isempty(file_chunks) && return ""
         @time "indexgetting" indexx = get_index(ws_simi_filterer, file_chunks)
         @time "rag filter" file_chunks_selected = ws_simi_filterer(indexx, ctx_question)
-        @time "rerank" file_chunks_reranked = ws_reranker_filterer(file_chunks_selected, ctx_question)
+        @time "rerank" file_chunks_reranked = ws_reranker_filterer(file_chunks_selected, rerank_query)
         merged_file_chunks = tracker_context(file_chunks_reranked)
         !isnothing(extractor) && update_changes_from_extractor!(changes_tracker, extractor)
         _scr_content = changes_tracker(merged_file_chunks)
         !isnothing(age_tracker) && age_tracker(changes_tracker)
-        log_index(index_logger, indexx, ctx_question)
+        log_index(index_logger, indexx, rerank_query)
         return _scr_content
     end
     isa(scr_content,String) && return ""
