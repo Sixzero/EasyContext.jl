@@ -41,10 +41,18 @@ conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
 
 function to_PT_messages(session::Session)
-    return [
-        SystemMessage(session.system_message.content),
-        [msg.role == :user ?      UserMessage(context_combiner!(msg.content, msg.context)) :
-         msg.role == :assistant ? AIMessage(  context_combiner!(msg.content, msg.context)) : UserMessage(context_combiner!(msg.content, msg.context))
-         for msg in session.messages]...
-    ]
+    messages = Vector{PT.AbstractChatMessage}(undef, length(session.messages) + 1)
+    messages[1] = SystemMessage(session.system_message.content)
+    
+    for (i, msg) in enumerate(session.messages)
+        content = context_combiner!(msg.content, msg.context)
+        messages[i + 1] = if msg.role == :user
+            UserMessage(content)
+        elseif msg.role == :assistant 
+            AIMessage(content)
+        else
+            UserMessage(content)
+        end
+    end
+    return messages
 end
