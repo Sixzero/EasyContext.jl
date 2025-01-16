@@ -11,7 +11,7 @@ function aigenerate_with_fallback(prompt; model="dscode", fallback_model="gpt4om
         return aigenerate(prompt; model, http_kwargs=(; readtimeout), kwargs...)
     catch e
         if e isa TimeoutError
-            @warn "Model '$model' timed out after $(e.timeout)s. Falling back to '$fallback_model'..."
+            @warn "Model '$model' timed out after $(e). Falling back to '$fallback_model'..."
             return aigenerate(prompt; model=fallback_model, http_kwargs=(; readtimeout=30), kwargs...)
         end
         rethrow(e)

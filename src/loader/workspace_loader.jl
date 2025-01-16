@@ -56,7 +56,7 @@ function Workspace(project_paths::Vector{<:AbstractString};
     !isnothing(virtual_ws) && push!(paths, virtual_ws.rel_path)
     # Check if all paths exist
     for path in paths
-        @assert isdir(expanduser(path)) "Path does not exist or is not a directory: $path"
+        @assert isdir(expanduser(path)) "Path does not exist or is not a directory: $path $paths"
     end
     
     root_path, rel_project_paths = resolve(resolution_method, paths)
