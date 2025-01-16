@@ -27,7 +27,8 @@ function init_workspace_context(project_paths; show_tokens=false, verbose=true, 
     return WorkspaceCTX(workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger )
 end
 
-function process_workspace_context(workspace_context, ctx_question; age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
+function process_workspace_context(workspace_context, ctx_question; enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
+    !enabled && return ""
     workspace, tracker_context, changes_tracker, ws_simi_filterer, ws_reranker_filterer, index_logger = workspace_context.workspace, workspace_context.tracker_context, workspace_context.changes_tracker, workspace_context.ws_simi_filterer, workspace_context.ws_reranker_filterer, workspace_context.index_logger
     @time "the cd" scr_content = cd(workspace_context) do
         file_chunks = workspace(FullFileChunker()) 
