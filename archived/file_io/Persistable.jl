@@ -7,10 +7,6 @@ using JLD2
 	PersistableState(path::String) = (mkpath(path); new(expanduser(abspath(expanduser((path))))))
 end
 
-
-
-# persist!(conv::ConversationCTX) = save_message(conv)
-# save_message(conv::ConversationCTX) = save_conversation_to_file(conv)
 get_conversation_filename(p::PersistableState,conv_id::String) = (files = filter(f -> endswith(f, "_$(conv_id).log"), readdir(p.path)); isempty(files) ? nothing : joinpath(p.path, first(files)))
 
 function generate_overview(conv::CONV, conv_id::String, p::PersistableState)

@@ -325,7 +325,7 @@ using EasyContext: create_voyage_embedder, create_combined_index_builder
 #     ReduceGPTReranker(),
 #     ContextNode(),
 # ])
-using EasyContext: QuestionCTX
+using EasyContext: QueryWithHistory
 #     CodebaseContextV3(;project_paths=["."]),
 #     # MultiIndexBuilder(;builders=[
 #     #     EmbeddingIndexBuilder(top_k=50),
@@ -349,7 +349,7 @@ question = "Now I need you to create a julia script which could use ai to genera
 "
 question = "Could you please implement me with ReplMaker or ReplMaker.jl an AI chat? The basic point would be what currently the improved_readline gives back in the loop, it should be done by this ReplMaker thing."
 
-question_acc    = QuestionCTX()
+question_acc    = QueryWithHistory()
 ctx_question    = question_acc(question) 
 file_chunks     = Workspace(["."])(FullFileChunker())
 file_chunks_selected = create_combined_index_builder(top_k=30)(file_chunks, ctx_question)

@@ -44,7 +44,7 @@ function init_julia_context(;
     )
 end
 
-function process_julia_context(enabled, julia_context::JuliaCTX, ctx_question; age_tracker=nothing, io::Union{IO, Nothing}=nothing)
+function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, age_tracker=nothing, io::Union{IO, Nothing}=nothing)
     !enabled && return ""
     jl_simi_filter       = julia_context.jl_simi_filter
     jl_pkg_index         = julia_context.jl_pkg_index
