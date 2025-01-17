@@ -4,7 +4,6 @@ include("classifier.jl")
 # include("code_runner.jl")
 
 include("StreamingHighlight.jl")
-include("readline.jl")
 include("LLM_apply_changes.jl")
 include("LLM_safe.jl")
 include("LLM_summary.jl")

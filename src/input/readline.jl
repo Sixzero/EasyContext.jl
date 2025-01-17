@@ -52,10 +52,3 @@ function readline_improved()
     print("\e[0m")  # reset text style
     return String(strip(res))
 end
-
-function wait_user_question(user_question)
-    while is_really_empty(user_question)
-        user_question = readline_improved()
-    end
-    user_question
-end
