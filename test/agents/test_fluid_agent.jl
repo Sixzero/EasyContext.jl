@@ -1,46 +1,49 @@
 using Test
 using EasyContext
 using PromptingTools
-using OrderedCollections
 
 @testset "FluidAgent Tests" begin
     @testset "Basic Tool Execution" begin
-        # Create agent with basic tools
-        agent = FluidAgent(
-            tools=(CreateFileTool, CatFileTool),
-            model="gpt-4-1106-preview",  # or any available model
-            workspace=mktempdir()
-        )
-
-        # Test file creation and reading
         mktempdir() do dir
+            # Create agent with basic tools
+            agent = FluidAgent(
+                tools=(CreateFileTool, CatFileTool, ShellBlockTool),
+                model="gpt-4-1106-preview",  # or any available model
+                workspace=dir
+            )
+
             cd(dir) do
-                response = run(agent, """Create a file called 'test.txt' with content "Hello World" and then read it back.""")
+                response = run(agent, """
+                1. Create a file called 'test.txt' with content "Hello World"
+                2. List directory contents
+                """)
                 
                 # Check response structure
-                @test response isa NamedTuple
-                @test hasfield(typeof(response), :content)
+                @test response.content isa String
+                @test hasfield(typeof(response), :run_info)
                 @test hasfield(typeof(response), :results)
+                @test hasfield(typeof(response), :shell_results)
                 
                 # Verify file was created
                 @test isfile("test.txt")
                 @test read("test.txt", String) == "Hello World\n"
                 
                 # Check results
-                @test response.results isa OrderedDict
                 @test !isempty(response.results)
+                @test !isempty(response.shell_results)  # Should have ls output
             end
         end
     end
 
     @testset "Tool Preprocessing Order" begin
-        # Create agent with tools that need preprocessing
-        agent = FluidAgent(
-            tools=(ModifyFileTool, CreateFileTool),
-            model="gpt-4-1106-preview"
-        )
-
         mktempdir() do dir
+            # Create agent with tools that need preprocessing
+            agent = FluidAgent(
+                tools=(ModifyFileTool, CreateFileTool),
+                model="gpt-4-1106-preview",
+                workspace=dir
+            )
+
             cd(dir) do
                 # Create two files with modifications
                 response = run(agent, """
@@ -52,6 +55,7 @@ using OrderedCollections
                 # Verify execution order
                 @test isfile("file1.txt")
                 @test read("file1.txt", String) == "Modified\n"
+                @test !isempty(response.results)
             end
         end
     end

@@ -1,9 +1,8 @@
 using UUIDs
-using OrderedCollections
 using PromptingTools
 using PromptingTools: aigenerate
 
-export FluidAgent, execute_tools!
+export FluidAgent, execute_tools, work
 
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
@@ -13,8 +12,8 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     model::String = "claude"
     workspace::String = pwd()
     tool_map::Dict{String,Type{<:AbstractTool}} = Dict(toolname(T) => T for T in tools)
-end
-
+    extractor = ToolTagExtractor()
+end 
 # Constructor with tuple of tools
 FluidAgent(tools::Tuple, args...; kwargs...) = FluidAgent(collect(tools), args...; kwargs...)
 
@@ -27,52 +26,6 @@ function get_tool_descriptions(agent::FluidAgent)
         push!(descriptions, get_description(tool))
     end
     join(descriptions, "\n\n")
-end
-
-"""
-Parse tool calls from LLM response
-"""
-function parse_tools(content::String)
-    tags = ToolTag[]
-    lines = split(content, '\n')
-    i = 1
-    while i <= length(lines)
-        line = strip(lines[i])
-        
-        # Single line tools
-        if any(startswith.(line, [CLICK_TAG, SENDKEY_TAG, CATFILE_TAG]))
-            tag_end = findfirst(' ', line)
-            name = line[1:something(tag_end, length(line))]
-            args = isnothing(tag_end) ? "" : line[tag_end+1:end]
-            push!(tags, ToolTag(name=name, args=args))
-            i += 1
-            continue
-        end
-        
-        # Multi-line tools
-        if any(startswith.(line, [MODIFY_FILE_TAG, CREATE_FILE_TAG, SHELL_BLOCK_TAG]))
-            tag_end = findfirst(' ', line)
-            name = line[1:something(tag_end, length(line))]
-            args = isnothing(tag_end) ? "" : line[tag_end+1:end]
-            
-            # Find content block
-            content = ""
-            i += 1
-            while i <= length(lines) && !startswith(lines[i], "```endblock")
-                content *= lines[i] * "\n"
-                i += 1
-            end
-            
-            push!(tags, ToolTag(
-                name=name,
-                args=args,
-                content=content,
-                kwargs=Dict("root_path" => agent.workspace)
-            ))
-        end
-        i += 1
-    end
-    tags
 end
 
 """
@@ -90,7 +43,17 @@ function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false)
     result = execute(tool; no_confirm)
     result
 end
-
+"""
+Returns both the full and truncated context strings
+"""
+function get_tool_results(agent::FluidAgent, max_length::Int=20000)
+    ctx = get_tool_results(agent.extractor)
+    if length(ctx) > max_length
+        @warn "Shell context too long, truncating to $max_length characters"
+        return ctx, ctx[1:min(max_length, end)]
+    end
+    return ctx, ctx
+end
 """
 Process and execute tools in order while allowing parallel preprocessing
 """
@@ -98,26 +61,15 @@ function process_tools!(content::String, agent::FluidAgent; no_confirm=false)
     tags = parse_tools(content)
     isempty(tags) && return OrderedDict{UUID,String}()
     
-    # Start preprocessing tasks
-    preprocess_tasks = OrderedDict{UUID,Tuple{AbstractTool,Task}}()
+    # Convert tags to tools and execute
+    tools = OrderedDict{UUID,AbstractTool}()
     for tag in tags
         tool = create_tool(agent, tag)
-        preprocess_tasks[tool.id] = (tool, @async preprocess(tool))
+        tools[tool.id] = tool
     end
     
-    # Execute tools in order, after their preprocessing completes
-    results = OrderedDict{UUID,String}()
-    for (id, (tool, prep_task)) in preprocess_tasks
-        try
-            preprocessed_tool = fetch(prep_task)
-            results[id] = execute(preprocessed_tool; no_confirm)
-        catch e
-            @error "Tool execution failed" tool=tool exception=(e, catch_backtrace())
-            results[id] = "Error: $(sprint(showerror, e))"
-        end
-    end
-    
-    results
+    # Execute tools and collect results
+    execute_tools(tools; no_confirm)
 end
 
 """
@@ -149,18 +101,75 @@ end
 
 """
 Run an LLM interaction with tool execution
-Returns both the LLM response and tool results
+Returns a NamedTuple with:
+- content: The AI response content
+- results: Tool execution results
+- run_info: Callback run information
+- shell_results: Results from shell commands for context
 """
-function run(agent::FluidAgent, user_input::String; no_confirm=false)
-    # Generate LLM response
-    response = aigenerate(
-        get_system_prompt(agent),
-        user_input;
-        model=agent.model
-    )
-    # Process tools and collect results
-    results = process_tools!(response.content, agent; no_confirm)
+function work(agent::FluidAgent, conv; cache,
+    no_confirm=false,
+    highlight_enabled::Bool=true,
+    process_enabled::Bool=true,
+    on_text=noop,
+    on_error=noop,
+    on_done=noop,
+    on_start=noop,
+    tool_kwargs=Dict())
     
-    # Return both response and results
-    (content=response.content, results=results)
+    # Create new ToolTagExtractor for each run
+    extractor = ToolTagExtractor()
+    agent.extractor = extractor
+    
+    cb = create(StreamCallbackConfig(
+        on_text = on_text,
+        on_error = on_error,
+        on_start = on_start,
+        on_done = () -> begin
+            # Extracts tools and starts processing them
+            process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
+            on_done()
+        end,
+        content_processor = text -> process_enabled ? extract_tool_calls(text, extractor; kwargs=tool_kwargs) : nothing,
+        highlight_enabled = highlight_enabled,
+        process_enabled = process_enabled
+    ))
+    
+    try
+        response = aigenerate(
+            to_PT_messages(conv);
+            model=agent.model,
+            cache, 
+            streamcallback=cb
+        )
+        execute_tools(extractor; no_confirm)
+        
+        # Return named tuple with all needed components
+        return (;
+            content = response.content,
+            run_info = cb.run_info,
+            extractor,
+        )
+    catch e
+        e isa InterruptException && rethrow(e)
+        @error "Error executing code block: $(sprint(showerror, e))" exception=(e, catch_backtrace())
+        on_error(e)
+        return (
+            content = "Error: $(sprint(showerror, e))\n\nPartial response: $(extractor.full_content)",
+            results = OrderedDict{UUID,String}(),
+            run_info = cb.run_info,
+        )
+    end
+    # TODO this while loop should somehow work in this work thing:
+
+    # while true
+    #       work
+    #     # (isnothing(cb.run_info.stop_sequence) || isempty(flow.extractor.tool_tasks)) && break
+    #     # result = get_last_command_result(flow.extractor)
+    #     # isnothing(result) && continue
+    #     # print_tool_result(result)
+    #     # flow.conv_ctx(create_user_message(truncate_output(result), Dict("context" => result)))
+        
+    #     # !isnothing(result) && write_event!(io, "command_result", result)
+    # end
 end

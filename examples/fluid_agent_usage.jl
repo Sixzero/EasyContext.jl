@@ -74,6 +74,32 @@ function demo_complex_task()
     end
 end
 
+# 4. Streaming demo
+function demo_streaming()
+    println("\n=== Streaming Demo ===")
+    
+    agent = FluidAgent(
+        tools=(CreateFileTool, ModifyFileTool, ShellBlockTool),
+        model="claude"
+    )
+
+    # Use streaming with syntax highlighting
+    response = run(agent, """
+        Create a small Julia script that:
+        1. Defines a function to calculate fibonacci numbers
+        2. Adds some test cases
+        """;
+        on_text = text -> print(text),
+        on_error = err -> println("Error: ", err),
+        on_done = () -> println("\nDone!")
+    )
+
+    println("\nFinal Results:")
+    for (id, result) in response.results
+        println("- ", result)
+    end
+end
+
 # Run demos
 function run_demos()
     println("FluidAgent Usage Examples")
@@ -82,6 +108,7 @@ function run_demos()
     demo_file_operations()
     demo_shell_commands()
     demo_complex_task()
+    demo_streaming()
 end
 
 # Run if called directly

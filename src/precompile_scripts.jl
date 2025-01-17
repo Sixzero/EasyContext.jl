@@ -35,13 +35,13 @@ using DataStructures: OrderedDict
         
         # age_tracker = AgeTracker(max_history=14, cut_to=6)
         
-        # question_acc = QuestionCTX()
+        # question_acc = QueryWithHistory()
 
         # # Simulate usage of EasyContext functions
         # # print_project_tree(workspace_context.workspace, show_tokens=show_tokens)
         
         # ctx_question = user_question |> question_acc 
-        # ctx_shell = extractor |> shell_ctx_2_string
+        # ctx_shell = extractor |> get_tool_results
         # ctx_jl_pkg = process_julia_context(julia_context, ctx_question; age_tracker)
         
         

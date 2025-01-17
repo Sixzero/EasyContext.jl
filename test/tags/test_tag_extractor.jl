@@ -1,12 +1,12 @@
 using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
-using EasyContext: StreamParser, ToolTag, extract_tool_calls, reset!, serialize
-using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
+using EasyContext: ToolTagExtractor, ToolTag, extract_tool_calls, reset!, serialize
+using EasyContext: get_tool_results, SHELL_BLOCK_TAG
 
-@testset failfast=true "StreamParser Tests" begin
+@testset failfast=true "ToolTagExtractor Tests" begin
     @testset "Constructor" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         @test parser.last_processed_index[] == 0
         @test isempty(parser.tool_tasks)
         @test isempty(parser.tool_results)
@@ -16,7 +16,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "extract_tool_calls" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         content = """
         Some text before
         $SHELL_BLOCK_TAG path/to/file
@@ -38,7 +38,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "reset!" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         parser.last_processed_index[] = 100
         test_id = uuid4()  # Create a proper UUID
         parser.tool_tasks[test_id] = @task nothing
@@ -54,7 +54,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "Nested tags" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         content = """
         SHELL_BLOCK_TAG arg1
         ```
@@ -69,7 +69,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "Unclosed tags handling" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
 
         # Test unclosed CREATE tag
         content = """
@@ -111,7 +111,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "Partial streaming extraction" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
 
         # Test streaming content in chunks
         content1 = """
@@ -134,7 +134,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "Raw ToolTag parsing" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         content = """
         Some text before
         $SHELL_BLOCK_TAG path/to/file
@@ -170,7 +170,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
     end
 
     @testset "ToolTag with immediate commands" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         content = """
         Some text
         CLICK 100 200
@@ -199,7 +199,7 @@ using EasyContext: shell_ctx_2_string, SHELL_BLOCK_TAG
         @test isempty(catfile_tag.content)
     end
     @testset "Docstring in content handling" begin
-        parser = StreamParser()
+        parser = ToolTagExtractor()
         content = """
         \"\"\"
         Some docstring

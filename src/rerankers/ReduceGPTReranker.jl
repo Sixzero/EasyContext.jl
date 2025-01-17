@@ -21,7 +21,7 @@ end
 Base.@kwdef struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
     model::AbstractString="dscode"
-    max_batch_tokens::Int=40000  # Token limit per batch
+    max_batch_tokens::Int=64000  # Token limit per batch
     temperature::Float64=0.0
     top_n::Int=10
     rank_gpt_prompt_fn::Function = create_rankgpt_prompt_v2

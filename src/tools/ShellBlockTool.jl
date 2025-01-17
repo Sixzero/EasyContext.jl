@@ -5,9 +5,17 @@ export truncate_output
     id::UUID = uuid4()
     language::String = "sh"
     content::String
+    root_path::String
     run_results::Vector{String} = []
 end
-ShellBlockTool(cmd::ToolTag) = let (language, content) = parse_code_block(cmd.content); ShellBlockTool(language=language, content=content) end
+function ShellBlockTool(cmd::ToolTag)
+    language, content = parse_code_block(cmd.content)
+    ShellBlockTool(
+        language=language, 
+        content=content,
+        root_path=get(cmd.kwargs, "root_path", "")
+    ) 
+end
 instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::ToolTag) = ShellBlockTool(cmd)
 toolname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
 get_description(cmd::Type{ShellBlockTool}) = """
@@ -31,7 +39,9 @@ function execute(cmd::ShellBlockTool; no_confirm=false)
     
     if no_confirm || get_user_confirmation()
         print_output_header()
-        cmd_all_info_stream(`zsh -c $(cmd.content)`)
+        cd(cmd.root_path) do
+            cmd_all_info_stream(`zsh -c $(cmd.content)`)
+        end
     else
         "\nOperation cancelled by user."
     end

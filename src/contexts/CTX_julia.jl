@@ -44,7 +44,7 @@ function init_julia_context(;
     )
 end
 
-function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, age_tracker=nothing, io::Union{IO, Nothing}=nothing)
+function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, rerank_query=ctx_question, age_tracker=nothing, io::Union{IO, Nothing}=nothing)
     !enabled && return ""
     jl_simi_filter       = julia_context.jl_simi_filter
     jl_pkg_index         = julia_context.jl_pkg_index
@@ -52,11 +52,10 @@ function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=tr
     changes_tracker      = julia_context.changes_tracker
     jl_reranker_filterer = julia_context.jl_reranker_filterer
     index_logger         = julia_context.index_logger
-    excluded_packages    = julia_context.excluded_packages  # Get it from the struct
+    excluded_packages    = julia_context.excluded_packages
 
     # Lazy initialization of the index if not yet created
     if isnothing(jl_pkg_index)
-        # Use the provided package_scope - need to recreate loader here
         julia_loader = CachedLoader(loader=JuliaLoader(; excluded_packages=excluded_packages), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
         julia_context.jl_pkg_index = @async_showerr get_index(jl_simi_filter, julia_loader)
     end
@@ -64,14 +63,14 @@ function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=tr
 
     index::Union{Vector{RAG.AbstractChunkIndex}, RAG.AbstractChunkIndex} = fetch(jl_pkg_index)
     file_chunks_selected = jl_simi_filter(index, ctx_question)
-    @time "rerank" file_chunks_reranked = jl_reranker_filterer(file_chunks_selected, ctx_question)
+    @time "rerank" file_chunks_reranked = jl_reranker_filterer(file_chunks_selected, rerank_query)
     merged_file_chunks = tracker_context(file_chunks_reranked)
     scr_content = changes_tracker(merged_file_chunks)
 
     !isnothing(age_tracker) && age_tracker(changes_tracker)
 
     # Log the index and question
-    @time "index_logging" log_index(index_logger, index, ctx_question)
+    @time "index_logging" log_index(index_logger, index, rerank_query)
 
     result = julia_ctx_2_string(changes_tracker, scr_content)
     # write_event!(io, "julia_context", result)

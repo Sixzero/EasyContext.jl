@@ -34,10 +34,10 @@ function format_cmd_output(output, error, process; debug_msg=nothing)
         end
     end
     
-    # Return formatted output
-    join(["$name=$str" for (name, str) in [
-        ("stdout", stdout_str),
-        ("stderr", error_str),
-        ("exit_code", isnothing(process) ? "" : process.exitcode)
-    ] if !isempty(str)], "\n")
+    # Return formatted output, only include exit_code if it's non-zero
+    parts = String[]
+    !isempty(stdout_str) && push!(parts, "stdout=$stdout_str")
+    !isempty(error_str) && push!(parts, "stderr=$error_str")
+    !isnothing(process) && process.exitcode != 0 && push!(parts, "exit_code=$(process.exitcode)")
+    join(parts, "\n")
 end
