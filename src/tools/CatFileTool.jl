@@ -17,7 +17,7 @@ or if you don't need immediat result from it then you can use it without $STOP_S
 """
 stop_sequence(cmd::Type{CatFileTool}) = STOP_SEQUENCE
 
-execute(cmd::CatFileTool, no_confirm::Bool=false) = let
+execute(cmd::CatFileTool; no_confirm::Bool=false) = let
     path = normpath(joinpath(cmd.root_path, cmd.file_path))
     # TODO: use STANDARD file print format! So don't redefine this again ang again... Also language detection to the tags would be nice to have
     isfile(path) ? file_format(path, read(path, String)) : "cat: $(path): No such file or directory"
