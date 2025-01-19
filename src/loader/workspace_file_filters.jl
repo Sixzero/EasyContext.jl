@@ -7,7 +7,9 @@ const comment_map = Dict{String, Tuple{String,String}}(
         ".html" => ("<!--", "-->"), ".xml" => ("<!--", "-->")
 )
 
-is_project_file(lowered_file, PROJECT_FILES, FILE_EXTENSIONS) = lowered_file in PROJECT_FILES || any(endswith(lowered_file, "." * ext) for ext in FILE_EXTENSIONS)
+function is_project_file(lowered_file, PROJECT_FILES, FILE_EXTENSIONS)
+    lowered_file in PROJECT_FILES || any(endswith(lowered_file, "." * ext) for ext in FILE_EXTENSIONS)
+end
 ignore_file(file, IGNORED_FILE_PATTERNS) = any(endswith(file, pattern) for pattern in IGNORED_FILE_PATTERNS)
 
 function parse_ignore_files(root, IGNORE_FILES)

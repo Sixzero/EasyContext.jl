@@ -19,7 +19,7 @@ include("resolution_methods.jl")
         "clj", "c", "h", "cpp", "hpp", "cc", "cxx", "cs", "csx", "go", "rs", "swift", "m", "mm",
         "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
-        "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", 
+        "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties",
         "proto", "proto3", "graphql", "prisma", "yml", "yaml"
     ]
     FILTERED_FOLDERS::Vector{String} = [
