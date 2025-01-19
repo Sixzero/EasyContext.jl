@@ -64,7 +64,7 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     process_batch_limited = with_rate_limiter_tpm(process_batch, embedder.rate_limiter)
 
     # Token and batch size limits
-    max_tokens_per_batch = 120_000
+    max_tokens_per_batch = 100_000  # Reduced from 120k to have some safety margin
     max_batch_size = 128
     
     # Create batches based on both token count and size limit
@@ -86,7 +86,7 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     !isempty(current_batch) && push!(batches, current_batch)
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
-    results = asyncmap(batches, ntasks=20) do batch
+    results = asyncmap(batches, ntasks=8) do batch  # Reduced from 20 to 8 to avoid overwhelming the API
         embeddings, tokens = process_batch_limited(batch)
         embeddings_matrix = stack(embeddings, dims=2)
         verbose && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"

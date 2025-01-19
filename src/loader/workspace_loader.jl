@@ -25,7 +25,7 @@ include("resolution_methods.jl")
     FILTERED_FOLDERS::Vector{String} = [
         "build",
         "dist", "python", "benchmarks", "node_modules", 
-        "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable"
+        "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable", ".idea"
     ]
     IGNORED_FILE_PATTERNS::Vector{String} = [
         ".log", "config.ini", "secrets.yaml", "Manifest.toml", ".gitignore", ".aiignore", ".aishignore",  # , "Project.toml", "README.md"

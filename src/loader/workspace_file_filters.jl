@@ -23,11 +23,15 @@ end
 
 function gitignore_to_regex(pattern)
     pattern = strip(pattern)
-    isempty(pattern) && return r""
-    startswith(pattern, "#") && return r""  # Skip comments
+    isempty(pattern) && return (r"", false)
+    startswith(pattern, "#") && return (r"", false)  # Skip comments
+
+    # Handle negation patterns
+    is_negation = startswith(pattern, "!")
+    pattern = is_negation ? pattern[2:end] : pattern
 
     if pattern == "**"
-        return r".*"
+        return (r".*", is_negation)
     end
     regex = replace(pattern, r"[.$^]" => s"\\\0")  # Escape special regex characters
     regex = replace(regex, r"\*\*/" => "(.*/)?")
@@ -35,7 +39,7 @@ function gitignore_to_regex(pattern)
     regex = replace(regex, r"\*" => "[^/]*")
     regex = replace(regex, r"\?" => ".")
     regex = "^" * regex * "\$"
-    return Regex(regex)
+    return (Regex(regex), is_negation)
 end
 
 function is_ignored_by_patterns(file, ignore_patterns, root)
@@ -43,21 +47,54 @@ function is_ignored_by_patterns(file, ignore_patterns, root)
     isempty(ignore_patterns) && return false
 
     rel_path = relpath(file, root)
+    should_ignore = false
+    explicit_include = false
+
+    # First pass: check for explicit includes (negation patterns)
     for pattern in ignore_patterns
         isempty(pattern) && continue
         startswith(pattern, "#") && continue
 
-        regex = gitignore_to_regex(pattern)
+        regex, is_negation = gitignore_to_regex(pattern)
         isempty(string(regex.pattern)) && continue
 
-        if occursin(regex, rel_path) || occursin(regex, basename(rel_path))
-            return true
-        end
-        if endswith(pattern, '/') && startswith(rel_path, pattern[1:end-1])
-            return true
+        if is_negation && (occursin(regex, rel_path) || occursin(regex, basename(rel_path)))
+            explicit_include = true
+            break
         end
     end
-    return false
+
+    # If explicitly included, don't ignore
+    explicit_include && return false
+
+    # Second pass: check for ignore patterns
+    for pattern in ignore_patterns
+        isempty(pattern) && continue
+        startswith(pattern, "#") && continue
+
+        regex, is_negation = gitignore_to_regex(pattern)
+        isempty(string(regex.pattern)) && continue
+
+        # Skip negation patterns in second pass
+        is_negation && continue
+
+        # Check if any parent directory matches the ignore pattern
+        path_parts = splitpath(rel_path)
+        for i in 1:length(path_parts)
+            partial_path = join(path_parts[1:i], '/')
+            if occursin(regex, partial_path)
+                should_ignore = true
+                break
+            end
+        end
+
+        # Also check the full path
+        if occursin(regex, rel_path) || occursin(regex, basename(rel_path))
+            should_ignore = true
+        end
+    end
+
+    return should_ignore
 end
 
 
