@@ -12,6 +12,7 @@ function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:Abs
   </instruction>
 
   $(DOCS_FORMAT(documents))
+
   $OUTPUT_FORMAT
   """
   return prompt
@@ -26,6 +27,7 @@ function create_rankgpt_prompt_v1(question::AbstractString, documents::Vector{<:
   </instruction>
 
   $(DOCS_FORMAT(documents))
+
   $(QUESTION_FORMAT(question))
   $OUTPUT_FORMAT
   """
@@ -42,8 +44,11 @@ function create_rankgpt_prompt_v2(question::AbstractString, documents::Vector{<:
   - Also relevant are the ones which hold something we need for editing, like a function.
   - Consider the context and potential usefulness of each document for answering the question.
   </instruction>
+
   $(DOCS_FORMAT(documents))
+  
   $(QUESTION_FORMAT(question))
+  
   $OUTPUT_FORMAT
   """
   return prompt
@@ -73,7 +78,9 @@ function create_rankgpt_prompt_v3(question::AbstractString, documents::Vector{<:
   - If multiple documents are equally relevant, prioritize those with more specific or detailed information.
   </instruction>
   $(DOCS_FORMAT(documents))
+
   $(QUESTION_FORMAT(question))
+  
   $OUTPUT_FORMAT
   """
   return prompt

@@ -13,14 +13,14 @@ using EasyRAGStore: IndexLogger, log_index
 end
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
-function init_workspace_context(project_paths; show_tokens=false, verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing, model="gpt4om")
+function init_workspace_context(project_paths; show_tokens=false, verbose=true, index_logger_path="workspace_context_log", virtual_ws=nothing, model="gpt4om", top_n=12)
     workspace            = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     tracker_context      = Context()
     changes_tracker      = ChangeTracker()
     openai_embedder      = create_voyage_embedder(cache_prefix="workspace")
     # openai_embedder      = create_openai_embedder(cache_prefix="workspace")
     ws_simi_filterer     = create_combined_index_builder(openai_embedder, top_k=50)
-    ws_reranker_filterer = ReduceGPTReranker(batch_size=30, top_n=12; model)
+    ws_reranker_filterer = ReduceGPTReranker(batch_size=30; top_n, model)
     
     index_logger = IndexLogger(index_logger_path)
 

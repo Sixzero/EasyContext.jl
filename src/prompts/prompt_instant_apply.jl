@@ -44,6 +44,28 @@ function get_merge_prompt_v2(original_content, changes_content)
   """
 end
 
+function get_patch_merge_prompt(original_content, changes_content)
+  """You are a code merge specialist. Merge the <ORIGINAL> code with the <PATCH> following these rules:
+
+  1. Apply all modifications from <PATCH> to <ORIGINAL>
+  2. Keep original formatting (spaces/tabs)
+  3. Keep imports and using statements intact unless explicitly modified
+  4. Return only the final code between <final> and </final> tags
+
+  In the end result all the + symbol listed things in the patch should be represented in some way in the <final> result.
+
+  <ORIGINAL>
+  $original_content
+  </ORIGINAL>
+
+  <PATCH>
+  $changes_content
+  </PATCH>
+
+  Provide merged code between <final> and </final>.
+  """
+end
+
 function get_replace_prompt(original_content, changes_content)
   """You are a pattern matching specialist. Generate a list of search and replace pairs that will transform the <ORIGINAL> content to reflect what we write in <MODIFY> tags.
   

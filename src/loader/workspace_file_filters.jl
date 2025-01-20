@@ -99,20 +99,3 @@ function is_ignored_by_patterns(file, ignore_patterns, root)
     return should_ignore
 end
 
-
-
-# function format_file_content(file)
-# 	content = read(file, String)
-# 	relative_path = relpath(file, pwd())
-
-# 	ext = lowercase(splitext(file)[2])
-#     comment_prefix, comment_suffix = get(comment_map, ext, ("#", ""))
-
-# 	return """
-# 	File: $(relative_path)
-# 	```
-# 	$content
-# 	```
-# 	"""
-# end
-

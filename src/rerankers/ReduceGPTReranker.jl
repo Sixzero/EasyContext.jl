@@ -18,7 +18,7 @@ function aigenerate_with_fallback(prompt; model="dscode", fallback_model="gpt4om
     end
 end
 
-Base.@kwdef struct ReduceGPTReranker <: AbstractReranker 
+Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
     model::AbstractString="dscode"
     max_batch_tokens::Int=64000  # Token limit per batch

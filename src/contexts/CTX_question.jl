@@ -1,3 +1,5 @@
+export QueryWithHistory, QueryWithHistoryAndAIMsg
+
 @kwdef mutable struct QueryWithHistory
     questions::Vector{String}=String[]
     max_questions::Int=3
