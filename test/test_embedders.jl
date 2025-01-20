@@ -193,7 +193,102 @@ using BenchmarkTools
         end
     end
 
+    @testset "Embedder Performance Comparisons" begin
+    # Mock HTTP responses for consistent testing
+    function mock_http_post(url, headers, body)
+        dims = if occursin("jina", url)
+            512
+        elseif occursin("voyage", url)
+            1024
+        else # OpenAI
+            1536
+        end
+        mock_response = Dict(
+            "data" => [Dict("embedding" => rand(Float32, dims)) for _ in 1:length(JSON3.read(body)["input"])],
+            "usage" => Dict("total_tokens" => 100)
+        )
+        return HTTP.Response(200, JSON3.write(mock_response))
+    end
 
-    # You can add more testsets for other embedder-related components here
+    # Test documents
+    docs = ["Test document $(i) with some content for embedding comparison" for i in 1:20]
+    query = "Find relevant code about embeddings"
+
+    # Setup all embedder variants
+    embedders = Dict(
+        "OpenAI" => EmbeddingIndexBuilder(embedder=OpenAIBatchEmbedder(api_key="test", http_post=mock_http_post)),
+        "Jina" => EmbeddingIndexBuilder(embedder=JinaEmbedder(api_key="test", http_post=mock_http_post)),
+        "Voyage" => EmbeddingIndexBuilder(embedder=VoyageEmbedder(api_key="test", http_post=mock_http_post)),
+        "Combined (OpenAI+BM25)" => create_combined_index_builder(EmbeddingIndexBuilder(embedder=OpenAIBatchEmbedder(api_key="test", http_post=mock_http_post))),
+        "Combined (Jina+BM25)" => create_combined_index_builder(EmbeddingIndexBuilder(embedder=JinaEmbedder(api_key="test", http_post=mock_http_post))),
+        "Combined (Voyage+BM25)" => create_combined_index_builder(EmbeddingIndexBuilder(embedder=VoyageEmbedder(api_key="test", http_post=mock_http_post)))
+    )
+
+    # Create test chunks
+    chunks = OrderedDict(zip(["file$i.jl" for i in 1:20], docs))
+
+    @testset "Embedding Dimensions" begin
+        for (name, builder) in embedders
+            index = get_index(builder, chunks)
+            if builder isa CombinedIndexBuilder
+                @test length(index) == 2  # Embedding + BM25
+            else
+                emb_size = if occursin("OpenAI", name)
+                    1536
+                elseif occursin("Jina", name)
+                    512
+                else # Voyage
+                    1024
+                end
+                @test size(RAG.chunkdata(index), 1) == emb_size
+            end
+        end
+    end
+
+    @testset "Search Performance" begin
+        # Warmup
+        for builder in values(embedders)
+            index = get_index(builder, chunks)
+            builder(index, query)
+        end
+
+        results = Dict{String, BenchmarkTools.Trial}()
+        
+        for (name, builder) in embedders
+            index = get_index(builder, chunks)
+            results[name] = @benchmark $builder($index, $query)
+        end
+
+        # Print results in a sorted manner
+        sorted_times = sort(collect(results), by=x->median(x.second))
+        @info "Search Performance Rankings:"
+        for (name, trial) in sorted_times
+            @info "$name" median=median(trial) memory=trial.memory allocs=trial.allocs
+        end
+
+        # Basic performance assertions
+        for (name, trial) in results
+            if occursin("Combined", name)
+                # Combined methods should take longer due to multiple searches
+                @test median(trial) > median(results[replace(name, "Combined (" => "")[1:end-6]])
+            end
+        end
+    end
+
+    @testset "Result Quality" begin
+        # Test if combined methods return more diverse results
+        for (name, builder) in filter(p->occursin("Combined", p.first), embedders)
+            index = get_index(builder, chunks)
+            results = builder(index, query)
+            
+            # Get base embedder name
+            base_name = replace(name, "Combined (" => "")[1:end-6]
+            base_builder = embedders[base_name]
+            base_index = get_index(base_builder, chunks)
+            base_results = base_builder(base_index, query)
+            
+            # Combined should potentially find different/more results
+            @test length(results) ≥ length(base_results)
+        end
+    end
 end
-;

@@ -58,7 +58,7 @@ function (builder::CombinedIndexBuilder)(indexes, query::AbstractString)
     
     # Get results from each index
     all_results = []
-    for (i, index) in enumerate(indexes)
+    @time "hey" for (i, index) in enumerate(indexes)
         finder = get_finder(builder.builders[i])
         
         positions, scores = get_positions_and_scores(finder, builder.builders[i], index, query, length(RAG.sources(indexes[1])))
