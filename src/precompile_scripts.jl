@@ -46,7 +46,6 @@ using DataStructures: OrderedDict
         
         
         
-        # reset!(extractor)
         
         # cache = get_cache_setting(age_tracker, conv_ctx)
         

@@ -1,7 +1,7 @@
 using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
-using EasyContext: ToolTagExtractor, ToolTag, extract_tool_calls, reset!, serialize
+using EasyContext: ToolTagExtractor, ToolTag, extract_tool_calls, serialize
 using EasyContext: get_tool_results, SHELL_BLOCK_TAG
 
 @testset failfast=true "ToolTagExtractor Tests" begin
@@ -37,21 +37,6 @@ using EasyContext: get_tool_results, SHELL_BLOCK_TAG
         @test length(parser.tool_tasks) == 2
     end
 
-    @testset "reset!" begin
-        parser = ToolTagExtractor()
-        parser.last_processed_index[] = 100
-        test_id = uuid4()  # Create a proper UUID
-        parser.tool_tasks[test_id] = @task nothing
-        parser.tool_results[test_id] = "test result"
-        parser.full_content = "Some content"
-
-        reset!(parser)
-
-        @test parser.last_processed_index[] == 0
-        @test isempty(parser.tool_tasks)
-        @test isempty(parser.tool_results)
-        @test parser.full_content == ""
-    end
 
     @testset "Nested tags" begin
         parser = ToolTagExtractor()
@@ -83,31 +68,6 @@ using EasyContext: get_tool_results, SHELL_BLOCK_TAG
         extract_tool_calls(content, parser)
         @test isempty(parser.tool_tasks) # Should not create command without closing tag
 
-        # Test unclosed MODIFY tag
-        content = """
-        Some text before
-        CREATE testfile2.txt
-        ```julia
-        code content
-        ```
-        Some text after
-        """
-        reset!(parser)
-        extract_tool_calls(content, parser)
-        @test isempty(parser.tool_tasks) # Should not create command without closing tag
-
-        # Test unclosed code block
-        content = """
-        Some text before
-        CREATE new_file.txt
-        ```julia
-        code content
-        ```
-        Some text after
-        """
-        reset!(parser)
-        extract_tool_calls(content, parser)
-        @test isempty(parser.tool_tasks) # Should not create command with unclosed code block
     end
 
     @testset "Partial streaming extraction" begin

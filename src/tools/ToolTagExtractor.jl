@@ -1,4 +1,4 @@
-export ToolTagExtractor, extract_tool_calls, run_stream_parser, get_last_tool_result
+export ToolTagExtractor, extract_tool_calls, get_last_tool_result
 
 #  I think we will need a runner and parser separated...
 
@@ -78,28 +78,7 @@ execute(t::Task) = begin
     cmd = fetch(t)
     isnothing(cmd) ? nothing : execute(convert_tool(cmd))
 end
-# function reset!(stream_parser::ToolTagExtractor)
-#     stream_parser.last_processed_index[] = 0
-#     empty!(stream_parser.tool_tags)
-#     empty!(stream_parser.tool_tasks)
-#     empty!(stream_parser.tool_results)
-#     stream_parser.full_content = ""
-#     return stream_parser
-# end
 
-# execute_single_tool(task::Task, stream_parser::ToolTagExtractor, no_confirm::Bool=false) = execute_single_tool(fetch(task), stream_parser, no_confirm)
-# execute_single_tool(cmd::ModifyFileTool, stream_parser::ToolTagExtractor, no_confirm::Bool=false) = execute(cmd)
-# execute_single_tool(cmd::CreateFileTool, stream_parser::ToolTagExtractor, no_confirm::Bool=false) = execute(cmd; no_confirm)
-# function execute_single_tool(cmd::ShellBlockTool, stream_parser::ToolTagExtractor, no_confirm::Bool=false)
-#     stream_parser.tool_results[cmd.id] = execute(cmd; no_confirm)
-#     !isempty(stream_parser.tool_results[cmd.id]) && push!(cmd.run_results, stream_parser.tool_results[cmd.id])
-# end
-# execute_single_tool(cmd, stream_parser::ToolTagExtractor, no_confirm::Bool=false) = execute(cmd; no_confirm)
-
-
-"""
-Fetch all tool results
-"""
 function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
     if !stream_parser.skip_execution
         # Execute in order
