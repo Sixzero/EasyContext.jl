@@ -5,7 +5,6 @@ export ToolTagExtractor, extract_tool_calls, run_stream_parser, get_last_tool_re
 @kwdef mutable struct ToolTagExtractor
 # for the extracted tools
     tools_extracted::Vector{AbstractTool} = AbstractTool[]
-    tool_result_store=StoreInMem()
     
     tool_tags::Vector{ToolTag}=ToolTag[]
     tool_tasks::OrderedDict{UUID, Task} = OrderedDict{UUID, Task}()
@@ -105,38 +104,19 @@ function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
     if !stream_parser.skip_execution
         # Execute in order
         for (id, task) in stream_parser.tool_tasks
-            try
-                tool = fetch(task)
-                isnothing(tool) && continue
-                result = execute(tool; no_confirm)
-                set_tool_result(stream_parser.tool_result_store, tool, result)
-            catch e
-                @error "Tool execution failed" tool=tools[id] exception=(e, catch_backtrace())
-                set_tool_result(stream_parser.tool_result_store, tool, "Error: $(sprint(showerror, e))")
-            end
+            tool = fetch(task)
+            isnothing(tool) && continue
+            execute(tool; no_confirm)
         end
         
     end
 end
 
-function get_tool_results(stream_parser::ToolTagExtractor)
+function get_tool_results(stream_parser::ToolTagExtractor, filter_tools::Vector{DataType}=Datasources[])
 	output = "Previous tools and their results:\n"
 	for (id, task) in stream_parser.tool_tasks
 			tool = fetch(task)
-			if isa(tool, ShellBlockTool)
-                tool_result = get_tool_result(stream_parser.tool_result_store, tool)
-                if isempty(tool_result)
-                    tool_result = "No results"
-                end
-                shortened_content = get_shortened_code(tool.content)
-                output *= """$(SHELL_BLOCK_OPEN)
-                $shortened_content
-                $(CODEBLOCK_CLOSE)
-                $(SHELL_RUN_RESULT)
-                $(tool_result)
-                $(CODEBLOCK_CLOSE)
-                """
-			end
+            isempty(filter_tools) || typeof(tool) in filter_tools &&  (output *= result2string(tool))
 	end
 	return output
 end

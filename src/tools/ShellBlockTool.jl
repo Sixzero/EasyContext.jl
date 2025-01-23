@@ -75,3 +75,15 @@ end
 function LLM_safetorun(cmd::ShellBlockTool)
 	LLM_safetorun(cmd.content)
 end
+
+function result2string(tool::ShellBlockTool)
+    tool_result= isempty(tool.run_results) || isempty(tool.run_results[end]) ? "No results" : tool.run_results[end]
+    shortened_content = get_shortened_code(tool.content)
+    """$(SHELL_BLOCK_OPEN)
+    $shortened_content
+    $(CODEBLOCK_CLOSE)
+    $(SHELL_RUN_RESULT)
+    $(tool_result)
+    $(CODEBLOCK_CLOSE)
+    """
+end

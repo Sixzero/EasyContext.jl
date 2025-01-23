@@ -63,6 +63,10 @@ get_description(tool::AbstractTool)::String = get_description(typeof(tool))
 has_stop_sequence(tool::Type{<:AbstractTool})::Bool = stop_sequence(tool) != "" 
 has_stop_sequence(tool::AbstractTool)::Bool = has_stop_sequence(typeof(tool))
 
+
+
+result2string(tool::AbstractTool)::String = ""
+
 # const TOOL_REGISTRY = Dict{String, Type{<:AbstractTool}}()
 
 # """
