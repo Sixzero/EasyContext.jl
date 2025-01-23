@@ -4,9 +4,9 @@ using DataStructures
 import EasyContext
 using EasyContext: Context
 using EasyContext: ChangeTracker, get_chunk_standard_format
-using EasyContext: get_updated_content, default_source_parser
 using Random
 
+# TODO default_source_parser is updated to reparse_chunk
 @testset "ChangeTracker tests" begin
     @testset "Basic functionality" begin
         # Custom source parser for testing

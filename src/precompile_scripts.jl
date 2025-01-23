@@ -10,22 +10,23 @@ using DataStructures: OrderedDict
     show_tokens = false
 
     # Create minimal dummy file chunks for testing
-    dummy_chunks = OrderedDict(
-        "src/test.jl" => "function hello() println(\"Hello\") end",
-        "src/main.jl" => "using Test\ninclude(\"test.jl\")"
-    )
+    dummy_chunks = FileChunk[
+        FileChunk(SourcePath(path="src/test.jl"), "using Test\ninclude(\"test.jl\")"),
+        FileChunk(SourcePath(path="src/main.jl"), "function hello() println(\"Hello\") end")
+    ]
 
     # Mock AI function that doesn't make API calls
     mock_ai_fn(prompt; kwargs...) = PromptingTools.AIMessage("1,2")
 
     @time "Precompilation EasyContext.jl" @compile_workload begin
         # Initialize workspace context
+        # TODO this should happen cd-ed into 
         workspace_context = init_workspace_context(project_paths, verbose=false)
-               
+        embedder = create_openai_embedder(cache_prefix="workspace")
         # Test the filtering functionality with dummy data
-        indexx = get_index(workspace_context.ws_simi_filterer, dummy_chunks)
-        file_chunks_selected = workspace_context.ws_simi_filterer(indexx, user_question)
-        file_chunks_reranked = rerank(workspace_context.ws_reranker_filterer, file_chunks_selected, user_question; ai_fn=mock_ai_fn)
+        tmp_score = get_score(embedder, dummy_chunks, "hello")
+        # file_chunks_selected = workspace_context.ws_simi_filterer(indexx, user_question)
+        # file_chunks_reranked = rerank(workspace_context.ws_reranker_filterer, file_chunks_selected, user_question; ai_fn=mock_ai_fn)
 
         # EasyContext-specific initializations
         # workspace_context = init_workspace_context(project_paths, verbose=false)

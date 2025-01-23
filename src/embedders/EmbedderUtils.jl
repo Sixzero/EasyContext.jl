@@ -6,14 +6,15 @@ using JLD2, Snowball, Pkg
 import PromptingTools.Experimental.RAGTools as RAG
 import Base: *
 
-include("OpenAIBatchEmbedder.jl")
-include("JinaEmbedder.jl")
-include("EmbeddingIndexBuilder.jl")
-include("VoyageEmbedder.jl")
-include("CachedIndexBuilder.jl")
-include("CacheBatchEmbedder.jl")
-include("BM25IndexBuilder.jl")
-include("CombinedIndexBuilder.jl")
+include("SimilarityAlgos.jl")
+
+include("api/BM25Embedder.jl")
+include("api/OpenAIBatchEmbedder.jl")
+include("api/JinaEmbedder.jl")
+include("api/VoyageEmbedder.jl")
+
+include("CachedBatchEmbedder.jl")
+include("WeightingMethods.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
@@ -27,8 +28,6 @@ const CACHE_DIR = let
 end
 
 with_cache(builder::AbstractIndexBuilder) = CachedLoader(loader=builder, cache_dir=CACHE_DIR)
-
-*(a::AbstractIndexBuilder, b::Union{AbstractIndexBuilder, RAG.AbstractReranker}) = x -> b(a(x))
 
 # Exports
 export build_index, build_multi_index, get_context, get_answer

@@ -1,5 +1,6 @@
 using PromptingTools: recursive_splitter
 using PromptingTools.Experimental.RAGTools
+using PromptingTools.Experimental.RAGTools: AbstractChunker
 const RAG = RAGTools
 
 export FullFileChunker
@@ -18,16 +19,14 @@ function RAG.get_chunks(chunker::FullFileChunker,
     verbose::Bool = true)
 
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
-    output_chunks = Vector{String}()
-    output_sources = Vector{String}()
+    output_chunks = Vector{FileChunk}()
 
     formatter_tokens = estimate_tokens(chunker.formatter("", ""), chunker.estimation_method)
 
     for i in eachindex(files_or_docs, sources)
         doc_raw, source = RAG.load_text(chunker, files_or_docs[i]; source = sources[i])
         if isempty(doc_raw)
-            push!(output_chunks, chunker.formatter(source, ""))  # Return empty string for empty files
-            push!(output_sources, source)
+            push!(output_chunks, FileChunk(; source=SourcePath(; path=source), content=""))  # Return empty string for empty files
             continue
         end
 
@@ -36,20 +35,16 @@ function RAG.get_chunks(chunker::FullFileChunker,
 
         if estimate_tokens(doc_raw, chunker.estimation_method) <= effective_max_tokens
             # If the entire file fits within the token limit, don't split it
-            push!(output_chunks, chunker.formatter(source, doc_raw))
-            push!(output_sources, source)
+            push!(output_chunks, FileChunk(; source=SourcePath(; path=source), content=doc_raw))
         else
             chunks, line_ranges = split_text_into_chunks(doc_raw, chunker.estimation_method, effective_max_tokens)
 
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
-                chunk_source = "$(source):$(start_line)-$(end_line)"
-                chunk_with_source = chunker.formatter(chunk_source, chunk)
-                push!(output_sources, chunk_source)
-                push!(output_chunks, chunk_with_source)
+                push!(output_chunks, FileChunk(; source=SourcePath(; path=source, from_line=start_line, to_line=end_line), content=chunk))
             end
         end
     end
-    return output_chunks, output_sources
+    return output_chunks
 end
 
 function split_text_into_chunks(text::String, estimation_method::TokenEstimationMethod, max_tokens::Int)

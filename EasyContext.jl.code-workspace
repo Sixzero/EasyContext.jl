@@ -17,6 +17,9 @@
 		},
 		{
 			"path": "../LLMBenchmarks.jl"
+		},
+		{
+			"path": "../jl_pkgs/StreamCallbacksExt.jl"
 		}
 	],
 	"settings": {

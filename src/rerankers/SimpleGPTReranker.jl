@@ -11,21 +11,15 @@ Base.@kwdef struct SimpleGPTReranker <: AbstractReranker
     verbose::Int=1
 end
 
-function (reranker::SimpleGPTReranker)(chunks::OrderedDict{<:AbstractString, <:AbstractString}, query::AbstractString)
-    reranked = rerank(reranker, chunks, query)
-    return reranked
-end
-
 function rerank(
     reranker::SimpleGPTReranker,
-    chunks::OrderedDict{<:AbstractString, <:AbstractString},
+    chunks::Vector{T},
     query::AbstractString;
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
     ai_fn::Function = airatelimited
-)
-    sources = collect(keys(chunks))
-    contents = collect(values(chunks))
+) where T
+    contents = string.(chunks)  # Convert to strings if needed
     
     prompt = """
     <instruction>
@@ -58,14 +52,14 @@ function rerank(
     
     if isempty(rankings) || !all(1 .<= rankings .<= length(contents))
         @warn "Invalid or empty rankings returned"
-        return OrderedDict{String,String}()
+        return T[]
     end
     
     if verbose > 0
         println("SimpleGPT selected $(length(rankings)) documents. Cost: \$$(round(cost_tracker[], digits=4))")
     end
     
-    return OrderedDict(zip(sources[rankings], contents[rankings]))
+    return chunks[rankings]
 end
 
 function RAG.rerank(

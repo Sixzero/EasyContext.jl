@@ -111,7 +111,6 @@ function work(agent::FluidAgent, conv; cache,
     no_confirm=false,
     highlight_enabled::Bool=true,
     process_enabled::Bool=true,
-    on_text=noop,
     on_error=noop,
     on_done=noop,
     on_start=noop,
@@ -121,18 +120,13 @@ function work(agent::FluidAgent, conv; cache,
     extractor = ToolTagExtractor()
     agent.extractor = extractor
     
-    cb = create(StreamCallbackConfig(
-        on_text = on_text,
-        on_error = on_error,
-        on_start = on_start,
+    cb = create(StreamCallbackConfig(; on_start, on_error, highlight_enabled, process_enabled,
         on_done = () -> begin
-            # Extracts tools and starts processing them
+            # Extracts tools in case anything is unclosed
             process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
             on_done()
         end,
-        content_processor = text -> process_enabled ? extract_tool_calls(text, extractor; kwargs=tool_kwargs) : nothing,
-        highlight_enabled = highlight_enabled,
-        process_enabled = process_enabled
+        on_content = text -> process_enabled ? extract_tool_calls(text, extractor; kwargs=tool_kwargs) : nothing,
     ))
     
     try

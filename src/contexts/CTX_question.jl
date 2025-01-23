@@ -47,11 +47,11 @@ function (conv::QueryWithHistoryAndAIMsg)(query::AbstractString, session::Sessio
     
     # Build extra contexts
     contexts = Pair{String,String}[]
-    !isempty(ai_history) && push!(contexts, "AI responses:" => join(ai_history, "\n"))
-    !isempty(ctx_shell) && push!(contexts, "Shell context:" => ctx_shell)
+    !isempty(ai_history) && push!(contexts, "# AI responses:" => join(ai_history, "\n"))
+    !isempty(ctx_shell) && push!(contexts, "# Previous tools and their results:" => ctx_shell)
     
     # Format with all parts in order
-    format_history_query(conv.question_history(query), contexts, "CURRENT QUERY TO SOLVE:")
+    format_history_query(conv.question_history(query), contexts, "# Current query to solve:")
 end
 
 add_response!(conv::QueryWithHistoryAndAIMsg, response::AbstractString) = 

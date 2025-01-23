@@ -68,6 +68,7 @@
    - [ ] Fluid agent streaming support not implemented based on current solution
  - [ ] -c `shell command` execution to airepl
  - [ ] use_julia is essentially not in argparse
+ - [ ] find closest score to not sort.
 
 
 

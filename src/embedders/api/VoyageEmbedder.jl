@@ -105,30 +105,6 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     return all_embeddings
 end
 
-# Extend aiembed for VoyageEmbedder
-function PromptingTools.aiembed(embedder::VoyageEmbedder,
-    doc_or_docs::Union{AbstractString, AbstractVector{<:AbstractString}},
-    postprocess::F = identity;
-    verbose::Bool = true,
-    kwargs...) where {F <: Function}
-
-    docs = doc_or_docs isa AbstractString ? [doc_or_docs] : doc_or_docs
-
-    time = @elapsed embeddings, total_tokens = get_embeddings(embedder, docs; verbose=verbose, kwargs...)
-
-    content = mapreduce(postprocess, hcat, eachcol(embeddings))
-
-    msg = PromptingTools.DataMessage(;
-        content = content,
-        status = 200,
-        cost = 0.0,  # Voyage AI doesn't provide cost information
-        tokens = (total_tokens, 0),
-        elapsed = time
-    )
-
-    return msg
-end
-
 # Add this at the end of the file
 function create_voyage_embedder(;
     model::String = "voyage-code-2", # or voyage-3
@@ -139,7 +115,6 @@ function create_voyage_embedder(;
 )
     voyage_embedder = VoyageEmbedder(; model, input_type, verbose)
     embedder = CachedBatchEmbedder(;embedder=voyage_embedder, cache_prefix, verbose)
-    EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
 end
 
 export create_voyage_embedder

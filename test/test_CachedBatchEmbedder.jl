@@ -1,8 +1,8 @@
 using Test
 using EasyContext
 using DataStructures: OrderedDict
-using EasyContext: EmbeddingIndexBuilder, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
-using EasyContext: BM25IndexBuilder
+using EasyContext: EmbedderSearch, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
+using EasyContext: BM25Embedder
 using EasyContext: get_index
 using HTTP
 using PromptingTools.Experimental.RAGTools
@@ -99,7 +99,7 @@ using Random
     end
 
     @testset "Performance and Type Stability" begin
-        embedder = CachedBatchEmbedder(embedder=EmbeddingIndexBuilder(embedder=VoyageEmbedder()))
+        embedder = CachedBatchEmbedder(embedder=EmbedderSearch(embedder=VoyageEmbedder()))
         docs = ["This is a test document", "Another test document", "Third test document"]
 
         # Mock the HTTP.post function to avoid actual API calls

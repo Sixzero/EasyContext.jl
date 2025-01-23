@@ -147,4 +147,14 @@ function LLM_apply_changes_to_file(tool::ModifyFileTool)
     original_content, ai_generated_content
 end
 
+# TODO maybe chunks should have this? but just wut a full_parse on the location it is used which returns full content without line cuts? instead of reparse?
+function parse_source(source::String)
+    source_nospace = split(source, ' ')[1]
+    parts = split(source_nospace, ':')
+    length(parts) == 1 && return parts[1], nothing
+    start_line, end_line = parse.(Int, split(parts[2], '-'))
+    return parts[1], (start_line, end_line)
+end
+
+
 CURRENT_EDITOR = MonacoMeldDiffView()  # Default editor

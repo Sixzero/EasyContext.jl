@@ -1,9 +1,15 @@
-@kwdef mutable struct Context 
-	d::OrderedDict{String, String}=OrderedDict{String, String}()
+mutable struct Context{T}
+	d::OrderedDict{String, T}
 end
 
-(ctx::Context)(new_ctx::Context) = ctx(new_ctx.d)
-(ctx::Context)(new_ctx::OrderedDict{String, String}) = (merge!(ctx.d, new_ctx);   return ctx)
+# TODO limit T to Union{<:AbstractChunk, String}
+Context{T}() where T = Context{T}(OrderedDict{String, T}())
+Context(chunks::AbstractVector{T}) where T = Context{T}(OrderedDict{String, T}(get_source(v) => v for v in chunks))
+
+Base.merge!(ctx::Context, new_ctx::Context) = merge!(ctx, new_ctx.d)
+Base.merge!(ctx::Context, new_ctx::AbstractVector{T}) where T = (merge!(ctx, Context(new_ctx));   return ctx)
+Base.merge!(ctx::Context, new_ctx::AbstractDict{String, T}) where T = (merge!(ctx.d, new_ctx);   return ctx)
+
 Base.length(ctx::Context) = length(ctx.d)
 
 

@@ -3,7 +3,8 @@ using Highlights: AbstractLexer
 using Crayons
 
 @kwdef mutable struct SyntaxHighlightState
-    buffer::IOBuffer = IOBuffer()
+    io::IO = stdout
+    buffer::IOBuffer = IOBuffer() # the buffer to sotre a line of string before applying printings
     in_code_block::Int = 0  # Now represents nesting level
     language::String = ""
     current_line::String = ""
@@ -40,8 +41,8 @@ function process_buffer(state::SyntaxHighlightState; flush::Bool=false)
     isempty(content) && return
     
     lexer = get_lexer(state.language)
-    highlighted = highlight_string(content, lexer)
-    print(highlighted)
+    highlighted = highlight_string(content, lexer, state.io)
+    print(state.io, highlighted)
 end
 
 function handle_text(state::SyntaxHighlightState, text::AbstractString)
@@ -76,21 +77,21 @@ function process_line(state::SyntaxHighlightState)
         write(state.buffer, line, '\n')
         process_buffer(state)
     else
-        println(line)
+        println(state.io, line)
     end
 end
 
 function handle_text(state::PlainSyntaxState, text::AbstractString)
-    print(text)
+    print(stdout, text)  # Use stdout as default
 end
 
 function handle_code_block_start(state::SyntaxHighlightState, line::AbstractString)
     state.in_code_block += 1
     if state.in_code_block == 1
         state.language = length(line) > 3 ? strip(line[4:end]) : ""
-        print(Crayon(background = (40, 44, 52)))  # Set background
-        print("\e[K")  # Clear to end of line with current background color
-        println("```$(state.language)")
+        print(state.io, Crayon(background = (40, 44, 52)))  # Set background
+        print(state.io, "\e[K")  # Clear to end of line with current background color
+        println(state.io, "```$(state.language)")
     else
         write(state.buffer, line, '\n')
     end
@@ -101,9 +102,9 @@ function handle_code_block_end(state::SyntaxHighlightState, line::AbstractString
         state.in_code_block -= 1
         if state.in_code_block == 0
             process_buffer(state, flush=true)
-            print("```")
-            print(Crayon(reset = true))  # Reset codeblock bg
-            println()  # Now the newline is not colored
+            print(state.io, "```")
+            print(state.io, Crayon(reset = true))  # Reset codeblock bg
+            println(state.io)  # Now the newline is not colored
         else
             write(state.buffer, line, '\n')
         end
@@ -112,8 +113,8 @@ function handle_code_block_end(state::SyntaxHighlightState, line::AbstractString
     end
 end
 
-highlight_string(code::AbstractString, lexer::Type{<:AbstractLexer}) = sprint() do io
-    highlight(io, MIME("text/ansi"), code, lexer)
+highlight_string(code::AbstractString, lexer::Type{<:AbstractLexer}) = sprint() do buf
+    highlight(buf, MIME("text/ansi"), code, lexer)
 end
 
 function Highlights.Format.render(io::IO, ::MIME"text/ansi", tokens::Highlights.Format.TokenIterator)

@@ -1,8 +1,8 @@
 using Test
 using EasyContext
 using DataStructures: OrderedDict
-using EasyContext: EmbeddingIndexBuilder, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
-using EasyContext: BM25IndexBuilder
+using EasyContext: EmbedderSearch, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
+using EasyContext: BM25Embedder
 using EasyContext: get_index
 using HTTP
 using PromptingTools.Experimental.RAGTools
@@ -11,10 +11,10 @@ using Chairmarks
 using BenchmarkTools
 
 @testset "Embedder Tests" begin
-    @testset "EmbeddingIndexBuilder" begin
+    @testset "EmbedderSearch" begin
         @testset "Constructor" begin
-            builder = EmbeddingIndexBuilder()
-            @test builder isa EmbeddingIndexBuilder
+            builder = EmbedderSearch()
+            @test builder isa EmbedderSearch
             @test builder.embedder isa CachedBatchEmbedder
             @test builder.embedder.embedder isa OpenAIBatchEmbedder
             @test builder.top_k == 300
@@ -22,7 +22,7 @@ using BenchmarkTools
         end
 
         @testset "get_index" begin
-            builder = EmbeddingIndexBuilder()
+            builder = EmbedderSearch()
             chunks = OrderedDict("file1.jl" => "content1", "file2.jl" => "content2")
 
             index = EasyContext.get_index(builder, chunks)
@@ -33,7 +33,7 @@ using BenchmarkTools
         end
 
         @testset "call method" begin
-            builder = EmbeddingIndexBuilder(top_k=2)
+            builder = EmbedderSearch(top_k=2)
             chunks = OrderedDict("file1.jl" => "content1", "file2.jl" => "content2", "file3.jl" => "content3")
             query = "test query"
             index = get_index(builder, chunks)
@@ -44,7 +44,7 @@ using BenchmarkTools
         end
 
         @testset "Empty input" begin
-            builder = EmbeddingIndexBuilder()
+            builder = EmbedderSearch()
             empty_chunks = OrderedDict{String, String}()
             query = "test query"
             index = get_index(builder, empty_chunks)
@@ -137,8 +137,8 @@ using BenchmarkTools
             )
             @test builder isa CombinedIndexBuilder
             @test length(builder.builders) == 2
-            @test builder.builders[1] isa EmbeddingIndexBuilder
-            @test builder.builders[2] isa EmbeddingIndexBuilder
+            @test builder.builders[1] isa EmbedderSearch
+            @test builder.builders[2] isa EmbedderSearch
         end
 
         @testset "get_index and call" begin

@@ -1,5 +1,4 @@
 using PromptingTools.Experimental.RAGTools
-using PromptingTools.Experimental.RAGTools: SimpleIndexer, AbstractReranker
 using JLD2
 
 function get_embedding_context(index::RAG.AbstractChunkIndex, question::String)
@@ -24,7 +23,7 @@ function get_embedding_context(index::RAG.AbstractChunkIndex, question::String)
 end
 
 # Context processing functions
-function get_context(builder::EmbeddingIndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
+function get_context(builder::EmbedderSearch, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
     index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
 
     rephraser = JuliacodeRephraser(;template=:RAGRephraserByKeywordsV2, model = "claude", verbose=true)
@@ -49,7 +48,7 @@ function get_context(builder::EmbeddingIndexBuilder, question::String; data::Uni
     return result
 end
 
-function get_context(builder::BM25IndexBuilder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
+function get_context(builder::BM25Embedder, question::String; data::Union{Nothing, Vector{T}}=nothing, force_rebuild::Bool=false, suppress_output::Bool=true) where T
     index = isnothing(data) ? builder.cache : build_index(builder, data; force_rebuild=force_rebuild)
 
     processor = RAG.KeywordsProcessor()

@@ -74,9 +74,8 @@ function Workspace(project_paths::Vector{<:AbstractString};
 
     return workspace
 end
-function (ws::Workspace)(chunker)
-    chunks, sources = RAGTools.get_chunks(chunker, get_project_files(ws))
-    return OrderedDict(zip(sources, chunks))
+function get_workspace_chunks(ws::Workspace, chunker)
+    return RAGTools.get_chunks(chunker, get_project_files(ws))
 end
 
 function get_project_files(w::Workspace)

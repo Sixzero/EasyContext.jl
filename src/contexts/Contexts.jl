@@ -12,8 +12,3 @@ end
 
 get_chunk_standard_format(source, content) = "# $source\n$content"
 get_chunk_standard_format(d::T) where {T<:AbstractDict} = T(src => get_chunk_standard_format(src, content) for (src, content) in d)
-
-function default_source_parser(source::String, current_content::String)
-    updated_content = get_updated_content(source)
-    return get_chunk_standard_format(source, updated_content)
-end

@@ -6,22 +6,22 @@ export StreamCallbackConfig, create
 include("syntax_highlight.jl")
 
 @kwdef struct StreamCallbackConfig
-    on_text = noop
+    io::IO=stdout
     on_error = noop
     on_done = noop
     on_start = noop
-    content_processor = nothing
+    on_content = nothing
     highlight_enabled::Bool = true
     process_enabled::Bool = true
 end
 
 create(config::StreamCallbackConfig) = begin
-    state = SyntaxHighlightState()
+    state = SyntaxHighlightState(io=config.io)
     
     content_handler = if config.process_enabled && config.highlight_enabled
-        text -> (handle_text(state, text); !isnothing(config.content_processor) && config.content_processor(text))
+        text -> (handle_text(state, text); !isnothing(config.on_content) && config.on_content(text))
     elseif config.process_enabled 
-        text -> config.content_processor(text)
+        text -> config.on_content(text)
     elseif config.highlight_enabled
         text -> handle_text(state, text)
     else

@@ -26,7 +26,7 @@ end
 log_instant_apply(cb, question) = nothing
 function log_instant_apply(cb::ModifyFileTool, question::String)
     original_content = cd(cb.root_path) do
-        default_source_parser(cb.file_path, "")
+        reparse_chunk(FileChunk(source=SourcePath(path=cb.file_path))).content
     end
     log_instant_apply(original_content, cb.content, cb.file_path, question)
 end

@@ -1,15 +1,15 @@
 # Archive of old structures and functions
 
-# Old BM25IndexBuilder
-@kwdef mutable struct OldBM25IndexBuilder <: AbstractIndexBuilder
+# Old BM25Embedder
+@kwdef mutable struct OldBM25Embedder <: AbstractIndexBuilder
   chunker::RAG.AbstractChunker = SourceChunker()
   processor::RAG.AbstractProcessor = RAG.KeywordsProcessor()
   tagger::RAG.AbstractTagger = RAG.NoTagger()
   cache::Union{Nothing, RAG.AbstractChunkIndex} = nothing
 end
 
-# Old JinaEmbeddingIndexBuilder
-@kwdef mutable struct OldJinaEmbeddingIndexBuilder <: AbstractIndexBuilder
+# Old JinaEmbedderSearch
+@kwdef mutable struct OldJinaEmbedderSearch <: AbstractIndexBuilder
   chunker::RAG.AbstractChunker = SourceChunker()
   embedder::RAG.AbstractEmbedder = CachedBatchEmbedder(
       embedder=JinaEmbedder(
@@ -21,7 +21,7 @@ end
 end
 
 # Archived build_index functions
-function build_index(builder::OldBM25IndexBuilder, data::Vector{T}; force_rebuild::Bool=false, verbose::Bool=true) where T
+function build_index(builder::OldBM25Embedder, data::Vector{T}; force_rebuild::Bool=false, verbose::Bool=true) where T
   hash_str = hash("$data")
   cache_file = joinpath(CACHE_DIR, "bm25_index_$(hash_str).jld2")
 
@@ -46,7 +46,7 @@ function build_index(builder::OldBM25IndexBuilder, data::Vector{T}; force_rebuil
   return index
 end
 
-function build_index(builder::OldJinaEmbeddingIndexBuilder, data::Vector{T}; force_rebuild::Bool=false, verbose::Bool=true) where T
+function build_index(builder::OldJinaEmbedderSearch, data::Vector{T}; force_rebuild::Bool=false, verbose::Bool=true) where T
   hash_str = hash("$data")
   cache_file = joinpath(CACHE_DIR, "jina_embedding_index_$(hash_str).jld2")
 

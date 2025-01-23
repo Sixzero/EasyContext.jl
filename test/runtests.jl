@@ -10,4 +10,5 @@ using Test
     include("test_workspace.jl")
     include("transform/test_instant_apply.jl")
     include("test_simple_reranker.jl")
+    include("test_top_n.jl")
 end

@@ -6,6 +6,7 @@ import PromptingTools
 # using JuliaSyntax
 const RAG = PromptingTools.Experimental.RAGTools
 
+
 @kwdef struct JuliaSourceChunk
     name::Symbol
     signature_hash::Union{UInt64,Nothing} = nothing
@@ -35,8 +36,7 @@ function RAG.get_chunks(chunker::JuliaSourceChunker,
 
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
 
-    output_chunks = Vector{SubString{String}}()
-    output_sources = Vector{eltype(sources)}()
+    output_chunks = Vector{SourceChunk}()
 
     for (file, source) in zip(files_or_docs, sources)
         defs = process_jl_file(file, modules, verbose)
@@ -46,13 +46,14 @@ function RAG.get_chunks(chunker::JuliaSourceChunker,
         @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
     
         append!(output_chunks, chunks)
-        append!(output_sources, ["$(file_path_lineno(def)) $(join(def.module_stack, "."))" for def in defs])
     end
 
-    return output_chunks, output_sources
+    return output_chunks
 end
 
 function create_chunk(def::JuliaSourceChunk, include_module_info::Bool)
+    return SourceChunk(; source=SourcePath(; path=def.file_path, from_line=def.start_line_code, to_line=def.end_line_code), content=def.chunk, containing_module=include_module_info ? join(def.module_stack, ".") : nothing)
+
     header = "$(def.file_path):$(def.start_line_code)"
     module_info = include_module_info ? " \n# module $(isempty(def.module_stack) ? "Main" : join(def.module_stack, "."))" : ""
     return "$header$module_info\n$(def.chunk)"

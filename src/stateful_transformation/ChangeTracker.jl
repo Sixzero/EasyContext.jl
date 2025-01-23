@@ -5,68 +5,50 @@ const colors = Dict{Symbol, Symbol}(
     :DELETED   => :red,
 )
 
-@kwdef mutable struct ChangeTracker
+@kwdef mutable struct ChangeTracker{T}
     changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
-    content::OrderedDict{String, String} = OrderedDict{String, String}()
-    source_parser::Function = default_source_parser
-    need_source_reparse::Bool = true
+    chunks_dict::OrderedDict{String, T} = OrderedDict{String, T}()
     verbose::Bool = true  # Add this line
 end
 
 
-(tracker!::ChangeTracker)(src_content::Context) = begin
-    d = tracker!(src_content.d)
-    return src_content
+function update_changes!(tracker::ChangeTracker, ctx::Context)
+    d = update_changes!(tracker, ctx.d)
+    return ctx
 end
-function (tracker::ChangeTracker)(src_content::OrderedDict)
-    current_keys = keys(src_content)
+# todo limit T to Union{<:AbstractChunk, String}
+function update_changes!(tracker::ChangeTracker, ctx::AbstractDict{String, T}) where T
+    current_keys = keys(ctx)
     deleted_keys = [k for k in keys(tracker.changes) if !(k in current_keys)]
     for k in deleted_keys
         delete!(tracker.changes, k)
-        delete!(tracker.content, k)
+        delete!(tracker.chunks_dict, k)
     end
     
     for (source, _) in tracker.changes # we reset everything to :UNCHANGED
         tracker.changes[source] != :UNCHANGED && (tracker.changes[source] = :UNCHANGED)
     end
 
-    for (source, content) in src_content
+    for (source, chunk) in ctx
         if !haskey(tracker.changes, source)
             tracker.changes[source] = :NEW
-            tracker.content[source] = content
+            tracker.chunks_dict[source] = chunk
             continue
         end
-        if tracker.need_source_reparse
-            new_content = tracker.source_parser(source, content)
-            if tracker.content[source] == new_content
+        if need_source_reparse(chunk)
+            new_chunk = reparse_chunk(chunk)
+            if tracker.chunks_dict[source] == new_chunk
                 tracker.changes[source] = :UNCHANGED
             else
                 tracker.changes[source] = :UPDATED
-                tracker.content[source] = new_content
-                src_content[source]     = new_content
+                tracker.chunks_dict[source] = new_chunk
+                ctx[source]                 = new_chunk
             end
         end
     end
     tracker.verbose && print_context_updates(tracker; deleted=deleted_keys, item_type="sources")
-    return src_content
+    return ctx
 end
-
-function parse_source(source::String)
-    source_nospace = split(source, ' ')[1]
-    parts = split(source_nospace, ':')
-    length(parts) == 1 && return parts[1], nothing
-    start_line, end_line = parse.(Int, split(parts[2], '-'))
-    return parts[1], (start_line, end_line)
-end
-function get_updated_content(source::String)
-    file_path, line_range = parse_source(source)
-    !isfile(file_path) && (@warn "File not found: $file_path (pwd: $(pwd()))"; return nothing)
-    content = read(file_path, String)
-    isnothing(line_range) && return content
-    lines = split(content, '\n')
-    return join(lines[line_range[1]:min(line_range[2], length(lines))], '\n')
-end
-
 
 serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = serialize(tag, element, scr_state, src_cont.d)
 serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::OrderedDict) = begin
@@ -89,7 +71,7 @@ serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::Orde
     end
     output
 end
-format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = join(["""$(file_format(src, content))""" for (src, content) in src_cont if scr_state.changes[src] == state], '\n')
+format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = join([string(chunks) for (src, chunks) in src_cont if scr_state.changes[src] == state], '\n')
 
 
 function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")

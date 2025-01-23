@@ -54,7 +54,7 @@ function get_positions_and_scores(finder::RAG.BM25Similarity, builder::AbstractI
     RAG.find_closest(finder, RAG.chunkdata(index), Float32[], query_tokens; top_k=top_k)
 end
 
-function (builder::CombinedIndexBuilder)(indexes, query::AbstractString)
+function similarity_search(builder::CombinedIndexBuilder, indexes, query::AbstractString)
     
     # Get results from each index
     all_results = []
@@ -66,7 +66,7 @@ function (builder::CombinedIndexBuilder)(indexes, query::AbstractString)
     end
 
     # Combine results using the specified method
-    combined_positions, combined_scores = combine_results(builder.combination_method, all_results, length(RAG.sources(indexes[1])))
+    combined_positions, combined_scores = combine_scores(builder.combination_method, all_results, length(RAG.sources(indexes[1])))
 
     # Apply top_k cut
     top_k = min(builder.top_k, length(combined_positions))
@@ -84,7 +84,7 @@ end
 
 # Implement combination methods
 
-function combine_results(::SimpleAppender, all_results, total_positions)
+function combine_scores(::SimpleAppender, all_results, total_positions)
     all_positions = vcat([r.positions for r in all_results]...)
     all_scores = vcat([r.scores for r in all_results]...)
     
@@ -102,7 +102,7 @@ function combine_results(::SimpleAppender, all_results, total_positions)
     return final_positions, final_scores
 end
 
-function combine_results(combiner::WeightedCombiner, all_results, total_positions)
+function combine_scores(combiner::WeightedCombiner, all_results, total_positions)
     combined_scores = zeros(Float64, total_positions)
     for (result, weight) in zip(all_results, combiner.weights)
         for (pos, score) in zip(result.positions, result.scores)
@@ -113,7 +113,7 @@ function combine_results(combiner::WeightedCombiner, all_results, total_position
     return sorted_indices, combined_scores[sorted_indices]
 end
 
-function combine_results(::RRFCombiner, all_results, total_positions)
+function combine_scores(::RRFCombiner, all_results, total_positions)
     k_rrf = 60  # RRF parameter, could be made configurable
     all_positions = [r.positions for r in all_results]
     all_scores = [r.scores for r in all_results]
@@ -127,11 +127,11 @@ function create_combined_index_builder(embedding_model::String = "text-embedding
     create_combined_index_builder(create_openai_embedder(model=embedding_model); kwargs...)
 end
 
-function create_combined_index_builder(embedding_builder::EmbeddingIndexBuilder; 
+function create_combined_index_builder(embedding_builder::EmbedderSearch; 
     top_k::Int = 300,
     combination_method::CombinationMethod = SimpleAppender())
     
-    bm25_builder = BM25IndexBuilder()
+    bm25_builder = BM25Embedder()
     builders = [embedding_builder, bm25_builder]
     
     CombinedIndexBuilder(

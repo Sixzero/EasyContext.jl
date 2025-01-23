@@ -93,31 +93,6 @@ function get_embeddings(embedder::JinaEmbedder, docs::AbstractVector{<:AbstractS
     return all_embeddings
 end
 
-# Extend aiembed for JinaEmbedder
-function PromptingTools.aiembed(embedder::JinaEmbedder,
-    doc_or_docs::Union{AbstractString, AbstractVector{<:AbstractString}},
-    postprocess::F = identity;
-    verbose::Bool = true,
-    kwargs...) where {F <: Function}
-
-    docs = doc_or_docs isa AbstractString ? [doc_or_docs] : doc_or_docs
-
-    time = @elapsed embeddings = get_embeddings(embedder, docs; verbose=verbose, kwargs...)
-
-    content = mapreduce(postprocess, hcat, embeddings)
-
-    msg = PromptingTools.DataMessage(;
-        content = content,
-        status = 200,
-        cost = 0.0,  # Jina doesn't provide cost information
-        tokens = (0, 0),  # Jina doesn't provide token count
-        elapsed = time
-    )
-
-
-    return msg
-end
-
 # Add this at the end of the file
 function create_jina_embedder(;
     model::String = "jina-embeddings-v2-base-code",
@@ -128,7 +103,7 @@ function create_jina_embedder(;
 )
     jina_embedder = JinaEmbedder(; model=model, dimensions=dimensions, input_type=input_type)
     embedder = CachedBatchEmbedder(;embedder=jina_embedder, cache_prefix)
-    EmbeddingIndexBuilder(embedder=embedder, top_k=top_k)
+    EmbedderSearch(embedder=embedder, top_k=top_k)
 end
 
 export create_jina_embedder

@@ -1,79 +1,59 @@
 export process_julia_context, init_julia_context
 
-using EasyRAGStore: IndexLogger, log_index
 
 @kwdef mutable struct JuliaCTX
-    jl_simi_filter::EasyContext.CachedIndexBuilder{EasyContext.CombinedIndexBuilder}           
-    jl_pkg_index::Union{Task, Nothing}
+    rag_pipeline::TwoLayerRAG
     tracker_context::Context
     changes_tracker::ChangeTracker
-    jl_reranker_filterer
-    index_logger::IndexLogger
-    excluded_packages::Vector{String} = String[]  # Add this field
+
+    pkg_chunks::CachedLoader
 end
 
 function init_julia_context(; 
     package_scope=:installed, 
     verbose=true, 
-    index_logger_path="julia_context_log",
     excluded_packages=String[],
-    model="dscode"
+    model="dscode",
+    top_k=50,
 )
-    voyage_embedder = create_voyage_embedder(model="voyage-code-2", cache_prefix="juliapkgs")
-    jl_simi_filter = create_combined_index_builder(voyage_embedder; top_k=120)
-    
-    # Wrap the jl_simi_filter with CachedIndexBuilder
-    cached_jl_simi_filter = CachedIndexBuilder(jl_simi_filter)
+    embedder = create_voyage_embedder(model="voyage-code-2", cache_prefix="juliapkgs")
+    bm25 = BM25Embedder()
+    combined_embedder = MaxScoreEmbedder([embedder, bm25])
 
     # Initialize with nothing, will be lazily created on first use
-    jl_pkg_index = nothing
-    tracker_context = Context()
-    changes_tracker = ChangeTracker(;need_source_reparse=false, verbose=verbose)
-    jl_reranker_filterer = ReduceGPTReranker(batch_size=40, top_n=10; model)
+    tracker_context = Context{SourceChunk}()
+    changes_tracker = ChangeTracker{SourceChunk}(; verbose=verbose)
+    reranker = ReduceGPTReranker(batch_size=40, top_n=10; model)
+    rag_pipeline = TwoLayerRAG(; embedder=combined_embedder, reranker, top_k)
 
-    index_logger = IndexLogger(index_logger_path)
+    pkg_chunks = CachedLoader(loader=JuliaLoader(; excluded_packages=excluded_packages), memory=Dict{String,OrderedDict{String,String}}())
 
     return JuliaCTX(
-        cached_jl_simi_filter,
-        jl_pkg_index,
+        rag_pipeline,
         tracker_context,
         changes_tracker,
-        jl_reranker_filterer,
-        index_logger,
-        excluded_packages, # Pass excluded_packages to the struct
+        pkg_chunks,
     )
 end
 
 function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, rerank_query=ctx_question, age_tracker=nothing, io::Union{IO, Nothing}=nothing)
-    !enabled && return ""
-    jl_simi_filter       = julia_context.jl_simi_filter
-    jl_pkg_index         = julia_context.jl_pkg_index
-    tracker_context      = julia_context.tracker_context
-    changes_tracker      = julia_context.changes_tracker
-    jl_reranker_filterer = julia_context.jl_reranker_filterer
-    index_logger         = julia_context.index_logger
-    excluded_packages    = julia_context.excluded_packages
+    !enabled && return ("", nothing)
+    rag_pipeline      = julia_context.rag_pipeline
+    tracker_context   = julia_context.tracker_context
+    changes_tracker   = julia_context.changes_tracker
+    pkg_chunks        = julia_context.pkg_chunks
 
-    # Lazy initialization of the index if not yet created
-    if isnothing(jl_pkg_index)
-        julia_loader = CachedLoader(loader=JuliaLoader(; excluded_packages=excluded_packages), memory=Dict{String,OrderedDict{String,String}}())(SourceChunker())
-        julia_context.jl_pkg_index = @async_showerr get_index(jl_simi_filter, julia_loader)
-    end
-    jl_pkg_index = julia_context.jl_pkg_index
-
-    index::Union{Vector{RAG.AbstractChunkIndex}, RAG.AbstractChunkIndex} = fetch(jl_pkg_index)
-    file_chunks_selected = jl_simi_filter(index, ctx_question)
-    @time "rerank" file_chunks_reranked = jl_reranker_filterer(file_chunks_selected, rerank_query)
-    merged_file_chunks = tracker_context(file_chunks_reranked)
-    scr_content = changes_tracker(merged_file_chunks)
+    src_chunks = pkg_chunks(SourceChunker()) # TODO remove functor workflow. also WHUT is this doing
+    
+    file_chunks_reranked = search(rag_pipeline, src_chunks, ctx_question)
+    
+    merged_file_chunks = merge!(tracker_context, file_chunks_reranked)
+    scr_content = update_changes!(changes_tracker, merged_file_chunks)
 
     !isnothing(age_tracker) && age_tracker(changes_tracker)
-
-    # Log the index and question
-    @time "index_logging" log_index(index_logger, index, rerank_query)
 
     result = julia_ctx_2_string(changes_tracker, scr_content)
     # write_event!(io, "julia_context", result)
     
-    return result
+    return result, src_chunks
 end

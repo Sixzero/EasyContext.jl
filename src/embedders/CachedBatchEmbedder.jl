@@ -12,6 +12,7 @@ using DataFrames
     latest_tasks::Dict{String, Task} = Dict{String, Task}()
 end
 
+
 const CACHE_STATE = CacheData()
 
 @kwdef struct CachedBatchEmbedder <: AbstractEmbedder
@@ -25,6 +26,12 @@ const CACHE_STATE = CacheData()
     cache_prefix::String=""
     truncate_dimension::Union{Int, Nothing}=nothing
     verbose::Bool=false
+end
+
+function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, query::AbstractString; cost_tracker = Threads.Atomic{Float64}(0.0)) where {T}
+    embeddings = RAG.get_embeddings(builder, chunks; cost_tracker)
+    query_emb = RAG.get_embeddings(builder, [query]; cost_tracker)
+    get_score(Val(:CosineSimilarity), embeddings, reshape(query_emb, :))
 end
 
 get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)
@@ -51,25 +58,21 @@ function safe_append_cache(cache_file::String, new_entries::Dict{String,Vector{F
     end
 end
 
-function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
-        verbose::Bool = embedder.verbose,
+function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractChunk};
         cost_tracker = Threads.Atomic{Float64}(0.0),
         target_batch_size_length::Int = 80_000,
         ntasks::Int = 4 * Threads.nthreads())
-    
-    get_embeddings(embedder, docs,
-        verbose,
-        cost_tracker,
-        target_batch_size_length,
-        ntasks,
+    docs_str = string.(docs) # TODO maybe we could do this later to allocate even less?
+
+    get_embeddings(
+        embedder, docs_str; cost_tracker, target_batch_size_length,ntasks,
     )
 end
 
-function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString},
-        verbose::Bool,
-        cost_tracker,
-        target_batch_size_length::Int,
-        ntasks::Int,
+function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
+        cost_tracker = Threads.Atomic{Float64}(0.0),
+        target_batch_size_length::Int = 80_000,
+        ntasks::Int = 4 * Threads.nthreads(),
         )
     if isempty(docs)
         verbose && @info "No documents to embed."
@@ -98,7 +101,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     if !isempty(to_embed_indices)
         docs_to_embed = docs[to_embed_indices]
         new_embeddings::Matrix{Float32} = get_embeddings(embedder.embedder, docs_to_embed;
-            verbose, model, truncate_dimension, cost_tracker,
+            verbose=embedder.verbose, model, truncate_dimension, cost_tracker,
             target_batch_size_length, ntasks)
 
         # Update cache with new embeddings
@@ -121,7 +124,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         all_embeddings[:, i] = cache[hash]
     end
     
-    if verbose
+    if embedder.verbose
         cached_count = length(docs) - length(to_embed_indices)
         cost_text = length(to_embed_indices) > 0 ? " Cost: \$$(round(cost_tracker[], digits=3))" : ""
         @info "Embedding complete. $cached_count docs from cache, $(length(to_embed_indices)) newly embedded." * cost_text

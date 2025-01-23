@@ -1,6 +1,8 @@
 
 using PromptingTools.Experimental.RAGTools
+using PromptingTools.Experimental.RAGTools: AbstractReranker
 const RAG = RAGTools
+
 
 Base.@kwdef struct CohereRerankerPro <: AbstractReranker
     model::String = "rerank-english-v2.0"
@@ -34,9 +36,9 @@ end
 # Maintain compatibility with the existing RAG.rerank method
 function RAG.rerank(
     reranker::CohereRerankerPro,
-    index::AbstractDocumentIndex,
+    index::RAG.AbstractDocumentIndex,
     query::AbstractString,
-    candidates::AbstractCandidateChunks;
+    candidates::RAG.AbstractCandidateChunks;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Bool = false,
