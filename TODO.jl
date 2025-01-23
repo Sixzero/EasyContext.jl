@@ -77,7 +77,7 @@ We will need to filter the questions whether it is relevant for testing for the 
                                 10- Anthropic.jl
                                 4- streaming
                                 6- refactoring everything
-                                6- file reading skill
+                                6- file reading tool
 # 8- tesztable... nem tesztable... too strong ... validation for automation + SR... self testing
 4- [ ] port server API
 2- [ ] persisting session("model") 
@@ -162,7 +162,7 @@ later- [ ] docker shipping...
 
 - [x] ENV["REVISE"]="disable" before airepl starts.
 
-- using COMPUTER is a skill: Click + Keyboard + image understanding
+- using COMPUTER is a tool: Click + Keyboard + image understanding
 
 #
 Cloud DB:
@@ -179,6 +179,6 @@ webview is a "GUI" to see AGENT process
 
 
 #
-- [ ] cat_file_skill
+- [ ] cat_file_tool
 - [ ] benchmarking
 - [ ] LLM summary caching

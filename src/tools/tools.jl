@@ -24,7 +24,6 @@ include("CreateFileTool.jl")
 include("WebSearchTool.jl")
 include("EmailTool.jl")
 
-include("ToolResultStores.jl")
 include("ToolTagExtractor.jl")
 
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, EmailTool, WebSearchTool
