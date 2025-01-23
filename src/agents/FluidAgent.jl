@@ -46,8 +46,8 @@ end
 """
 Returns both the full and truncated context strings
 """
-function get_tool_results(agent::FluidAgent, max_length::Int=20000, filter_tools::Vector{DataType}=Datasources[])
-    ctx = get_tool_results(agent.extractor, filter_tools)
+function get_tool_results(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=Datasources[])
+    ctx = get_tool_results(agent.extractor; filter_tools)
     if length(ctx) > max_length
         @warn "Shell context too long, truncating to $max_length characters"
         return ctx, ctx[1:min(max_length, end)]

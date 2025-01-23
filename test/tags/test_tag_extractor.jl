@@ -2,7 +2,7 @@ using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
 using EasyContext: ToolTagExtractor, ToolTag, extract_tool_calls, serialize
-using EasyContext: get_tool_results, SHELL_BLOCK_TAG
+using EasyContext: SHELL_BLOCK_TAG
 
 @testset failfast=true "ToolTagExtractor Tests" begin
     @testset "Constructor" begin
