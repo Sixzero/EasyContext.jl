@@ -41,7 +41,7 @@ function process_buffer(state::SyntaxHighlightState; flush::Bool=false)
     isempty(content) && return
     
     lexer = get_lexer(state.language)
-    highlighted = highlight_string(content, lexer, state.io)
+    highlighted = highlight_string(content, lexer)
     print(state.io, highlighted)
 end
 
