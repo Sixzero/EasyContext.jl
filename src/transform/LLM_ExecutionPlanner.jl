@@ -16,7 +16,7 @@ transform_position(::Type{ExecutionPlannerContext}) = AppendTransform()
 Base.display(ctx::ExecutionPlannerContext, content::AbstractString) = 
     display(Markdown.parse("# EXECUTION_PLAN\n" * content))
 
-function transform(ctx::ExecutionPlannerContext, query, session::Session, io::IO=stdout)
+function transform(ctx::ExecutionPlannerContext, query, session::Session; io::IO=stdout)
     !ctx.enabled && return ""
     history_len = ctx.history_count
     relevant_history = join([msg.content for msg in session.messages[max(1, end-history_len+1):end]], "\n")
