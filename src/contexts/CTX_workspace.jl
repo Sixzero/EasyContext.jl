@@ -9,11 +9,6 @@ export process_workspace_context, init_workspace_context
 end
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
-struct Method7
-    score::Function
-end
-score(method7::Method7, ctx, query) = method7.score(ctx, query)
-
 function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model="gpt4om", top_k=50,top_n=12)
     workspace            = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     tracker_context      = Context{FileChunk}()
