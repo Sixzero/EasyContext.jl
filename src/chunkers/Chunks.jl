@@ -40,7 +40,7 @@ end
 reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source))
 function get_updated_file_content(source::SourcePath)
     file_path, from, to = source.path, source.from_line, source.to_line
-    !isfile(file_path) && (@warn "File not found: $file_path (pwd: $(pwd()))"; return nothing)
+    !isfile(file_path) && (@warn "File not found: $file_path (pwd: $(pwd()))"; return "")
     chunks_dict = read(file_path, String)
     isnothing(from) && return chunks_dict
     lines = split(chunks_dict, '\n')

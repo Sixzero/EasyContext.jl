@@ -24,7 +24,7 @@ function cut_old_sources!(sources_to_delete::Vector{String}, ctx::OrderedDict, c
     for source in sources_to_delete
         delete!(ctx, source)
         delete!(ct.changes, source)
-        delete!(ct.content, source)
+        delete!(ct.chunks_dict, source)
     end
     return sources_to_delete
 end
