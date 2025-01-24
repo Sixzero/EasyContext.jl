@@ -19,7 +19,7 @@ transform_position(::Type{CodeCriticsArchitectContext}) = AppendTransform()
 Base.display(ctx::CodeCriticsArchitectContext, content::AbstractString) = 
     display(Markdown.parse("# CODE_CRITICS\n" * content))
 
-function transform(ctx::CodeCriticsArchitectContext, query, session::Session)
+function transform(ctx::CodeCriticsArchitectContext, query, session::Session, io::IO=stdout)
     !ctx.enabled && return ""
     history_len = ctx.history_count
     relevant_history = join([msg.content for msg in session.messages[max(1, end-history_len+1):end]], "\n")
@@ -40,7 +40,7 @@ function transform(ctx::CodeCriticsArchitectContext, query, session::Session)
     Be minimal, focus only on important issues.
     """
     
-    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false))
+    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false; io))
 
     response = aigenerate([
         SystemMessage(CRITICS_SYSTEM_PROMPT),

@@ -16,7 +16,7 @@ transform_position(::Type{ExecutionPlannerContext}) = AppendTransform()
 Base.display(ctx::ExecutionPlannerContext, content::AbstractString) = 
     display(Markdown.parse("# EXECUTION_PLAN\n" * content))
 
-function transform(ctx::ExecutionPlannerContext, query, session::Session)
+function transform(ctx::ExecutionPlannerContext, query, session::Session, io::IO=stdout)
     !ctx.enabled && return ""
     history_len = ctx.history_count
     relevant_history = join([msg.content for msg in session.messages[max(1, end-history_len+1):end]], "\n")
@@ -33,7 +33,7 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session)
     Based on the above PREVIOUS_CONTEXT USER_QUESTION, create a detailed execution plan, which is sufficient to answer user question.
     """
     
-    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false))
+    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false; io))
 
     response = aigenerate([
         SystemMessage(PLANNER_SYSTEM_PROMPT),

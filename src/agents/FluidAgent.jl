@@ -114,13 +114,14 @@ function work(agent::FluidAgent, conv; cache,
     on_error=noop,
     on_done=noop,
     on_start=noop,
+    io=stdout,
     tool_kwargs=Dict())
     
     # Create new ToolTagExtractor for each run
     extractor = ToolTagExtractor()
     agent.extractor = extractor
     
-    cb = create(StreamCallbackConfig(; on_start, on_error, highlight_enabled, process_enabled,
+    cb = create(StreamCallbackConfig(; io, on_start, on_error, highlight_enabled, process_enabled,
         on_done = () -> begin
             # Extracts tools in case anything is unclosed
             process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
