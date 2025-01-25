@@ -108,7 +108,6 @@ end
 # Add this at the end of the file
 function create_voyage_embedder(;
     model::String = "voyage-code-2", # or voyage-3
-    top_k::Int = 300,
     input_type::Union{String, Nothing} = nothing,
     verbose::Bool = true,
     cache_prefix=""
@@ -116,6 +115,9 @@ function create_voyage_embedder(;
     voyage_embedder = VoyageEmbedder(; model, input_type, verbose)
     embedder = CachedBatchEmbedder(;embedder=voyage_embedder, cache_prefix, verbose)
 end
+
+# Update humanize method
+humanize(e::VoyageEmbedder) = "Voyage:$(e.model)"
 
 export create_voyage_embedder
 

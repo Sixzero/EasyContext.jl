@@ -2,20 +2,46 @@ using PromptingTools
 using PromptingTools.Experimental.RAGTools: extract_ranking, AbstractReranker
 using Base.Threads
 using HTTP.Exceptions: TimeoutError
-const RAG = RAGTools
 const PT = PromptingTools
 
-# Helper function to handle model fallback
-function aigenerate_with_fallback(prompt; model="dscode", fallback_model="gpt4om", readtimeout=10, kwargs...)
-    try
-        return aigenerate(prompt; model, http_kwargs=(; readtimeout), kwargs...)
-    catch e
-        if e isa TimeoutError
-            @warn "Model '$model' timed out after $(e.readtimeout)s. Falling back to '$fallback_model'..."
-            return aigenerate(prompt; model=fallback_model, http_kwargs=(; readtimeout=30), kwargs...)
+# Model state tracking
+Base.@kwdef mutable struct ModelState
+    failures::Int = 0
+    last_error_type::Union{Nothing,Type} = nothing
+    last_error_time::Float64 = 0.0
+    available::Bool = true
+end
+
+Base.@kwdef mutable struct AIFunctionManager
+    models::Vector{String}
+    states::Dict{String,ModelState} = Dict{String,ModelState}()
+    readtimeout::Int = 15
+end
+
+function try_generate(manager::AIFunctionManager, prompt; kwargs...)
+    for model in manager.models
+        state = get!(manager.states, model, ModelState())
+        !state.available && continue
+        
+        try
+            return aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
+        catch e
+            state.failures += 1
+            state.last_error_type = typeof(e)
+            state.last_error_time = time()
+            
+            if e isa TimeoutError
+                @warn "Model '$model' timed out after $(manager.readtimeout)s."
+            elseif e isa HTTP.Exceptions.StatusError && e.status == 429
+                @warn "Model '$model' rate limited, removing from available models."
+                state.available = false
+            else
+                @warn "Model '$model' failed with: $(typeof(e))"
+                rethrow(e)
+            end
         end
-        rethrow(e)
     end
+    error("All models failed or unavailable")
 end
 
 Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker 
@@ -27,7 +53,7 @@ Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker
     rank_gpt_prompt_fn::Function = create_rankgpt_prompt_v2
     verbose::Int=1
     batching_strategy::BatchingStrategy = LinearGrowthBatcher()
-    # timeout::Int=3  # Timeout in seconds
+    strict_mode::Bool = false  # New parameter for strict model usage
 end
 
 function rerank(
@@ -37,8 +63,12 @@ function rerank(
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
-    ai_fn::Function = aigenerate_with_fallback,
 ) where T
+    # Initialize AIFunctionManager with model preferences
+    ai_manager = AIFunctionManager(
+        models=reranker.strict_mode ? [reranker.model] : unique([reranker.model, "gem20f", "gem15f", "dscode", "gpt4om"])
+    )
+    
     contents = string.(chunks)
     total_docs = length(chunks)
     verbose>1 && @info "Starting RankGPT reranking with reduce for $total_docs documents"
@@ -50,8 +80,7 @@ function rerank(
             prompt = reranker.rank_gpt_prompt_fn(query, doc_batch, top_n)
             temperature = attempt == 1 ? reranker.temperature : 0.5
 
-            response = ai_fn(prompt; 
-                model=reranker.model,
+            response = try_generate(ai_manager, prompt; 
                 api_kwargs=(; temperature, top_p=0.1),
                 verbose=false
             )

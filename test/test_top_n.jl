@@ -1,5 +1,6 @@
 using Test
-using EasyContext: topN
+using EasyContext: topN, TopN
+using EasyContext: MaxScoreEmbedder, RRFScoreEmbedder, WeighterEmbedder
 
 @testset "topN" begin
     # Test 1: Basic case (n < length)
@@ -48,4 +49,42 @@ using EasyContext: topN
     expected = chunks[sortperm(scores, rev=true)]
     results = topN(scores, chunks, n)
     @test results == expected[1:n]
+
+    @testset "TopN struct" begin
+        chunks = ["a", "b", "c", "d"]
+        query = "test query"
+
+        # Mock embedders
+        mock1 = MockEmbedder([0.8, 0.3, 0.9, 0.1])
+        mock2 = MockEmbedder([0.7, 0.8, 0.2, 0.9])
+        
+        # Test single embedder
+        topn_single = TopN(mock1, n=2)
+        result = topn_single(chunks, query)
+        @test result == ["c", "a"]
+
+        # Test weighted combination
+        topn_weighted = TopN([mock1, mock2], weights=[0.7, 0.3], n=2)
+        result_weighted = topn_weighted(chunks, query)
+        @test length(result_weighted) == 2
+
+        # Test max score combination
+        topn_max = TopN([mock1, mock2], method=:max, n=2)
+        result_max = topn_max(chunks, query)
+        @test length(result_max) == 2
+
+        # Test RRF combination
+        topn_rrf = TopN([mock1, mock2], method=:rrf, n=2)
+        result_rrf = topn_rrf(chunks, query)
+        @test length(result_rrf) == 2
+    end
+end
+
+# Mock embedder for testing
+struct MockEmbedder <: AbstractEmbedder
+    scores::Vector{Float64}
+end
+
+function get_score(embedder::MockEmbedder, chunks::AbstractVector{<:AbstractString}, query::AbstractString)
+    embedder.scores
 end

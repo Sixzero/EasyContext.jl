@@ -46,17 +46,3 @@ using EasyContext
     end
 end
 ;
-#%%
-using DataStructures
-using EasyContext: JuliaLoader, CachedLoader, SourceChunker, get_index, create_voyage_embedder, create_combined_index_builder
-using EasyContext: CachedBatchEmbedder
-using InteractiveUtils
-
-voyage_embedder = create_voyage_embedder(model="voyage-code-2")
-jl_simi_filter_raw = create_combined_index_builder(voyage_embedder; top_k=120)
-jl_simi_filter = CachedBatchEmbedder(jl_simi_filter_raw)
-# @time jl_pkg_index = get_index(jl_simi_filter, CachedLoader(loader=JuliaLoader(),memory=Dict{String,OrderedDict{String,String}}())(SourceChunker()))
-ccc = CachedLoader(loader=JuliaLoader(),memory=Dict{String,OrderedDict{String,String}}())
-@time chunks = ccc(SourceChunker())
-@time get_index(jl_simi_filter, chunks; ) 
-;

@@ -8,7 +8,7 @@ end
 
 @kwdef mutable struct PythonLoader <: AbstractLoader
     package_scope::Symbol = :installed  # :installed, :dependencies, or :all
-    index_builder::AbstractIndexBuilder = CombinedIndexBuilder()
+    index_builder::Nothing = nothing # # TODO remove the need for this, index is not its responsibility, I think only returning the chunks should be.
     packages::Vector{PythonPkgInfo} = PythonPkgInfo[]
 end
 

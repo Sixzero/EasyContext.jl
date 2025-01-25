@@ -20,3 +20,6 @@ end
 function get_finder(builder::BM25Embedder)
     RAG.BM25Similarity()
 end
+
+# Add humanize method
+humanize(e::BM25Embedder) = "BM25"

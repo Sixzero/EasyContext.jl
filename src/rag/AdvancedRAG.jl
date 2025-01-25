@@ -4,21 +4,22 @@ using EasyContext: create_openai_embedder, create_jina_embedder, create_voyage_e
 using PromptingTools.Experimental.RAGTools: ChunkEmbeddingsIndex, AbstractChunkIndex
 
 
-abstract type AbstractRAGConfig end
-
 # Main search interface for EmbeddingSearch
 @kwdef struct TwoLayerRAG <: AbstractRAGConfig
-    embedder::AbstractEmbedder
+    topK::TopK
     reranker::AbstractReranker
-    top_k::Int
+end
+
+# Convenience constructor for vector of embedders
+function TwoLayerRAG(embedders::Vector{<:AbstractEmbedder}, reranker::AbstractReranker; k::Int=50, method::Symbol=:max)
+    TwoLayerRAG(top_k=TopK(embedders, method; topK=k), reranker=reranker)
 end
 
 function search(method::AbstractRAGConfig, chunks::Vector{T}, query::AbstractString; rerank_query::Union{AbstractString, Nothing}=nothing) where T
     rerank_query = rerank_query === nothing ? query : rerank_query
-    score = get_score(method.embedder, chunks, query)
-    results = topN(score, chunks, method.top_k)
+    results = search(method.topK, chunks, query)
     rerank(method.reranker, results, rerank_query)
 end
 
-humanize_config(m::AbstractRAGConfig) = 
-    "$(humanize_config(m.embedder)), top_k=$(m.top_k)\n$(humanize_config(m.reranker))"
+humanize(m::AbstractRAGConfig) = 
+    "$(humanize(m.topK))\n$(humanize_config(m.reranker))"

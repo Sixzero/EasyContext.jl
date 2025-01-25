@@ -96,15 +96,16 @@ end
 # Add this at the end of the file
 function create_jina_embedder(;
     model::String = "jina-embeddings-v2-base-code",
-    top_k::Int = 300,
     dimensions::Union{Int, Nothing} = nothing,
     input_type::String = "document",
     cache_prefix="",
 )
     jina_embedder = JinaEmbedder(; model=model, dimensions=dimensions, input_type=input_type)
     embedder = CachedBatchEmbedder(;embedder=jina_embedder, cache_prefix)
-    EmbedderSearch(embedder=embedder, top_k=top_k)
 end
 
 export create_jina_embedder
+
+# Update humanize method
+humanize(e::JinaEmbedder) = "Jina:$(e.model)"
 

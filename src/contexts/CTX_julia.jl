@@ -16,15 +16,15 @@ function init_julia_context(;
     model="dscode",
     top_k=50,
 )
-    embedder = create_voyage_embedder(model="voyage-code-2", cache_prefix="juliapkgs")
-    bm25 = BM25Embedder()
-    combined_embedder = MaxScoreEmbedder([embedder, bm25])
-
     # Initialize with nothing, will be lazily created on first use
     tracker_context = Context{SourceChunk}()
     changes_tracker = ChangeTracker{SourceChunk}(; verbose=verbose)
-    reranker = ReduceGPTReranker(batch_size=40, top_n=10; model)
-    rag_pipeline = TwoLayerRAG(; embedder=combined_embedder, reranker, top_k)
+
+    embedder          = create_voyage_embedder(cache_prefix="juliapkgs")
+    bm25              = BM25Embedder()
+    topK              = TopK([embedder, bm25]; top_k)
+    reranker          = ReduceGPTReranker(batch_size=40, top_n=10; model)
+    rag_pipeline      = TwoLayerRAG(; topK, reranker)
 
     pkg_chunks = CachedLoader(loader=JuliaLoader(; excluded_packages=excluded_packages), memory=Dict{String,OrderedDict{String,String}}())
 

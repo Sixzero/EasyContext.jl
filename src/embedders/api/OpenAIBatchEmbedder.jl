@@ -66,3 +66,6 @@ export create_openai_embedder
 # verbose && @info "Done embedding. Total cost: \$$(round(cost_tracker[],digits=3))"
 # return embeddings
 # end
+
+# Update humanize method
+humanize(e::OpenAIBatchEmbedder) = "OpenAI:$(e.model)"

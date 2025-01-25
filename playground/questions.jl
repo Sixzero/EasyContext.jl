@@ -289,7 +289,7 @@ ai"Are you here?"claudeh
 #%%
 using EasyContext
 using EasyContext: get_answer, get_context, JuliaLoader, format_context_node
-using EasyContext: BM25IndexBuilder, EmbeddingIndexBuilder, Pipe
+using EasyContext: BM25Embedder, EmbedderSearch, Pipe
 import EasyContext: get_context, RAGContext, ReduceGPTReranker
 using PromptingTools: pprint
 # question = "I need to walk packages. I also want to track whether I could trace in a stack which modules I am in currently."
@@ -311,16 +311,16 @@ question = "I would want you to use ReplMaker.jl to create a terminal for AI cha
 # pprint(msg)
 aistate_mock = (conversations=[(;messages=String[], rel_project_paths=".")], selected_conv_id=1, )
 using EasyContext: create_voyage_embedder, create_combined_index_builder
-# ctxer = JuliaLoader() * MultiIndexBuilder(;builders=[BM25IndexBuilder()], top_k=100) * rerank(CohereReranker(), top_n=10) * ContextNode(docs="Functions", doc="Function")
+# ctxer = JuliaLoader() * MultiIndexBuilder(;builders=[BM25Embedder()], top_k=100) * rerank(CohereReranker(), top_n=10) * ContextNode(docs="Functions", doc="Function")
 # pipe = Pipe([
 #     JuliaLoader(),
 #     create_voyage_embedder(),
-#     # EmbeddingIndexBuilder(top_k=50),
+#     # EmbedderSearch(top_k=50),
 #     # create_combined_index_builder(),
 #     # MultiIndexBuilder(;builders=[
-#     #     EmbeddingIndexBuilder(),
-#     #     # JinaEmbeddingIndexBuilder(),
-#     #     # BM25IndexBuilder(),
+#     #     EmbedderSearch(),
+#     #     # JinaEmbedderSearch(),
+#     #     # BM25Embedder(),
 #     # ]),
 #     ReduceGPTReranker(),
 #     ContextNode(),
@@ -328,11 +328,11 @@ using EasyContext: create_voyage_embedder, create_combined_index_builder
 using EasyContext: QueryWithHistory
 #     CodebaseContextV3(;project_paths=["."]),
 #     # MultiIndexBuilder(;builders=[
-#     #     EmbeddingIndexBuilder(top_k=50),
-#     #     # JinaEmbeddingIndexBuilder(),
-#     #     BM25IndexBuilder(),
+#     #     EmbedderSearch(top_k=50),
+#     #     # JinaEmbedderSearch(),
+#     #     BM25Embedder(),
 #     # ], top_k=100),
-#     # EmbeddingIndexBuilder(top_k=50),
+#     # EmbedderSearch(top_k=50),
 #     create_combined_index_builder(),
 #     # create_voyage_embedder(),
 #     ReduceGPTReranker(;batch_size=30, model="gpt4om"),
@@ -377,11 +377,11 @@ using EasyContext: get_finder
 
 map(get_finder, ctxer.index_builder.builders)
 #%%
-using EasyContext: JuliaLoader, BM25IndexBuilder, build_index, JinaEmbedder, JinaEmbeddingIndexBuilder, EmbeddingIndexBuilder
-ctxer = JuliaLoader(;index_builder=JinaEmbeddingIndexBuilder(embedder=JinaEmbedder(
+using EasyContext: JuliaLoader, BM25Embedder, build_index, JinaEmbedder, JinaEmbedderSearch, EmbedderSearch
+ctxer = JuliaLoader(;index_builder=JinaEmbedderSearch(embedder=JinaEmbedder(
     model="jina-embeddings-v2-base-code",
 )))
-# ctxer = JuliaLoader(;index_builder=EmbeddingIndexBuilder())
+# ctxer = JuliaLoader(;index_builder=EmbedderSearch())
 using EasyContext: get_package_infos
 pkg_infos = get_package_infos(:installed)
 pkg_infos = pkg_infos[1:5]

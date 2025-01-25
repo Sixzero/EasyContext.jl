@@ -16,7 +16,7 @@ end
 const CACHE_STATE = CacheData()
 
 @kwdef struct CachedBatchEmbedder <: AbstractEmbedder
-    embedder::Union{AbstractEmbedder, AbstractIndexBuilder} = OpenAIBatchEmbedder()
+    embedder::AbstractEmbedder = OpenAIBatchEmbedder()
     cache_dir::String = let
         current_file = @__FILE__
         default_cache_dir = joinpath(dirname(dirname(dirname(current_file))), "cache")
@@ -35,7 +35,6 @@ function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, quer
 end
 
 get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)
-get_embedder_uniq_id(embedder::AbstractIndexBuilder) = get_embedder_uniq_id(embedder.embedder)
 get_embedder_uniq_id(embedder::CachedBatchEmbedder) = get_embedder_uniq_id(embedder.embedder)
 get_model_name(embedder::CachedBatchEmbedder) = get_model_name(get_embedder(embedder))
 
@@ -132,3 +131,6 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
 
     return all_embeddings
 end
+
+# Add transparent humanize method
+humanize(e::CachedBatchEmbedder) = humanize(e.embedder)

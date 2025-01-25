@@ -11,7 +11,7 @@ function combine_scores(::MaxScoreCombiner, scores::AbstractVector{<:AbstractVec
     [maximum(s[i] for s in scores) for i in 1:n]
 end
 
-function combine_scores(::WeightedCombiner, scores::AbstractVector{<:AbstractVector})
+function combine_scores(c::WeightedCombiner, scores::AbstractVector{<:AbstractVector})
     n = length(first(scores))
     [sum(w * s[i] for (w, s) in zip(c.weights, scores)) for i in 1:n]
 end
@@ -34,7 +34,7 @@ end
 
 function get_score(c::WeighterEmbedder, chunks, query)
     scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
-    combine_scores(WeightedCombiner(c.combiner), scores)
+    combine_scores(WeightedCombiner(c.weights), scores)
 end
 
 struct MaxScoreEmbedder <: MultiEmbedderCombiner
@@ -54,3 +54,19 @@ function get_score(c::RRFScoreEmbedder, chunks, query)
     scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
     combine_scores(RRFCombiner(), scores)
 end
+
+struct MeanScoreEmbedder <: MultiEmbedderCombiner
+    embedders::AbstractVector{AbstractEmbedder}
+end
+
+function get_score(c::MeanScoreEmbedder, chunks, query)
+    scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
+    n = length(first(scores))
+    [sum(s[i] for s in scores)/length(scores) for i in 1:n]
+end
+
+# Update humanize methods to cascade
+humanize(c::MaxScoreEmbedder) = "max[$(join(humanize.(c.embedders), ", "))]"
+humanize(c::RRFScoreEmbedder) = "rrf[$(join(humanize.(c.embedders), ", "))]"
+humanize(c::MeanScoreEmbedder) = "mean[$(join(humanize.(c.embedders), ", "))]"
+humanize(c::WeighterEmbedder) = "weighted($(c.weights))[$(join(humanize.(c.embedders), ", "))]"

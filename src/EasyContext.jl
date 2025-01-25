@@ -31,7 +31,7 @@ include("chunkers/Chunks.jl")
 include("chunkers/FullFileChunker.jl")
 include("chunkers/SourceChunks.jl")
 # include("chunkers/FullFileChunker_new.jl")
-include("embedders/EmbedderUtils.jl")
+include("embedders/Embedders.jl")
 include("rag/AbstractEmbedderConfig.jl")
 
 include("rerankers/ChunkBatchers.jl")
@@ -39,7 +39,7 @@ include("rerankers/rerank_prompts.jl")
 include("rerankers/CohereRerankerPro.jl")
 include("rerankers/ReduceGPTReranker.jl")
 
-include("rag/AbstractRAGConfig.jl")
+include("rag/AdvancedRAG.jl")
 
 include("loader/loaders.jl")
 include("action/loading_spinner.jl")

@@ -13,14 +13,13 @@ function init_workspace_context(project_paths; show_tokens=false, verbose=true, 
     workspace            = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     tracker_context      = Context{FileChunk}()
     changes_tracker      = ChangeTracker{FileChunk}()
-    embedder             = create_voyage_embedder(cache_prefix="workspace")
     # embedder             = create_openai_embedder(cache_prefix="workspace")
-    bm25 = BM25Embedder()
-    combined_embedder    = MaxScoreEmbedder([embedder, bm25])
-    reranker = ReduceGPTReranker(batch_size=30; top_n, model)
-    rag_pipeline = TwoLayerRAG(; embedder=combined_embedder, reranker, top_k)
+    embedder             = create_voyage_embedder(cache_prefix="workspace")
+    bm25                 = BM25Embedder()
+    topK                 = TopK([embedder, bm25]; top_k)
+    reranker             = ReduceGPTReranker(batch_size=30; top_n, model)
+    rag_pipeline         = TwoLayerRAG(; topK, reranker)
     
-
     return WorkspaceCTX(
         rag_pipeline,
         workspace, 

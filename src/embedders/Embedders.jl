@@ -6,6 +6,10 @@ using JLD2, Snowball, Pkg
 import PromptingTools.Experimental.RAGTools as RAG
 import Base: *
 
+
+abstract type AbstractEasyEmbedder <: AbstractEmbedder end
+abstract type AbstractRAGConfig end
+
 include("SimilarityAlgos.jl")
 
 include("api/BM25Embedder.jl")
@@ -15,6 +19,7 @@ include("api/VoyageEmbedder.jl")
 
 include("CachedBatchEmbedder.jl")
 include("WeightingMethods.jl")
+include("TopK.jl")
 
 get_model_name(embedder::AbstractEasyEmbedder) = embedder.model
 get_embedder(embedder::AbstractEasyEmbedder) = embedder
@@ -27,9 +32,6 @@ const CACHE_DIR = let
     dir
 end
 
-with_cache(builder::AbstractIndexBuilder) = CachedLoader(loader=builder, cache_dir=CACHE_DIR)
-
 # Exports
 export build_index, build_multi_index, get_context, get_answer
-
-
+export TopN

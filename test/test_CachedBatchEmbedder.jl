@@ -3,7 +3,6 @@ using EasyContext
 using DataStructures: OrderedDict
 using EasyContext: EmbedderSearch, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
 using EasyContext: BM25Embedder
-using EasyContext: get_index
 using HTTP
 using PromptingTools.Experimental.RAGTools
 using JSON3
