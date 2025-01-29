@@ -132,6 +132,42 @@ using DataStructures: OrderedDict
             @test length(result) == 2
         end
     end
+    @testset "Model Configuration" begin
+        docs = [
+            "\nfunction add(x) = x + 1",
+            "\nfunction subtract(x) = x - 1",
+        ]
+        chunks = OrderedDict(zip(string.(1:2), docs))
+        query = "I need a function that adds 1 to a number"
+
+        @testset "Single model (strict) mode" begin
+            reranker = EasyContext.ReduceGPTReranker(
+                batch_size=2,
+                model="dscode",  # Single model = strict mode
+                top_n=1
+            )
+            result = reranker(chunks, query)
+            @test length(result) == 1
+        end
+
+        @testset "Multiple models (fallback) mode" begin
+            reranker = EasyContext.ReduceGPTReranker(
+                batch_size=2,
+                model=["dscode", "gem20f", "gpt4om"],  # Multiple models = fallback mode
+                top_n=1
+            )
+            result = reranker(chunks, query)
+            @test length(result) == 1
+        end
+
+        @testset "Humanization with different model configs" begin
+            single_model = EasyContext.ReduceGPTReranker(model="dscode")
+            multi_model = EasyContext.ReduceGPTReranker(model=["dscode", "gem20f"])
+            
+            @test contains(EasyContext.humanize(single_model), "dscode")
+            @test contains(EasyContext.humanize(multi_model), "dscode,gem20f")
+        end
+    end
     @testset "Humanization" begin
         reranker = EasyContext.ReduceGPTReranker(model="dscode", batch_size=3, top_n=2)
         humanized = EasyContext.humanize(reranker)

@@ -89,7 +89,7 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     results = asyncmap(batches, ntasks=8) do batch  # Reduced from 20 to 8 to avoid overwhelming the API
         embeddings, tokens = process_batch_limited(batch)
         embeddings_matrix = stack(embeddings, dims=2)
-        verbose && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"
+        verbose && (length(batches) > 1) && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"
         next!(progress)
 
         return embeddings_matrix, tokens

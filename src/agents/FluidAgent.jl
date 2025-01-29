@@ -136,7 +136,8 @@ function work(agent::FluidAgent, conv; cache,
             model=agent.model,
             cache, 
             api_kwargs=(; top_p=0.7, temperature=0.5, max_tokens=8192),
-            streamcallback=cb
+            streamcallback=cb,
+            verbose=false
         )
         execute_tools(extractor; no_confirm)
         
