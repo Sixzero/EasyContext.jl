@@ -4,56 +4,17 @@ using Base.Threads
 using HTTP.Exceptions: TimeoutError
 const PT = PromptingTools
 
-# Model state tracking
-Base.@kwdef mutable struct ModelState
-    failures::Int = 0
-    last_error_type::Union{Nothing,Type} = nothing
-    last_error_time::Float64 = 0.0
-    available::Bool = true
-end
-
-Base.@kwdef mutable struct AIFunctionManager
-    models::Vector{String}
-    states::Dict{String,ModelState} = Dict{String,ModelState}()
-    readtimeout::Int = 15
-end
-
-function try_generate(manager::AIFunctionManager, prompt; kwargs...)
-    for model in manager.models
-        state = get!(manager.states, model, ModelState())
-        !state.available && continue
-        
-        try
-            return aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
-        catch e
-            state.failures += 1
-            state.last_error_type = typeof(e)
-            state.last_error_time = time()
-            
-            if e isa TimeoutError
-                @warn "Model '$model' timed out after $(manager.readtimeout)s."
-            elseif e isa HTTP.Exceptions.StatusError && e.status == 429
-                @warn "Model '$model' rate limited, removing from available models."
-                state.available = false
-            else
-                @warn "Model '$model' failed with: $(typeof(e))"
-                rethrow(e)
-            end
-        end
-    end
-    error("All models failed or unavailable")
-end
+include("AIGenerateFallback.jl")
 
 Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
-    model::AbstractString="dscode"
+    model::Union{AbstractString,Vector{String}}="dscode"
     max_batch_tokens::Int=64000  # Token limit per batch
     temperature::Float64=0.0
     top_n::Int=10
     rank_gpt_prompt_fn::Function = create_rankgpt_prompt_v2
     verbose::Int=1
     batching_strategy::BatchingStrategy = LinearGrowthBatcher()
-    strict::Bool = false  # New parameter for strict model usage
 end
 
 function rerank(
@@ -64,10 +25,8 @@ function rerank(
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
 ) where T
-    # Initialize AIFunctionManager with model preferences
-    ai_manager = AIFunctionManager(
-        models=reranker.strict ? [reranker.model] : unique([reranker.model, "gem20f", "gem15f", "dscode", "gpt4om"])
-    )
+    # Initialize AIGenerateFallback with model preferences based on model type
+    ai_manager = AIGenerateFallback(models=reranker.model)
     
     contents = string.(chunks)
     total_docs = length(chunks)
@@ -157,5 +116,6 @@ function rerank(
 end
 
 function humanize(reranker::ReduceGPTReranker)
-    "ReduceGPT(model=$(reranker.model), batch=$(reranker.batch_size), top_n=$(reranker.top_n))"
+    model_str = reranker.model isa AbstractString ? reranker.model : "[" * join(reranker.model, ",") * "]"
+    "ReduceGPT(model=$(model_str), batch=$(reranker.batch_size), top_n=$(reranker.top_n))"
 end
