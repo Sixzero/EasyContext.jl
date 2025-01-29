@@ -85,3 +85,7 @@ function RAG.rerank(
         return CandidateChunks(candidates.index_id, reranked_positions, reranked_scores)
     end
 end
+
+function humanize(reranker::SimpleGPTReranker)
+    "SimpleGPT(model=$(reranker.model))"
+end

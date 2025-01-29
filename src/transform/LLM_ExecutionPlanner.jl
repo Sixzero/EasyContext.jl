@@ -3,7 +3,7 @@ using Markdown
 
 export ExecutionPlannerContext, LLM_ExecutionPlanner
 
-Base.@kwdef mutable struct ExecutionPlannerContext
+Base.@kwdef mutable struct ExecutionPlannerContext <: AbstractPlanner
     enabled::Bool = true
     model::String = "dscode"
     temperature::Float64 = 0.8

@@ -6,7 +6,7 @@ using StreamCallbacksExt: format_ai_message, format_user_message
 
 export CodeCriticsArchitectContext, LLM_CodeCriticsArchitect
 
-@kwdef mutable struct CodeCriticsArchitectContext
+@kwdef mutable struct CodeCriticsArchitectContext <: AbstractPlanner
     enabled::Bool = true
     model::String = "dscode"
     temperature::Float64 = 0.7

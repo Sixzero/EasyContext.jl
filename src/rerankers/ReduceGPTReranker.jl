@@ -53,7 +53,7 @@ Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker
     rank_gpt_prompt_fn::Function = create_rankgpt_prompt_v2
     verbose::Int=1
     batching_strategy::BatchingStrategy = LinearGrowthBatcher()
-    strict_mode::Bool = false  # New parameter for strict model usage
+    strict::Bool = false  # New parameter for strict model usage
 end
 
 function rerank(
@@ -66,7 +66,7 @@ function rerank(
 ) where T
     # Initialize AIFunctionManager with model preferences
     ai_manager = AIFunctionManager(
-        models=reranker.strict_mode ? [reranker.model] : unique([reranker.model, "gem20f", "gem15f", "dscode", "gpt4om"])
+        models=reranker.strict ? [reranker.model] : unique([reranker.model, "gem20f", "gem15f", "dscode", "gpt4om"])
     )
     
     contents = string.(chunks)
@@ -154,4 +154,8 @@ function rerank(
     end
     
     return chunks[final_top_n]
+end
+
+function humanize(reranker::ReduceGPTReranker)
+    "ReduceGPT(model=$(reranker.model), batch=$(reranker.batch_size), top_n=$(reranker.top_n))"
 end

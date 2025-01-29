@@ -9,5 +9,8 @@ include("LLM_safe.jl")
 include("LLM_summary.jl")
 include("LLM_reflect.jl")
 include("LLM_overview.jl")
+
+abstract type AbstractPlanner end
+export AbstractPlanner
 include("LLM_ExecutionPlanner.jl")
 include("LLM_CodeCriticsArchitect.jl")

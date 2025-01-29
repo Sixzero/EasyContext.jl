@@ -132,4 +132,16 @@ using DataStructures: OrderedDict
             @test length(result) == 2
         end
     end
+    @testset "Humanization" begin
+        reranker = EasyContext.ReduceGPTReranker(model="dscode", batch_size=3, top_n=2)
+        humanized = EasyContext.humanize(reranker)
+        @test contains(humanized, "dscode")
+        @test contains(humanized, "3")
+        @test contains(humanized, "2")
+        
+        simple_reranker = EasyContext.SimpleGPTReranker(model="dscode")
+        simple_humanized = EasyContext.humanize(simple_reranker)
+        @test contains(simple_humanized, "dscode")
+        @test contains(simple_humanized, "SimpleGPT")
+    end
 end

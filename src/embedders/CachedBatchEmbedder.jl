@@ -57,10 +57,10 @@ function safe_append_cache(cache_file::String, new_entries::Dict{String,Vector{F
     end
 end
 
-function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractChunk};
+function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{T};
         cost_tracker = Threads.Atomic{Float64}(0.0),
         target_batch_size_length::Int = 80_000,
-        ntasks::Int = 4 * Threads.nthreads())
+        ntasks::Int = 4 * Threads.nthreads()) where T
     docs_str = string.(docs) # TODO maybe we could do this later to allocate even less?
 
     get_embeddings(

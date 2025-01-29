@@ -15,11 +15,11 @@ function TwoLayerRAG(embedders::Vector{<:AbstractEmbedder}, reranker::AbstractRe
     TwoLayerRAG(top_k=TopK(embedders, method; topK=k), reranker=reranker)
 end
 
-function search(method::AbstractRAGConfig, chunks::Vector{T}, query::AbstractString; rerank_query::Union{AbstractString, Nothing}=nothing) where T
+function search(method::TwoLayerRAG, chunks::Vector{T}, query::AbstractString; rerank_query::Union{AbstractString, Nothing}=nothing) where T
     rerank_query = rerank_query === nothing ? query : rerank_query
     results = search(method.topK, chunks, query)
     rerank(method.reranker, results, rerank_query)
 end
 
 humanize(m::AbstractRAGConfig) = 
-    "$(humanize(m.topK))\n$(humanize_config(m.reranker))"
+    "$(humanize(m.topK))\n$(humanize(m.reranker))"
