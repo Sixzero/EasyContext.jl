@@ -41,4 +41,4 @@ create(config::StreamCallbackConfig) = begin
     )
 end
 
-flush_state(state) = (write(state.buffer, state.current_line); state.current_line = ""; process_buffer(state, flush=true))
+flush_state(state) = (write(state.buffer, state.current_line); state.current_line = ""; process_buffer(state, flushh=true))

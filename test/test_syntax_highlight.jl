@@ -28,7 +28,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
             handle_text(state, "    println(\"Hello, World!\")\n")
             handle_text(state, "end\n")
             handle_text(state, "```\n")
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
         end
         close(pipe.in)
         
@@ -52,7 +52,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
             handle_text(state, "    println(\"Hello, \$name!\")\n")
             handle_text(state, "end\n")
             handle_text(state, "```\n")
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
             handle_text(state, "That was a code block.\n")
         end
         close(pipe.in)
@@ -112,7 +112,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
             handle_text(state, "```julia\n")
             handle_text(state, complex_code)
             handle_text(state, "```\n")
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
         end
         close(pipe.in)
         
@@ -159,7 +159,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
             handle_text(state, "```julia\n")
             handle_text(state, nested_code)
             handle_text(state, "```\n")
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
         end
         close(pipe.in)
         
@@ -201,7 +201,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
             handle_text(state, "\n")
             handle_text(state, "```")
             handle_text(state, "\n")
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
         end
         close(pipe.in)
         
@@ -227,7 +227,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
             handle_text(state, "    return \"I'm in an inline codeblock!\"\n")
             handle_text(state, "end ```")
             handle_text(state, "\n")
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
         end
         close(pipe.in)
         
@@ -264,7 +264,7 @@ using EasyContext: SyntaxHighlightState, PlainSyntaxState, handle_text, process_
         pipe = Pipe()
         redirect_stdout(pipe) do
             handle_text(state, nested_code)
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
         end
         close(pipe.in)
         

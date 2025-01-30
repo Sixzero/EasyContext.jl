@@ -36,13 +36,14 @@ const lexer_map = Dict(
 
 get_lexer(language::AbstractString) = get(lexer_map, lowercase(language), Lexers.JuliaLexer)
 
-function process_buffer(state::SyntaxHighlightState; flush::Bool=false)
+function process_buffer(state::SyntaxHighlightState; flushh::Bool=false)
     content = String(take!(state.buffer))
     isempty(content) && return
     
     lexer = get_lexer(state.language)
     highlighted = highlight_string(content, lexer)
     print(state.io, highlighted)
+    flush(state.io)
 end
 
 function handle_text(state::SyntaxHighlightState, text::AbstractString)
@@ -78,6 +79,7 @@ function process_line(state::SyntaxHighlightState)
         process_buffer(state)
     else
         println(state.io, line)
+        flush(state.io)
     end
 end
 
@@ -92,6 +94,7 @@ function handle_code_block_start(state::SyntaxHighlightState, line::AbstractStri
         print(state.io, Crayon(background = (40, 44, 52)))  # Set background
         print(state.io, "\e[K")  # Clear to end of line with current background color
         println(state.io, "```$(state.language)")
+        flush(state.io)
     else
         write(state.buffer, line, '\n')
     end
@@ -101,15 +104,17 @@ function handle_code_block_end(state::SyntaxHighlightState, line::AbstractString
     if state.in_code_block > 0
         state.in_code_block -= 1
         if state.in_code_block == 0
-            process_buffer(state, flush=true)
+            process_buffer(state, flushh=true)
             print(state.io, "```")
             print(state.io, Crayon(reset = true))  # Reset codeblock bg
             println(state.io)  # Now the newline is not colored
+            flush(state.io)
         else
             write(state.buffer, line, '\n')
         end
     else
-        println(line)  # Unmatched closing ticks, just print it
+        println(state.io, line)  # Unmatched closing ticks, just print it
+        flush(state.io)
     end
 end
 
@@ -127,6 +132,7 @@ function Highlights.Format.render(io::IO, ::MIME"text/ansi", tokens::Highlights.
             underline = style.underline
         )
         print(io, cg, str, inv(cg))
+        flush(io)
     end
 end
 
