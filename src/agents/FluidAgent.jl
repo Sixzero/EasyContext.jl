@@ -100,12 +100,15 @@ function get_system_prompt(agent::FluidAgent)
 end
 
 """
-Run an LLM interaction with tool execution
+Run an LLM interaction with tool execution.
+
 Returns a NamedTuple with:
-- content: The AI response content
-- results: Tool execution results
+- content: The AI response content 
 - run_info: Callback run information
-- shell_results: Results from shell commands for context
+- extractor: Tool tag extractor with execution results
+
+Note: Stop sequences from tools are collected and passed to the LLM to prevent 
+generating beyond tool boundaries.
 """
 function work(agent::FluidAgent, conv; cache,
     no_confirm=false,
@@ -121,6 +124,21 @@ function work(agent::FluidAgent, conv; cache,
     extractor = ToolTagExtractor()
     agent.extractor = extractor
     
+    # Collect unique stop sequences from tools
+    stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
+    
+    if length(stop_sequences) > 1
+        @warn "Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
+    end
+    
+    # Base API kwargs without stop sequences
+    api_kwargs = (; top_p=0.7, temperature=0.5, max_tokens=8192)
+    
+    # Add stop_sequences only if we have any
+    if !isempty(stop_sequences)
+        api_kwargs = merge(api_kwargs, (; stop_sequences))
+    end
+    
     cb = create(StreamCallbackConfig(; io, on_start, on_error, highlight_enabled, process_enabled,
         on_done = () -> begin
             # Extracts tools in case anything is unclosed
@@ -135,7 +153,7 @@ function work(agent::FluidAgent, conv; cache,
             to_PT_messages(conv);
             model=agent.model,
             cache, 
-            api_kwargs=(; top_p=0.7, temperature=0.5, max_tokens=8192),
+            api_kwargs,
             streamcallback=cb,
             verbose=false
         )

@@ -48,7 +48,7 @@ function rerank(
                 Threads.atomic_add!(cost_tracker, response.cost)
                 return rankings
             end
-            @info "Invalid rankings (attempt $attempt). Retrying..."
+            @info "Invalid rankings (attempt $attempt). Retrying... Content:\n$(response.content)"
         end
         
         @error "Failed to get valid rankings after $max_retries attempts."
