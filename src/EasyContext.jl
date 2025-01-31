@@ -33,6 +33,7 @@ include("chunkers/SourceChunks.jl")
 # include("chunkers/FullFileChunker_new.jl")
 include("embedders/Embedders.jl")
 
+include("utils/AIGenerateFallback.jl")
 include("rerankers/ChunkBatchers.jl")
 include("rerankers/rerank_prompts.jl")
 include("rerankers/CohereRerankerPro.jl")

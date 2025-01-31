@@ -4,7 +4,6 @@ using Base.Threads
 using HTTP.Exceptions: TimeoutError
 const PT = PromptingTools
 
-include("AIGenerateFallback.jl")
 
 Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
@@ -109,7 +108,13 @@ function rerank(
     if cost_tracker[] > 0 || verbose > 0
         doc_count_str = join(doc_counts, " > ")
         total_cost = round(cost_tracker[], digits=4)
-        println("RankGPT document reduction: $doc_count_str Total cost: \$$(total_cost)")
+        total_time = sum(sum(state.runtimes) for state in values(ai_manager.states))
+
+        time_str = "$(round(total_time, digits=2))s"
+        n_models = length(filter(!isempty, ai_manager.states))
+        n_models > 1 && (time_str *= " ($n_models)")
+
+        println("RankGPT document reduction: $doc_count_str Total cost: \$$(total_cost) Time: $time_str")
     end
     
     return chunks[final_top_n]

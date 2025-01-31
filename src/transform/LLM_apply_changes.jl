@@ -6,11 +6,14 @@ include("instant_apply_logger.jl")
 include("../prompts/prompt_instant_apply.jl")
 
 
-function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::String="gem20f", temperature=0, verbose=false, merge_prompt::Function)
+function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::Vector{String}=["gem20f", "dscode", "tqwen25b72"], temperature=0, verbose=false, merge_prompt::Function)
     prompt = merge_prompt(original_content, changes_content)
 
     verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")
-    aigenerated = PromptingTools.aigenerate(prompt; model, api_kwargs=(; temperature), verbose=false)
+
+    # Initialize AIGenerateFallback with model preferences
+    ai_manager = AIGenerateFallback(models=model, readtimeout=30)
+    aigenerated = try_generate(ai_manager, prompt; api_kwargs=(; temperature), verbose=false)
     content = extract_tagged_content(aigenerated.content, "final")
     isnothing(content) && @warn "The model: $model failed to generate properly tagged content."
     # res, is_ok = extract_final_content(aigenerated.content)

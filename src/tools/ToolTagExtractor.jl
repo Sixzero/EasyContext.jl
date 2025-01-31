@@ -92,7 +92,7 @@ function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
 end
 
 function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{DataType}=Datasources[])
-	output = "Previous tools and their results:\n"
+	output = ""
 	for (id, task) in stream_parser.tool_tasks
 			tool = fetch(task)
             isempty(filter_tools) || typeof(tool) in filter_tools &&  (output *= result2string(tool))

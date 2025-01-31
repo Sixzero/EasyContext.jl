@@ -59,12 +59,13 @@ function try_generate(manager::AIGenerateFallback{String}, prompt; kwargs...)
     
     for attempt in 1:3
         result, time = @timed try
-            return aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
+            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
         catch e
             reason = handle_error!(state, e, model)
             attempt == 3 && (disable_model!(state, "Failed after 3 retries: $reason"); rethrow(e))
             @warn "Model attempt $attempt/3: $reason"
             e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(2^attempt)
+            continue
         end
         push!(state.runtimes, time)
         return result
@@ -78,7 +79,7 @@ function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; kwarg
         !state.available && continue
         
         result, time = @timed try
-            return aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
+            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
         catch e
             reason = handle_error!(state, e, model)
             disable_model!(state, reason)
