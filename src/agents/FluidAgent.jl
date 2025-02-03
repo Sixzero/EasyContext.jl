@@ -134,10 +134,11 @@ function work(agent::FluidAgent, conv; cache,
     # Base API kwargs without stop sequences
     api_kwargs = (; top_p=0.7, temperature=0.5, max_tokens=8192)
     
-    # Add stop_sequences only if we have any
-    if !isempty(stop_sequences)
-        api_kwargs = merge(api_kwargs, (; stop_sequences))
+    if agent.model == "o3m" # NOTE: o3m does not support temperature and top_p
+        api_kwargs = (; )
     end
+
+    apply_stop_seq_kwargs!(api_kwargs, agent.model, stop_sequences)
     
     cb = create(StreamCallbackConfig(; io, on_start, on_error, highlight_enabled, process_enabled,
         on_done = () -> begin
@@ -187,4 +188,12 @@ function work(agent::FluidAgent, conv; cache,
         
     #     # !isnothing(result) && write_event!(io, "command_result", result)
     # end
+end
+"""
+Apply stop sequence kwargs based on model type and available sequences.
+"""
+function apply_stop_seq_kwargs!(api_kwargs::NamedTuple, model::String, stop_sequences::Vector{String})
+    isempty(stop_sequences) && return api_kwargs
+    key = model == "claude" ? :stop_sequences : :stop
+    merge(api_kwargs, (; key => stop_sequences))
 end

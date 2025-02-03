@@ -32,8 +32,8 @@ struct WeighterEmbedder <: MultiEmbedderCombiner
     embedders::Vector{AbstractEmbedder}
 end
 
-function get_score(c::WeighterEmbedder, chunks, query)
-    scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
+function get_score(c::WeighterEmbedder, chunks, query; cost_tracker = Threads.Atomic{Float64}(0.0))
+    scores = [get_score(embedder, chunks, query; cost_tracker) for embedder in c.embedders]
     combine_scores(WeightedCombiner(c.weights), scores)
 end
 
@@ -41,8 +41,8 @@ struct MaxScoreEmbedder <: MultiEmbedderCombiner
     embedders::AbstractVector{AbstractEmbedder}
 end
 
-function get_score(c::MaxScoreEmbedder, chunks, query)
-    scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
+function get_score(c::MaxScoreEmbedder, chunks, query; cost_tracker = Threads.Atomic{Float64}(0.0))
+    scores = [get_score(embedder, chunks, query; cost_tracker) for embedder in c.embedders]
     combine_scores(MaxScoreCombiner(), scores)
 end
 
@@ -50,8 +50,8 @@ struct RRFScoreEmbedder <: MultiEmbedderCombiner
     embedders::AbstractVector{AbstractEmbedder}
 end
 
-function get_score(c::RRFScoreEmbedder, chunks, query)
-    scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
+function get_score(c::RRFScoreEmbedder, chunks, query; cost_tracker = Threads.Atomic{Float64}(0.0))
+    scores = [get_score(embedder, chunks, query; cost_tracker) for embedder in c.embedders]
     combine_scores(RRFCombiner(), scores)
 end
 
@@ -59,8 +59,8 @@ struct MeanScoreEmbedder <: MultiEmbedderCombiner
     embedders::AbstractVector{AbstractEmbedder}
 end
 
-function get_score(c::MeanScoreEmbedder, chunks, query)
-    scores = [get_score(embedder, chunks, query) for embedder in c.embedders]
+function get_score(c::MeanScoreEmbedder, chunks, query; cost_tracker = Threads.Atomic{Float64}(0.0))
+    scores = [get_score(embedder, chunks, query; cost_tracker) for embedder in c.embedders]
     n = length(first(scores))
     [sum(s[i] for s in scores)/length(scores) for i in 1:n]
 end

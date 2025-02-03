@@ -52,19 +52,26 @@ end
 
 Attempts to generate AI response with retry and fallback logic.
 """
-function try_generate(manager::AIGenerateFallback{String}, prompt; kwargs...)
+function try_generate(manager::AIGenerateFallback{String}, prompt; api_kwargs, kwargs...)
     model = manager.models
     state = get!(manager.states, model, ModelState())
     maybe_recover_model!(state)
-    
+    manager.readtimeout *= 4 # we actually should let it run longer, since there is no other model to try...
+
+    if model == "o3m" # TODO: no temperature support for o3m
+        api_kwargs = (; )
+    end
+
     for attempt in 1:3
         result, time = @timed try
-            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
+            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), api_kwargs, kwargs...)
         catch e
             reason = handle_error!(state, e, model)
             attempt == 3 && (disable_model!(state, "Failed after 3 retries: $reason"); rethrow(e))
-            @warn "Model attempt $attempt/3: $reason"
-            e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(2^attempt)
+            sleep_time = 2^attempt
+            @warn "Model attempt $attempt/3: $reason Sleeping for $sleep_time seconds"
+            e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(sleep_time)
+            e isa TimeoutError && (manager.readtimeout *= 2) # NOTE: This is not a good idea, but it's a quick fix
             continue
         end
         push!(state.runtimes, time)

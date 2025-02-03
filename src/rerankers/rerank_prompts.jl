@@ -85,15 +85,48 @@ function create_rankgpt_prompt_v3(question::AbstractString, documents::Vector{<:
   """
   return prompt
 end
+# Helper function to create the RankGPT prompt
+function rerank_prompt_v4(query::AbstractString, documents::Vector{<:AbstractString}, top_n::Int)
+  top_n = min(top_n, length(documents))
+  sys_prompt = """
+  # Instructions
+  Rank the following documents based on their relevance to the "User query". 
+  Output the rankings as a comma-separated list of document IDs, where the 1st is the most relevant. 
+  At max select the $(top_n) docs, fewer is also okay. You can return an empty list [] if nothing is relevant. 
+  Only use document IDs between 1 and $(length(documents)).
+
+
+  # Relevant documents are:
+  $RELEVANT_DOCS_ARE
+  
+
+  # Output format:
+  $OUTPUT_FORMAT_V2
+  """
+  user_prompt = """
+  # User query:
+  $query
+
+  # Documents:
+  $(DOCS_FORMAT_V2(documents))
+  """
+  return [SystemMessage(content=sys_prompt), UserMessage(content=user_prompt)]
+end
 
 const OUTPUT_FORMAT = """<output_format>
-[Rankings, comma-separated list of document ids]
-</output_format>"""
+  [Rankings, comma-separated list of document ids]
+  </output_format>"""
+const OUTPUT_FORMAT_V2 = """Only the rankings. A comma-separated list of document ids."""
+const RELEVANT_DOCS_ARE = """- The most relevant docs are the ones which we need to edit based on the query.
+  - Also relevant are the ones which hold something we need for editing, like a function.
+  - Consider the context and potential usefulness of each document for answering the query.
+  """
+
 BASIC_INSTRUCT(docs, top_n) = """
-Rank the following documents based on their relevance to the question. 
-Output only the rankings as a comma-separated list of document IDs, where the 1st is the most relevant. 
-At max select the top_$(top_n) docs, fewer is also okay. You can return an empty list [] if nothing is relevant. 
-Only use document IDs between 1 and $(length(docs))."""
+  Rank the following documents based on their relevance to the question. 
+  Output only the rankings as a comma-separated list of document IDs, where the 1st is the most relevant. 
+  At max select the top_$(top_n) docs, fewer is also okay. You can return an empty list [] if nothing is relevant. 
+  Only use document IDs between 1 and $(length(docs))."""
 QUESTION_FORMAT(question) = """<question>
 $question
 </question>"""
@@ -103,4 +136,7 @@ function DOCS_FORMAT(docs)
   $document_context
   </documents>
   """
+end
+function DOCS_FORMAT_V2(docs)
+  document_context = join(("# Doc id=$i\n$doc" for (i, doc) in enumerate(docs)), "\n\n")
 end

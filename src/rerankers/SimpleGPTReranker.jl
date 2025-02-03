@@ -16,6 +16,7 @@ function rerank(
     chunks::Vector{T},
     query::AbstractString;
     cost_tracker = Threads.Atomic{Float64}(0.0),
+    time_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
     ai_fn::Function = airatelimited
 ) where T
@@ -46,8 +47,7 @@ function rerank(
     [Rankings, comma-separated list of document ids]
     </output_format>"""
     
-    response = ai_fn(prompt; model=reranker.model, api_kwargs=(;temperature=reranker.temperature))
-    Threads.atomic_add!(cost_tracker, response.cost)
+    response = ai_fn(prompt; model=reranker.model, api_kwargs=(;temperature=reranker.temperature), cost_tracker)
     rankings = extract_ranking(response.content)
     
     if isempty(rankings) || !all(1 .<= rankings .<= length(contents))

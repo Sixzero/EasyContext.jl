@@ -9,8 +9,7 @@ include("resolution_methods.jl")
     original_dir::String
     PROJECT_FILES::Vector{String} = [
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
-        "README.md", "app.json", 
-        "Gemfile", "Cargo.toml"# , "Project.toml"
+        "app.json", ".gitignore", "Gemfile", "Cargo.toml"# , "Project.toml"
     ]
     FILE_EXTENSIONS::Vector{String} = [
         "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
@@ -28,7 +27,7 @@ include("resolution_methods.jl")
         "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable", ".idea"
     ]
     IGNORED_FILE_PATTERNS::Vector{String} = [
-        ".log", "config.ini", "secrets.yaml", "Manifest.toml", ".gitignore", ".aiignore", ".aishignore",  # , "Project.toml", "README.md"
+        ".log", "config.ini", "secrets.yaml", "Manifest.toml",  # , "Project.toml", "README.md"
     ]
     IGNORE_FILES::Vector{String} = [
         ".gitignore", ".aishignore"

@@ -40,6 +40,11 @@ function RAG.get_chunks(chunker::FullFileChunker,
             chunks, line_ranges = split_text_into_chunks(doc_raw, chunker.estimation_method, effective_max_tokens)
 
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
+                chunk_tokens = estimate_tokens(chunk, chunker.estimation_method)
+                if chunk_tokens > effective_max_tokens
+                    @warn "Chunk $(source):$(start_line)-$(end_line) exceeds token limit ($(chunk_tokens) > $(effective_max_tokens)). Skipping."
+                    continue
+                end
                 push!(output_chunks, FileChunk(; source=SourcePath(; path=source, from_line=start_line, to_line=end_line), content=chunk))
             end
         end

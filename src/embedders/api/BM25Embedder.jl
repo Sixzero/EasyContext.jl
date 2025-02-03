@@ -7,7 +7,7 @@ using JLD2, SHA
     processor::RAG.AbstractProcessor = RAG.KeywordsProcessor()
 end
 
-function get_score(builder::BM25Embedder, chunks::AbstractVector{T}, query::AbstractString) where T
+function get_score(builder::BM25Embedder, chunks::AbstractVector{T}, query::AbstractString; cost_tracker = Threads.Atomic{Float64}(0.0)) where T
     chunks_str = string.(chunks)
     get_score(builder, chunks_str, query)
 end
