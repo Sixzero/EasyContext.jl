@@ -22,6 +22,7 @@ function rerank(
     query::AbstractString;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
+    time_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
 ) where T
     # Initialize AIGenerateFallback with model preferences based on model type
@@ -105,11 +106,13 @@ function rerank(
     end
     final_top_n = remaining_doc_idxs[1:min(top_n, length(remaining_doc_idxs))]
     
+    # After getting all runtimes from ai_manager
+    total_time = sum(sum(state.runtimes) for state in values(ai_manager.states))
+    Threads.atomic_add!(time_tracker, total_time)
+    
     if cost_tracker[] > 0 || verbose > 0
         doc_count_str = join(doc_counts, " > ")
         total_cost = round(cost_tracker[], digits=4)
-        total_time = sum(sum(state.runtimes) for state in values(ai_manager.states))
-
         time_str = "$(round(total_time, digits=2))s"
         n_models = length(filter(!isempty, ai_manager.states))
         n_models > 1 && (time_str *= " ($n_models)")
@@ -121,6 +124,8 @@ function rerank(
 end
 
 function humanize(reranker::ReduceGPTReranker)
+    prompt_str = reranker.rank_gpt_prompt_fn == create_rankgpt_prompt_v2 ? "" : ", prompt=" * last(split(string(reranker.rank_gpt_prompt_fn), "_"))
     model_str = reranker.model isa AbstractString ? reranker.model : "[" * join(reranker.model, ",") * "]"
-    "ReduceGPT(model=$(model_str), batch=$(reranker.batch_size), top_n=$(reranker.top_n))"
+    
+    "ReduceGPT(model=$(model_str), batch=$(reranker.batch_size), top_n=$(reranker.top_n)$(prompt_str))"
 end

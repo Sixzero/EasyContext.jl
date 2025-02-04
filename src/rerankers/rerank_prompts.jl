@@ -1,6 +1,6 @@
 
 # Helper function to create the RankGPT prompt
-function create_rankgpt_prompt(question::AbstractString, documents::Vector{<:AbstractString}, top_n::Int)
+function create_rankgpt_prompt_v0(question::AbstractString, documents::Vector{<:AbstractString}, top_n::Int)
   top_n = min(top_n, length(documents))
   document_context = join(["<doc id=\"$i\">$doc</doc>" for (i, doc) in enumerate(documents)], "\n")
   prompt = """
