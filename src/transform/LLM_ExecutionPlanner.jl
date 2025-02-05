@@ -32,8 +32,8 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session; io::IO
 
     Based on the above PREVIOUS_CONTEXT USER_QUESTION, create a detailed execution plan, which is sufficient to answer user question.
     """
-    
-    cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false; io))
+    StreamCallbackTYPE= pickStreamCallbackforIO(io)
+    cb = create(StreamCallbackTYPE(highlight_enabled=true, process_enabled=false; io, mode="EXECUTION_PLAN"))
 
     response = aigenerate([
         SystemMessage(PLANNER_SYSTEM_PROMPT),

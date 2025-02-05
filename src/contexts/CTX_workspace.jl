@@ -7,6 +7,12 @@ export process_workspace_context, init_workspace_context
     tracker_context::Context           
     changes_tracker::ChangeTracker
 end
+
+struct WorkspaceCTXResult
+    content::String
+end
+write(io::IO, ::WorkspaceCTXResult) = nothing
+
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
 function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model="gpt4om", top_k=50,top_n=12)
@@ -45,7 +51,7 @@ function process_workspace_context(workspace_context, embedder_query; rerank_que
     isa(scr_content,String) && return ("", nothing)
 
     result = workspace_ctx_2_string(changes_tracker, scr_content)
-    # write_event!(io, "workspace_context", result)
+    write(io, WorkspaceCTXResult(result))
 
     return result, file_chunks
 end

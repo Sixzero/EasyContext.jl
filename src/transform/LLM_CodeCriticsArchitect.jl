@@ -2,7 +2,7 @@
 using PromptingTools: SystemMessage, UserMessage
 using Markdown
 using StreamCallbacksExt
-using StreamCallbacksExt: format_ai_message, format_user_message
+using StreamCallbacksExt: format_ai_meta, format_user_meta
 
 export CodeCriticsArchitectContext, LLM_CodeCriticsArchitect
 

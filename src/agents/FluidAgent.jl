@@ -139,14 +139,13 @@ function work(agent::FluidAgent, conv; cache,
     end
 
     apply_stop_seq_kwargs!(api_kwargs, agent.model, stop_sequences)
-    
-    cb = create(StreamCallbackConfig(; io, on_start, on_error, highlight_enabled, process_enabled,
+    StreamCallbackTYPE= pickStreamCallbackforIO(io)
+    cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
         on_done = () -> begin
-            # Extracts tools in case anything is unclosed
             process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
             on_done()
         end,
-        on_content = text -> process_enabled ? extract_tool_calls(text, extractor; kwargs=tool_kwargs) : nothing,
+        on_content = process_enabled ? (text -> extract_tool_calls(text, extractor; kwargs=tool_kwargs)) : noop,
     ))
     
     try

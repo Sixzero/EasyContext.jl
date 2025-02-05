@@ -8,6 +8,10 @@ export process_julia_context, init_julia_context
 
     pkg_chunks::CachedLoader
 end
+struct JuliaCTXResult
+    content::String
+end
+write(io::IO, ::JuliaCTXResult) = nothing
 
 function init_julia_context(; 
     package_scope=:installed, 
@@ -53,6 +57,7 @@ function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=tr
     !isnothing(age_tracker) && age_tracker(changes_tracker)
 
     result = julia_ctx_2_string(changes_tracker, scr_content)
+    write(io, JuliaCTXResult(result))
     # write_event!(io, "julia_context", result)
     
     return result, src_chunks
