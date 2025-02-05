@@ -1,5 +1,6 @@
 export process_workspace_context, init_workspace_context
 
+import Base: write
 
 @kwdef mutable struct WorkspaceCTX
     rag_pipeline::TwoLayerRAG          
@@ -11,7 +12,7 @@ end
 struct WorkspaceCTXResult
     content::String
 end
-write(io::IO, ::WorkspaceCTXResult) = nothing
+Base.write(io::IO, ::WorkspaceCTXResult) = nothing
 
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 

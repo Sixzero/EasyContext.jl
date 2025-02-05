@@ -10,4 +10,4 @@ toolname(cmd::Type{SendKeyTool}) = SENDKEY_TAG
 get_description(cmd::Type{SendKeyTool}) = "Send keyboard input using format: $(SENDKEY_TAG) text $(STOP_SEQUENCE)"
 stop_sequence(cmd::Type{SendKeyTool}) = ""
 
-execute(cmd::SendKeyTool) = "Sending keys: $(cmd.text)"
+execute(cmd::SendKeyTool; no_confirm=false) = "Sending keys: $(cmd.text)"

@@ -1,5 +1,6 @@
 export process_julia_context, init_julia_context
 
+import Base: write
 
 @kwdef mutable struct JuliaCTX
     rag_pipeline::TwoLayerRAG
@@ -11,7 +12,7 @@ end
 struct JuliaCTXResult
     content::String
 end
-write(io::IO, ::JuliaCTXResult) = nothing
+Base.write(io::IO, ::JuliaCTXResult) = nothing
 
 function init_julia_context(; 
     package_scope=:installed, 

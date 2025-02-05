@@ -18,4 +18,4 @@ get_description(::Type{ClickTool}) = "Click on the given coordinates using forma
 stop_sequence(::Type{ClickTool}) = STOP_SEQUENCE
 instantiate(::Val{Symbol(CLICK_TAG)}, tag::ToolTag) = ClickTool(tag)
 
-execute(tool::ClickTool) = "Clicking at coordinates ($(tool.x), $(tool.y)) with $(tool.button) button"
+execute(tool::ClickTool; no_confirm=false) = "Clicking at coordinates ($(tool.x), $(tool.y)) with $(tool.button) button"

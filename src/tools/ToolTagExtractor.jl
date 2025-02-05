@@ -74,32 +74,6 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
         i += 1
     end
 end
-execute(t::Task) = begin
-    cmd = fetch(t)
-    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
-end
-
-function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
-    if !stream_parser.skip_execution
-        # Execute in order
-        for (id, task) in stream_parser.tool_tasks
-            tool = fetch(task)
-            isnothing(tool) && continue
-            execute(tool; no_confirm)
-        end
-        
-    end
-end
-
-function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{DataType}=Datasources[])
-	output = ""
-	for (id, task) in stream_parser.tool_tasks
-			tool = fetch(task)
-            isempty(filter_tools) || typeof(tool) in filter_tools &&  (output *= result2string(tool))
-	end
-	return output
-end
-
 function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,start_idx::Int=1, is_flush=false)
     nesting_level = 1  # Start at 1 since we're already inside a code block
     is_in_multiline_str = false
@@ -143,4 +117,32 @@ function parse_tool(first_line::String, content::String=""; kwargs=Dict())
     name = String(strip(first_line[1:something(tag_end, length(first_line))]))
     args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))
     ToolTag(name=name, args=args, content=content, kwargs=kwargs)
+end
+
+
+function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{DataType}=Datasources[])
+	output = ""
+	for (id, task) in stream_parser.tool_tasks
+			tool = fetch(task)
+            isempty(filter_tools) || typeof(tool) in filter_tools &&  (output *= result2string(tool))
+	end
+	return output
+end
+
+
+execute(t::Task) = begin
+    cmd = fetch(t)
+    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
+end
+
+function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
+    if !stream_parser.skip_execution
+        # Execute in order
+        for (id, task) in stream_parser.tool_tasks
+            tool = fetch(task)
+            isnothing(tool) && continue
+            execute(tool; no_confirm)
+        end
+        
+    end
 end

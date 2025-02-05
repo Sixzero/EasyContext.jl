@@ -38,7 +38,7 @@ $(email_format("to@recipient.com", "Topic subject", "Email content here"))
 stop_sequence(cmd::Type{EmailTool}) = STOP_SEQUENCE
 
 # TODO: create the draft email in the email provider
-execute(cmd::EmailTool) = """
+execute(cmd::EmailTool; no_confirm=false) = """
 Sending email:
 To: $(cmd.to)
 Subject: $(cmd.subject)
