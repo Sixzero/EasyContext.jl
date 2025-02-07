@@ -29,9 +29,19 @@ const CACHE_STATE = CacheData()
 end
 
 function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, query::AbstractString; cost_tracker = Threads.Atomic{Float64}(0.0)) where {T}
-    embeddings = RAG.get_embeddings(builder, chunks; cost_tracker)
-    query_emb = RAG.get_embeddings(builder, [query]; cost_tracker)
-    get_score(Val(:CosineSimilarity), embeddings, reshape(query_emb, :))
+    # embeddings = get_embeddings(builder, chunks; cost_tracker)
+    # query_emb = get_embeddings(builder, [query]; cost_tracker)
+    # get_score(Val(:CosineSimilarity), embeddings, reshape(query_emb, :))
+        # Combine chunks and query into single request
+    all_docs = [chunks..., query]
+    # @time "Cached embeddings" 
+    embeddings = get_embeddings(builder, all_docs; cost_tracker)
+    
+    # Split embeddings - last column is query embedding
+    chunks_emb = @view embeddings[:, 1:end-1]
+    query_emb = @view embeddings[:, end]
+    
+    get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
 end
 
 get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)

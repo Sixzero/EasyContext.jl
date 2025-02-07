@@ -2,28 +2,27 @@ using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
 using EasyContext: ToolTagExtractor, ToolTag, extract_tool_calls, serialize
-using EasyContext: SHELL_BLOCK_TAG
+using EasyContext: SHELL_BLOCK_TAG, AbstractTool
 
 @testset failfast=true "ToolTagExtractor Tests" begin
     @testset "Constructor" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CreateFileTool])
         @test parser.last_processed_index[] == 0
         @test isempty(parser.tool_tasks)
-        @test isempty(parser.tool_results)
         @test parser.full_content == ""
         @test !parser.skip_execution
         @test !parser.no_confirm
     end
 
     @testset "extract_tool_calls" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CreateFileTool])
         content = """
         Some text before
-        $SHELL_BLOCK_TAG path/to/file
+        $SHELL_BLOCK_TAG
         ```julia
         echo ALL OK
         This is a modification
-        ```
+        ```endblock
         Some text between
         CREATE new_file.txt
         ```
@@ -32,14 +31,14 @@ using EasyContext: SHELL_BLOCK_TAG
         Some text after
         """
 
-        result = extract_tool_calls(content, parser; root_path="")
+        result = extract_tool_calls(content, parser; kwargs=Dict("root_path" => ""))
 
-        @test length(parser.tool_tasks) == 2
+        @test length(parser.tool_tags) == 2
     end
 
 
     @testset "Nested tags" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CatFileTool])
         content = """
         SHELL_BLOCK_TAG arg1
         ```
@@ -54,7 +53,7 @@ using EasyContext: SHELL_BLOCK_TAG
     end
 
     @testset "Unclosed tags handling" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CatFileTool, CreateFileTool])
 
         # Test unclosed CREATE tag
         content = """
@@ -71,7 +70,7 @@ using EasyContext: SHELL_BLOCK_TAG
     end
 
     @testset "Partial streaming extraction" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CatFileTool, CreateFileTool])
 
         # Test streaming content in chunks
         content1 = """
@@ -89,12 +88,11 @@ using EasyContext: SHELL_BLOCK_TAG
 
         extract_tool_calls(content2, parser)
         extract_tool_calls("\n", parser, is_flush=true)
-        @show parser
         @test length(parser.tool_tasks) == 1 # Should create command when complete
     end
 
     @testset "Raw ToolTag parsing" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CatFileTool, CreateFileTool])
         content = """
         Some text before
         $SHELL_BLOCK_TAG path/to/file
@@ -110,7 +108,7 @@ using EasyContext: SHELL_BLOCK_TAG
         Some text after
         """
 
-        extract_tool_calls(content, parser; root_path="/test/root")
+        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/test/root"))
         
         @test length(parser.tool_tags) == 2
         
@@ -130,7 +128,7 @@ using EasyContext: SHELL_BLOCK_TAG
     end
 
     @testset "ToolTag with immediate commands" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ClickTool, SendKeyTool, CatFileTool])
         content = """
         Some text
         CLICK 100 200
@@ -139,7 +137,7 @@ using EasyContext: SHELL_BLOCK_TAG
         More text
         """
 
-        extract_tool_calls(content, parser; root_path="/test/root")
+        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/test/root"))
         
         @test length(parser.tool_tags) == 3
         
@@ -159,7 +157,7 @@ using EasyContext: SHELL_BLOCK_TAG
         @test isempty(catfile_tag.content)
     end
     @testset "Docstring in content handling" begin
-        parser = ToolTagExtractor()
+        parser = ToolTagExtractor([ShellBlockTool, CreateFileTool])
         content = """
         \"\"\"
         Some docstring
@@ -189,11 +187,8 @@ using EasyContext: SHELL_BLOCK_TAG
         Some text after
         """
 
-        extract_tool_calls(content, parser; root_path="/tmp", is_flush=true)
+        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/tmp"), is_flush=true)
         
-        for t in parser.tool_tags
-            display(t.content)
-        end
         @test length(parser.tool_tags) == 2
         
         # Test that docstring code blocks didn't interfere
@@ -208,6 +203,35 @@ using EasyContext: SHELL_BLOCK_TAG
         @test create_tag.args == "new_file.txt"
         @test create_tag.content == "```\nNew file content\nanother_multiline_assignment = \"\"\"\nyeah we know it again\n\"\"\"\nyes\n```"
         @test occursin("yeah we know it again", create_tag.content) # This multiline assignment should be part of content
+    end
+    @testset "ToolTag with #RUN instant execution" begin
+        parser = ToolTagExtractor([ClickTool, SendKeyTool, CatFileTool])
+        content = """
+        Some text
+        CLICK 100 200
+        SENDKEY ctrl+c
+        CATFILE /tmp/test.txt #RUN
+        More text
+        """
+
+        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/test/root"))
+        
+        @test length(parser.tool_tags) == 3
+        
+        click_tag = parser.tool_tags[1]
+        @test click_tag.name == "CLICK"
+        @test click_tag.args == "100 200"
+        @test isempty(click_tag.content)
+
+        sendkey_tag = parser.tool_tags[2]
+        @test sendkey_tag.name == "SENDKEY"
+        @test sendkey_tag.args == "ctrl+c"
+        @test isempty(sendkey_tag.content)
+
+        catfile_tag = parser.tool_tags[3]
+        @test catfile_tag.name == "CATFILE"
+        @test catfile_tag.args == "/tmp/test.txt"
+        @test isempty(catfile_tag.content)
     end
 end
 ;

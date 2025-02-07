@@ -7,6 +7,7 @@ using LLMRateLimiters: TokenEstimationMethod, airatelimited, RateLimiterRPM, Rat
 using Dates
 using UUIDs
 
+using Ding
 using PromptingTools
 using PromptingTools: UserMessage, AIMessage, SystemMessage
 
@@ -28,6 +29,7 @@ include("protocol/Session.jl")
 include("anthropic_extension.jl")
 include("Rephrase.v1.jl")
 include("chunkers/Chunks.jl")
+include("chunkers/NewlineChunker.jl")
 include("chunkers/FullFileChunker.jl")
 include("chunkers/SourceChunks.jl")
 # include("chunkers/FullFileChunker_new.jl")

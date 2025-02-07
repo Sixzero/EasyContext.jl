@@ -22,9 +22,10 @@ include("CatFileTool.jl")
 include("ModifyFileTool.jl")
 include("CreateFileTool.jl")
 include("WebSearchTool.jl")
-include("EmailTool.jl")
 
 include("ToolTagExtractor.jl")
 
-export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, EmailTool, WebSearchTool
+export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool
 export toolname, get_description, stop_sequence, has_stop_sequence
+
+export STOP_SEQUENCE

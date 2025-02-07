@@ -86,7 +86,7 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     !isempty(current_batch) && push!(batches, current_batch)
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
-    results = asyncmap(batches, ntasks=8) do batch  # Reduced from 20 to 8 to avoid overwhelming the API
+    @time "Voyage embeddings" results = asyncmap(batches, ntasks=8) do batch  # Reduced from 20 to 8 to avoid overwhelming the API
         embeddings, tokens = process_batch_limited(batch)
         embeddings_matrix = stack(embeddings, dims=2)
         verbose && (length(batches) > 1) && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"
@@ -107,7 +107,7 @@ end
 
 # Add this at the end of the file
 function create_voyage_embedder(;
-    model::String = "voyage-code-2", # or voyage-3
+    model::String = "voyage-code-3", # or voyage-3
     input_type::Union{String, Nothing} = nothing,
     verbose::Bool = true,
     cache_prefix=""

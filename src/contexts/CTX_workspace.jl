@@ -41,12 +41,13 @@ function process_workspace_context(workspace_context, embedder_query; rerank_que
     # @time "the cd" scr_content = cd(workspace_context) do
     file_chunks = get_workspace_chunks(workspace, FullFileChunker()) 
     isempty(file_chunks) && return ("", nothing)
-    @time "search" file_chunks_reranked = search(rag_pipeline, file_chunks, embedder_query)
+    # @time "search" 
+    file_chunks_reranked = search(rag_pipeline, file_chunks, embedder_query)
 
     merged_file_chunks = merge!(tracker_context, file_chunks_reranked)
     !isnothing(extractor) && update_changes_from_extractor!(changes_tracker, extractor)
     scr_content = update_changes!(changes_tracker, merged_file_chunks)
-    !isnothing(age_tracker) && age_tracker(changes_tracker)
+    !isnothing(age_tracker) && register_changes!(age_tracker, changes_tracker)
     # return scr_content
     # end
     isa(scr_content,String) && return ("", nothing)

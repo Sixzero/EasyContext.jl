@@ -5,7 +5,7 @@ using PromptingTools.Experimental.RAGTools: ChunkEmbeddingsIndex, AbstractChunkI
 
 
 # Main search interface for EmbeddingSearch
-@kwdef struct TwoLayerRAG <: AbstractRAGConfig
+@kwdef struct TwoLayerRAG <: AbstractRAGPipeline
     topK::TopK
     reranker::AbstractReranker
 end
@@ -26,5 +26,5 @@ function search(method::TwoLayerRAG, chunks::Vector{T}, query::AbstractString;
     rerank(method.reranker, results, rerank_query; cost_tracker, time_tracker)
 end
 
-humanize(m::AbstractRAGConfig) = 
+humanize(m::AbstractRAGPipeline) = 
     "$(humanize(m.topK))\n$(humanize(m.reranker))"

@@ -8,7 +8,7 @@ export AgeTracker, cut_old_sources!, cut_old_conversation_history!
     last_message_count::Int = 0
 end
 
-function (ager::AgeTracker)(tracker::ChangeTracker)
+function register_changes!(ager::AgeTracker, tracker::ChangeTracker)
     for (source, state) in tracker.changes
         if state === :UPDATED || state === :NEW
             ager.tracker[source] = ager.age

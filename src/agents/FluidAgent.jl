@@ -1,6 +1,7 @@
 using UUIDs
 using PromptingTools
 using PromptingTools: aigenerate
+using StreamCallbacksExt: needs_tool_execution
 
 export FluidAgent, execute_tools, work
 
@@ -12,20 +13,49 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     model::String = "claude"
     workspace::String = pwd()
     tool_map::Dict{String,Type{<:AbstractTool}} = Dict(toolname(T) => T for T in tools)
-    extractor = ToolTagExtractor()
+    extractor::ToolTagExtractor = ToolTagExtractor()
+    sys_msg::String = ""
 end 
-# Constructor with tuple of tools
-FluidAgent(tools::Tuple, args...; kwargs...) = FluidAgent(collect(tools), args...; kwargs...)
+# create_FluidAgent to prevent conflict with the constructor
+function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{T}) where T
+    sys_msg = """
+    $(create_sys_msg())
 
+    $(highlight_code_guide)
+    $(highlight_changes_guide)
+    $(organize_file_guide)
+    $(shell_script_n_result_guide_v2)
+
+    $(dont_act_chaotic)
+    $(refactor_all)
+    $(simplicity_guide)
+    
+    $(ambiguity_guide)
+    
+    $(test_it_v2)
+    
+    $(no_loggers)
+    $(julia_specific_guide)
+    $(system_information)
+
+    $(get_tool_descriptions(tools))
+
+    Follow KISS and SOLID principles.
+
+    $(conversaton_starts_here)"""
+    agent = FluidAgent(; sys_msg, tools=convert_tool_types(tools), model)
+    agent
+end
+
+get_tool_descriptions(agent::FluidAgent) = get_tool_descriptions(agent.tools)
 """
 Get tool descriptions for system prompt
 """
-function get_tool_descriptions(agent::FluidAgent)
-    descriptions = ["Available tools:"]
-    for tool in agent.tools
-        push!(descriptions, get_description(tool))
-    end
-    join(descriptions, "\n\n")
+function get_tool_descriptions(tools::AbstractVector)
+    descriptions = get_description.(tools)
+    """
+    # Available tools:
+    $(join(descriptions, "\n\n"))"""
 end
 
 """
@@ -46,7 +76,7 @@ end
 """
 Returns both the full and truncated context strings
 """
-function get_tool_results(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=Datasources[])
+function get_tool_results(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=DataType[])
     ctx = get_tool_results(agent.extractor; filter_tools)
     if length(ctx) > max_length
         @warn "Shell context too long, truncating to $max_length characters"
@@ -101,14 +131,6 @@ end
 
 """
 Run an LLM interaction with tool execution.
-
-Returns a NamedTuple with:
-- content: The AI response content 
-- run_info: Callback run information
-- extractor: Tool tag extractor with execution results
-
-Note: Stop sequences from tools are collected and passed to the LLM to prevent 
-generating beyond tool boundaries.
 """
 function work(agent::FluidAgent, conv; cache,
     no_confirm=false,
@@ -120,15 +142,12 @@ function work(agent::FluidAgent, conv; cache,
     io=stdout,
     tool_kwargs=Dict())
     
-    # Create new ToolTagExtractor for each run
-    extractor = ToolTagExtractor()
-    agent.extractor = extractor
     
     # Collect unique stop sequences from tools
     stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
     
     if length(stop_sequences) > 1
-        @warn "Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
+        @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
     end
     
     # Base API kwargs without stop sequences
@@ -138,60 +157,68 @@ function work(agent::FluidAgent, conv; cache,
         api_kwargs = (; )
     end
 
-    apply_stop_seq_kwargs!(api_kwargs, agent.model, stop_sequences)
+    api_kwargs = apply_stop_seq_kwargs(api_kwargs, agent.model, stop_sequences)
     StreamCallbackTYPE= pickStreamCallbackforIO(io)
-    cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
-        on_done = () -> begin
-            process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
-            on_done()
-        end,
-        on_content = process_enabled ? (text -> extract_tool_calls(text, extractor; kwargs=tool_kwargs)) : noop,
-    ))
     
     try
-        response = aigenerate(
-            to_PT_messages(conv);
-            model=agent.model,
-            cache, 
-            api_kwargs,
-            streamcallback=cb,
-            verbose=false
-        )
-        execute_tools(extractor; no_confirm)
+
+        response = nothing
+        while true
+            # Create new ToolTagExtractor for each run
+            extractor = ToolTagExtractor(agent.tools)
+            agent.extractor = extractor
+
+            cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
+                on_done = () -> begin
+                    # Extracts tools in case anything is unclosed
+                    process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
+                    on_done()
+                end,
+                on_content = process_enabled ? (text -> extract_tool_calls(text, extractor; kwargs=tool_kwargs)) : noop,
+            ))
+
+            response = aigenerate(
+                to_PT_messages(conv, agent.sys_msg);
+                model=agent.model,
+                cache, 
+                api_kwargs,
+                streamcallback=cb,
+                verbose=false
+            )
+
+            execute_tools(extractor; no_confirm)
+            # Break if no more tool execution needed
+            !needs_tool_execution(cb.run_info) && break
+            length(extractor.tool_tags) == 0 && break
+            
+            # Add tool results to conversation for next iteration
+            result = get_tool_results(agent)[1]  # Get full results
+            push_message!(conv, create_user_message(result))
+            sleep(5)
+        end
+
+        push_message!(conv, create_AI_message(response.content))
         
-        # Return named tuple with all needed components
-        return (;
-            content = response.content,
-            run_info = cb.run_info,
-            extractor,
-        )
+        return response
     catch e
         e isa InterruptException && rethrow(e)
-        @error "Error executing code block: $(sprint(showerror, e))" exception=(e, catch_backtrace())
+        stacktrace = catch_backtrace()
+        @error "Error executing code block: $(sprint(showerror, e))" exception=stacktrace
         on_error(e)
-        return (
-            content = "Error: $(sprint(showerror, e))\n\nPartial response: $(extractor.full_content)",
+        content = "Error: $(sprint(showerror, e))\n\nStacktrace: $(sprint(show, stacktrace))"
+        push_message!(conv, create_AI_message(content))
+        return (; 
+            content,
             results = OrderedDict{UUID,String}(),
-            run_info = cb.run_info,
+            run_info = nothing,
         )
     end
-    # TODO this while loop should somehow work in this work thing:
-
-    # while true
-    #       work
-    #     # (isnothing(cb.run_info.stop_sequence) || isempty(flow.extractor.tool_tasks)) && break
-    #     # result = get_last_command_result(flow.extractor)
-    #     # isnothing(result) && continue
-    #     # print_tool_result(result)
-    #     # flow.conv_ctx(create_user_message(truncate_output(result), Dict("context" => result)))
-        
-    #     # !isnothing(result) && write_event!(io, "command_result", result)
-    # end
 end
+
 """
 Apply stop sequence kwargs based on model type and available sequences.
 """
-function apply_stop_seq_kwargs!(api_kwargs::NamedTuple, model::String, stop_sequences::Vector{String})
+function apply_stop_seq_kwargs(api_kwargs::NamedTuple, model::String, stop_sequences::Vector{String})
     isempty(stop_sequences) && return api_kwargs
     key = model == "claude" ? :stop_sequences : :stop
     merge(api_kwargs, (; key => stop_sequences))

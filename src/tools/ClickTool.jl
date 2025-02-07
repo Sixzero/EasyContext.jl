@@ -19,3 +19,4 @@ stop_sequence(::Type{ClickTool}) = STOP_SEQUENCE
 instantiate(::Val{Symbol(CLICK_TAG)}, tag::ToolTag) = ClickTool(tag)
 
 execute(tool::ClickTool; no_confirm=false) = "Clicking at coordinates ($(tool.x), $(tool.y)) with $(tool.button) button"
+tool_format(::Type{ClickTool}) = :single_line

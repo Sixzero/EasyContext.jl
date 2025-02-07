@@ -18,26 +18,30 @@ function ShellBlockTool(cmd::ToolTag)
 end
 instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::ToolTag) = ShellBlockTool(cmd)
 toolname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
+# If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
+# and wait for feedback
 get_description(cmd::Type{ShellBlockTool}) = """
-If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! 
-You propose the sh script that should be run in a most concise short way and wait for feedback!
-
-Assume all standard tools are available - do not attempt installations.
+ShellBlockTool: 
+You propose the sh script that should be run in a most concise short way!
+Assume all standard cli tools are available - do not attempt installations.
 
 Format:
-Each shell commands which you propose will be found in the corresponing next user message with the format like: 
 $(SHELL_BLOCK_TAG)
 $(code_format("command", "sh"))
 
+The results will be found in the next user message. You can ask for immediate feedback with #RUN. 
+You always need to close the code block, and only after that you can write #RUN.
 """
 stop_sequence(cmd::Type{ShellBlockTool}) = ""
+
+tool_format(::Type{ShellBlockTool}) = :multi_line
 
 
 function execute(cmd::ShellBlockTool; no_confirm=false)
     # !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
     print_code(cmd.content)
     
-    if no_confirm || get_user_confirmation()
+    result = if no_confirm || get_user_confirmation()
         print_output_header()
         cd(cmd.root_path) do
             cmd_all_info_stream(`zsh -c $(cmd.content)`)
@@ -45,6 +49,8 @@ function execute(cmd::ShellBlockTool; no_confirm=false)
     else
         "\nOperation cancelled by user."
     end
+    push!(cmd.run_results, result)
+    return result
 end
 
 function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
@@ -60,7 +66,7 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
         println(stderr, line); flush(stderr)
         write(error, line * "\n")
     end
-    
+
     wait(process)
     return format_cmd_output(output, error, process)
 end
@@ -84,6 +90,5 @@ function result2string(tool::ShellBlockTool)
     $(CODEBLOCK_CLOSE)
     $(SHELL_RUN_RESULT)
     $(tool_result)
-    $(CODEBLOCK_CLOSE)
-    """
+    $(CODEBLOCK_CLOSE)"""
 end

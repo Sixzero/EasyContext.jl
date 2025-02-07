@@ -51,7 +51,7 @@ function update_changes!(tracker::ChangeTracker, ctx::AbstractDict{String, T}) w
 end
 
 serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = serialize(tag, element, scr_state, src_cont.d)
-serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::OrderedDict) = begin
+function serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::OrderedDict)
     output = ""
     new_files = format_element(element, scr_state, src_cont, :NEW)
     if !is_really_empty(new_files)

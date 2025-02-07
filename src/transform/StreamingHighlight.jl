@@ -30,6 +30,8 @@ create(config::StreamCallbackConfig) = begin
         text -> text
     end
 
+    # StreamCallbackChannelWrapper(;
+        # callback = 
     StreamCallbackWithHooks(
             content_formatter = content_handler,
             on_meta_usr       = (tokens, cost, elapsed) -> (flush_state(state); format_user_meta(tokens, cost, elapsed)),
@@ -39,6 +41,7 @@ create(config::StreamCallbackConfig) = begin
             on_error          = e -> ((e isa InterruptException ? rethrow(e) : (println(config.io, err_msg); config.on_error(e)))),
             on_stop_sequence  = stop_sequence -> handle_text(state, stop_sequence),
         )
+    # )
 end
 pickStreamCallbackforIO(io::IOBuffer) = StreamCallbackConfig
 pickStreamCallbackforIO(io::IO)       = StreamCallbackConfig

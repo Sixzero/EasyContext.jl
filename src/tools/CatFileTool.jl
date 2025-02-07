@@ -1,8 +1,9 @@
 
-@kwdef struct CatFileTool <: AbstractTool
+@kwdef mutable struct CatFileTool <: AbstractTool
     id::UUID = uuid4()
     file_path::String
     root_path::String
+    result::String = ""
 end
 CatFileTool(cmd::ToolTag) = CatFileTool(id=uuid4(), file_path=cmd.args, root_path=get(cmd.kwargs, "root_path", ""))
 instantiate(::Val{Symbol(CATFILE_TAG)}, cmd::ToolTag) = CatFileTool(cmd)
@@ -16,14 +17,16 @@ $(CATFILE_TAG) filepath $(STOP_SEQUENCE)
 or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE:
 """
 stop_sequence(cmd::Type{CatFileTool}) = STOP_SEQUENCE
+tool_format(::Type{CatFileTool}) = :single_line
 
 execute(cmd::CatFileTool; no_confirm::Bool=false) = let
     cd(cmd.root_path) do
         path = normpath(cmd.file_path)  # Changed to use direct path since we're in the right directory
-        isfile(path) ? file_format(path, read(path, String)) : "cat: $(path): No such file or directory"
+        cmd.result = isfile(path) ? file_format(path, read(path, String)) : "cat: $(path): No such file or directory"
     end
 end
 
 function LLM_safetorun(cmd::CatFileTool) 
     true
 end
+result2string(tool::CatFileTool)::String = tool.result

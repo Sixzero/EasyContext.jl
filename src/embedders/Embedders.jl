@@ -8,7 +8,7 @@ import Base: *
 
 
 abstract type AbstractEasyEmbedder <: AbstractEmbedder end
-abstract type AbstractRAGConfig end
+abstract type AbstractRAGPipeline end
 
 include("SimilarityAlgos.jl")
 

@@ -19,7 +19,7 @@ end
 
 function format_cmd_output(output, error, process; debug_msg=nothing)
     # Try to parse JSON from raw stdout if present
-    stdout_str, error_str = String(take!(output)), String(take!(error))
+    stdout_str, error_str = strip(String(take!(output))), strip(String(take!(error)))
     if startswith(stdout_str, "{")
         try
             response = JSON3.read(stdout_str)
@@ -36,7 +36,7 @@ function format_cmd_output(output, error, process; debug_msg=nothing)
     
     # Return formatted output, only include exit_code if it's non-zero
     parts = String[]
-    !isempty(stdout_str) && push!(parts, "stdout=$stdout_str")
+    !isempty(stdout_str) && push!(parts, stdout_str)
     !isempty(error_str) && push!(parts, "stderr=$error_str")
     !isnothing(process) && process.exitcode != 0 && push!(parts, "exit_code=$(process.exitcode)")
     join(parts, "\n")

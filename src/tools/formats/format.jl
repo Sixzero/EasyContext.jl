@@ -7,10 +7,11 @@ raw_format(content::String) = """```
 $content
 ```"""
 
-file_format(filepath::String, content::String, language::String="") = ""*
-"""File: $filepath
-$(code_format(content, language))
-"""
+function file_format(filepath::String, content::String, language::String="")
+    return """
+		# File: $filepath
+    $(code_format(content, language))"""
+end
 
 source_format(tag::String, filepath::String, content::String) = """$tag $filepath
 $(raw_format(content))"""
@@ -36,9 +37,8 @@ function parse_code_block(content::String)
 end
 
 function parse_raw_block(content::String)
-	lines = split(content, '\n')
-	if startswith(first(lines), "```")
-		return join(lines[2:end-1], '\n')
+	if startswith(content, "```")
+		return join(split(content, '\n')[2:end-1], '\n')
 	end
 	return content
 end

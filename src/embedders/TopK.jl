@@ -10,7 +10,7 @@ A struct for handling top-N selection with flexible embedder combinations.
 - `embedder::Union{AbstractEmbedder,MultiEmbedderCombiner}`: Single embedder or combiner
 - `top_k::Int`: Number of top results to return
 """
-@kwdef struct TopK{T<:Union{AbstractEmbedder,MultiEmbedderCombiner}} <: AbstractRAGConfig
+@kwdef struct TopK{T<:Union{AbstractEmbedder,MultiEmbedderCombiner}} <: AbstractRAGPipeline
     embedder::T
     top_k::Int = DEFAULT_TOP_K
 end

@@ -53,16 +53,22 @@ execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool
 """
 Usually stop_sequence and toolname are static for type
 """
-toolname(::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(typeof(tool))"; return "")
+toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool)"; return "")
 toolname(tool::AbstractTool)::String = toolname(typeof(tool))
 stop_sequence(::Type{<:AbstractTool})::String = (@warn "Unimplemented \"stop_sequence\" for $(typeof(tool))"; return "")
 stop_sequence(tool::AbstractTool)::String = stop_sequence(typeof(tool))
-get_description(::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(typeof(tool))"; return "unknown tool! $(typeof(tool))")
+get_description(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(typeof(tool))"; return "unknown tool! $(tool)")
 get_description(tool::AbstractTool)::String = get_description(typeof(tool))
 
 has_stop_sequence(tool::Type{<:AbstractTool})::Bool = stop_sequence(tool) != "" 
 has_stop_sequence(tool::AbstractTool)::Bool = has_stop_sequence(typeof(tool))
 
+"""
+Specifies if tool uses single-line or multi-line format
+Returns: :single_line or :multi_line
+"""
+tool_format(::Type{<:AbstractTool})::Symbol = :multi_line # Default to single line
+tool_format(tool::AbstractTool)::Symbol = tool_format(typeof(tool))
 
 
 result2string(tool::AbstractTool)::String = ""

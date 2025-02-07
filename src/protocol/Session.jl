@@ -3,15 +3,13 @@ export Session, initSession
 @kwdef mutable struct Session{M <: MSG} <: CONV
     id::String = short_ulid()
     timestamp::DateTime = now(UTC)
-    system_message::M = UndefMessage()
     messages::Vector{M} = Message[]
     status::Symbol = :PENDING
 end
-Session(c::Conversation) = Session(short_ulid(), now(), c.system_message, c.messages, :UNSTARTED)
-initSession(;sys_msg::String="") = Session(initConversation(;sys_msg))
+# Session(c::Conversation) = Session(short_ulid(), now(), c.messages, :UNSTARTED)
 initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
 
-(conv::Session)(msg::AIMessage, stop_sequence::String="") = begin
+function push_message!(conv::Session, msg::AIMessage, stop_sequence::String="")
     if !isempty(conv.messages) && conv.messages[end].role == :assistant
         conv.messages[end].content *= "\n" * msg.content * stop_sequence
     else
@@ -19,7 +17,7 @@ initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session
     end
     conv
 end
-(conv::Session)(msg::UserMessage) = begin
+function push_message!(conv::Session, msg::UserMessage)
     if !isempty(conv.messages) && conv.messages[end].role != :assistant
         conv.messages[end].content *= "\n" * msg.content
     else
@@ -27,7 +25,7 @@ end
     end
     conv
 end
-(conv::Session)(msg::Message, stop_sequence::String="") = begin
+function push_message!(conv::Session, msg::Message, stop_sequence::String="")
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
         conv.messages[end].content *= "\n" * msg.content * stop_sequence
     else
@@ -40,9 +38,9 @@ abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv
 conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
 
-function to_PT_messages(session::Session)
+function to_PT_messages(session::Session, sys_msg::String)
     messages = Vector{PT.AbstractChatMessage}(undef, length(session.messages) + 1)
-    messages[1] = SystemMessage(session.system_message.content)
+    messages[1] = SystemMessage(sys_msg)
     
     for (i, msg) in enumerate(session.messages)
         content = context_combiner!(msg.content, msg.context)
