@@ -24,7 +24,7 @@ A struct for embedding documents using Voyage AI's embedding models.
     api_key::String = get(ENV, "VOYAGE_API_KEY", "")
     model::String = "voyage-code-2"
     input_type::Union{String, Nothing} = nothing
-    rate_limiter::RateLimiterTPM = RateLimiterTPM()
+    rate_limiter::RateLimiterTPM = RateLimiterTPM(max_tokens=3_000_000)
     http_post::Function = HTTP.post
     verbose::Bool = true
 end
