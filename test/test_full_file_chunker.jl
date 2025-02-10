@@ -1,6 +1,6 @@
 using Test
 using EasyContext
-using EasyContext: FullFileChunker, RAGTools
+using EasyContext: FullFileChunker, RAGTools, NewlineChunker, FileChunk
 using EasyContext: GPT2Approximation, CharCount, get_chunk_standard_format
 using LLMRateLimiters: estimate_tokens, CharCountDivTwo
 using Random
@@ -10,14 +10,13 @@ const RAG = RAGTools
 @testset "FullFileChunker Tests" begin
     @testset "Constructor" begin
         chunker = FullFileChunker()
-        @test chunker.max_tokens == 8000
-        @test chunker.estimation_method == CharCountDivTwo
-        @test chunker.line_number_token_estimate == 10
-
-        custom_chunker = FullFileChunker(max_tokens=5000, estimation_method=CharCount, line_number_token_estimate=15)
-        @test custom_chunker.max_tokens == 5000
-        @test custom_chunker.estimation_method == CharCount
-        @test custom_chunker.line_number_token_estimate == 15
+        @test chunker.chunker isa NewlineChunker{FileChunk}
+        
+        # Test with custom NewlineChunker
+        custom_newline_chunker = NewlineChunker{FileChunk}(max_tokens=5000, estimation_method=CharCount)
+        custom_chunker = FullFileChunker(chunker=custom_newline_chunker)
+        @test custom_chunker.chunker.max_tokens == 5000
+        @test custom_chunker.chunker.estimation_method == CharCount
     end
 
     @testset "get_chunks functionality" begin
@@ -34,7 +33,7 @@ const RAG = RAGTools
             @test all(contains(chunk, "Line") for chunk in chunks)
             
             # Check if the max tokens is respected
-            @test all(estimate_tokens(chunk, chunker.estimation_method) <= chunker.max_tokens for chunk in chunks)
+            @test all(estimate_tokens(chunk, chunker.chunker.estimation_method) <= chunker.chunker.max_tokens for chunk in chunks)
             
             # Check if line numbers are continuous
             for i in 2:length(sources)
@@ -146,7 +145,7 @@ const RAG = RAGTools
 
             @test length(chunks) > 1
             # Test that each chunk is within the max_tokens limit
-            @test all(estimate_tokens(chunk, chunker.estimation_method) <= chunker.max_tokens for chunk in chunks)
+            @test all(estimate_tokens(chunk, chunker.chunker.estimation_method) <= chunker.chunker.max_tokens for chunk in chunks)
         end
     end
 

@@ -65,6 +65,15 @@ function safe_append_cache(cache_file::String, new_entries::Dict{String,Vector{F
     if isempty(new_entries) return end
     
     @async_showerr lock(get!(ReentrantLock, CACHE_STATE.file_locks, cache_file)) do
+        # Ensure directory exists
+        mkpath(dirname(cache_file))
+        
+        # Create empty arrow file if it doesn't exist. NOTE: Not sure this is important
+        if !isfile(cache_file)
+            df = DataFrame(hash=String[], embedding=Vector{Float32}[])
+            Arrow.write(cache_file, df; file=false)  # Use stream format
+        end
+        
         df = DataFrame(
             hash = collect(keys(new_entries)),
             embedding = collect(values(new_entries))
@@ -90,7 +99,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         ntasks::Int = 4 * Threads.nthreads(),
         )
     if isempty(docs)
-        verbose && @info "No documents to embed."
+        embedder.verbose && @info "No documents to embed."
         return Matrix{Float32}(undef, 0, 0)
     end
 
@@ -153,8 +162,13 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     end
     
     # Create all_embeddings array from what we have
+    if isempty(cache)
+        error("No embeddings available in cache and failed to generate new ones")
+    end
+    
+    # Get embedding dimension from first cached embedding
     embedding_dim = length(first(values(cache)))
-    all_embeddings = zeros(Float32, embedding_dim, length(docs))
+    all_embeddings = Matrix{Float32}(undef, embedding_dim, length(docs))
     
     for (i, hash) in enumerate(doc_hashes)
         all_embeddings[:, i] = cache[hash]

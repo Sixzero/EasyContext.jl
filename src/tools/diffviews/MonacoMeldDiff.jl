@@ -29,16 +29,15 @@ end
 # Service availability check with auto-start capability
 function is_diff_service_available(port::AbstractString)
   try
-    HTTP.get("http://localhost:$port/health", readtimeout=1)
+    HTTP.get("http://localhost:$port/health", readtimeout=2)
     return true
   catch
     # Try to start monacomeld if command exists
     try
       if success(`which monacomeld`)
         run(`bash -c "unset GTK_PATH; gnome-terminal -- bash -c 'monacomeld; exec bash'"`)
-        sleep(2)  # Give it a second to start
         try
-          HTTP.get("http://localhost:$port/health", readtimeout=1)
+          HTTP.get("http://localhost:$port/health", readtimeout=4)
           return true
         catch
           return false

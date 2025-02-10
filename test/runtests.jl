@@ -9,4 +9,6 @@ using Test
     include("transform/test_instant_apply.jl")
     include("test_simple_reranker.jl")
     include("test_top_n.jl")
+    include("test_CachedBatchEmbedder.jl")
+    include("test_CachedBatchEmbedder_partial.jl")
 end

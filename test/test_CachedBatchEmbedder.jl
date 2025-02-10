@@ -1,16 +1,17 @@
 using Test
 using EasyContext
 using DataStructures: OrderedDict
-using EasyContext: EmbedderSearch, OpenAIBatchEmbedder, CachedBatchEmbedder, JinaEmbedder, VoyageEmbedder, CombinedIndexBuilder
-using EasyContext: BM25Embedder
+using EasyContext: CachedBatchEmbedder, get_embedder, create_voyage_embedder, OpenAIBatchEmbedder, BM25Embedder
+using EasyContext: get_embedder_uniq_id
 using HTTP
 using PromptingTools.Experimental.RAGTools
 using JSON3
 using Chairmarks
 using BenchmarkTools
 using Random
+using Distributed  # Added for @spawn
 
-@testset "CachedBatchEmbedder Tests" begin
+@testset failfast=true "CachedBatchEmbedder Tests" begin
     @testset "Constructor" begin
         embedder = CachedBatchEmbedder()
         @test embedder isa CachedBatchEmbedder
@@ -19,6 +20,7 @@ using Random
     end
 
     @testset "Cache Management" begin
+        Random.seed!(time_ns())
         # Setup mock embedder
         mutable struct MockEmbedder <: RAGTools.AbstractEmbedder
             calls::Int
@@ -34,11 +36,14 @@ using Random
         end
         EasyContext.get_model_name(e::MockEmbedder) = e.model
         EasyContext.get_embedder_uniq_id(e::MockEmbedder) = e.uniq_id
+        EasyContext.get_embedder(e::MockEmbedder) = e
 
         # Create test embedder
         mock_embedder = MockEmbedder()
         embedder = CachedBatchEmbedder(embedder=mock_embedder)
-        test_docs = ["doc1", "doc2", "doc3"]
+        
+        # Add random numbers to ensure uniqueness
+        test_docs = ["doc1_$(rand(1:99999))", "doc2_$(rand(1:99999))", "doc3_$(rand(1:99999))"]
         
         # First call should use the mock embedder
         emb1 = get_embeddings(embedder, test_docs)
@@ -52,7 +57,8 @@ using Random
         @test all(emb2 .== emb1)  # Should return exactly same embeddings
         
         # Call with new docs should partially use cache
-        emb3 = get_embeddings(embedder, ["doc1", "doc4"])
+        new_docs = [test_docs[1], "doc4_$(rand(1:99999))"]
+        emb3 = get_embeddings(embedder, new_docs)
         @test mock_embedder.calls == 2  # One new call for "doc4"
         @test size(emb3) == (mock_embedder.dims, 2)
         @test emb3[:, 1] == emb1[:, 1]  # First doc should be from cache
@@ -73,7 +79,7 @@ using Random
         @test all(size(r) == size(first(results)) for r in results)
         
         # Cache file should exist
-        cache_file = joinpath(embedder.cache_dir, "embeddings_mock-embedder.jld2")
+        cache_file = joinpath(embedder.cache_dir, "embeddings_mock-embedder.arrow")  # Changed from .jld2 to .arrow
         @test isfile(cache_file)
     end
 
@@ -98,47 +104,53 @@ using Random
     end
 
     @testset "Performance and Type Stability" begin
-        embedder = CachedBatchEmbedder(embedder=EmbedderSearch(embedder=VoyageEmbedder()))
+        embedder = create_voyage_embedder(model="voyage-code-3", verbose=false)
         docs = ["This is a test document", "Another test document", "Third test document"]
 
         # Mock the HTTP.post function to avoid actual API calls
         function mock_http_post(url, headers, body)
             parsed_body = JSON3.read(body)
+            dim = 1024  # voyage-code-3 dimension
             mock_response = Dict(
-                "data" => [Dict("embedding" => rand(Float32, 1536)) for _ in 1:length(parsed_body["input"])]
+                "data" => [Dict("embedding" => rand(Float32, dim)) for _ in 1:length(parsed_body["input"])],
+                "usage" => Dict("total_tokens" => 100)
             )
             return HTTP.Response(200, JSON3.write(mock_response))
         end
 
-        # Override the http_post function in the embedder
-        embedder.embedder.embedder.http_post = mock_http_post
+        voyage_embedder = get_embedder(embedder.embedder)
+        voyage_embedder.http_post = mock_http_post
 
-        # Warmup
-        get_embeddings(embedder, docs)
+        # Create two embedders with different cache prefixes
+        uncached_embedder = CachedBatchEmbedder(embedder=embedder.embedder, cache_prefix="uncached_test_")
+        cached_embedder = CachedBatchEmbedder(embedder=embedder.embedder, cache_prefix="cached_test_")
 
-        # Benchmark
-        b = @b get_embeddings(embedder, docs)
-        @info "CachedBatchEmbedder performance:" b
+        # Get cache files for both
+        uncached_file = joinpath(uncached_embedder.cache_dir, "uncached_test_embeddings_$(get_embedder_uniq_id(embedder)).arrow")
+        cached_file = joinpath(cached_embedder.cache_dir, "cached_test_embeddings_$(get_embedder_uniq_id(embedder)).arrow")
 
-        # Check if results are cached
-        cache_file = joinpath(embedder.cache_dir, "embeddings_OpenAIBatchEmbedder_text-embedding-3-small.jld2")
-        @test isfile(cache_file)
+        # Benchmark uncached with file and memory cache removal
+        b_uncached = @benchmark get_embeddings($uncached_embedder, $docs) setup=(rm($uncached_file, force=true); empty!(EasyContext.CACHE_STATE.cache)) samples=5 seconds=1
 
-        # Benchmark with cached results
-        b_cached = @b get_embeddings(embedder, docs)
-        @info "CachedBatchEmbedder performance (cached):" b_cached
+        # Warmup and benchmark cached
+        result = get_embeddings(cached_embedder, docs)
+        b_cached = @benchmark get_embeddings($cached_embedder, $docs) samples=5 seconds=1
 
-        @test b_cached.time < b.time  # Cached should be faster
+        @test minimum(b_cached).time < minimum(b_uncached).time  # Cached should be faster
 
         # Type stability check
-        @inferred get_embeddings(embedder, docs)
+        @inferred get_embeddings(cached_embedder, docs)
 
         # Check output type and dimensions
-        result = get_embeddings(embedder, docs)
+        result = get_embeddings(cached_embedder, docs)
         @test result isa Matrix{Float32}
         @test size(result, 2) == length(docs)
-        @test size(result, 1) == 1536  # Assuming OpenAI's text-embedding-3-small returns 1536-dimensional embeddings
-    end
-end
+        @test size(result, 1) == 1024
 
-;
+        # Cleanup
+        rm(uncached_file, force=true)
+        rm(cached_file, force=true)
+    end
+
+    
+end
