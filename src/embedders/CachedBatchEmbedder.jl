@@ -12,6 +12,12 @@ using DataFrames
     latest_tasks::Dict{String, Task} = Dict{String, Task}()
 end
 
+# Add at the top with other imports
+struct PartialEmbeddingResults <: Exception
+    successful_embeddings::Dict{Int, Vector{Float32}}
+    failed_indices::Vector{Int}
+    original_error::Exception
+end
 
 const CACHE_STATE = CacheData()
 
@@ -109,23 +115,44 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     
     if !isempty(to_embed_indices)
         docs_to_embed = docs[to_embed_indices]
-        new_embeddings::Matrix{Float32} = get_embeddings(embedder.embedder, docs_to_embed;
-            verbose=embedder.verbose, model, truncate_dimension, cost_tracker,
-            target_batch_size_length, ntasks)
+        try
+            new_embeddings::Matrix{Float32} = get_embeddings(embedder.embedder, docs_to_embed;
+                verbose=embedder.verbose, model, truncate_dimension, cost_tracker,
+                target_batch_size_length, ntasks)
 
-        # Update cache with new embeddings
-        # we might be able to not materialize this and everything would still work.
-        new_entries = Dict(doc_hashes[idx] => new_embeddings[:, i] 
-                         for (i, idx) in enumerate(to_embed_indices))
-        
-        # Update memory cache
-        merge!(cache, new_entries)
-        
-        # Append to Arrow file
-        safe_append_cache(cache_file, new_entries)
+            # Update cache with new embeddings
+            new_entries = Dict(doc_hashes[idx] => new_embeddings[:, i] 
+                             for (i, idx) in enumerate(to_embed_indices))
+            
+            # Update memory cache
+            merge!(cache, new_entries)
+            
+            # Append to Arrow file
+            safe_append_cache(cache_file, new_entries)
+        catch e
+            if e isa PartialEmbeddingResults
+                # Handle partial results
+                new_entries = Dict(doc_hashes[to_embed_indices[idx]] => emb 
+                                 for (idx, emb) in e.successful_embeddings)
+                
+                # Update memory cache with partial results
+                merge!(cache, new_entries)
+                
+                # Append partial results to Arrow file
+                safe_append_cache(cache_file, new_entries)
+                @info "We saved the partial results to a cache file."
+
+                @warn "Some embeddings failed. Cached $(length(new_entries)) successful embeddings. Failed indices: $(e.failed_indices)"
+                
+                # Rethrow with more context
+                error("Partial embedding failure: $(length(e.failed_indices)) documents failed to embed. Original error: $(e.original_error)")
+            else
+                rethrow(e)
+            end
+        end
     end
     
-    # Create all_embeddings array
+    # Create all_embeddings array from what we have
     embedding_dim = length(first(values(cache)))
     all_embeddings = zeros(Float32, embedding_dim, length(docs))
     

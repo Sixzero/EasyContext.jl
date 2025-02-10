@@ -6,6 +6,7 @@ using ProgressMeter
 using LLMRateLimiters
 using LLMRateLimiters: retry_on_rate_limit
 
+
 """
     VoyageEmbedder <: AbstractEasyEmbedder
 
@@ -50,15 +51,21 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
             payload["input_type"] = embedder.input_type
         end
 
-        response = retry_on_rate_limit(max_retries=5, verbose=verbose) do
-            embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
-        end
+        try
+            response = retry_on_rate_limit(max_retries=5, verbose=verbose) do
+                embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
+            end
 
-        if response.status != 200
-            error("Failed to get embeddings for batch. Status code: $(response.status)")
+            if response.status != 200
+                @error "Failed request payload" payload
+                error("Failed to get embeddings for batch. Status code: $(response.status)")
+            end
+            result = JSON3.read(String(response.body))
+            return [e["embedding"] for e in result["data"]], result["usage"]["total_tokens"]
+        catch e
+            @error "Request failed" payload=payload exception=(e, catch_backtrace())
+            rethrow(e)
         end
-        result = JSON3.read(String(response.body))
-        return [e["embedding"] for e in result["data"]], result["usage"]["total_tokens"]
     end
 
     process_batch_limited = with_rate_limiter_tpm(process_batch, embedder.rate_limiter)
@@ -86,17 +93,52 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
     !isempty(current_batch) && push!(batches, current_batch)
 
     progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
-    @time "Voyage embeddings" results = asyncmap(batches, ntasks=8) do batch  # Reduced from 20 to 8 to avoid overwhelming the API
-        embeddings, tokens = process_batch_limited(batch)
-        embeddings_matrix = stack(embeddings, dims=2)
-        verbose && (length(batches) > 1) && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"
-        next!(progress)
-
-        return embeddings_matrix, tokens
+    successful_results = Dict{Int, Tuple{Matrix{Float32}, Int}}()
+    
+    @time "Voyage embeddings" try
+        asyncmap(enumerate(batches), ntasks=8) do (batch_idx, batch)
+            try
+                embeddings, tokens = process_batch_limited(batch)
+                embeddings_matrix = stack(embeddings, dims=2)
+                successful_results[batch_idx] = (embeddings_matrix, tokens)
+                verbose && (length(batches) > 1) && @info "Batch processed. Size: $(size(embeddings_matrix)), Tokens: $tokens"
+                next!(progress)
+            catch e
+                @error "Batch $batch_idx failed" exception=e
+                rethrow(e)
+            end
+        end
+    catch e
+        if !isempty(successful_results)
+            # Calculate cumulative indices for each batch
+            batch_sizes = length.(batches)
+            cumulative_indices = cumsum(batch_sizes)
+            
+            # Calculate failed indices
+            failed_batch_indices = setdiff(1:length(batches), keys(successful_results))
+            failed_indices = reduce(vcat, 
+                [(cumulative_indices[i-1] + 1):cumulative_indices[i] 
+                 for i in failed_batch_indices], 
+                init=Int[])
+            
+            # Convert successful batch results to individual embeddings
+            successful_embeddings = Dict{Int, Vector{Float32}}()
+            for batch_idx in sort!(collect(keys(successful_results)))
+                emb_matrix, _ = successful_results[batch_idx]
+                start_idx = batch_idx == 1 ? 1 : cumulative_indices[batch_idx-1] + 1
+                for (j, emb) in enumerate(eachcol(emb_matrix))
+                    successful_embeddings[start_idx + j - 1] = emb
+                end
+            end
+            
+            throw(PartialEmbeddingResults(successful_embeddings, failed_indices, e))
+        end
+        rethrow(e)
     end
-
-    all_embeddings = reduce(hcat, first.(results))
-    total_tokens = sum(last.(results))
+    
+    # If we got here, all batches succeeded
+    all_embeddings = reduce(hcat, first.(values(successful_results)))
+    total_tokens = sum(last.(values(successful_results)))
 
     if verbose
         @info "Embedding complete for $(length(docs)) documents using $(embedder.model). Total tokens: $total_tokens"
