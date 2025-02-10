@@ -49,3 +49,34 @@ function RAG.get_chunks(chunker::NewlineChunker{T},
     end
     return output_chunks
 end
+
+function split_text_into_chunks(text::String, estimation_method::TokenEstimationMethod, max_tokens::Int)
+    chunks = String[]
+    line_ranges = Tuple{Int,Int}[]
+    current_chunk = String[]
+    current_tokens = 0
+    lines = split(text, '\n')
+    start_line = 1
+
+    for (line_number, line) in enumerate(lines)
+        line_tokens = estimate_tokens(line, estimation_method)
+        
+        if current_tokens + line_tokens > max_tokens && !isempty(current_chunk)
+            push!(chunks, join(current_chunk, '\n'))
+            push!(line_ranges, (start_line, line_number - 1))
+            current_chunk = String[]
+            current_tokens = 0
+            start_line = line_number
+        end
+        
+        push!(current_chunk, line)
+        current_tokens += line_tokens
+    end
+
+    if !isempty(current_chunk)
+        push!(chunks, join(current_chunk, '\n'))
+        push!(line_ranges, (start_line, length(lines)))
+    end
+
+    return chunks, line_ranges
+end
