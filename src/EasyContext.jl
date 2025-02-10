@@ -7,7 +7,6 @@ using LLMRateLimiters: TokenEstimationMethod, airatelimited, RateLimiterRPM, Rat
 using Dates
 using UUIDs
 
-using Ding
 using PromptingTools
 using PromptingTools: UserMessage, AIMessage, SystemMessage
 
