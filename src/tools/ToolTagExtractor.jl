@@ -160,31 +160,3 @@ function parse_tool(first_line::String, content::String=""; kwargs=Dict())
     end
     ToolTag(name=name, args=args, content=content, kwargs=kwargs)
 end
-
-
-function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{DataType}=Datasources[])
-	output = ""
-	for (id, task) in stream_parser.tool_tasks
-			tool = fetch(task)
-            isempty(filter_tools) || typeof(tool) in filter_tools &&  (output *= result2string(tool))
-	end
-	return output
-end
-
-
-execute(t::Task) = begin
-    cmd = fetch(t)
-    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
-end
-
-function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
-    if !stream_parser.skip_execution
-        # Execute in order
-        for (id, task) in stream_parser.tool_tasks
-            tool = fetch(task)
-            isnothing(tool) && continue
-            execute(tool; no_confirm)
-        end
-        
-    end
-end

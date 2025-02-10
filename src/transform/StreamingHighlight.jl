@@ -43,6 +43,10 @@ create(config::StreamCallbackConfig) = begin
         )
     # )
 end
+
+"""
+This is a function just to allow users of the library to pick the correct StreamCallbackConfig for their IO type.
+"""
 pickStreamCallbackforIO(io::IOBuffer) = StreamCallbackConfig
 pickStreamCallbackforIO(io::IO)       = StreamCallbackConfig
 

@@ -11,6 +11,7 @@ using PromptingTools
 using PromptingTools: UserMessage, AIMessage, SystemMessage
 
 include("utils/utils.jl")
+include("utils/UserConfirmation.jl")
 include("action/greet.jl")
 
 include("input/input.jl")

@@ -76,7 +76,7 @@ end
 """
 Returns both the full and truncated context strings
 """
-function get_tool_results(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=DataType[])
+function get_tool_results_agent(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=DataType[])
     ctx = get_tool_results(agent.extractor; filter_tools)
     if length(ctx) > max_length
         @warn "Shell context too long, truncating to $max_length characters"
@@ -159,7 +159,7 @@ function work(agent::FluidAgent, conv; cache,
 
     api_kwargs = apply_stop_seq_kwargs(api_kwargs, agent.model, stop_sequences)
     StreamCallbackTYPE= pickStreamCallbackforIO(io)
-    
+
     try
 
         response = nothing
@@ -192,9 +192,9 @@ function work(agent::FluidAgent, conv; cache,
             length(extractor.tool_tags) == 0 && break
             
             # Add tool results to conversation for next iteration
-            result = get_tool_results(agent)[1]  # Get full results
+            result, _ = get_tool_results_agent(agent)
             push_message!(conv, create_user_message(result))
-            sleep(5)
+            sleep(1)
         end
 
         push_message!(conv, create_AI_message(response.content))

@@ -1,8 +1,5 @@
 
-function get_user_confirmation()
-    print("\e[34mContinue? (y) \e[0m")
-    readchomp(`zsh -c "read -q '?'; echo \$?"`) == "0"
-end
+
 
 function print_code(code::AbstractString)
     println("\e[32m$code\e[0m")
