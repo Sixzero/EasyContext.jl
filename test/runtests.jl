@@ -11,4 +11,5 @@ using Test
     include("test_top_n.jl")
     include("test_CachedBatchEmbedder.jl")
     include("test_CachedBatchEmbedder_partial.jl")
+    include("test_image_path_extraction.jl")
 end

@@ -17,6 +17,7 @@ function push_message!(conv::Session, msg::AIMessage, stop_sequence::String="")
     end
     conv
 end
+
 function push_message!(conv::Session, msg::UserMessage)
     if !isempty(conv.messages) && conv.messages[end].role != :assistant
         conv.messages[end].content *= "\n" * msg.content
@@ -25,6 +26,7 @@ function push_message!(conv::Session, msg::UserMessage)
     end
     conv
 end
+
 function push_message!(conv::Session, msg::Message, stop_sequence::String="")
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
         conv.messages[end].content *= "\n" * msg.content * stop_sequence
@@ -38,18 +40,22 @@ abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv
 conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
 
+is_image_path(word::AbstractString) = occursin(r"[\"']([^\"']*?\.(?:png|jpg|jpeg|gif|bmp))[\"']", word)
+extract_image_paths(content::AbstractString) = [m.captures[1] for m in eachmatch(r"[\"']([^\"']*?\.(?:png|jpg|jpeg|gif|bmp))[\"']", content)]
+
 function to_PT_messages(session::Session, sys_msg::String)
     messages = Vector{PT.AbstractChatMessage}(undef, length(session.messages) + 1)
     messages[1] = SystemMessage(sys_msg)
     
     for (i, msg) in enumerate(session.messages)
-        content = context_combiner!(msg.content, msg.context)
+        full_content = context_combiner!(msg.content, msg.context)
         messages[i + 1] = if msg.role == :user
-            UserMessage(content)
+            image_paths = extract_image_paths(msg.content)
+            isempty(image_paths) ? UserMessage(full_content) : PT.UserMessageWithImages(full_content; image_path=image_paths)
         elseif msg.role == :assistant 
-            AIMessage(content)
+            AIMessage(full_content)
         else
-            UserMessage(content)
+            UserMessage(full_content)
         end
     end
     return messages

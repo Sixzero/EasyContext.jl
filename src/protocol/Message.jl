@@ -4,7 +4,7 @@
 	timestamp::DateTime
 	role::Symbol
 	content::String
-	context::Dict{String,String} = Dict{String,String	}()
+	context::Dict{String,String} = Dict{String,String}()
 	itok::Int=0
 	otok::Int=0
 	cached::Int=0
