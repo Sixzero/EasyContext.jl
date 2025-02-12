@@ -47,29 +47,7 @@ end
 """
 This is a function just to allow users of the library to pick the correct StreamCallbackConfig for their IO type.
 """
-pickStreamCallbackforIO(io::IOBuffer) = StreamCallbackConfig
 pickStreamCallbackforIO(io::IO)       = StreamCallbackConfig
 
-@kwdef struct SocketStreamCallbackConfig
-    io::IO=stdout
-    on_error::Function = noop
-    on_done::Function = noop
-    on_start::Function = noop
-    on_content::Function = noop
-    highlight_enabled::Bool = false
-    process_enabled::Bool = false
-    mode::String = "normal"
-end
-create(config::SocketStreamCallbackConfig) = begin
-    StreamCallbackWithHooks(
-        content_formatter = text_chunk -> write(config.io, text_chunk),
-        on_meta_usr       = (tokens, cost, elapsed) -> (write(config.io, dict_user_meta(tokens, cost, elapsed))),
-        on_meta_ai        = (tokens, cost, elapsed) -> (write(config.io, dict_ai_meta(tokens, cost, elapsed))), 
-        on_start          = ()            -> (write(config.io, Dict("event" => "start", "mode" => config.mode)); config.on_start()),
-        on_done           = ()            -> (write(config.io, Dict("event" => "done", "mode" => config.mode))),
-        on_error          = e             -> e isa InterruptException ? rethrow(e) : (write(config.io, Dict("event" => "error", "error" => e));config.on_error(e)),
-        on_stop_sequence  = stop_sequence -> write(config.io, Dict("event" => "stop_sequence", "stop_sequence" => stop_sequence)),
-    )
-end
 
 flush_state(state) = (write(state.buffer, state.current_line); state.current_line = ""; process_buffer(state, flushh=true))
