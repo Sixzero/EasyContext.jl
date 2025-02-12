@@ -2,7 +2,7 @@ using Test
 using EasyContext
 using EasyContext: extract_image_paths, is_image_path
 
-@testset "Image Path Extraction Tests" begin
+@testset failfast=true "Image Path Extraction Tests" begin
     @testset "Basic image path detection" begin
         @test is_image_path("\"image.png\"")
         @test is_image_path("'photo.jpg'")
@@ -65,5 +65,29 @@ using EasyContext: extract_image_paths, is_image_path
         @test length(paths) == 2
         @test "image1.png" in paths
         @test "image2.jpg" in paths
+    end
+
+    @testset "Handle unquoted paths" begin
+        content = "/home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-39.png  /home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-31.png relative.png"
+        paths = extract_image_paths(content)
+        @show paths
+        @test length(paths) == 2
+        @test "/home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-39.png" in paths
+        @test "/home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-31.png" in paths
+        @test !("relative.png" in paths)
+    end
+
+    @testset "Unquoted vs quoted paths" begin
+        content = """
+        Absolute unquoted: /path/to/image1.png
+        Relative quoted: "relative/path/image2.jpg"
+        Relative unquoted: relative/path/image3.png
+        """
+        paths = extract_image_paths(content)
+        @show paths
+        @test length(paths) == 2
+        @test "/path/to/image1.png" in paths
+        @test "relative/path/image2.jpg" in paths
+        @test !("relative/path/image3.png" in paths)
     end
 end

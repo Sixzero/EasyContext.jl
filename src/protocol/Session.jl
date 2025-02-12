@@ -1,4 +1,5 @@
 export Session, initSession
+include("SessionImageSupport.jl")
 
 @kwdef mutable struct Session{M <: MSG} <: CONV
     id::String = short_ulid()
@@ -40,8 +41,6 @@ abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv
 conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
 
-is_image_path(word::AbstractString) = occursin(r"[\"']([^\"']*?\.(?:png|jpg|jpeg|gif|bmp))[\"']", word)
-extract_image_paths(content::AbstractString) = [m.captures[1] for m in eachmatch(r"[\"']([^\"']*?\.(?:png|jpg|jpeg|gif|bmp))[\"']", content)]
 
 function to_PT_messages(session::Session, sys_msg::String)
     messages = Vector{PT.AbstractChatMessage}(undef, length(session.messages) + 1)
@@ -50,7 +49,7 @@ function to_PT_messages(session::Session, sys_msg::String)
     for (i, msg) in enumerate(session.messages)
         full_content = context_combiner!(msg.content, msg.context)
         messages[i + 1] = if msg.role == :user
-            image_paths = extract_image_paths(msg.content)
+            image_paths = validate_image_paths(extract_image_paths(msg.content))
             isempty(image_paths) ? UserMessage(full_content) : PT.UserMessageWithImages(full_content; image_path=image_paths)
         elseif msg.role == :assistant 
             AIMessage(full_content)
