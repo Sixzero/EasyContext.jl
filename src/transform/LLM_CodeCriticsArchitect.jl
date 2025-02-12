@@ -42,10 +42,14 @@ function transform(ctx::CodeCriticsArchitectContext, query, session::Session; io
     
     cb = create(StreamCallbackConfig(highlight_enabled=true, process_enabled=false; io))
 
+    api_kwargs = (; temperature=ctx.temperature, top_p=ctx.top_p)
+    if ctx.model == "o3m" # NOTE: o3m does not support temperature and top_p
+        api_kwargs = (; )
+    end
     response = aigenerate([
         SystemMessage(CRITICS_SYSTEM_PROMPT),
         UserMessage(prompt)
-    ], model=ctx.model, api_kwargs=(temperature=ctx.temperature, top_p=ctx.top_p), streamcallback=cb)
+    ], model=ctx.model, api_kwargs=api_kwargs, streamcallback=cb)
     
     content = response.content
     display(ctx, content)
