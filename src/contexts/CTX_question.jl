@@ -6,10 +6,12 @@ export QueryWithHistory, QueryWithHistoryAndAIMsg
 end
 
 function get_context!(qa::QueryWithHistory, query::AbstractString)
-    @assert isempty(qa.questions) || (!isempty(qa.questions) && last(qa.questions) != query) "Query already in history"
-    push!(qa.questions, query)
-    length(qa.questions) > qa.max_questions && popfirst!(qa.questions)
-    
+    if isempty(qa.questions) || (!isempty(qa.questions) && last(qa.questions) != query)
+        push!(qa.questions, query)
+        length(qa.questions) > qa.max_questions && popfirst!(qa.questions)
+    else
+        @info("This query got repeated, so we didn't add it to the history.")
+    end
     history = length(qa.questions) > 1 ? join(["$i. $msg" for (i, msg) in enumerate(qa.questions[1:end-1])], "\n") : ""
     
     return history
