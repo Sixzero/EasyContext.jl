@@ -48,7 +48,9 @@ function execute(tool::CreateFileTool; no_confirm=false)
     end
 end
 
-process_create_command(file_path::String, content::String) = begin
-	delimiter = get_unique_eof(content)
-    "cat > $(file_path) <<'$delimiter'\n$(content)\n$delimiter"
+function process_create_command(file_path::String, content::String)
+    delimiter = get_unique_eof(content)
+    # Escape square brackets and parentheses for shell
+    escaped_path = replace(file_path, r"[\[\]()]" => s"\\\0")
+    "cat > $(escaped_path) <<'$delimiter'\n$(content)\n$delimiter"
 end
