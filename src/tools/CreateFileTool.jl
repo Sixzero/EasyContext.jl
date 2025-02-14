@@ -1,5 +1,5 @@
 
-@kwdef struct CreateFileTool <: AbstractTool
+@kwdef mutable struct CreateFileTool <: AbstractTool
     id::UUID = uuid4()
     language::String = "txt"
     file_path::String
