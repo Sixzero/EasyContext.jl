@@ -202,8 +202,7 @@ function work(agent::FluidAgent, conv; cache,
         return response
     catch e
         e isa InterruptException && rethrow(e)
-        stacktrace = catch_backtrace()
-        @error "Error executing code block: $(sprint(showerror, e))" exception=stacktrace
+        @error "Error executing code block: $(sprint(showerror, e))"
         on_error(e)
         content = "Error: $(sprint(showerror, e))\n\nStacktrace: $(sprint(show, stacktrace))"
         push_message!(conv, create_AI_message(content))

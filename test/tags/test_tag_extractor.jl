@@ -233,5 +233,32 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         @test catfile_tag.args == "/tmp/test.txt"
         @test isempty(catfile_tag.content)
     end
+
+    @testset "ToolTag argument parsing" begin
+        parser = ToolTagExtractor([ShellBlockTool, CatFileTool])
+        
+        # Test single quoted argument
+        content = """
+        CATFILE "path/to/my file.txt"
+        """
+        extract_tool_calls(content, parser)
+        @test parser.tool_tags[1].args == "path/to/my file.txt"
+        empty!(parser.tool_tags)
+        
+        # Test multiple quoted arguments
+        content = """
+        GOOGLE_SEARCH "first query" "second query"
+        """
+        extract_tool_calls(content, parser)
+        @test parser.tool_tags[1].args == "\"first query\" \"second query\""
+        empty!(parser.tool_tags)
+        
+        # Test mixed quoted and unquoted
+        content = """
+        TOOL "quoted arg" unquoted_arg
+        """
+        extract_tool_calls(content, parser)
+        @test parser.tool_tags[1].args == "\"quoted arg\" unquoted_arg"
+    end
 end
 ;
