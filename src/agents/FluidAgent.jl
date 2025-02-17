@@ -40,6 +40,8 @@ function create_FluidAgent(model::String="claude"; create_sys_msg::Function, too
 
     $(get_tool_descriptions(tools))
 
+    If a tool doesn't return results after asking for results with #RUN then don't rerun it, but write, we didn't receive results from the specific tool usage.
+
     Follow KISS and SOLID principles.
 
     $(conversaton_starts_here)"""
