@@ -142,7 +142,9 @@ function work(agent::FluidAgent, conv; cache,
     on_done=noop,
     on_start=noop,
     io=stdout,
-    tool_kwargs=Dict())
+    extractor_type=ToolTagExtractor,
+    tool_kwargs=Dict()
+    )
     
     
     # Collect unique stop sequences from tools
@@ -167,16 +169,16 @@ function work(agent::FluidAgent, conv; cache,
         response = nothing
         while true
             # Create new ToolTagExtractor for each run
-            extractor = ToolTagExtractor(agent.tools)
+            extractor = extractor_type(agent.tools)
             agent.extractor = extractor
 
             cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
                 on_done = () -> begin
                     # Extracts tools in case anything is unclosed
-                    process_enabled && extract_tool_calls("\n", extractor; kwargs=tool_kwargs, is_flush=true)
+                    process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
                     on_done()
                 end,
-                on_content = process_enabled ? (text -> extract_tool_calls(text, extractor; kwargs=tool_kwargs)) : noop,
+                on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
             ))
 
             response = aigenerate(

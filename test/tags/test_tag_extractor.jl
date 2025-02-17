@@ -31,7 +31,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         Some text after
         """
 
-        result = extract_tool_calls(content, parser; kwargs=Dict("root_path" => ""))
+        result = extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => ""))
 
         @test length(parser.tool_tags) == 2
     end
@@ -64,7 +64,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         ```
         Some text after
         """
-        extract_tool_calls(content, parser)
+        extract_tool_calls(content, parser, stdout)
         @test isempty(parser.tool_tasks) # Should not create command without closing tag
 
     end
@@ -83,11 +83,11 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         ```
         """
 
-        extract_tool_calls(content1, parser)
+        extract_tool_calls(content1, parser, stdout)
         @test isempty(parser.tool_tasks) # Should not create command from partial content
 
-        extract_tool_calls(content2, parser)
-        extract_tool_calls("\n", parser, is_flush=true)
+        extract_tool_calls(content2, parser, stdout)
+        extract_tool_calls("\n", parser, stdout, is_flush=true)
         @test length(parser.tool_tasks) == 1 # Should create command when complete
     end
 
@@ -108,7 +108,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         Some text after
         """
 
-        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/test/root"))
+        extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/test/root"))
         
         @test length(parser.tool_tags) == 2
         
@@ -137,7 +137,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         More text
         """
 
-        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/test/root"))
+        extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/test/root"))
         
         @test length(parser.tool_tags) == 3
         
@@ -187,7 +187,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         Some text after
         """
 
-        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/tmp"), is_flush=true)
+        extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/tmp"), is_flush=true)
         
         @test length(parser.tool_tags) == 2
         
@@ -214,7 +214,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         More text
         """
 
-        extract_tool_calls(content, parser; kwargs=Dict("root_path" => "/test/root"))
+        extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/test/root"))
         
         @test length(parser.tool_tags) == 3
         

@@ -46,7 +46,7 @@ function update_processed_index!(stream_parser::ToolTagExtractor, lines, last_sa
     end
 end
 
-function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor; kwargs=Dict(), is_flush::Bool=false)
+function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor, io::IO; kwargs=Dict(), is_flush::Bool=false)
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
