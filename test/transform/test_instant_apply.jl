@@ -49,15 +49,9 @@ using EasyContext: InstantApplyDiff, atomic_append_diff, load_instant_apply_diff
     end
 end;
 #%%
-using EasyContext: load_instant_apply_diffs, DEFAULT_DIFF_FILE, save_instant_apply_diffs
-res = load_instant_apply_diffs()
+using EasyContext: apply_modify_by_llm, get_merge_prompt_v1
 
-k = "diffs/diff_36"
-# k = "diffs/diff_39"
-println(res[k].original)
-@show "OK OTHER FILE"
-println(res[k].proposed)
-# for (k, v) in res
-    # @show k, typeof(v)
-# end
-# save_instant_apply_diffs(res, DEFAULT_DIFF_FILE)
+apply_modify_by_llm("original", "proposed"; model=["gem20f", "minimax", "gpt4o"], temperature=0, verbose=false, merge_prompt=get_merge_prompt_v1 )
+
+
+

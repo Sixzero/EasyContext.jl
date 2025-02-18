@@ -25,7 +25,7 @@ shell_block_prompt_v2() = shell_block_prompt_base() * """
 Before staging files and creating a PR check diffs with:
 $(SHELL_BLOCK_TAG)
 $(code_format("git diff | cat", "sh"))
-#RUN
+$STOP_SEQUENCE
 """
 
 shell_block_prompt_base() = """
@@ -37,8 +37,8 @@ Format:
 $(SHELL_BLOCK_TAG)
 $(code_format("command", "sh"))
 
-The results will be found in the next user message. You can ask for immediate feedback with #RUN. 
-You always need to close the code block, and only after that you can write #RUN.
+The results will be found in the next user message. You can ask for immediate feedback with $STOP_SEQUENCE. 
+You always need to close the code block, and only after that you can write $STOP_SEQUENCE.
 """
 shell_block_prompt_v0() = shell_block_prompt_base() * """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! Wait for feedback.

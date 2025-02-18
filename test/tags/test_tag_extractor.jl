@@ -204,13 +204,13 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         @test create_tag.content == "```\nNew file content\nanother_multiline_assignment = \"\"\"\nyeah we know it again\n\"\"\"\nyes\n```"
         @test occursin("yeah we know it again", create_tag.content) # This multiline assignment should be part of content
     end
-    @testset "ToolTag with #RUN instant execution" begin
+    @testset "ToolTag with $STOP_SEQUENCE instant execution" begin
         parser = ToolTagExtractor([ClickTool, SendKeyTool, CatFileTool])
         content = """
         Some text
         CLICK 100 200
         SENDKEY ctrl+c
-        CATFILE /tmp/test.txt #RUN
+        CATFILE /tmp/test.txt $STOP_SEQUENCE
         More text
         """
 
