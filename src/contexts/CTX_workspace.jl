@@ -16,7 +16,7 @@ Base.write(io::IO, ::WorkspaceCTXResult) = nothing
 
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
-function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model="gpt4om", top_k=50, top_n=12)
+function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model=["gem20f", "gem15f", "gpt4om"], top_k=50, top_n=12)
     workspace = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     embedder = create_voyage_embedder(cache_prefix="workspace")
     bm25 = BM25Embedder()

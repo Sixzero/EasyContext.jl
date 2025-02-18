@@ -41,7 +41,7 @@ function create_FluidAgent(model::String="claude"; create_sys_msg::Function, too
 
     $(get_tool_descriptions(tools))
 
-    If a tool doesn't return results after asking for results with #RUN then don't rerun it, but write, we didn't receive results from the specific tool usage.
+    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool usage.
 
     Follow KISS and SOLID principles.
 
@@ -191,9 +191,10 @@ function work(agent::FluidAgent, conv; cache,
                 streamcallback=cb,
                 verbose=false
             )
-
+            
             execute_tools(extractor; no_confirm)
             
+            push_message!(conv, create_AI_message(response.content))
             # Check if any tool was cancelled
             if any(is_cancelled, extractor.tools_extracted)
                 @info "Tool execution cancelled by user, stopping further processing"
@@ -210,8 +211,6 @@ function work(agent::FluidAgent, conv; cache,
             sleep(1)
         end
 
-        push_message!(conv, create_AI_message(response.content))
-        
         return response
     catch e
         e isa InterruptException && rethrow(e)

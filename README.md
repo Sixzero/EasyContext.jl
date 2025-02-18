@@ -153,9 +153,9 @@ CalcTool(cmd::ToolTag) = CalcTool(expression=cmd.args)
 toolname(::Type{CalcTool}) = "CALC"
 get_description(::Type{CalcTool}) = """
 Calculate mathematical expressions:
-CALC 2 + 2 #RUN
+CALC 2 + 2 [$STOP_SEQUENCE]
 """
-stop_sequence(::Type{CalcTool}) = "#RUN"
+stop_sequence(::Type{CalcTool}) = STOP_SEQUENCE
 
 # Implement main operation
 function execute(tool::CalcTool)
