@@ -149,26 +149,3 @@ function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,star
     
     return is_flush ? last_block_end : nothing
 end
-
-function parse_tool(first_line::String, content::String=""; kwargs=Dict())
-    tag_end = findfirst(' ', first_line)
-    name = String(strip(first_line[1:something(tag_end, length(first_line))]))
-    args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))
-
-    # Remove #STOPSEQ from args if present
-    if endswith(args, " $STOP_SEQUENCE")    
-        args = strip(args[1:end-length(" $STOP_SEQUENCE")])
-    end
-
-    # Handle quoted arguments by removing outer quotes if present
-    # e.g.: "my query" -> my query
-    if !isempty(args)
-        args = strip(args)
-        if length(args) >= 2 && args[1] == '"' && args[end] == '"'
-            args = args[2:end-1]
-        end
-    end
-        
-    
-    ToolTag(name=name, args=args, content=content, kwargs=kwargs)
-end
