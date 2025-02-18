@@ -16,6 +16,7 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     extractor::ToolTagExtractor = ToolTagExtractor()
     sys_msg::String = ""
 end 
+
 # create_FluidAgent to prevent conflict with the constructor
 function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{T}) where T
     sys_msg = """
@@ -75,6 +76,7 @@ function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false)
     result = execute(tool; no_confirm)
     result
 end
+
 """
 Returns both the full and truncated context strings
 """
@@ -86,6 +88,7 @@ function get_tool_results_agent(agent::FluidAgent, max_length::Int=20000; filter
     end
     return ctx, ctx
 end
+
 """
 Process and execute tools in order while allowing parallel preprocessing
 """
@@ -146,7 +149,6 @@ function work(agent::FluidAgent, conv; cache,
     tool_kwargs=Dict()
     )
     
-    
     # Collect unique stop sequences from tools
     stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
     
@@ -162,10 +164,9 @@ function work(agent::FluidAgent, conv; cache,
     end
 
     api_kwargs = apply_stop_seq_kwargs(api_kwargs, agent.model, stop_sequences)
-    StreamCallbackTYPE= pickStreamCallbackforIO(io)
+    StreamCallbackTYPE = pickStreamCallbackforIO(io)
 
     try
-
         response = nothing
         while true
             # Create new ToolTagExtractor for each run
@@ -191,6 +192,13 @@ function work(agent::FluidAgent, conv; cache,
             )
 
             execute_tools(extractor; no_confirm)
+            
+            # Check if any tool was cancelled
+            if any(is_cancelled, extractor.tools_extracted)
+                @info "Tool execution cancelled by user, stopping further processing"
+                break
+            end
+            
             # Break if no more tool execution needed
             !needs_tool_execution(cb.run_info) && break
             length(extractor.tool_tags) == 0 && break

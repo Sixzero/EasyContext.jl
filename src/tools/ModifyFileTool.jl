@@ -7,7 +7,7 @@ include("diffviews/DiffViews.jl")
     root_path::String
     content::String
     postcontent::String
-    model=["gem20f", "minimax", "o3m"] # the model handling the LLM apply
+    model=["gem20f", "gpt4o", ] # the model handling the LLM apply
 end
 function ModifyFileTool(cmd::ToolTag)
     # Clean up file path by removing trailing '>'

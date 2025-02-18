@@ -48,6 +48,8 @@ stop_sequence(cmd::Type{ShellBlockTool}) = ""
 
 tool_format(::Type{ShellBlockTool}) = :multi_line
 
+const EXECUTION_CANCELLED = "Execution cancelled by user."
+
 function execute(cmd::ShellBlockTool; no_confirm=false)
     # !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
     print_code(cmd.content)
@@ -58,10 +60,14 @@ function execute(cmd::ShellBlockTool; no_confirm=false)
             cmd_all_info_stream(`zsh -c $(cmd.content)`)
         end
     else
-        "\nOperation cancelled by user."
+        EXECUTION_CANCELLED
     end
     push!(cmd.run_results, result)
     return result
+end
+
+function is_cancelled(cmd::ShellBlockTool)
+    !isempty(cmd.run_results) && cmd.run_results[end] == EXECUTION_CANCELLED
 end
 
 function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
@@ -94,7 +100,16 @@ function LLM_safetorun(cmd::ShellBlockTool)
 end
 
 function result2string(tool::ShellBlockTool)
-    tool_result= isempty(tool.run_results) || isempty(tool.run_results[end]) ? "No results" : tool.run_results[end]
+    tool_result = if isempty(tool.run_results) || isempty(tool.run_results[end]) 
+        "No results" 
+    else
+        result = tool.run_results[end]
+        if length(result) > 20000
+            result[1:12000] * "\n...\n[Output truncated: exceeded token limit]\n...\n" * result[end-4000:end]
+        else
+            result
+        end
+    end
     shortened_content = get_shortened_code(tool.content)
     """$(SHELL_BLOCK_OPEN)
     $shortened_content

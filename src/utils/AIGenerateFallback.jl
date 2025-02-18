@@ -79,14 +79,14 @@ function try_generate(manager::AIGenerateFallback{String}, prompt; api_kwargs, k
     end
 end
 
-function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; kwargs...)
+function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; api_kwargs, kwargs...)
     for model in manager.models
         state = get!(manager.states, model, ModelState())
         maybe_recover_model!(state)
         !state.available && continue
         
         result, time = @timed try
-            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), kwargs...)
+            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), api_kwargs=model == "o3m" ? (; ) : api_kwargs, kwargs...)
         catch e
             reason = handle_error!(state, e, model)
             disable_model!(state, reason)

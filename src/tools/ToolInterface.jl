@@ -51,6 +51,11 @@ preprocess(tool::AbstractTool) = tool
 execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool))"
 
 """
+Check if tool execution was cancelled by user
+"""
+is_cancelled(tool::AbstractTool) = false
+
+"""
 Usually stop_sequence and toolname are static for type
 """
 toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool)"; return "")
