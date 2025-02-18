@@ -196,7 +196,7 @@ function work(agent::FluidAgent, conv; cache,
             
             push_message!(conv, create_AI_message(response.content))
             # Check if any tool was cancelled
-            if any(is_cancelled, extractor.tools_extracted)
+            if are_tools_cancelled(extractor)
                 @info "Tool execution cancelled by user, stopping further processing"
                 break
             end
@@ -214,10 +214,10 @@ function work(agent::FluidAgent, conv; cache,
         return response
     catch e
         e isa InterruptException && rethrow(e)
-        # display(stacktrace())
-        @error "Error executing code block:" exception=(e, stacktrace())
+        # display(catch_backtrace())
+        @error "Error executing code block:" exception=(e, catch_backtrace())
         on_error(e)
-        content = "Error: $(sprint(showerror, e))\n\nStacktrace: $(sprint(show, stacktrace))"
+        content = "Error: $(sprint(showerror, e))\n\nStacktrace: $(sprint(show, catch_backtrace(e)))"
         push_message!(conv, create_AI_message(content))
         return (; 
             content,

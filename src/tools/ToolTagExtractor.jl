@@ -144,3 +144,6 @@ function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{
 	end
 	return output
 end
+function are_tools_cancelled(stream_parser::ToolTagExtractor)
+    return any(is_cancelled, stream_parser.tools_extracted)
+end
