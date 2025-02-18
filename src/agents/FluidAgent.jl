@@ -8,17 +8,17 @@ export FluidAgent, execute_tools, work
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
 """
-@kwdef mutable struct FluidAgent
-    tools::Vector{Type{<:AbstractTool}} 
+@kwdef mutable struct FluidAgent{E<:AbstractExtractor}
+    tools::Vector{DataType} 
     model::String = "claude"
     workspace::String = pwd()
-    tool_map::Dict{String,Type{<:AbstractTool}} = Dict(toolname(T) => T for T in tools)
-    extractor::ToolTagExtractor = ToolTagExtractor()
+    tool_map::Dict{String,DataType} = Dict{String,DataType}(toolname(T) => T for T in tools)
+    extractor::E = ToolTagExtractor()
     sys_msg::String = ""
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{T}) where T
+function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{DataType}, extractor::E) where {E <:AbstractExtractor}
     sys_msg = """
     $(create_sys_msg())
 
@@ -46,7 +46,7 @@ function create_FluidAgent(model::String="claude"; create_sys_msg::Function, too
     Follow KISS and SOLID principles.
 
     $(conversaton_starts_here)"""
-    agent = FluidAgent(; sys_msg, tools=convert_tool_types(tools), model)
+    agent = FluidAgent(; sys_msg, tools, model, extractor)
     agent
 end
 
@@ -82,6 +82,7 @@ Returns both the full and truncated context strings
 """
 function get_tool_results_agent(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=DataType[])
     ctx = get_tool_results(agent.extractor; filter_tools)
+    (isempty(ctx)) && return "", ""
     if length(ctx) > max_length
         @warn "Shell context too long, truncating to $max_length characters"
         return ctx, ctx[1:min(max_length, end)]
@@ -145,7 +146,6 @@ function work(agent::FluidAgent, conv; cache,
     on_done=noop,
     on_start=noop,
     io=stdout,
-    extractor_type=ToolTagExtractor,
     tool_kwargs=Dict()
     )
     
@@ -170,7 +170,7 @@ function work(agent::FluidAgent, conv; cache,
         response = nothing
         while true
             # Create new ToolTagExtractor for each run
-            extractor = extractor_type(agent.tools)
+            extractor = typeof(agent.extractor)(agent.tools)
             agent.extractor = extractor
 
             cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
@@ -181,6 +181,7 @@ function work(agent::FluidAgent, conv; cache,
                 end,
                 on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
             ))
+
 
             response = aigenerate(
                 to_PT_messages(conv, agent.sys_msg);
@@ -214,7 +215,8 @@ function work(agent::FluidAgent, conv; cache,
         return response
     catch e
         e isa InterruptException && rethrow(e)
-        @error "Error executing code block: $(sprint(showerror, e))"
+        # display(stacktrace())
+        @error "Error executing code block:" exception=(e, stacktrace())
         on_error(e)
         content = "Error: $(sprint(showerror, e))\n\nStacktrace: $(sprint(show, stacktrace))"
         push_message!(conv, create_AI_message(content))

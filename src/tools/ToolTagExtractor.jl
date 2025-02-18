@@ -2,7 +2,7 @@ export ToolTagExtractor, extract_tool_calls, get_last_tool_result
 
 #  I think we will need a runner and parser separated...
 
-@kwdef mutable struct ToolTagExtractor
+@kwdef mutable struct ToolTagExtractor <: AbstractExtractor
     # for the extracted tools
     tools_extracted::Vector{AbstractTool} = AbstractTool[]
     
@@ -19,18 +19,12 @@ export ToolTagExtractor, extract_tool_calls, get_last_tool_result
     multi_line_tags::Vector{String} = String[]
 end
 # A rather ugly conversion to Type{<:AbstractTool}
-function ToolTagExtractor(tools::Vector{DataType})
-    ToolTagExtractor(convert_tool_types(tools))
-end
 
-function ToolTagExtractor(tools::Vector{T}) where T <: Type{<:AbstractTool}
+function ToolTagExtractor(tools::Vector{DataType})
     single_line_tags = String[toolname(T) for T in tools if tool_format(T) == :single_line]
     multi_line_tags = String[toolname(T) for T in tools if tool_format(T) == :multi_line]
     ToolTagExtractor(;single_line_tags, multi_line_tags)
 end
-
-convert_tool_types(tools::Vector{DataType}) = Type{<:AbstractTool}[t for t in tools]
-convert_tool_types(tools::Vector{T}) where T <: Type{<:AbstractTool} = tools
 
 function process_immediate_tool!(line::String, stream_parser::ToolTagExtractor, content::String=""; kwargs=Dict())
     tool_tag = parse_tool(line, content; kwargs)
@@ -86,32 +80,6 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
         i += 1
     end
 end
-execute(t::Task) = begin
-    cmd = fetch(t)
-    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
-end
-
-function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, )
-    if !stream_parser.skip_execution
-        # Execute in order
-        for (id, task) in stream_parser.tool_tasks
-            tool = fetch(task)
-            isnothing(tool) && continue
-            execute(tool; no_confirm)
-        end
-        
-    end
-end
-
-function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{T}=Type{<:AbstractTool}[]) where T
-	output = ""
-	for (id, task) in stream_parser.tool_tasks
-			tool = fetch(task)
-            (isempty(filter_tools) || typeof(tool) in filter_tools) && (output *= result2string(tool))
-	end
-	return output
-end
-
 function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,start_idx::Int=1, is_flush=false)
     nesting_level = 1  # Start at 1 since we're already inside a code block
     is_in_multiline_str = false
@@ -148,4 +116,31 @@ function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,star
     end
     
     return is_flush ? last_block_end : nothing
+end
+
+
+execute(t::Task) = begin
+    cmd = fetch(t)
+    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
+end
+
+
+function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, kwargs...)
+    if !stream_parser.skip_execution
+        # Execute in order
+        for (id, task) in stream_parser.tool_tasks
+            tool = fetch(task)
+            isnothing(tool) && continue
+            execute(tool; no_confirm)
+        end
+    end
+end
+
+function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{DataType}=DataType[])
+	output = ""
+	for (id, task) in stream_parser.tool_tasks
+			tool = fetch(task)
+            (isempty(filter_tools) || typeof(tool) in filter_tools) && (output *= result2string(tool))
+	end
+	return output
 end
