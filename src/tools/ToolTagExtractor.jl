@@ -3,10 +3,9 @@ export ToolTagExtractor, extract_tool_calls, get_last_tool_result
 #  I think we will need a runner and parser separated...
 
 @kwdef mutable struct ToolTagExtractor <: AbstractExtractor
-    # for the extracted tools
-    tools_extracted::Vector{AbstractTool} = AbstractTool[]
-    
+    # for the extracted tools tags
     tool_tags::Vector{ToolTag}=ToolTag[]
+    # for the extracted Tools
     tool_tasks::OrderedDict{UUID, Task} = OrderedDict{UUID, Task}()
     skip_execution::Bool = false
     no_confirm::Bool = false
@@ -40,7 +39,7 @@ function update_processed_index!(stream_parser::ToolTagExtractor, lines, last_sa
     end
 end
 
-function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor, io::IO; kwargs=Dict(), is_flush::Bool=false)
+function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor, io::IO=stdout; kwargs=Dict(), is_flush::Bool=false)
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
@@ -145,5 +144,5 @@ function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{
 	return output
 end
 function are_tools_cancelled(stream_parser::ToolTagExtractor)
-    return any(is_cancelled, stream_parser.tools_extracted)
+    return any(is_cancelled, fetch.(values(stream_parser.tool_tasks)))
 end

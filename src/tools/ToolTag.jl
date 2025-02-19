@@ -35,11 +35,11 @@ function parse_tool(first_line::String, content::String=""; kwargs=Dict())
     # e.g.: "my query" -> my query
     if !isempty(args)
         args = strip(args)
-        if length(args) >= 2 && args[1] == '"' && args[end] == '"'
+        # If there's only one quoted argument, remove the quotes
+        if length(args) >= 2 && args[1] == '"' && args[end] == '"' && count(c -> c == '"', args) == 2
             args = args[2:end-1]
         end
     end
-        
     
     ToolTag(name=name, args=args, content=content, kwargs=kwargs)
 end

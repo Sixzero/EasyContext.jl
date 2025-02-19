@@ -2,7 +2,7 @@ using Test
 using EasyContext
 using UUIDs  # Add UUIDs import for uuid4()
 using EasyContext: ToolTagExtractor, ToolTag, extract_tool_calls, serialize
-using EasyContext: SHELL_BLOCK_TAG, AbstractTool
+using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
 
 @testset failfast=true "ToolTagExtractor Tests" begin
     @testset "Constructor" begin
@@ -235,7 +235,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
     end
 
     @testset "ToolTag argument parsing" begin
-        parser = ToolTagExtractor([ShellBlockTool, CatFileTool])
+        parser = ToolTagExtractor([ShellBlockTool, CatFileTool, JuliaSearchTool])
         
         # Test single quoted argument
         content = """
@@ -247,7 +247,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         
         # Test multiple quoted arguments
         content = """
-        GOOGLE_SEARCH "first query" "second query"
+        JULIA_SEARCH "first query" "second query"
         """
         extract_tool_calls(content, parser)
         @test parser.tool_tags[1].args == "\"first query\" \"second query\""
@@ -255,10 +255,48 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool
         
         # Test mixed quoted and unquoted
         content = """
-        TOOL "quoted arg" unquoted_arg
+        JULIA_SEARCH "quoted arg" unquoted_arg
         """
         extract_tool_calls(content, parser)
         @test parser.tool_tags[1].args == "\"quoted arg\" unquoted_arg"
+    end
+    @testset "Tool cancellation detection" begin
+        parser = ToolTagExtractor([ShellBlockTool])
+    
+        content = """
+        SHELL_BLOCK
+        ```sh
+        echo "First command"
+        ```endblock
+        
+        SHELL_BLOCK
+        ```sh
+        echo "Second command"
+        ```endblock
+        """
+        
+        # Simulate execution where second command is cancelled
+        extract_tool_calls(content, parser, stdout, kwargs=Dict("root_path" => "."))
+        
+        # Execute first command normally
+        first_tool = fetch(first(values(parser.tool_tasks)))
+        execute(first_tool; no_confirm=true)
+        
+        # Simulate cancellation for second command
+        second_tool = fetch(last(values(parser.tool_tasks)))
+        push!(second_tool.run_results, EXECUTION_CANCELLED)
+    
+        # Check if any tool was cancelled
+        @test are_tools_cancelled(parser) == true
+    
+        # Clear for next test
+        empty!(parser.tool_tasks)
+        empty!(parser.tool_tags)
+        
+        # Test when no cancellation happens
+        extract_tool_calls(content, parser, stdout, kwargs=Dict("root_path" => "."))
+        execute_tools(parser; no_confirm=true)
+        @test are_tools_cancelled(parser) == false
     end
 end
 ;
