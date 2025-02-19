@@ -82,12 +82,8 @@ Returns both the full and truncated context strings
 """
 function get_tool_results_agent(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=DataType[])
     ctx = get_tool_results(agent.extractor; filter_tools)
-    (isempty(ctx)) && return "", ""
-    if length(ctx) > max_length
-        @warn "Shell context too long, truncating to $max_length characters"
-        return ctx, ctx[1:min(max_length, end)]
-    end
-    return ctx, ctx
+    isempty(ctx) && return ""
+    return ctx
 end
 
 """
@@ -206,7 +202,7 @@ function work(agent::FluidAgent, conv; cache,
             length(extractor.tool_tags) == 0 && break
             
             # Add tool results to conversation for next iteration
-            result, _ = get_tool_results_agent(agent)
+            result = get_tool_results_agent(agent)
             push_message!(conv, create_user_message(result))
             sleep(1)
         end
