@@ -44,7 +44,7 @@ shell_block_prompt_v0() = shell_block_prompt_base() * """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! Wait for feedback.
 """
 
-stop_sequence(cmd::Type{ShellBlockTool}) = ""
+stop_sequence(cmd::Type{ShellBlockTool}) = STOP_SEQUENCE
 
 tool_format(::Type{ShellBlockTool}) = :multi_line
 
