@@ -19,13 +19,13 @@ end
 instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::ToolTag) = ShellBlockTool(cmd)
 toolname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
 
-get_description(cmd::Type{ShellBlockTool}) =  shell_block_prompt_v2()
+get_description(cmd::Type{ShellBlockTool}) =  shell_block_prompt_v1()
 shell_block_prompt_v1() = shell_block_prompt_base()
 shell_block_prompt_v2() = shell_block_prompt_base() * """
-Before staging files and creating a PR check diffs with:
+Ex. before staging files and creating a PR check diffs with:
 $(SHELL_BLOCK_TAG)
 $(code_format("git diff | cat", "sh"))
-$STOP_SEQUENCE
+$(STOP_SEQUENCE)
 """
 
 shell_block_prompt_base() = """
@@ -38,7 +38,6 @@ $(SHELL_BLOCK_TAG)
 $(code_format("command", "sh"))
 
 The results will be found in the next user message. You can ask for immediate feedback with $STOP_SEQUENCE. 
-You always need to close the code block, and only after that you can write $STOP_SEQUENCE.
 """
 shell_block_prompt_v0() = shell_block_prompt_base() * """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! Wait for feedback.
