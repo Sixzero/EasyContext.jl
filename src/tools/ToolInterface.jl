@@ -58,7 +58,7 @@ is_cancelled(tool::AbstractTool) = false
 """
 Usually stop_sequence and toolname are static for type
 """
-toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool)"; return "")
+toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool) $(stacktrace())"; return "")
 toolname(tool::AbstractTool)::String = toolname(typeof(tool))
 stop_sequence(::Type{<:AbstractTool})::String = (@warn "Unimplemented \"stop_sequence\" for $(typeof(tool))"; return "")
 stop_sequence(tool::AbstractTool)::String = stop_sequence(typeof(tool))

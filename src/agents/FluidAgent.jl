@@ -144,7 +144,6 @@ function work(agent::FluidAgent, conv; cache,
     io=stdout,
     tool_kwargs=Dict()
     )
-    
     # Collect unique stop sequences from tools
     stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
     
@@ -171,7 +170,6 @@ function work(agent::FluidAgent, conv; cache,
 
             cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
                 on_done = () -> begin
-                    # Extracts tools in case anything is unclosed
                     process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
                     on_done()
                 end,
@@ -211,9 +209,10 @@ function work(agent::FluidAgent, conv; cache,
     catch e
         e isa InterruptException && rethrow(e)
         # display(catch_backtrace())
-        @error "Error executing code block:" exception=(e, catch_backtrace())
+        @error "Error in fluidagent work" exception=(e, catch_backtrace())
         on_error(e)
-        content = "Error: $(sprint(showerror, e))\n\nStacktrace: $(sprint(show, catch_backtrace(e)))"
+
+        content = "Error: $(sprint(showerror, e))\n\nStacktrace:\n$(join(string.(stacktrace(catch_backtrace())), "\n"))"
         push_message!(conv, create_AI_message(content))
         return (; 
             content,
