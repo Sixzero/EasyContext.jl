@@ -32,7 +32,7 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session; io::IO
 
     Based on the above PREVIOUS_CONTEXT USER_QUESTION, create a detailed execution plan, which is sufficient to answer user question.
     """
-    StreamCallbackTYPE= pickStreamCallbackforIO(io)
+    StreamCallbackTYPE = pickStreamCallbackforIO(io)
     cb = create(StreamCallbackTYPE(highlight_enabled=true, process_enabled=false; io, mode="EXECUTION_PLAN"))
 
     api_kwargs = (; temperature=ctx.temperature, top_p=ctx.top_p)
@@ -46,7 +46,7 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session; io::IO
     
     content = response.content
     display(ctx, content)
-    "\n\n<EXECUTION_PLAN>\n" * content * "\n</EXECUTION_PLAN>\n\n"
+    "<EXECUTION_PLAN>\n" * content * "\n</EXECUTION_PLAN>\n\n"
 end
 
 const PLANNER_SYSTEM_PROMPT = """

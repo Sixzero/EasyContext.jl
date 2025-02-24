@@ -3,7 +3,7 @@ using PromptingTools
 using PromptingTools: aigenerate
 using StreamCallbacksExt: needs_tool_execution
 
-export FluidAgent, execute_tools, work
+export FluidAgent, execute_tools, work, create_FluidAgent
 
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
@@ -18,7 +18,7 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{DataType}, extractor::E) where {E <:AbstractExtractor}
+function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{DataType}, extractor::E=ToolTagExtractor(tools)) where {E <:AbstractExtractor}
     sys_msg = """
     $(create_sys_msg())
 

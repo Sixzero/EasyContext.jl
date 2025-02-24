@@ -10,6 +10,8 @@ using UUIDs
 using PromptingTools
 using PromptingTools: UserMessage, AIMessage, SystemMessage
 
+export search
+
 include("utils/utils.jl")
 include("utils/UserConfirmation.jl")
 include("action/greet.jl")

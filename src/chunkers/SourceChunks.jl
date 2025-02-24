@@ -19,7 +19,7 @@ function RAG.get_chunks(chunker::SourceChunker,
         verbose::Bool = false)
     @assert isempty(sources) || length(sources) == length(items) "Length of `sources` must match length of `items` if provided"
 
-    output_chunks = Vector{SubString{String}}()
+    output_chunks = Vector{SourceChunk}()
     output_sources = Vector{eltype(sources)}()
     extras = Vector{Dict{Symbol, String}}()
 
@@ -28,41 +28,37 @@ function RAG.get_chunks(chunker::SourceChunker,
     for (i, item) in enumerate(items)
         if item isa AbstractString && isfile(item)
             # Process individual file
-            process_file(chunker, item, isempty(sources) ? item : sources[i], output_chunks, output_sources, verbose)
+            process_file(chunker, item, isempty(sources) ? item : sources[i], output_chunks, verbose)
         elseif item isa Pkg.API.PackageInfo
             # Process Julia package
-            process_package(chunker, item, output_chunks, output_sources, verbose)
+            process_package(chunker, item, output_chunks, verbose)
         else
             @warn "Unsupported item type: $(typeof(item))"
         end
         next!(progress)
     end
 
-    # Convert paths to use tilde notation
-    output_sources = [home_abrev(source) for source in output_sources]
-
-    return output_chunks, output_sources, extras
+    return output_chunks
 end
 
 function process_file(chunker::SourceChunker, file_path::AbstractString, source::AbstractString, 
-                      output_chunks::Vector{SubString{String}}, output_sources::Vector{String}, verbose::Bool)
+                      output_chunks::Vector{SourceChunk}, verbose::Bool)
     if endswith(lowercase(file_path), ".jl")
         julia_chunker = JuliaSourceChunker()
-        chunks, src = get_chunks(julia_chunker, [file_path]; sources=[source], verbose=verbose)
+        chunks = get_chunks(julia_chunker, [file_path]; sources=[source], verbose=verbose)
     elseif endswith(lowercase(file_path), ".py")
         python_chunker = PythonSourceChunker()
-        chunks, src = get_chunks(python_chunker, [file_path]; sources=[source], verbose=verbose)
+        chunks = get_chunks(python_chunker, [file_path]; sources=[source], verbose=verbose)
     else
         @warn "Unsupported file type: $file_path"
         return
     end
 
     append!(output_chunks, chunks)
-    append!(output_sources, src)
 end
 
 function process_package(chunker::SourceChunker, pkg_info::Pkg.API.PackageInfo, 
-                         output_chunks::Vector{SubString{String}}, output_sources::Vector{String}, verbose::Bool)
+                         output_chunks::Vector{SourceChunk}, verbose::Bool)
     pkg_path = pkg_info.source
     if isnothing(pkg_path)
         @warn "Package $(pkg_info.name) has no source path"
@@ -84,9 +80,8 @@ function process_package(chunker::SourceChunker, pkg_info::Pkg.API.PackageInfo,
     julia_chunker = JuliaSourceChunker()
 
     for (file, modules) in file_module_map
-        chunks, src = get_chunks(julia_chunker, [file]; sources=[file], verbose=verbose, modules=modules)
+        chunks = get_chunks(julia_chunker, [file]; sources=[file], verbose=verbose, modules=modules)
         append!(output_chunks, chunks)
-        append!(output_sources, src)
     end
 end
 

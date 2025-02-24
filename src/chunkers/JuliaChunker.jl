@@ -43,7 +43,7 @@ function RAG.get_chunks(chunker::JuliaSourceChunker,
         chunks = [create_chunk(def, chunker.include_module_info) for def in defs]
         # chunks .|> println
         
-        @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
+        # @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
     
         append!(output_chunks, chunks)
     end

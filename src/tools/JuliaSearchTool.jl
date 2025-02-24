@@ -13,6 +13,7 @@ function JuliaSearchTool(cmd::ToolTag)
 end
 instantiate(::Val{Symbol(JULIA_SEARCH_TAG)}, cmd::ToolTag) = JuliaSearchTool(cmd)
 
+stop_sequence(cmd::Type{JuliaSearchTool}) = STOP_SEQUENCE
 toolname(::Type{JuliaSearchTool}) = JULIA_SEARCH_TAG
 tool_format(::Type{JuliaSearchTool}) = :single_line
 
