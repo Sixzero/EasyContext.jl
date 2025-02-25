@@ -23,7 +23,7 @@ function create_FluidAgent(model::String="claude"; create_sys_msg::Function, too
     $(create_sys_msg())
 
     $(highlight_code_guide)
-    $(highlight_changes_guide)
+    $(highlight_changes_guide_v2)
     $(organize_file_guide)
     $(shell_script_n_result_guide_v2)
 
