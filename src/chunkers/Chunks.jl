@@ -1,10 +1,18 @@
 abstract type AbstractChunk end
 
 # TODO maybe rename to FilePath ?
-@kwdef mutable struct SourcePath
+mutable struct SourcePath
   path::AbstractString
-  from_line::Union{Int,Nothing} = nothing
-  to_line::Union{Int,Nothing} = nothing
+  from_line::Union{Int,Nothing}
+  to_line::Union{Int,Nothing}
+  
+  function SourcePath(; path::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
+    # Only check if the file exists if the path doesn't contain line number indicators
+    if occursin(":", path)
+      @warn "Creating SourcePath with non-existent file: $path (pwd: $(pwd()))" stacktrace()
+    end
+    new(path, from_line, to_line)
+  end
 end
 Base.string(s::SourcePath) = "$(s.path)"* (isnothing(s.from_line) ? "" : ":$(s.from_line)") * (isnothing(s.to_line) ? "" : "-$(s.to_line)")
 @kwdef struct SourceChunk <: AbstractChunk
@@ -40,8 +48,15 @@ end
 reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source))
 function get_updated_file_content(source::SourcePath)
     file_path, from, to = source.path, source.from_line, source.to_line
-    !isfile(file_path) && (@warn "File not found: $file_path (pwd: $(pwd()))"; return "")
-    chunks_dict = read(file_path, String)
+    # Expand tilde in file path to handle paths starting with ~
+    expanded_path = expanduser(file_path)
+    
+    if !isfile(expanded_path)
+        @warn "File not found: $file_path (expanded: $expanded_path, pwd: $(pwd()))"
+        return ""
+    end
+    
+    chunks_dict = read(expanded_path, String)
     isnothing(from) && return chunks_dict
     lines = split(chunks_dict, '\n')
     return join(lines[from:min(to, length(lines))], '\n')

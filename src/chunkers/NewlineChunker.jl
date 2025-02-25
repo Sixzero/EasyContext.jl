@@ -43,7 +43,7 @@ function RAG.get_chunks(chunker::NewlineChunker{T},
                     @warn "Chunk $(source):$(start_line)-$(end_line) exceeds token limit ($(chunk_tokens) > $(effective_max_tokens)). Skipping."
                     continue
                 end
-                push!(output_chunks, T(; source=SourcePath(; path=source, from_line=start_line, to_line=end_line), content=chunk))
+                push!(output_chunks, T(; content=chunk, source=SourcePath(; path=source, from_line=start_line, to_line=end_line)))
             end
         end
     end

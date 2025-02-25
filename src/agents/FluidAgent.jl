@@ -41,9 +41,9 @@ function create_FluidAgent(model::String="claude"; create_sys_msg::Function, too
 
     $(get_tool_descriptions(tools))
 
-    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool usage.
+    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
 
-    Follow KISS and SOLID principles.
+    Follow SOLID, KISS and DRY principles. Be concise!
 
     $(conversaton_starts_here)"""
     agent = FluidAgent(; sys_msg, tools, model, extractor)
