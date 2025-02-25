@@ -132,6 +132,38 @@ function get_system_prompt(agent::FluidAgent)
 end
 
 """
+Apply thinking API parameters for Claude models
+"""
+function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::Union{Nothing,Int}=nothing)
+    # Only apply thinking for Claude models
+    if !startswith(model, "claude") || thinking === nothing
+        return api_kwargs
+    end
+    
+    # Set max_tokens to 16000 + thinking budget
+    max_tokens = 16000 + thinking
+    
+    # Add thinking configuration
+    thinking_config = (; type = "enabled", budget_tokens = thinking)
+    
+    # When thinking is enabled, we need to:
+    # 1. Add thinking configuration
+    # 2. Set max_tokens appropriately
+    # 3. Remove temperature and top_p as they're not allowed with thinking
+    
+    # Start with a clean kwargs without temperature and top_p
+    filtered_kwargs = NamedTuple(
+        k => v for (k, v) in pairs(api_kwargs) if k != :temperature && k != :top_p
+    )
+    
+    # Merge with thinking config and max_tokens
+    merge(filtered_kwargs, (; 
+        thinking = thinking_config, 
+        max_tokens = max_tokens
+    ))
+end
+
+"""
 Run an LLM interaction with tool execution.
 """
 function work(agent::FluidAgent, conv; cache,
@@ -142,7 +174,8 @@ function work(agent::FluidAgent, conv; cache,
     on_done=noop,
     on_start=noop,
     io=stdout,
-    tool_kwargs=Dict()
+    tool_kwargs=Dict(),
+    thinking::Union{Nothing,Int}=nothing
     )
     # Collect unique stop sequences from tools
     stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
@@ -158,6 +191,10 @@ function work(agent::FluidAgent, conv; cache,
         api_kwargs = (; )
     end
 
+    # Apply thinking API parameters if specified
+    api_kwargs = apply_thinking_kwargs(api_kwargs, agent.model, thinking)
+    
+    # Apply stop sequences
     api_kwargs = apply_stop_seq_kwargs(api_kwargs, agent.model, stop_sequences)
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
 
