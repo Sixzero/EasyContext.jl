@@ -43,36 +43,3 @@ function parse_tool(first_line::String, content::String=""; kwargs=Dict())
     
     ToolTag(name=name, args=args, content=content, kwargs=kwargs)
 end
-
-
-# CLICK x y
-# CLICK x y #RUN
-# SENDKEY asdf #RUN
-# READFILE path/to/file #RUN
-# MODIFY path/to/file
-# '''programming language
-# content
-# '''
-# ENDOFFILE
-# 
-# CREATE path="path/to/space in filename"
-# '''language
-# content
-# '''
-# ENDOFFILE
-# CREATE path/to/file
-# '''language
-# content
-# '''
-# ENDOFFILE
-#
-# SHELL_RUN command #RUN/>
-# SHELL_BLOCK
-# '''sh
-# content
-# '''
-# ENDOFFILE
-#
-# CLICK x y LEFT
-# CLICK x y RIGHT
-# CLICK x y MIDDLE

@@ -25,7 +25,8 @@ end
 instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::ToolTag) = ModifyFileTool(cmd)
 
 toolname(cmd::Type{ModifyFileTool}) = MODIFY_FILE_TAG
-get_description(cmd::Type{ModifyFileTool}) = """
+get_description(cmd::Type{ModifyFileTool}) = MODIFY_FILE_DESCRIPTION(cmd)
+MODIFY_FILE_DESCRIPTION(cmd) = """
 To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)":
 
 $(MODIFY_FILE_TAG) path/to/file1
@@ -46,6 +47,29 @@ To modify the file, always try to highlight the changes and relevant code and us
 comments indicate where unchanged code has been skipped and spare rewriting the whole codebase again.
 
 It is important you ALWAYS close the code block with "```$(END_OF_CODE_BLOCK)" in the next line.
+"""
+MODIFY_FILE_DESCRIPTION_V2(cmd::Type{ModifyFileTool}) = """
+To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)".
+
+Examples:
+$(MODIFY_FILE_TAG) path/to/file1
+$(code_format("multiline_code_changes", "language"))
+
+$(MODIFY_FILE_TAG) path/to/file2
+$(code_format(""" # ... existing code ...
+some same lines
+new line with code changes
+some same lines
+ # ... existing code ...""", "language"))
+
+$(MODIFY_FILE_TAG) filepath
+$(code_format("code_changes_without_unchanged_code", "language"))
+
+To modify the file, always try to highlight the changes and relevant code and try to skip the unchanged code parts. Use comments like:
+"... existing code ..."
+comments indicate where unchanged code has been skipped to spare rewriting the whole codebase again.
+
+Always close the code block with "```$(END_OF_CODE_BLOCK)".
 """
 stop_sequence(cmd::Type{ModifyFileTool}) = ""
 

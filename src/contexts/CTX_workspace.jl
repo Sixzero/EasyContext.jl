@@ -18,7 +18,7 @@ Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspac
 
 function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model=["gem20f", "gem15f", "gpt4om"], top_k=50, top_n=12)
     workspace = Workspace(project_paths; virtual_ws, verbose, show_tokens)
-    embedder = create_voyage_embedder(cache_prefix="workspace")
+    embedder = create_cohere_embedder(cache_prefix="workspace")
     bm25 = BM25Embedder()
     topK = TopK([embedder, bm25]; top_k)
     reranker = ReduceGPTReranker(batch_size=30; top_n, model)

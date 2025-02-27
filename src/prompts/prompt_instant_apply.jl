@@ -28,7 +28,7 @@ function get_merge_prompt_v2(original_content, changes_content)
 
   1. Apply all modifications from <CHANGES> to <ORIGINAL>
   2. Keep original formatting (spaces/tabs)
-  3. If <CHANGES> contains '// ... existing code ...' preserve that part from <ORIGINAL>
+  3. If <CHANGES> contains '... existing code ...' preserve that part from <ORIGINAL>
   4. Keep imports and using statements intact unless explicitly modified
   5. Return only the final code between <final> and </final> tags
 

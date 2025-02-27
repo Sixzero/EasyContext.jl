@@ -86,24 +86,6 @@ function get_tool_results_agent(agent::FluidAgent, max_length::Int=20000; filter
 end
 
 """
-Process and execute tools in order while allowing parallel preprocessing
-"""
-function process_tools!(content::String, agent::FluidAgent; no_confirm=false)
-    tags = parse_tools(content)
-    isempty(tags) && return OrderedDict{UUID,String}()
-    
-    # Convert tags to tools and execute
-    tools = OrderedDict{UUID,AbstractTool}()
-    for tag in tags
-        tool = create_tool(agent, tag)
-        tools[tool.id] = tool
-    end
-    
-    # Execute tools and collect results
-    execute_tools(tools; no_confirm)
-end
-
-"""
 Get formatted tool results for LLM context
 """
 function get_tool_context(agent::FluidAgent)
@@ -176,8 +158,8 @@ function work(agent::FluidAgent, conv; cache,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing
     )
-    # Collect unique stop sequences from tools
-    stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
+    # Collect unique stop sequences from tools only if IO is stdout
+    stop_sequences = io === stdout ? unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)]) : String[]
     
     if length(stop_sequences) > 1
         @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
