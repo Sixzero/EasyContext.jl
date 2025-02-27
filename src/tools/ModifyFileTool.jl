@@ -145,33 +145,33 @@ function LLM_conditional_apply_changes(tool::ModifyFileTool)
     tool
 end
 
-function LLM_apply_changes_to_file(tool::ModifyFileTool)
+LLM_apply_changes_to_file(tool::ModifyFileTool) = LLM_apply_changes_to_file(tool.root_path, tool.file_path, tool.content, tool.language, tool.model)
+function LLM_apply_changes_to_file(root_path::String, file_path::String, content::String, language::String, models::Vector{String})
     original_content = ""
-    cd(tool.root_path) do
-        file_path, line_range = parse_source(tool.file_path)
+    cd(root_path) do
+        file_path, line_range = parse_source(file_path)
         # Expand tilde in file path to handle paths starting with ~
         expanded_path = expanduser(file_path)
         
         if isfile(expanded_path)
             original_content = read(expanded_path, String)
         else
-            @warn "WARNING! Unexisting file! $(file_path) (expanded: $(expanded_path)) pwd: $(pwd()) root_path: $(tool.root_path)"
-            tool.content
+            @warn "WARNING! Unexisting file! $(file_path) (expanded: $(expanded_path)) pwd: $(pwd()) root_path: $(root_path)"
+            content
         end
     end
-    isempty(original_content) && return tool.content, tool.content
+    isempty(original_content) && return content, content
 
-    is_patch_file = tool.language=="patch"
+    is_patch_file = language=="patch"
     merge_prompt = is_patch_file ? get_patch_merge_prompt : get_merge_prompt_v1
     # Check file size and choose appropriate method
     if length(original_content) > 10_000
-        ai_generated_content = apply_modify_by_replace(original_content, tool.content)
+        ai_generated_content = apply_modify_by_replace(original_content, content)
     else
-
-        ai_generated_content = apply_modify_by_llm(original_content, tool.content; merge_prompt, model=tool.model)
+        ai_generated_content = apply_modify_by_llm(original_content, content; merge_prompt, model=models)
     end
 
-    original_content, ai_generated_content
+    original_content, String(ai_generated_content)
 end
 
 # TODO maybe chunks should have this? but just wut a full_parse on the location it is used which returns full content without line cuts? instead of reparse?
