@@ -60,7 +60,7 @@ Usually stop_sequence and toolname are static for type
 """
 toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool) $(join(stacktrace(), "\n"))"; return "")
 toolname(tool::AbstractTool)::String = toolname(typeof(tool))
-stop_sequence(::Type{<:AbstractTool})::String = (@warn "Unimplemented \"stop_sequence\" for $(typeof(tool)) $(join(stacktrace(), "\n"))"; return "")
+stop_sequence(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"stop_sequence\" for $(typeof(tool)) $(join(stacktrace(), "\n"))"; return "")
 stop_sequence(tool::AbstractTool)::String = stop_sequence(typeof(tool))
 get_description(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(typeof(tool)) $(join(stacktrace(), "\n"))"; return "unknown tool! $(tool)")
 get_description(tool::AbstractTool)::String = get_description(typeof(tool))
