@@ -28,7 +28,9 @@ It is important you ALWAYS close with "```$(END_OF_CODE_BLOCK) after the code bl
 stop_sequence(cmd::Type{CreateFileTool}) = ""
 
 function execute(tool::CreateFileTool; no_confirm=false)
-    path = normpath(joinpath(tool.root_path, tool.file_path))
+    # Use the utility function to handle path expansion
+    path = expand_path(tool.file_path, tool.root_path)
+    
     shell_cmd = process_create_command(path, tool.content)
     shortened_code = get_shortened_code(shell_cmd, 4, 2)
     print_code(shortened_code)

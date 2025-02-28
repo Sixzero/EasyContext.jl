@@ -21,7 +21,8 @@ tool_format(::Type{CatFileTool}) = :single_line
 
 execute(cmd::CatFileTool; no_confirm::Bool=false) = let
     cd(cmd.root_path) do
-        path = normpath(cmd.file_path)  # Changed to use direct path since we're in the right directory
+        # Use the utility function to handle path expansion
+        path = expand_path(cmd.file_path)
         cmd.result = isfile(path) ? file_format(path, read(path, String)) : "cat: $(path): No such file or directory"
     end
 end

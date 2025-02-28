@@ -120,12 +120,13 @@ function get_embeddings(embedder::CohereEmbedder, docs::AbstractVector{<:Abstrac
         embeddings, tokens = process_batch_limited(batches[1])
         all_embeddings = stack(embeddings, dims=2)
     else
+        show_progress = length(batches) > ntasks
         progress = Progress(length(batches), desc="Processing batches: ", showspeed=true)
         
         # Use the specified number of tasks for asyncmap
         results = asyncmap(batches, ntasks=ntasks) do batch
             result = process_batch_limited(batch)
-            verbose && next!(progress)
+            show_progress && verbose && next!(progress)
             return result
         end
         

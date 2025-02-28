@@ -14,6 +14,24 @@ short_ulid() = encodetime(floor(Int,datetime2unix(now())*1000),10)*encoderandom(
 
 home_abrev(path::AbstractString) = startswith(path, homedir()) ? joinpath("~", relpath(path, homedir())) : path
 
+"""
+    expand_path(path::AbstractString, root_path::AbstractString="")
+
+Handles path expansion, particularly for paths starting with tilde (~).
+If the path starts with tilde, it expands it directly without using root_path.
+Otherwise, it joins with root_path (if provided) and normalizes the path.
+
+Returns the normalized expanded path.  
+"""
+function expand_path(path::AbstractString, root_path::AbstractString="")
+    if startswith(path, "~")
+        # If path starts with tilde, expand it directly without using root_path
+        return normpath(expanduser(path))
+    else
+        # Otherwise join with root_path (if provided) and normalize
+        return isempty(root_path) ? normpath(path) : normpath(joinpath(root_path, path))
+    end
+end
 
 mkpath_if_missing(path::AbstractString) = isdir(expanduser(path)) || mkdir(expanduser(path))
 

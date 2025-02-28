@@ -150,13 +150,14 @@ function LLM_apply_changes_to_file(root_path::String, file_path::String, content
     original_content = ""
     cd(root_path) do
         file_path, line_range = parse_source(file_path)
-        # Expand tilde in file path to handle paths starting with ~
-        expanded_path = expanduser(file_path)
         
-        if isfile(expanded_path)
-            original_content = read(expanded_path, String)
+        # Use the utility function to handle path expansion
+        path = expand_path(file_path)
+        
+        if isfile(path)
+            original_content = read(path, String)
         else
-            @warn "WARNING! Unexisting file! $(file_path) (expanded: $(expanded_path)) pwd: $(pwd()) root_path: $(root_path)"
+            @warn "WARNING! Unexisting file! $(file_path) (expanded: $(path)) pwd: $(pwd()) root_path: $(root_path)"
             content
         end
     end
