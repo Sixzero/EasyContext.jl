@@ -158,6 +158,7 @@ function work(agent::FluidAgent, conv; cache,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing
     )
+
     # Collect unique stop sequences from tools only if IO is stdout
     stop_sequences = io === stdout ? unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)]) : String[]
     

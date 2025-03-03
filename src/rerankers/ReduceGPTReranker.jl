@@ -11,7 +11,7 @@ Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker
     max_batch_tokens::Int=64000  # Token limit per batch
     temperature::Float64=0.0
     top_n::Int=10
-    rank_gpt_prompt_fn::Function = create_rankgpt_prompt_v2
+    rerank_prompt::Function = create_rankgpt_prompt_v2
     verbose::Int=1
     batching_strategy::BatchingStrategy = LinearGrowthBatcher()
 end
@@ -36,7 +36,7 @@ function rerank(
     function rerank_batch(doc_batch)
         max_retries = 2
         for attempt in 1:max_retries
-            prompt = reranker.rank_gpt_prompt_fn(query, doc_batch, top_n)
+            prompt = reranker.rerank_prompt(query, doc_batch, top_n)
             temperature = attempt == 1 ? reranker.temperature : 0.5
 
             response = try_generate(ai_manager, prompt; 
@@ -69,7 +69,7 @@ function rerank(
             reranker.batching_strategy,
             contents[remaining_doc_idxs],
             query,
-            reranker.rank_gpt_prompt_fn,
+            reranker.rerank_prompt,
             reranker.max_batch_tokens,
             reranker.batch_size;
             verbose=verbose
@@ -124,7 +124,7 @@ function rerank(
 end
 
 function humanize(reranker::ReduceGPTReranker)
-    prompt_str = reranker.rank_gpt_prompt_fn == create_rankgpt_prompt_v2 ? "" : ", prompt=" * last(split(string(reranker.rank_gpt_prompt_fn), "_"))
+    prompt_str = reranker.rerank_prompt == create_rankgpt_prompt_v2 ? "" : ", prompt=" * last(split(string(reranker.rerank_prompt), "_"))
     model_str = reranker.model isa AbstractString ? reranker.model : "[" * join(reranker.model, ",") * "]"
     
     "ReduceGPT(model=$(model_str), batch=$(reranker.batch_size), top_n=$(reranker.top_n)$(prompt_str))"

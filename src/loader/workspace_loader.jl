@@ -13,13 +13,18 @@ include("resolution_methods.jl")
     ]
     FILE_EXTENSIONS::Vector{String} = [
         "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
-        "html", "css", "scss", "sass", "less", "js", "jsx", "ts", "tsx", "php", "vue", "svelte",
+        "html", "css", "scss", "sass", "less", "js", "cjs", "jsx", "ts", "tsx", "php", "vue", "svelte",
         "py", "pyw", "ipynb", "rb", "rake", "gemspec", "java", "kt", "kts", "groovy", "scala",
         "clj", "c", "h", "cpp", "hpp", "cc", "cxx", "cs", "csx", "go", "rs", "swift", "m", "mm",
         "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties", "plist",
-        "proto", "proto3", "graphql", "prisma", "yml", "yaml"
+        "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg"
+    ]
+    NONVERBOSE_FILTERED_EXTENSIONS::Vector{String} = [
+        "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
+        "doc", "docx", "ppt", "pptx", "xls", "xlsx", "csv", "tsv", "db", "sqlite", "sqlite3",
+        "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "ttf", "otf", "woff", "woff2", "eot"
     ]
     FILTERED_FOLDERS::Vector{String} = [
         "build",
@@ -27,7 +32,7 @@ include("resolution_methods.jl")
         "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable", ".idea"
     ]
     IGNORED_FILE_PATTERNS::Vector{String} = [
-        ".log", "config.ini", "secrets.yaml", "Manifest.toml",  # , "Project.toml", "README.md"
+        ".log", "config.ini", "secrets.yaml", "Manifest.toml",  "package-lock.json",# , "Project.toml", "README.md"
     ]
     IGNORE_FILES::Vector{String} = [
         ".gitignore", ".aishignore"
@@ -74,7 +79,9 @@ function Workspace(project_paths::Vector{<:AbstractString};
     return workspace
 end
 function RAGTools.get_chunks(chunker, ws::Workspace)
-    return RAGTools.get_chunks(chunker, get_project_files(ws))
+    cd(ws) do
+        RAGTools.get_chunks(chunker, get_project_files(ws))
+    end
 end
 
 function get_project_files(w::Workspace)
@@ -91,6 +98,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
     project_files = String[]
     filtered_files = String[]
     filtered_dirs  = String[]
+    filtered_extensions = String[]
 
     # Parse gitignore at root path first
     ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
@@ -122,6 +130,17 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
             if is_ignored_by_patterns(file_path, local_ignore_patterns, path) ||
                ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||
                !is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS)
+
+                file_ext = lowercase(get_file_extension(file))
+                # If it's not in the nonverbose filtered extensions list and has an extension,
+                # track it for warning
+                if !isempty(file_ext) && 
+                   !(file_ext in w.FILE_EXTENSIONS) && 
+                   !(file_ext in w.NONVERBOSE_FILTERED_EXTENSIONS) &&
+                   !any(pattern -> endswith(file, pattern), w.IGNORED_FILE_PATTERNS)
+                    push!(filtered_extensions, basename(file))
+                end
+                
                 push!(filtered_files, file_path)
             else
                 push!(project_files, file_path)
@@ -129,7 +148,18 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
         end
     end
 
+    # Show warning for filtered extensions not in the nonverbose list
+    if !isempty(filtered_extensions)
+        @warn "Filtered files might be important: $(join(filtered_extensions, ", "))"
+    end
+
     return project_files, filtered_files, filtered_dirs
+end
+
+# Helper function to get file extension
+function get_file_extension(filename::String)
+    parts = split(filename, '.')
+    return length(parts) > 1 ? parts[end] : ""
 end
 
 # set_project_path(w::Workspace) = cd_rootpath(w)

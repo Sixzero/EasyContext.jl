@@ -57,7 +57,7 @@ function test_reranker(model)
         top_n=3, 
         model=model,
         verbose=1,
-        rank_gpt_prompt_fn=create_rankgpt_prompt_v2,
+        rerank_prompt=create_rankgpt_prompt_v2,
         batching_strategy=EasyContext.LinearGrowthBatcher()
     )
     

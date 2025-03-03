@@ -25,7 +25,7 @@ include("CatFileTool.jl")
 include("ModifyFileTool.jl")
 include("CreateFileTool.jl")
 include("WebSearchTool.jl")
-# include("WorkspaceSearchTool.jl")
+include("WorkspaceSearchTool.jl")
 include("JuliaSearchTool.jl")
 
 include("AbstractExtractor.jl")

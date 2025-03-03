@@ -16,12 +16,12 @@ Base.write(io::IO, ::WorkspaceCTXResult) = nothing
 
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
-function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model=["gem20f", "gem15f", "gpt4om"], top_k=50, top_n=12)
+function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model=["gem20f", "gem15f", "gpt4om"], top_k=50, top_n=12, rerank_prompt=create_rankgpt_prompt_v2)
     workspace = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     embedder = create_cohere_embedder(cache_prefix="workspace")
     bm25 = BM25Embedder()
     topK = TopK([embedder, bm25]; top_k)
-    reranker = ReduceGPTReranker(batch_size=30; top_n, model)
+    reranker = ReduceGPTReranker(batch_size=30; top_n, model, rerank_prompt)
     
     WorkspaceCTX(
         TwoLayerRAG(; topK, reranker),
@@ -47,9 +47,9 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     isa(scr_content, String) && return ("", nothing)
     
     result = workspace_ctx_2_string(workspace_context.changes_tracker, scr_content)
-    write(io, WorkspaceCTXResult(result))
+    !isnothing(io) && write(io, WorkspaceCTXResult(result))
     
-    (result, file_chunks)
+    (result, file_chunks, file_chunks_reranked)
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)

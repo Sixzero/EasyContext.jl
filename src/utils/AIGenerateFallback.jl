@@ -1,4 +1,3 @@
-
 export AIGenerateFallback, ModelState, try_generate
 
 """
@@ -60,6 +59,9 @@ function try_generate(manager::AIGenerateFallback{String}, prompt; api_kwargs, k
 
     if model == "o3m" # TODO: no temperature support for o3m
         api_kwargs = (; )
+    end
+    if contains(lowercase(model), "mistral") && haskey(api_kwargs, :top_p)
+        api_kwargs = NamedTuple(k => v for (k, v) in pairs(api_kwargs) if k != :top_p)
     end
 
     for attempt in 1:3

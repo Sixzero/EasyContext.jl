@@ -40,6 +40,7 @@ create(config::StreamCallbackConfig) = begin
             on_done           = () -> (flush_state(state); config.on_done()),
             on_error          = e -> ((e isa InterruptException ? rethrow(e) : (println(config.io, err_msg); config.on_error(e)))),
             on_stop_sequence  = stop_sequence -> handle_text(state, stop_sequence),
+            throw_on_error = true
         )
     # )
 end
