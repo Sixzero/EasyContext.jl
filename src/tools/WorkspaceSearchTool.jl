@@ -1,0 +1,47 @@
+@kwdef mutable struct WorkspaceSearchTool <: AbstractTool
+    id::UUID = uuid4()
+    query::String
+    workspace_ctx::Union{Nothing,WorkspaceCTX} = nothing
+    result::String = ""
+end
+
+function WorkspaceSearchTool(cmd::ToolTag)
+    root_path = get(cmd.kwargs, "root_path", nothing)
+    isnothing(root_path) && @warn "root_path not provided in kwargs, using pwd()" root_path=pwd()
+    root_path = something(root_path, pwd())
+    
+    model = get(cmd.kwargs, "model", ["gem20f", "gem15f", "gpt4om"])
+    workspace_ctx = init_workspace_context(root_path; model)
+    WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
+end
+
+toolname(::Type{WorkspaceSearchTool}) = "WORKSPACE_SEARCH"
+tool_format(::Type{WorkspaceSearchTool}) = :single_line
+stop_sequence(::Type{WorkspaceSearchTool}) = STOP_SEQUENCE
+
+function get_description(::Type{WorkspaceSearchTool})
+    """
+    Search through the codebase using semantic search:
+    WORKSPACE_SEARCH your search query [$STOP_SEQUENCE]
+    
+    $STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
+    """
+end
+
+function execute(tool::WorkspaceSearchTool; no_confirm=false)
+    if isnothing(tool.workspace_ctx)
+        @warn "workspace_ctx is nothing, this should never happen!" 
+        return false
+    end
+    result, _ = process_workspace_context(tool.workspace_ctx, tool.query)
+    tool.result = result
+    true
+end
+
+function result2string(tool::WorkspaceSearchTool)
+    isempty(tool.result) && return "No relevant code found for query: $(tool.query)"
+    """
+    Search results for: $(tool.query)
+    
+    $(tool.result)"""
+end
