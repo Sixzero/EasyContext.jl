@@ -24,7 +24,8 @@ include("resolution_methods.jl")
     NONVERBOSE_FILTERED_EXTENSIONS::Vector{String} = [
         "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
         "doc", "docx", "ppt", "pptx", "xls", "xlsx", "csv", "tsv", "db", "sqlite", "sqlite3",
-        "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "ttf", "otf", "woff", "woff2", "eot"
+        "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "ttf", "otf", "woff", "woff2", "eot",
+        "lock"
     ]
     FILTERED_FOLDERS::Vector{String} = [
         "build",
