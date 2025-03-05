@@ -85,9 +85,6 @@ function RAGTools.get_chunks(chunker, ws::Workspace)
     cd(ws) do
         RAGTools.get_chunks(chunker, paths)
     end
-    cd(ws) do
-        RAGTools.get_chunks(chunker, get_project_files(ws))
-    end
 end
 
 function get_project_files(w::Workspace)
