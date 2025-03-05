@@ -14,6 +14,9 @@ struct JuliaCTXResult
 end
 Base.write(io::IO, ::JuliaCTXResult) = nothing
 
+const JuliaContext = Context{SourceChunk}()
+const JuliaChangeTracker = ChangeTracker{SourceChunk}()
+
 function init_julia_context(; 
     package_scope=:installed, 
     model,
@@ -22,8 +25,7 @@ function init_julia_context(;
     top_k=50,
 )
     # Initialize with nothing, will be lazily created on first use
-    tracker_context = Context{SourceChunk}()
-    changes_tracker = ChangeTracker{SourceChunk}(; verbose=verbose)
+    JuliaChangeTracker.verbose = verbose
 
     embedder          = create_cohere_embedder(cache_prefix="juliapkgs")
     bm25              = BM25Embedder()
@@ -35,8 +37,8 @@ function init_julia_context(;
 
     return JuliaCTX(
         rag_pipeline,
-        tracker_context,
-        changes_tracker,
+        JuliaContext,
+        JuliaChangeTracker,
         pkg_chunks,
     )
 end

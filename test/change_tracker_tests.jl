@@ -2,211 +2,231 @@
 using Test
 using DataStructures
 import EasyContext
-using EasyContext: Context
-using EasyContext: ChangeTracker, get_chunk_standard_format
+using EasyContext: Context, AbstractChunk, NewlineChunker, get_chunks
+using EasyContext: ChangeTracker, FileChunk, SourcePath, update_changes!
 using Random
+using FilePathsBase
 
-# TODO default_source_parser is updated to reparse_chunk
-@testset "ChangeTracker tests" begin
+
+@kwdef struct DummyChunk <: AbstractChunk
+    source::String
+    content::AbstractString=""
+end
+EasyContext.need_source_reparse(chunk::DummyChunk) = true
+EasyContext.reparse_chunk(chunk::DummyChunk) = DummyChunk(chunk.source, chunk.content) # Returns the same chunk
+Base.:(==)(a::DummyChunk, b::DummyChunk) = a.source == b.source && strip(a.content) == strip(b.content)
+
+@testset failfast=true "ChangeTracker tests" begin
     @testset "Basic functionality" begin
-        # Custom source parser for testing
-        function test_source_parser(source::String, current_content::String)
-            if source == "file1.txt"
-                return get_chunk_standard_format(source, "updated_content1")
-            elseif source == "file3.txt"
-                return get_chunk_standard_format(source, "content3")
-            else
-                # For any other file, including file2.txt, return the current content
-                return current_content
-            end
-        end
-
-        tracker = ChangeTracker(source_parser=test_source_parser)
-        src_content = OrderedDict{String,String}(
-            "file1.txt" => get_chunk_standard_format("file1.txt", "content1"),
-            "file2.txt" => get_chunk_standard_format("file2.txt", "content2")
+        # Create a tracker
+        tracker = ChangeTracker{DummyChunk}()
+        
+        # Create initial content
+        src_content = OrderedDict{String, DummyChunk}(
+            "file1.txt" => DummyChunk(source="file1.txt", content="content1"),
+            "file2.txt" => DummyChunk(source="file2.txt", content="content2")
         )
-        updated_tracker, updated_content = tracker(src_content)
+        
+        # First update - should mark all as NEW
+        updated_content = update_changes!(tracker, src_content)
 
-        @test length(updated_tracker.changes) == 2
-        @test updated_tracker.changes["file1.txt"] == :NEW
-        @test updated_tracker.changes["file2.txt"] == :NEW
+        @test length(tracker.changes) == 2
+        @test tracker.changes["file1.txt"] == :NEW
+        @test tracker.changes["file2.txt"] == :NEW
         @test updated_content == src_content
 
-        # Second call with changes
-        new_src_content = OrderedDict{String,String}(
-            "file1.txt" => get_chunk_standard_format("file1.txt", "content1"),
-            "file2.txt" => get_chunk_standard_format("file2.txt", "content2"),
-            "file3.txt" => get_chunk_standard_format("file3.txt", "content3")
-        )
-
-        updated_tracker, updated_content = tracker(new_src_content)
-        @test length(updated_tracker.changes) == 3
-        @test updated_tracker.changes["file1.txt"] == :UPDATED
-        @test updated_tracker.changes["file2.txt"] == :UNCHANGED
-        @test updated_tracker.changes["file3.txt"] == :NEW
-        @test updated_content == new_src_content
+        # Manually modify the content to simulate what source_parser would do
+        # This simulates the behavior of the custom source_parser in the original test
+        src_content["file1.txt"] = DummyChunk(source="file1.txt", content="updated_content1")
+        src_content["file3.txt"] = DummyChunk(source="file3.txt", content="content3")
+        
+        # Second update - should detect changes and new file
+        updated_content = update_changes!(tracker, src_content)
+        
+        @test length(tracker.changes) == 3
+        @test tracker.changes["file1.txt"] == :UPDATED
+        @test tracker.changes["file2.txt"] == :UNCHANGED
+        @test tracker.changes["file3.txt"] == :NEW
+        @test updated_content == src_content
     end
 
     @testset "Multiple updates" begin
-        content_store = Dict{String, String}(
-            "./src/contexts/ContextNode.jl" => "# Content of ContextNode.jl"
-        )
+        # Create a tracker
+        tracker = ChangeTracker{DummyChunk}()
         
-        function test_source_parser(source::String, current_content::String)
-            return get_chunk_standard_format(source, get(content_store, source, current_content))
-        end
-
-        tracker = ChangeTracker(source_parser=test_source_parser)
-        sources = ["./src/contexts/ContextNode.jl"]
+        # Define source path
+        source = "./src/contexts/ContextNode.jl"
         
-        # First update
-        src_content = OrderedDict(sources[1] => get_chunk_standard_format(sources[1], content_store[sources[1]]))
-        updated_tracker, _ = tracker(src_content)
+        # First update with initial content
+        src_content = OrderedDict(source => DummyChunk(source=source, content="# Content of ContextNode.jl"))
+        _ = update_changes!(tracker, src_content)
         
-        @test length(updated_tracker.changes) == 1
-        @test updated_tracker.changes[sources[1]] == :NEW
+        @test length(tracker.changes) == 1
+        @test tracker.changes[source] == :NEW
 
         # Second update (no change)
-        updated_tracker, _ = tracker(src_content)
+        _ = update_changes!(tracker, src_content)
         
-        @test length(updated_tracker.changes) == 1
-        @test updated_tracker.changes[sources[1]] == :UNCHANGED
+        @test length(tracker.changes) == 1
+        @test tracker.changes[source] == :UNCHANGED
 
         # Third update (with change)
-        content_store[sources[1]] = "# Updated content of ContextNode.jl"
-        updated_tracker, _ = tracker(src_content)
+        src_content[source] = DummyChunk(source=source, content="# Updated content of ContextNode.jl")
+        _ = update_changes!(tracker, src_content)
         
-        @test length(updated_tracker.changes) == 1
-        @test updated_tracker.changes[sources[1]] == :UPDATED
+        @test length(tracker.changes) == 1
+        @test tracker.changes[source] == :UPDATED
 
         # Fourth update (remove a file)
-        empty_content = OrderedDict{String,String}()
-        updated_tracker, _ = tracker(empty_content)
+        empty_content = OrderedDict{String,DummyChunk}()
+        _ = update_changes!(tracker, empty_content)
         
-        @test isempty(updated_tracker.changes)
+        @test isempty(tracker.changes)
     end
 
-    @testset "Default source parser with temporary file" begin
-        function append_content!(file_path::String, content::String)
-            open(file_path, "a") do io
-                write(io, content)
-            end
-        end
-        # Create a temporary file
-        temp_dir = mktempdir()
-        temp_file = joinpath(temp_dir, "test_file.txt")
+    @testset "File deletion" begin
+        # Create a tracker
+        tracker = ChangeTracker{DummyChunk}()
         
-        # Write initial content
-        write(temp_file, "Initial content")
-
-        tracker = ChangeTracker()  # Using default source parser
-        
-        # First run
-        src_content = OrderedDict{String,String}(
-            temp_file => default_source_parser(temp_file, "")
+        # Initial content
+        src_content = OrderedDict{String,DummyChunk}(
+            "file1.txt" => DummyChunk(source="file1.txt", content="content1"),
+            "file2.txt" => DummyChunk(source="file2.txt", content="content2")
         )
-        updated_tracker, updated_content = tracker(src_content)
+        _ = update_changes!(tracker, src_content)
 
-        @test length(updated_tracker.changes) == 1
-        @test updated_tracker.changes[temp_file] == :NEW
-        @test updated_content == src_content
+        @test length(tracker.changes) == 2
+        @test tracker.changes["file1.txt"] == :NEW
+        @test tracker.changes["file2.txt"] == :NEW
 
-        # Modify the file
-        append_content!(temp_file, "\nAdditional content")
+        # Simulate file deletion by removing file2.txt
+        deleted_src_content = OrderedDict{String,DummyChunk}(
+            "file1.txt" => DummyChunk(source="file1.txt", content="content1")
+        )
+        updated_content = update_changes!(tracker, deleted_src_content)
 
-        # Second run
-        src_content = Context(OrderedDict{String,String}(
-            temp_file => default_source_parser(temp_file, "")
-        ))
-        updated_tracker, updated_content = tracker(src_content)
+        @test length(tracker.changes) == 1
+        @test haskey(tracker.changes, "file1.txt")
+        @test !haskey(tracker.changes, "file2.txt")
+        @test tracker.changes["file1.txt"] == :UNCHANGED
+        @test updated_content == deleted_src_content
+    end
 
-        @test length(updated_tracker.changes) == 1
-        @test updated_tracker.changes[temp_file] == :UPDATED
-        @test updated_content == src_content
-
-        # Third run without changes
-        updated_tracker, updated_content = tracker(src_content)
-
-        @test length(updated_tracker.changes) == 1
-        @test updated_tracker.changes[temp_file] == :UNCHANGED
-        @test updated_content == src_content
-
+    @testset "Real file updates with NewlineChunker" begin
+        # Create a temporary directory with test files
+        temp_dir = mktempdir()
+        
+        # Create test files
+        file1_path = joinpath(temp_dir, "test1.txt")
+        file2_path = joinpath(temp_dir, "test2.txt")
+        
+        write(file1_path, "Initial content for file 1")
+        write(file2_path, "Initial content for file 2")
+        
+        # Create a tracker
+        tracker = ChangeTracker{FileChunk}()
+        
+        # Get chunks using NewlineChunker
+        chunker = NewlineChunker{FileChunk}()
+        file_paths = [Path(file1_path), Path(file2_path)]
+        chunks = get_chunks(chunker, file_paths)
+        
+        # Convert chunks to OrderedDict for the tracker
+        chunks_dict = OrderedDict{String, FileChunk}()
+        for chunk in chunks
+            chunks_dict[string(chunk.source.path)] = chunk
+        end
+        
+        # First update - should mark all as NEW
+        updated_content = update_changes!(tracker, chunks_dict)
+        
+        @test length(tracker.changes) == 2
+        @test all(status -> status == :NEW, values(tracker.changes))
+        
+        # Second update with no changes
+        chunks = get_chunks(chunker, file_paths)
+        chunks_dict = OrderedDict{String, FileChunk}()
+        for chunk in chunks
+            chunks_dict[string(chunk.source.path)] = chunk
+        end
+        updated_content = update_changes!(tracker, chunks_dict)
+        
+        @test length(tracker.changes) == 2
+        @test all(status -> status == :UNCHANGED, values(tracker.changes))
+        
+        # Modify one of the files
+        write(file1_path, "Modified content for file 1")
+        
+        # Get chunks again
+        chunks = get_chunks(chunker, file_paths)
+        chunks_dict = OrderedDict{String, FileChunk}()
+        for chunk in chunks
+            chunks_dict[string(chunk.source.path)] = chunk
+        end
+        updated_content = update_changes!(tracker, chunks_dict)
+        
+        # Check that file1 is marked as UPDATED and file2 as UNCHANGED
+        @test length(tracker.changes) == 2
+        @test tracker.changes[file1_path] == :UPDATED
+        @test tracker.changes[file2_path] == :UNCHANGED
+        
+        # Delete one file
+        rm(file2_path)
+        
+        # Get chunks again - now only include file1
+        chunks = get_chunks(chunker, [Path(file1_path)])
+        chunks_dict = OrderedDict{String, FileChunk}()
+        for chunk in chunks
+            chunks_dict[string(chunk.source.path)] = chunk
+        end
+        updated_content = update_changes!(tracker, chunks_dict)
+        
+        # Check that file2 is removed from changes
+        @test length(tracker.changes) == 1
+        @test haskey(tracker.changes, file1_path)
+        @test !haskey(tracker.changes, file2_path)
+        
         # Clean up
         rm(temp_dir, recursive=true)
     end
 
-    @testset "File deletion" begin
-        function test_source_parser(source::String, current_content::String)
-            if source == "file1.txt"
-                return get_chunk_standard_format(source, "content1")
-            elseif source == "file2.txt"
-                return get_chunk_standard_format(source, "content2")
-            else
-                return current_content
-            end
-        end
-
-        tracker = ChangeTracker(source_parser=test_source_parser)
+    @testset "FileChunk comparison with whitespace differences" begin
+        # Create a temporary file
+        temp_dir = mktempdir()
+        temp_file = joinpath(temp_dir, "whitespace_test.txt")
         
-        # Initial content
-        src_content = OrderedDict{String,String}(
-            "file1.txt" => get_chunk_standard_format("file1.txt", "content1"),
-            "file2.txt" => get_chunk_standard_format("file2.txt", "content2")
+        # Write initial content
+        write(temp_file, "Content with trailing space ")
+
+        # Create two FileChunks with the same content but different whitespace
+        source_path = SourcePath(path=temp_file)
+        chunk1 = FileChunk(source=source_path, content="""
+        Content with trailing space 
+        """)
+        chunk2 = FileChunk(source=source_path, content="Content with trailing space")
+        
+        # Test equality with our improved comparison
+        @test chunk1 == chunk2
+        
+        # Test with ChangeTracker
+        tracker = ChangeTracker{FileChunk}()
+        src_content = OrderedDict{String,FileChunk}(
+            temp_file => chunk1
         )
-        updated_tracker, _ = tracker(src_content)
-
-        @test length(updated_tracker.changes) == 2
-        @test updated_tracker.changes["file1.txt"] == :NEW
-        @test updated_tracker.changes["file2.txt"] == :NEW
-
-        # Simulate file deletion by removing file2.txt
-        deleted_src_content = OrderedDict{String,String}(
-            "file1.txt" => get_chunk_standard_format("file1.txt", "content1")
-        )
-        updated_tracker, updated_content = tracker(deleted_src_content)
-
-        @test length(updated_tracker.changes) == 1
-        @test haskey(updated_tracker.changes, "file1.txt")
-        @test !haskey(updated_tracker.changes, "file2.txt")
-        @test updated_tracker.changes["file1.txt"] == :UNCHANGED
-        @test updated_content == deleted_src_content
-    end
-
-    @testset "File content change detection" begin
-        mktempdir() do temp_dir
-            test_file = joinpath(temp_dir, "test_file.txt")
-            write(test_file, "Initial content")
-
-            function test_source_parser(source::String, current_content::String)
-                # This parser always reads from the file, ignoring current_content
-                return get_chunk_standard_format(source, read(source, String))
-            end
-
-            tracker = ChangeTracker(source_parser=test_source_parser)
-            
-            # Initial content
-            src_content = OrderedDict{String,String}(
-                test_file => get_chunk_standard_format(test_file, "Initial content")
-            )
-            updated_tracker, _ = tracker(src_content)
-
-            @test length(updated_tracker.changes) == 1
-            @test updated_tracker.changes[test_file] == :NEW
-
-            # Append content to the file without changing src_content
-            open(test_file, "a") do io
-                write(io, "\nAdditional content")
-            end
-
-            # Use the same src_content, but the parser should detect the change
-            updated_tracker, updated_content = tracker(src_content)
-
-            @test length(updated_tracker.changes) == 1
-            @test updated_tracker.changes[test_file] == :UPDATED
-            @test occursin("Additional content", updated_content[test_file])
-        end
+        
+        # First update
+        _ = update_changes!(tracker, src_content)
+        @test tracker.changes[temp_file] == :NEW
+        
+        # Second update with slightly different whitespace
+        src_content[temp_file] = chunk2
+        _ = update_changes!(tracker, src_content)
+        
+        # Should be UNCHANGED despite whitespace differences
+        @test tracker.changes[temp_file] == :UNCHANGED
+        
+        # Clean up
+        rm(temp_dir, recursive=true)
     end
 end
-
 ;

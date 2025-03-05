@@ -1,3 +1,4 @@
+using FilePathsBase
 using PromptingTools: recursive_splitter
 using PromptingTools.Experimental.RAGTools
 using PromptingTools.Experimental.RAGTools: AbstractChunker
@@ -9,22 +10,32 @@ export NewlineChunker
     max_tokens::Int = 8000
     overlap_tokens::Int = 200
     estimation_method::TokenEstimationMethod = CharCountDivTwo
-    formatter::Function = get_chunk_standard_format
     line_number_token_estimate::Int = 10
 end
 
 function RAG.get_chunks(chunker::NewlineChunker{T},
+    file_paths::Vector{<:AbstractPath};
+    sources=nothing,
+    verbose::Bool = true) where T
+    files_or_docs = [RAG.load_text(T, f)[1] for f in file_paths]
+    if isnothing(files_or_docs)
+        return Vector{T}()
+    end
+    return RAG.get_chunks(chunker, files_or_docs; sources=file_paths, verbose)
+end
+
+function RAG.get_chunks(chunker::NewlineChunker{T},
     files_or_docs::Vector{<:AbstractString};
-    sources::AbstractVector{<:AbstractString} = files_or_docs,
+    sources::AbstractVector{<:AbstractPath},
     verbose::Bool = true) where T
 
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
     output_chunks = Vector{T}()
 
-    formatter_tokens = estimate_tokens(chunker.formatter("", ""), chunker.estimation_method)
+    formatter_tokens = estimate_tokens(string(T(; source=SourcePath(; path=""))), chunker.estimation_method)
 
-    for i in eachindex(files_or_docs, sources)
-        doc_raw, source = RAG.load_text(T, files_or_docs[i]; source = sources[i])
+    for i in eachindex(files_or_docs)
+        doc_raw, source = files_or_docs[i], "$(sources[i])"
         if isempty(doc_raw)
             push!(output_chunks, T(; source=SourcePath(; path=source), content=""))
             continue

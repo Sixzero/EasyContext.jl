@@ -8,7 +8,7 @@ const colors = Dict{Symbol, Symbol}(
 @kwdef mutable struct ChangeTracker{T}
     changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
     chunks_dict::OrderedDict{String, T} = OrderedDict{String, T}()
-    verbose::Bool = true  # Add this line
+    verbose::Bool = true
 end
 
 
@@ -16,8 +16,8 @@ function update_changes!(tracker::ChangeTracker, ctx::Context)
     d = update_changes!(tracker, ctx.d)
     return ctx
 end
-# todo limit T to Union{<:AbstractChunk, String}
-function update_changes!(tracker::ChangeTracker, ctx::AbstractDict{String, T}) where T
+
+function update_changes!(tracker::ChangeTracker, ctx::AbstractDict{String, T}) where {T <: Union{AbstractChunk, AbstractString}}
     current_keys = keys(ctx)
     deleted_keys = [k for k in keys(tracker.changes) if !(k in current_keys)]
     for k in deleted_keys

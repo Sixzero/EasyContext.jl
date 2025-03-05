@@ -1,3 +1,5 @@
+using FilePathsBase
+
 abstract type AbstractChunk end
 
 # TODO maybe rename to FilePath ?
@@ -45,15 +47,15 @@ function did_chunk_change(chunk::FileChunk, old_chunk::FileChunk)
   content = get_updated_file_content(chunk.source)
   # TODO ...
 end
-reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source))
-function get_updated_file_content(source::SourcePath)
+reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source, chunk.content))
+function get_updated_file_content(source::SourcePath, safety_content="")
     file_path, from, to = source.path, source.from_line, source.to_line
     # Expand tilde in file path to handle paths starting with ~
     expanded_path = expanduser(file_path)
     
     if !isfile(expanded_path)
         @warn "File not found: $file_path (expanded: $expanded_path, pwd: $(pwd()))"
-        return ""
+        return safety_content
     end
     
     chunks_dict = read(expanded_path, String)
@@ -61,4 +63,7 @@ function get_updated_file_content(source::SourcePath)
     lines = split(chunks_dict, '\n')
     return join(lines[from:min(to, length(lines))], '\n')
 end
-Base.:(==)(a::FileChunk, b::FileChunk) = a.source == b.source && a.content == b.content
+
+# Improve equality comparison for FileChunk to focus on meaningful content
+Base.:(==)(a::SourcePath, b::SourcePath) = a.path == b.path && a.from_line == b.from_line && a.to_line == b.to_line
+Base.:(==)(a::FileChunk, b::FileChunk) = a.source == b.source && strip(a.content) == strip(b.content)

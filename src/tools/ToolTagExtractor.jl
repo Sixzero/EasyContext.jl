@@ -72,7 +72,7 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
                         continue
                     end
                 else
-                    # @warn "No opening ``` tag found for multiline command: $line"
+                    @warn "No opening ``` tag found for multiline command: $line"
                 end
             end
         end
