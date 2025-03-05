@@ -28,12 +28,13 @@ include("resolution_methods.jl")
         "lock"
     ]
     FILTERED_FOLDERS::Vector{String} = [
-        "build",
-        "dist", "python", "benchmarks", "node_modules", 
+        "build", "dist", "benchmarks", "node_modules", 
         "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable", ".idea"
     ]
     IGNORED_FILE_PATTERNS::Vector{String} = [
-        ".log", "config.ini", "secrets.yaml", "Manifest.toml",  "package-lock.json",# , "Project.toml", "README.md"
+        ".log", "config.ini", "secrets.yaml", "Manifest.toml",  "package-lock.json", 
+        ".aishignore", 
+        ".aishignore", 
     ]
     IGNORE_FILES::Vector{String} = [
         ".gitignore", ".aishignore"
@@ -99,7 +100,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
     project_files = String[]
     filtered_files = String[]
     filtered_dirs  = String[]
-    filtered_extensions = String[]
+    filtered_unignored_files = String[]
 
     # Parse gitignore at root path first
     ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
@@ -139,7 +140,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
                    !(file_ext in w.FILE_EXTENSIONS) && 
                    !(file_ext in w.NONVERBOSE_FILTERED_EXTENSIONS) &&
                    !any(pattern -> endswith(file, pattern), w.IGNORED_FILE_PATTERNS)
-                    push!(filtered_extensions, basename(file))
+                    push!(filtered_unignored_files, file_path)
                 end
                 
                 push!(filtered_files, file_path)
@@ -150,8 +151,8 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
     end
 
     # Show warning for filtered extensions not in the nonverbose list
-    if !isempty(filtered_extensions)
-        @warn "Filtered files might be important: $(join(filtered_extensions, ", "))"
+    if !isempty(filtered_unignored_files)
+        @warn "Filtered files might be important: $(join(filtered_unignored_files, ", "))"
     end
 
     return project_files, filtered_files, filtered_dirs

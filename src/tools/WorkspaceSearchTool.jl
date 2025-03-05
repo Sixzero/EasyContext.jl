@@ -24,6 +24,8 @@ function get_description(::Type{WorkspaceSearchTool})
     Search through the codebase using semantic search:
     WORKSPACE_SEARCH your search query [$STOP_SEQUENCE]
     
+    If you don't find a specific function or functionality in the context, then you can use this tool to search through the codebase for the functionality. 
+    
     $STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
     """
 end
