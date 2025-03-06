@@ -1,7 +1,14 @@
+using FilePathsBase
+
 const path_separator="/"
 include("resolution_methods.jl")
 
-@kwdef mutable struct Workspace
+abstract type AbstractWorkspace end
+
+@kwdef mutable struct WorkspaceRemote <: AbstractWorkspace
+    id::String
+end
+@kwdef mutable struct Workspace <: AbstractWorkspace
     project_paths::Vector{String}
     rel_project_paths::Vector{String}=String[]
     root_path::String=""  # Changed from common_path to root_path
@@ -9,7 +16,8 @@ include("resolution_methods.jl")
     original_dir::String
     PROJECT_FILES::Vector{String} = [
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
-        "app.json", ".gitignore", "Gemfile", "Cargo.toml", ".eslintrc.json"# , "Project.toml"
+        "app.json", ".gitignore", "Gemfile", "Cargo.toml", ".eslintrc.json", 
+        "requirements.txt", "requirements" # , "Project.toml"
     ]
     FILE_EXTENSIONS::Vector{String} = [
         "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
@@ -19,7 +27,8 @@ include("resolution_methods.jl")
         "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties", "plist",
-        "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg"
+        "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg",
+        "code-workspace"
     ]
     NONVERBOSE_FILTERED_EXTENSIONS::Vector{String} = [
         "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
@@ -28,12 +37,11 @@ include("resolution_methods.jl")
         "lock"
     ]
     FILTERED_FOLDERS::Vector{String} = [
-        "build", "dist", "benchmarks", "node_modules", 
+        "build", "dist", "benchmarks", "node_modules", "__pycache__", 
         "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable", ".idea"
     ]
     IGNORED_FILE_PATTERNS::Vector{String} = [
         ".log", "config.ini", "secrets.yaml", "Manifest.toml",  "package-lock.json", 
-        ".aishignore", 
         ".aishignore", 
     ]
     IGNORE_FILES::Vector{String} = [
@@ -82,11 +90,17 @@ function Workspace(project_paths::Vector{<:AbstractString};
 end
 function RAGTools.get_chunks(chunker, ws::Workspace)
     paths = Path.(get_project_files(ws))
+    @show paths
     cd(ws) do
         RAGTools.get_chunks(chunker, paths)
     end
 end
 
+
+function get_project_files(w::WorkspaceRemote)
+    paths, contents = "SEND type=ReqWorkspaceFiles  [w.project_id] [paths] "
+    @assert false "WorkspaceRemote unimplemented"
+end
 function get_project_files(w::Workspace)
     all_files = String[]
     cd(w) do

@@ -11,9 +11,13 @@ function WorkspaceSearchTool(cmd::ToolTag)
     root_path = something(root_path, pwd())
     
     model = get(cmd.kwargs, "model", ["gem20f", "gem15f", "gpt4om"])
-    workspace_ctx = init_workspace_context(root_path; model)
+    # Convert the root_path to a vector of strings as expected by Workspace constructor
+    workspace_ctx = init_workspace_context([root_path]; model)
     WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
 end
+
+const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
+instantiate(::Val{Symbol(WORKSPACE_SEARCH_TAG)}, cmd::ToolTag) = WorkspaceSearchTool(cmd)
 
 toolname(::Type{WorkspaceSearchTool}) = "WORKSPACE_SEARCH"
 tool_format(::Type{WorkspaceSearchTool}) = :single_line
