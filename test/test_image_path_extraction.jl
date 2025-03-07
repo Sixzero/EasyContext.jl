@@ -70,7 +70,6 @@ using EasyContext: extract_image_paths, is_image_path
     @testset "Handle unquoted paths" begin
         content = "/home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-39.png  /home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-31.png relative.png"
         paths = extract_image_paths(content)
-        @show paths
         @test length(paths) == 2
         @test "/home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-39.png" in paths
         @test "/home/six/Pictures/Screenshots/Screenshot from 2025-02-12 11-15-31.png" in paths
@@ -84,7 +83,6 @@ using EasyContext: extract_image_paths, is_image_path
         Relative unquoted: relative/path/image3.png
         """
         paths = extract_image_paths(content)
-        @show paths
         @test length(paths) == 2
         @test "/path/to/image1.png" in paths
         @test "relative/path/image2.jpg" in paths

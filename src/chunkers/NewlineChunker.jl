@@ -26,8 +26,8 @@ end
 
 function RAG.get_chunks(chunker::NewlineChunker{T},
     files_or_docs::Vector{<:AbstractString};
-    sources::AbstractVector{<:AbstractPath},
-    verbose::Bool = true) where T
+    sources::AbstractVector{S},
+    verbose::Bool = true) where {T, S<:Union{AbstractPath,AbstractString}}
 
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
     output_chunks = Vector{T}()

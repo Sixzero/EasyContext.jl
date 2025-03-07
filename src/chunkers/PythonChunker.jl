@@ -40,7 +40,7 @@ function RAG.get_chunks(chunker::PythonSourceChunker,
     for (file, source) in zip(files_or_docs, sources)
         defs = process_py_file(file, import_paths, verbose)
         chunks = [create_chunk(def, chunker.include_import_info) for def in defs]
-        chunks .|> println
+        # chunks .|> println
         
         @assert all(!isempty, chunks) "Chunks must not be empty. The following are empty: $(findall(isempty, chunks))"
     

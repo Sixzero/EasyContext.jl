@@ -138,5 +138,5 @@ function DOCS_FORMAT(docs)
   """
 end
 function DOCS_FORMAT_V2(docs)
-  document_context = join(("# Doc id=$i\n$doc" for (i, doc) in enumerate(docs)), "\n\n")
+    join(("# Doc id=$i\n$doc" for (i, doc) in enumerate(docs)), "\n\n")
 end
