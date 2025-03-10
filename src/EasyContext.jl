@@ -11,6 +11,7 @@ using PromptingTools
 using PromptingTools: UserMessage, AIMessage, SystemMessage
 
 export search
+export EFFICIENT_PIPELINE, HIGH_ACCURACY_PIPELINE
 
 include("utils/utils.jl")
 include("utils/UserConfirmation.jl")
@@ -36,8 +37,8 @@ include("stateful_transformation/StatefulTransformators.jl")
 include("utils/AIGenerateFallback.jl")
 include("rerankers/ChunkBatchers.jl")
 include("rerankers/rerank_prompts.jl")
-include("rerankers/CohereRerankerPro.jl")
 include("rerankers/ReduceGPTReranker.jl")
+include("rerankers/CohereRerankerPro.jl")
 include("rag/AdvancedRAG.jl")
 
 include("loader/loaders.jl")
