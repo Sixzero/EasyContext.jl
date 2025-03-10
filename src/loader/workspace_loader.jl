@@ -5,9 +5,6 @@ include("resolution_methods.jl")
 
 abstract type AbstractWorkspace end
 
-@kwdef mutable struct WorkspaceRemote <: AbstractWorkspace
-    id::String
-end
 @kwdef mutable struct Workspace <: AbstractWorkspace
     project_paths::Vector{String}
     rel_project_paths::Vector{String}=String[]
@@ -17,7 +14,7 @@ end
     PROJECT_FILES::Vector{String} = [
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
         "app.json", ".gitignore", "Gemfile", "Cargo.toml", ".eslintrc.json", 
-        "requirements.txt", "requirements" # , "Project.toml"
+        "requirements.txt", "requirements", "tsconfig.json" # , "Project.toml"
     ]
     FILE_EXTENSIONS::Vector{String} = [
         "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
@@ -25,10 +22,10 @@ end
         "py", "pyw", "ipynb", "rb", "rake", "gemspec", "java", "kt", "kts", "groovy", "scala",
         "clj", "c", "h", "cpp", "hpp", "cc", "cxx", "cs", "csx", "go", "rs", "swift", "m", "mm",
         "pl", "pm", "lua", "hs", "lhs", "erl", "hrl", "ex", "exs", "lisp", "lsp", "l", "cl",
-        "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "markdown",
+        "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "mdx", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties", "plist",
         "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg",
-        "code-workspace"
+        "code-workspace", "txt"
     ]
     NONVERBOSE_FILTERED_EXTENSIONS::Vector{String} = [
         "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
@@ -50,15 +47,6 @@ end
     show_tokens::Bool = false
 end
 Base.cd(f::Function, workspace::Workspace) = !isempty(workspace.root_path) ? cd(f, workspace.root_path) : f()
-
-# cd_rootpath(ws::Workspace) = begin
-#     curr_rel_path  = [normpath(joinpath(pwd(),rel_path)) for rel_path in ws.rel_project_paths]
-#     ideal_rel_path = [normpath(joinpath(root_path,rel_path)) for rel_path in ws.rel_project_paths]
-#     new_rel_path = relpath.(ideal_rel_path, curr_rel_path)
-#     cd(root_path)
-#     println("Project path initialized: $(path)")
-#     ws.rel_project_paths = new_rel_path
-# end
 
 function Workspace(project_paths::Vector{<:AbstractString}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
@@ -88,18 +76,15 @@ function Workspace(project_paths::Vector{<:AbstractString};
 
     return workspace
 end
-function RAGTools.get_chunks(chunker, ws::Workspace)
-    paths = Path.(get_project_files(ws))
+function RAG.get_chunks(chunker, ws::Workspace)
+    file_paths = get_project_files(ws)
+    isempty(file_paths) && return Vector{eltype(typeof(chunker).parameters[1])}()
+    paths = [Path(p) for p in file_paths]
     cd(ws) do
-        RAGTools.get_chunks(chunker, paths)
+        RAG.get_chunks(chunker, paths)
     end
 end
 
-
-function get_project_files(w::WorkspaceRemote)
-    paths, contents = "SEND type=ReqWorkspaceFiles  [w.project_id] [paths] "
-    @assert false "WorkspaceRemote unimplemented"
-end
 function get_project_files(w::Workspace)
     all_files = String[]
     cd(w) do
