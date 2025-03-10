@@ -79,45 +79,45 @@ function RAGTools.build_index(
     pkg_strings = get_python_package_infos(files_or_docs)
 
     # Split into chunks
-    chunks, sources = RAGTools.get_chunks(chunker, pkg_strings; sources=pkg_strings, chunker_kwargs...)
+    chunks, sources = RAG.get_chunks(chunker, pkg_strings; sources=pkg_strings, chunker_kwargs...)
 
-    if indexer isa RAGTools.SimpleIndexer
+    if indexer isa RAG.SimpleIndexer
         # Embed chunks
-        embeddings = RAGTools.get_embeddings(embedder, chunks;
+        embeddings = RAG.get_embeddings(embedder, chunks;
             verbose = (verbose > 1),
             cost_tracker,
             api_kwargs, embedder_kwargs...)
 
         # Extract tags
-        tags_extracted = RAGTools.get_tags(tagger, chunks;
+        tags_extracted = RAG.get_tags(tagger, chunks;
             verbose = (verbose > 1),
             cost_tracker,
             api_kwargs, tagger_kwargs...)
         # Build the sparse matrix and the vocabulary
-        tags, tags_vocab = RAGTools.build_tags(tagger, tags_extracted)
+        tags, tags_vocab = RAG.build_tags(tagger, tags_extracted)
 
         (verbose > 0) && @info "Index built! (cost: \$$(round(cost_tracker[], digits=3)))"
 
-        index = RAGTools.ChunkEmbeddingsIndex(; id = index_id, embeddings, tags, tags_vocab,
+        index = RAG.ChunkEmbeddingsIndex(; id = index_id, embeddings, tags, tags_vocab,
             chunks, sources, extras)
     else
         # Tokenize and DTM
-        dtm = RAGTools.get_keywords(embedder, chunks;
+        dtm = RAG.get_keywords(embedder, chunks;
             verbose = (verbose > 1),
             cost_tracker,
             api_kwargs, embedder_kwargs...)
 
         # Extract tags
-        tags_extracted = RAGTools.get_tags(tagger, chunks;
+        tags_extracted = RAG.get_tags(tagger, chunks;
             verbose = (verbose > 1),
             cost_tracker,
             api_kwargs, tagger_kwargs...)
         # Build the sparse matrix and the vocabulary
-        tags, tags_vocab = RAGTools.build_tags(tagger, tags_extracted)
+        tags, tags_vocab = RAG.build_tags(tagger, tags_extracted)
 
         (verbose > 0) && @info "Index built! (cost: \$$(round(cost_tracker[], digits=3)))"
 
-        index = RAGTools.ChunkKeywordsIndex(; id = index_id, chunkdata = dtm, tags, tags_vocab,
+        index = RAG.ChunkKeywordsIndex(; id = index_id, chunkdata = dtm, tags, tags_vocab,
             chunks, sources, extras)
     end
 

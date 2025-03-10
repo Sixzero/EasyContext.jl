@@ -10,9 +10,12 @@ function WorkspaceSearchTool(cmd::ToolTag)
     isnothing(root_path) && @warn "root_path not provided in kwargs, using pwd()" root_path=pwd()
     root_path = something(root_path, pwd())
     
-    model = get(cmd.kwargs, "model", ["gem20f", "gem15f", "gpt4om"])
+    # Check if high accuracy mode is requested
+    high_accuracy = get(cmd.kwargs, "high_accuracy", false)
+    pipeline = high_accuracy ? HIGH_ACCURACY_PIPELINE() : EFFICIENT_PIPELINE()
+    
     # Convert the root_path to a vector of strings as expected by Workspace constructor
-    workspace_ctx = init_workspace_context([root_path]; model)
+    workspace_ctx = init_workspace_context([root_path]; pipeline)
     WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
 end
 
@@ -24,6 +27,11 @@ tool_format(::Type{WorkspaceSearchTool}) = :single_line
 stop_sequence(::Type{WorkspaceSearchTool}) = STOP_SEQUENCE
 
 function get_description(::Type{WorkspaceSearchTool})
+    # TODO later on add it in?
+    """
+    Options:
+    - high_accuracy=true: Use a more accurate but slower search pipeline
+    """
     """
     Search through the codebase using semantic search:
     WORKSPACE_SEARCH your search query [$STOP_SEQUENCE]

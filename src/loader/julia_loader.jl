@@ -5,7 +5,7 @@ end
 
 function RAG.get_chunks(loader::JuliaLoader, chunker::CHUNKER) where {CHUNKER <: AbstractChunker}
     pkg_infos = get_package_infos(loader.package_scope, loader.excluded_packages)
-    chunks = RAGTools.get_chunks(chunker, pkg_infos)
+    chunks = RAG.get_chunks(chunker, pkg_infos)
     return chunks
 end
 

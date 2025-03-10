@@ -20,15 +20,16 @@ Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspac
 const WorkspaceContext = Context{FileChunk}()
 const WorkspaceChangeTracker = ChangeTracker{FileChunk}()
 
-function init_workspace_context(project_paths; show_tokens=false, verbose=true, virtual_ws=nothing, model=["gem20f", "gem15f", "gpt4om"], top_k=50, top_n=12, rerank_prompt=create_rankgpt_prompt_v2)
+function init_workspace_context(project_paths::Vector{<:AbstractString}; 
+    show_tokens=false, 
+    verbose=true, 
+    virtual_ws=nothing, 
+    pipeline=EFFICIENT_PIPELINE())
+    
     workspace = Workspace(project_paths; virtual_ws, verbose, show_tokens)
-    embedder = create_cohere_embedder(cache_prefix="workspace")
-    bm25 = BM25Embedder()
-    topK = TopK([embedder, bm25]; top_k)
-    reranker = ReduceGPTReranker(batch_size=30; top_n, model, rerank_prompt)
     
     WorkspaceCTX(
-        TwoLayerRAG(; topK, reranker),
+        pipeline,
         workspace,
         WorkspaceContext,
         WorkspaceChangeTracker,
@@ -38,7 +39,7 @@ end
 function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
     !enabled && return ("", nothing)
     
-    file_chunks = get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
+    file_chunks = RAG.get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
     isempty(file_chunks) && return ("", nothing)
     
     file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query)

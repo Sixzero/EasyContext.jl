@@ -19,24 +19,17 @@ const JuliaChangeTracker = ChangeTracker{SourceChunk}()
 
 function init_julia_context(; 
     package_scope=:installed, 
-    model,
     verbose=true, 
     excluded_packages=String[],
-    top_k=50,
+    pipeline=EFFICIENT_PIPELINE(cache_prefix="juliapkgs"),
 )
     # Initialize with nothing, will be lazily created on first use
     JuliaChangeTracker.verbose = verbose
 
-    embedder          = create_cohere_embedder(cache_prefix="juliapkgs")
-    bm25              = BM25Embedder()
-    topK              = TopK([embedder, bm25]; top_k)
-    reranker          = ReduceGPTReranker(batch_size=40, top_n=10; model)
-    rag_pipeline      = TwoLayerRAG(; topK, reranker)
-
     pkg_chunks = CachedLoader(loader=JuliaLoader(; excluded_packages=excluded_packages), memory=Dict{String,Vector{SourceChunk}}())
 
     return JuliaCTX(
-        rag_pipeline,
+        pipeline,
         JuliaContext,
         JuliaChangeTracker,
         pkg_chunks,
