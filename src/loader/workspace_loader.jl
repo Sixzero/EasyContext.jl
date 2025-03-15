@@ -102,7 +102,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
     # Parse gitignore at root path first
     root_ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
 
-    @time for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
+    for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
         rel_root = relpath(root) # to remove ./ start of path
 
         # Add patterns from any .gitignore found in subdirectories
