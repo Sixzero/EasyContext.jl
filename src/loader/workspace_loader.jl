@@ -11,12 +11,12 @@ abstract type AbstractWorkspace end
     root_path::String=""  # Changed from common_path to root_path
     resolution_method::AbstractResolutionMethod=FirstAsRootResolution()
     original_dir::String
-    PROJECT_FILES::Vector{String} = [
+    PROJECT_FILES::Set{String} = Set{String}([
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
         "app.json", ".gitignore", "Gemfile", "Cargo.toml", ".eslintrc.json", 
-        "requirements.txt", "requirements", "tsconfig.json" # , "Project.toml"
-    ]
-    FILE_EXTENSIONS::Vector{String} = [
+        "requirements.txt", "requirements", "tsconfig.json", ".env.example" # , "Project.toml"
+    ])
+    FILE_EXTENSIONS::Set{String} = Set{String}([
         "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
         "html", "css", "scss", "sass", "less", "js", "cjs", "jsx", "ts", "tsx", "php", "vue", "svelte",
         "py", "pyw", "ipynb", "rb", "rake", "gemspec", "java", "kt", "kts", "groovy", "scala",
@@ -26,24 +26,22 @@ abstract type AbstractWorkspace end
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties", "plist",
         "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg",
         "code-workspace", "txt"
-    ]
-    NONVERBOSE_FILTERED_EXTENSIONS::Vector{String} = [
+    ])
+    NONVERBOSE_FILTERED_EXTENSIONS::Set{String} = Set{String}([
         "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
         "doc", "docx", "ppt", "pptx", "xls", "xlsx", "csv", "tsv", "db", "sqlite", "sqlite3",
         "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "ttf", "otf", "woff", "woff2", "eot",
-        "lock"
-    ]
-    FILTERED_FOLDERS::Vector{String} = [
+        "lock", "arrow"
+    ])
+    FILTERED_FOLDERS::Set{String} = Set{String}([
         "build", "dist", "benchmarks", "node_modules", "__pycache__", 
         "conversations", "archived", "archive", "test_cases", ".git" ,"playground", ".vscode", "aish_executable", ".idea"
-    ]
+    ])
     IGNORED_FILE_PATTERNS::Vector{String} = [
         ".log", "config.ini", "secrets.yaml", "Manifest.toml",  "package-lock.json", 
-        ".aishignore", 
+        ".aishignore",  ".env"
     ]
-    IGNORE_FILES::Vector{String} = [
-        ".gitignore", ".aishignore"
-    ]
+    IGNORE_FILES::Vector{String} = [".gitignore", ".aishignore"]
     show_tokens::Bool = false
 end
 Base.cd(f::Function, workspace::Workspace) = !isempty(workspace.root_path) ? cd(f, workspace.root_path) : f()
@@ -76,7 +74,7 @@ function Workspace(project_paths::Vector{<:AbstractString};
 
     return workspace
 end
-function RAG.get_chunks(chunker, ws::Workspace)
+function RAG.get_chunks(chunker, ws::AbstractWorkspace)
     file_paths = get_project_files(ws)
     isempty(file_paths) && return Vector{eltype(typeof(chunker).parameters[1])}()
     paths = [Path(p) for p in file_paths]
@@ -97,38 +95,48 @@ end
 
 function get_filtered_files_and_folders(w::Workspace, path::String)
     project_files = String[]
-    filtered_files = String[]
-    filtered_dirs  = String[]
-    filtered_unignored_files = String[]
+    filtered_files = Set{String}()
+    filtered_dirs  = Set{String}()
+    filtered_unignored_files = Set{String}()
 
     # Parse gitignore at root path first
-    ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
+    root_ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
 
-    for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
+    @time for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
+        rel_root = relpath(root) # to remove ./ start of path
+
         # Add patterns from any .gitignore found in subdirectories
-        local_ignore_patterns = vcat(ignore_patterns, parse_ignore_files(root, w.IGNORE_FILES))
+        local_ignore_patterns = vcat(root_ignore_patterns, parse_ignore_files(root, w.IGNORE_FILES))
 
         # Handle filtered folders
-        if any(d -> d in w.FILTERED_FOLDERS, splitpath(relpath(root)))
+        if any(d -> startswith(rel_root, d), w.FILTERED_FOLDERS)
             push!(filtered_dirs, root)
-            empty!(dirs)
+            empty!(dirs) # MUTABLE change to skip all folders of walkdir iteration!
             continue
         end
 
         # Process directories
-        for d in dirs
+        filter!(dirs) do d
             dir_path = joinpath(root, d)
-            if is_ignored_by_patterns(dir_path, local_ignore_patterns, path)
+            is_ignored = is_ignored_by_patterns(dir_path, local_ignore_patterns, path)
+            if is_ignored
                 push!(filtered_dirs, dir_path)
-                filter!(x -> x != d, dirs)
+                return false  # Remove from dirs
             end
+            return true  # Keep in dirs
         end
 
         # Process files
         for file in files_in_dir
             file_path = joinpath(root, file)
+
+            dir_path = dirname(file_path)
+            dir_path in filtered_dirs && continue
+            
             # First check if it's ignored, then check if it's a project file
-            if is_ignored_by_patterns(file_path, local_ignore_patterns, path) ||
+            is_ignored = is_ignored_by_patterns(file_path, local_ignore_patterns, path)
+            
+            if is_ignored ||
                ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||
                !is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS)
 
@@ -198,6 +206,7 @@ function print_project_tree(
     do_print::Bool = true
 )
     cd(w) do
+        # Get filtered files and folders once
         project_files, filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
         
         # Create async tasks for summaries
@@ -205,20 +214,21 @@ function print_project_tree(
         
         # Generate header
         header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
-        tree_str = generate_tree_string(
-            path; 
-            show_tokens = show_tokens, 
-            only_dirs = !show_files, 
-            filtered_folders = filtered_folders, 
-            filtered_files = filtered_files,
+        
+        # Build tree structure from project_files directly
+        tree_str = generate_tree_from_files(
+            path,
+            project_files;
+            show_tokens = show_tokens,
+            only_dirs = !show_files,
             filewarning = filewarning,
             summary_callback = summary_callback,
-            summary_tasks = summary_tasks  # Pass the tasks dictionary
+            summary_tasks = summary_tasks
         )
+        
         isempty(tree_str) && (tree_str = "└── (no subfolder)")
         
         # Wait for all summaries to complete
-        summaries = Dict{String, String}()
         for (filepath, task) in summary_tasks
             summary = fetch(task)
             placeholder = "{{SUMMARY:$filepath}}"
@@ -237,149 +247,139 @@ function print_project_tree(
     end
 end
 
-function generate_tree_string(
-    path::String;
+# New function that builds a tree from a list of pre-filtered files
+function generate_tree_from_files(
+    root_path::String,
+    files::Vector{String};
     show_tokens::Bool = false,
     only_dirs::Bool = false,
-    filtered_folders::Vector{String} = String[],
-    filtered_files::Vector{String} = String[],
     filewarning::Bool = true,
     summary_callback::Function = default_summary_callback,
     summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
+    # Create a tree structure
+    tree = Dict{String, Any}()
+    
+    # First, build directory structure from files
+    for file in files
+        # Get path relative to root_path
+        rel_path = relpath(file, root_path)
+        parts = splitpath(rel_path)
+        
+        # Navigate to the right spot in the tree
+        current = tree
+        for i in 1:length(parts)-1
+            dir = parts[i]
+            if !haskey(current, dir)
+                current[dir] = Dict{String, Any}()
+            end
+            current = current[dir]
+        end
+        
+        # Add the file at the leaf
+        if !only_dirs
+            current[parts[end]] = file  # Store full path for later
+        end
+    end
+    
+    # Then generate the tree string
     io = IOBuffer()
-    _print_tree(
-        io,
-        path;
-        pre = "",
+    print_tree_structure(io, tree, "", root_path;
         show_tokens = show_tokens,
-        only_dirs = only_dirs,
-        filtered_folders = filtered_folders,
-        filtered_files = filtered_files,
         filewarning = filewarning,
         summary_callback = summary_callback,
         summary_tasks = summary_tasks
     )
+    
     return String(take!(io))
 end
 
-function _print_tree(
-    io::IO, 
-    path::String; 
-    pre::String = "", 
-    show_tokens::Bool = false, 
-    only_dirs::Bool = false,
-    filtered_folders::Vector{String} = String[],
-    filtered_files::Vector{String} = String[],
-    filewarning::Bool = true,
-    summary_callback::Function = default_summary_callback,
-    summary_tasks::Dict{String, Task} = Dict{String, Task}()
-)
-    # Read entries in the current directory
-    entries = readdir(path)
-    dirs = sort([e for e in entries if isdir(joinpath(path, e))])
-    files = sort([e for e in entries if isfile(joinpath(path, e))])
-
-
-    # Count total entries to determine when to use "└──"
-    total_entries = length(dirs) + (only_dirs ? 0 : length(files))
-    total_entries == 0 && return
-
-    # Print files if only_dirs is false
-    idx = 0
-    if !only_dirs
-        for file in files
-            idx += 1
-            filepath = joinpath(path, file)
-            filepath in filtered_files && continue
-            is_last = isempty(dirs) && idx == length(files)
-            print_file(io, filepath, is_last, pre; 
-                show_tokens, 
-                filewarning, 
-                summary_callback,
-                summary_tasks
-            )
-        end
-    end
-
-    # Print directories
-    idx = 0
-    for dir in dirs
-        idx += 1
-        joinpath(path, dir) in filtered_folders && continue
-        is_last = idx == length(dirs)
-        next_pre = pre * (is_last ? "    " : "│   ")
-        println(io, pre * (is_last ? "└── " : "├── ") * dir * "/")
-        # Recursively print subdirectories
-        _print_tree(io, joinpath(path, dir); pre=next_pre, show_tokens, only_dirs, filtered_folders, filtered_files, filewarning, summary_callback, summary_tasks)
-    end
-end
-
-function print_file(
+# Helper function to print the tree structure
+function print_tree_structure(
     io::IO,
-    full_path::String,
-    is_last::Bool,
-    pre::String = "";
+    node::Dict{String, Any},
+    prefix::String,
+    root_path::String;
     show_tokens::Bool = false,
     filewarning::Bool = true,
     summary_callback::Function = nothing,
     summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
-    symbol = is_last ? "└── " : "├── "
-    name = basename(full_path)
-
-    if isfile(full_path)
+    # Sort directories and files
+    entries = sort(collect(keys(node)))
+    dirs = [e for e in entries if isa(node[e], Dict)]
+    files = [e for e in entries if !isa(node[e], Dict)]
+    
+    # Process files
+    for (i, file) in enumerate(files)
+        full_path = node[file]  # This is the full path we stored
+        is_last = i == length(files) && isempty(dirs)
+        symbol = is_last ? "└── " : "├── "
+        
+        # Print file info
         size_chars = 0
-        content_summary = "{{SUMMARY:$full_path}}"  # placeholder
-
+        content_summary = "{{SUMMARY:$full_path}}"
+        
         try
             full_file = read(full_path, String)
             size_chars = count(c -> !isspace(c), full_file)
-            name *= show_tokens ? " ($(count_tokens(full_file)))" : ""
-
+            file_display = file
+            file_display *= show_tokens ? " ($(count_tokens(full_file)))" : ""
+            
             # Create async task for summary
             if summary_callback !== nothing
                 summary_tasks[full_path] = @async summary_callback(full_path, full_file)
             end
+            
+            # Format the size string
+            size_str = ""
+            size_chars > 10_000 && (size_str = format_file_size(size_chars))
+            
+            # Apply coloring for large files
+            colored_size_str = ""
+            if filewarning && size_chars > 20_000
+                color, reset = "\e[31m", "\e[0m"
+                colored_size_str = " $color($size_str)$reset"
+            elseif size_str != ""
+                colored_size_str = " ($size_str)"
+            end
+            
+            println(io, "$(prefix)$(symbol)$(file_display)$(colored_size_str)$(content_summary)")
         catch e
             if isa(e, Base.InvalidCharError{Char})
-                # If the file contains invalid UTF-8, treat it as binary
-                size_chars = filesize(full_path)
-                name *= " (binary or invalid UTF-8)"
+                println(io, "$(prefix)$(symbol)$(file) (binary or invalid UTF-8)")
             else
                 rethrow(e)
             end
         end
-
-        # Format the size string
-        size_str = ""
-        size_chars > 10_000 && (size_str = format_file_size(size_chars))
-
-        # Apply coloring for large files if filewarning is true
-        colored_size_str = ""
-        if filewarning && size_chars > 20_000
-            color, reset = "\e[31m", "\e[0m"
-            colored_size_str = " $color($size_str)$reset"
-        elseif size_str != ""
-            colored_size_str = " ($size_str)"
-        end
-
-        println(io, "$pre$symbol$name$colored_size_str$content_summary")
-    else
-        println(io, "$pre$symbol$name")
+    end
+    
+    # Process directories
+    for (i, dir) in enumerate(dirs)
+        is_last = i == length(dirs)
+        symbol = is_last ? "└── " : "├── "
+        next_prefix = prefix * (is_last ? "    " : "│   ")
+        
+        println(io, "$(prefix)$(symbol)$(dir)/")
+        print_tree_structure(io, node[dir], next_prefix, root_path;
+            show_tokens = show_tokens,
+            filewarning = filewarning,
+            summary_callback = summary_callback,
+            summary_tasks = summary_tasks
+        )
     end
 end
 
 format_file_size(size_chars) = size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars"
 
-workspace_format_description_raw(ws::Workspace)  = """
+workspace_format_description_raw(ws::AbstractWorkspace)  = """
 The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
 Our workspace has a root path: $(ws.root_path)
 The projects and their folders:
 """ * join(print_project_tree(ws, show_files=true, summary_callback=default_summary_callback,  do_print=false), "\n")
 
-workspace_format_description(ws::Workspace)  = """
+workspace_format_description(ws::AbstractWorkspace)  = """
 The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
 Our workspace has a root path: $(ws.root_path)

@@ -4,7 +4,7 @@ import Base: write
 
 @kwdef mutable struct WorkspaceCTX
     rag_pipeline::TwoLayerRAG          
-    workspace::Workspace
+    workspace::AbstractWorkspace
     tracker_context::Context           
     changes_tracker::ChangeTracker
 end
