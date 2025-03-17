@@ -1,7 +1,7 @@
 name = "EasyContext"
 uuid = "5067fbba-b9ec-41e5-aa31-a8c1ac509a30"
 authors = ["SixZero <havliktomi@hotmail.com>"]
-version = "0.2.1"
+version = "0.2.2"
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
@@ -61,7 +61,7 @@ Pkg = "1.11.0"
 PrecompileTools = "≥1.2"
 StreamCallbacksExt = "≥0.1"
 ProgressMeter = "≥1.10"
-PromptingTools = "≥0.69.0"
+PromptingTools = "0.72, 0.73"
 PyCall = "1.96.4"
 REPL = "≥1.11"
 Random = "≥1.11"
