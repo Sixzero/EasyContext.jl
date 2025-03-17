@@ -92,7 +92,17 @@ function gitignore_to_regex(pattern::AbstractString)::Union{GitIgnorePattern,Not
     return GitIgnorePattern(Regex(regex), is_negation)
 end
 
-function parse_ignore_files(root::AbstractString, IGNORE_FILES::Vector{String})::Vector{GitIgnorePattern}
+# Add a cache for parsed gitignore files
+mutable struct GitIgnoreCache
+    patterns_by_dir::Dict{String, Vector{GitIgnorePattern}}
+    
+    GitIgnoreCache() = new(Dict{String, Vector{GitIgnorePattern}}())
+end
+
+function parse_ignore_files(root::AbstractString, IGNORE_FILES::Vector{String}, cache::GitIgnoreCache)::Vector{GitIgnorePattern}
+    # Check if we've already parsed this directory
+    haskey(cache.patterns_by_dir, root) && return cache.patterns_by_dir[root]
+    
     raw_patterns = String[]
     for ignore_file in IGNORE_FILES
         ignore_path = joinpath(root, ignore_file)
@@ -110,7 +120,34 @@ function parse_ignore_files(root::AbstractString, IGNORE_FILES::Vector{String}):
         end
     end
     
+    # Cache the result
+    cache.patterns_by_dir[root] = compiled_patterns
     return compiled_patterns
+end
+
+# Get accumulated patterns with caching
+function get_accumulated_ignore_patterns(current_dir::AbstractString, root_path::AbstractString, 
+                                        IGNORE_FILES::Vector{String}, cache::GitIgnoreCache)::Vector{GitIgnorePattern}
+    # Build path chain from root to current directory
+    path_chain = String[]
+    temp_dir = current_dir
+    
+    # Create the directory chain from root_path to current_dir
+    while startswith(temp_dir, root_path)
+        push!(path_chain, temp_dir)
+        temp_dir == root_path && break
+        temp_dir = dirname(temp_dir)
+    end
+    
+    # Process directories from root to current (for proper precedence)
+    accumulated_patterns = Vector{GitIgnorePattern}()
+    for dir in reverse(path_chain)
+        # Parse and add patterns from this directory
+        dir_patterns = parse_ignore_files(dir, IGNORE_FILES, cache)
+        append!(accumulated_patterns, dir_patterns)
+    end
+    
+    return accumulated_patterns
 end
 
 function is_ignored_by_patterns(

@@ -99,17 +99,19 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
     filtered_dirs  = Set{String}()
     filtered_unignored_files = Set{String}()
 
-    # Parse gitignore at root path first
-    root_ignore_patterns = parse_ignore_files(path, w.IGNORE_FILES)
+    # Create a cache for gitignore patterns
+    gitignore_cache = GitIgnoreCache()
 
     for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
         rel_root = relpath(root) # to remove ./ start of path
 
-        # Add patterns from any .gitignore found in subdirectories
-        local_ignore_patterns = vcat(root_ignore_patterns, parse_ignore_files(root, w.IGNORE_FILES))
+        # Get accumulated patterns with caching
+        accumulated_ignore_patterns = get_accumulated_ignore_patterns(
+            root, path, w.IGNORE_FILES, gitignore_cache
+        )
 
         # Handle filtered folders
-        if any(d -> startswith(rel_root, d), w.FILTERED_FOLDERS)
+        if any(d -> basename(rel_root) == d, w.FILTERED_FOLDERS)
             push!(filtered_dirs, root)
             empty!(dirs) # MUTABLE change to skip all folders of walkdir iteration!
             continue
@@ -118,7 +120,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
         # Process directories
         filter!(dirs) do d
             dir_path = joinpath(root, d)
-            is_ignored = is_ignored_by_patterns(dir_path, local_ignore_patterns, path)
+            is_ignored = is_ignored_by_patterns(dir_path, accumulated_ignore_patterns, path)
             if is_ignored
                 push!(filtered_dirs, dir_path)
                 return false  # Remove from dirs
@@ -134,7 +136,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
             dir_path in filtered_dirs && continue
             
             # First check if it's ignored, then check if it's a project file
-            is_ignored = is_ignored_by_patterns(file_path, local_ignore_patterns, path)
+            is_ignored = is_ignored_by_patterns(file_path, accumulated_ignore_patterns, path)
             
             if is_ignored ||
                ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||
