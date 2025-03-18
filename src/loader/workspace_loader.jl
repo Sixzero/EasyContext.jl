@@ -85,10 +85,8 @@ end
 
 function get_project_files(w::Workspace)
     all_files = String[]
-    cd(w) do
-        for path in w.rel_project_paths
-            append!(all_files, get_filtered_files_and_folders(w, path)[1])
-        end
+    for path in w.rel_project_paths
+        append!(all_files, get_filtered_files_and_folders(w, path)[1])
     end
     return all_files
 end
@@ -101,60 +99,61 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
 
     # Create a cache for gitignore patterns
     gitignore_cache = GitIgnoreCache()
+    cd(w) do
+        for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
+            rel_root = relpath(root) # to remove ./ start of path
 
-    for (root, dirs, files_in_dir) in walkdir(path, topdown=true, follow_symlinks=true)
-        rel_root = relpath(root) # to remove ./ start of path
+            # Get accumulated patterns with caching
+            accumulated_ignore_patterns = get_accumulated_ignore_patterns(
+                root, path, w.IGNORE_FILES, gitignore_cache
+            )
 
-        # Get accumulated patterns with caching
-        accumulated_ignore_patterns = get_accumulated_ignore_patterns(
-            root, path, w.IGNORE_FILES, gitignore_cache
-        )
-
-        # Handle filtered folders
-        if any(d -> basename(rel_root) == d, w.FILTERED_FOLDERS)
-            push!(filtered_dirs, root)
-            empty!(dirs) # MUTABLE change to skip all folders of walkdir iteration!
-            continue
-        end
-
-        # Process directories
-        filter!(dirs) do d
-            dir_path = joinpath(root, d)
-            is_ignored = is_ignored_by_patterns(dir_path, accumulated_ignore_patterns, path)
-            if is_ignored
-                push!(filtered_dirs, dir_path)
-                return false  # Remove from dirs
+            # Handle filtered folders
+            if any(d -> basename(rel_root) == d, w.FILTERED_FOLDERS)
+                push!(filtered_dirs, root)
+                empty!(dirs) # MUTABLE change to skip all folders of walkdir iteration!
+                continue
             end
-            return true  # Keep in dirs
-        end
 
-        # Process files
-        for file in files_in_dir
-            file_path = joinpath(root, file)
-
-            dir_path = dirname(file_path)
-            dir_path in filtered_dirs && continue
-            
-            # First check if it's ignored, then check if it's a project file
-            is_ignored = is_ignored_by_patterns(file_path, accumulated_ignore_patterns, path)
-            
-            if is_ignored ||
-               ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||
-               !is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS)
-
-                file_ext = lowercase(get_file_extension(file))
-                # If it's not in the nonverbose filtered extensions list and has an extension,
-                # track it for warning
-                if !isempty(file_ext) && 
-                   !(file_ext in w.FILE_EXTENSIONS) && 
-                   !(file_ext in w.NONVERBOSE_FILTERED_EXTENSIONS) &&
-                   !any(pattern -> endswith(file, pattern), w.IGNORED_FILE_PATTERNS)
-                    push!(filtered_unignored_files, file_path)
+            # Process directories
+            filter!(dirs) do d
+                dir_path = joinpath(root, d)
+                is_ignored = is_ignored_by_patterns(dir_path, accumulated_ignore_patterns, path)
+                if is_ignored
+                    push!(filtered_dirs, dir_path)
+                    return false  # Remove from dirs
                 end
+                return true  # Keep in dirs
+            end
+
+            # Process files
+            for file in files_in_dir
+                file_path = joinpath(root, file)
+
+                dir_path = dirname(file_path)
+                dir_path in filtered_dirs && continue
                 
-                push!(filtered_files, file_path)
-            else
-                push!(project_files, file_path)
+                # First check if it's ignored, then check if it's a project file
+                is_ignored = is_ignored_by_patterns(file_path, accumulated_ignore_patterns, path)
+                
+                if is_ignored ||
+                ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||
+                !is_project_file(lowercase(file), w.PROJECT_FILES, w.FILE_EXTENSIONS)
+
+                    file_ext = lowercase(get_file_extension(file))
+                    # If it's not in the nonverbose filtered extensions list and has an extension,
+                    # track it for warning
+                    if !isempty(file_ext) && 
+                    !(file_ext in w.FILE_EXTENSIONS) && 
+                    !(file_ext in w.NONVERBOSE_FILTERED_EXTENSIONS) &&
+                    !any(pattern -> endswith(file, pattern), w.IGNORED_FILE_PATTERNS)
+                        push!(filtered_unignored_files, file_path)
+                    end
+                    
+                    push!(filtered_files, file_path)
+                else
+                    push!(project_files, file_path)
+                end
             end
         end
     end
@@ -185,68 +184,68 @@ end
 default_summary_callback(fullpath, full_file::String) = ""
 get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))
 
-print_project_tree(w::AbstractWorkspace; 
+print_project_tree(w::Workspace; 
                     show_tokens::Bool=false, 
                     show_files::Bool=true, 
                     filewarning::Bool=true, 
-                    summary_callback::Function=default_summary_callback, 
+                    summary_callback=default_summary_callback, 
                     do_print::Bool=true) = print_project_tree(w, w.rel_project_paths; show_tokens, show_files, filewarning, summary_callback, do_print)
-print_project_tree(w, paths::Vector{String}; 
+print_project_tree(w::AbstractWorkspace, paths::Vector{String}; 
                     show_tokens::Bool=false, 
                     show_files::Bool=true, 
                     filewarning::Bool=true, 
-                    summary_callback::Function=default_summary_callback, 
-                    do_print::Bool=true) = 
+                    summary_callback=default_summary_callback, 
+                    do_print::Bool=true) = begin
     [print_project_tree(w, path; show_tokens, show_files, filewarning, summary_callback, do_print) for path in paths]
+end
+
 function print_project_tree(
     w::AbstractWorkspace, 
     path::String; 
     show_tokens::Bool = false, 
     show_files::Bool = true, 
     filewarning::Bool = true,
-    summary_callback::Function = default_summary_callback,
+    summary_callback = default_summary_callback,
     do_print::Bool = true
 )
-    cd(w) do
-        # Get filtered files and folders once
-        project_files, filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
-        
-        # Create async tasks for summaries
-        summary_tasks = Dict{String, Task}()
-        
-        # Generate header
-        header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
-        
-        # Build tree structure from project_files directly
-        tree_str = generate_tree_from_files(
-            path,
-            project_files;
-            show_tokens = show_tokens,
-            only_dirs = !show_files,
-            filewarning = filewarning,
-            summary_callback = summary_callback,
-            summary_tasks = summary_tasks
-        )
-        
-        isempty(tree_str) && (tree_str = "└── (no subfolder)")
-        
-        # Wait for all summaries to complete
-        for (filepath, task) in summary_tasks
-            summary = fetch(task)
-            placeholder = "{{SUMMARY:$filepath}}"
-            tree_str = replace(tree_str, placeholder => !isempty(summary) ? " - $summary" : "")
-        end
-        
-        # Combine header and tree
-        output = """$header
-                    $tree_str
-                    """
-        
-        # Print if do_print is true
-        do_print && println(output)
-        # Return the output text
-        return output
+    # Get filtered files and folders once
+    project_files, filtered_files, filtered_folders = get_filtered_files_and_folders(w, path)
+    
+    # Create async tasks for summaries
+    summary_tasks = Dict{String, Task}()
+    
+    # Generate header
+    header = "Project [$(normpath(path))/]$(get_project_name(abspath(path)))"
+    
+    # Build tree structure from project_files directly
+    tree_str = generate_tree_from_files(
+        path,
+        project_files;
+        show_tokens = show_tokens,
+        only_dirs = !show_files,
+        filewarning = filewarning,
+        summary_callback = summary_callback,
+        summary_tasks = summary_tasks
+    )
+    
+    isempty(tree_str) && (tree_str = "└── (no subfolder)")
+    
+    # Wait for all summaries to complete
+    for (filepath, task) in summary_tasks
+        summary = fetch(task)
+        placeholder = "{{SUMMARY:$filepath}}"
+        tree_str = replace(tree_str, placeholder => !isempty(summary) ? " - $summary" : "")
     end
+    
+    # Combine header and tree
+    output = """$header
+                $tree_str
+                """
+    
+    # Print if do_print is true
+    do_print && println(output)
+    # Return the output text
+    return output
 end
 
 # New function that builds a tree from a list of pre-filtered files
@@ -256,7 +255,7 @@ function generate_tree_from_files(
     show_tokens::Bool = false,
     only_dirs::Bool = false,
     filewarning::Bool = true,
-    summary_callback::Function = default_summary_callback,
+    summary_callback = default_summary_callback,
     summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
     # Create a tree structure
@@ -304,7 +303,7 @@ function print_tree_structure(
     root_path::String;
     show_tokens::Bool = false,
     filewarning::Bool = true,
-    summary_callback::Function = nothing,
+    summary_callback = nothing,
     summary_tasks::Dict{String, Task} = Dict{String, Task}()
 )
     # Sort directories and files
@@ -319,31 +318,42 @@ function print_tree_structure(
         symbol = is_last ? "└── " : "├── "
         
         # Print file info
-        size_chars = 0
-        content_summary = "{{SUMMARY:$full_path}}"
+        file_display = file
+        content_summary = ""
+        colored_size_str = ""
         
         try
-            full_file = read(full_path, String)
-            size_chars = count(c -> !isspace(c), full_file)
-            file_display = file
-            file_display *= show_tokens ? " ($(count_tokens(full_file)))" : ""
+            # Determine if we need to access the file at all
+            need_file_access = show_tokens || filewarning || (summary_callback !== nothing && summary_callback !== default_summary_callback)
             
-            # Create async task for summary
-            if summary_callback !== nothing
-                summary_tasks[full_path] = @async summary_callback(full_path, full_file)
-            end
-            
-            # Format the size string
-            size_str = ""
-            size_chars > 10_000 && (size_str = format_file_size(size_chars))
-            
-            # Apply coloring for large files
-            colored_size_str = ""
-            if filewarning && size_chars > 20_000
-                color, reset = "\e[31m", "\e[0m"
-                colored_size_str = " $color($size_str)$reset"
-            elseif size_str != ""
-                colored_size_str = " ($size_str)"
+            if need_file_access
+                # Get file size if needed for tokens or warnings
+                if show_tokens || filewarning
+                    size_chars = filesize(full_path)
+                    
+                    # Add file size if show_tokens is true
+                    file_display *= show_tokens ? " ($(size_chars))" : ""
+                    
+                    # Format the size string for warnings
+                    if filewarning && size_chars > 10_000
+                        size_str = format_file_size(size_chars)
+                        
+                        # Apply coloring for large files
+                        if size_chars > 20_000
+                            color, reset = "\e[31m", "\e[0m"
+                            colored_size_str = " $color($size_str)$reset"
+                        else
+                            colored_size_str = " ($size_str)"
+                        end
+                    end
+                end
+                
+                # Only read the file content if we need summary
+                if summary_callback !== nothing && summary_callback !== default_summary_callback
+                    full_file = read(full_path, String)
+                    summary_tasks[full_path] = @async summary_callback(full_path, full_file)
+                    content_summary = "{{SUMMARY:$full_path}}"
+                end
             end
             
             println(io, "$(prefix)$(symbol)$(file_display)$(colored_size_str)$(content_summary)")
