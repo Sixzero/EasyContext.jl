@@ -14,4 +14,5 @@ using Test
     include("test_image_path_extraction.jl")
     include("test_workspace_search_tool.jl")
     include("test_workspace_ctx.jl")
+    include("test_rag_pipelines.jl")
 end

@@ -167,7 +167,11 @@ function work(agent::FluidAgent, conv; cache,
     end
     
     # Base API kwargs without stop sequences
-    api_kwargs = (; top_p=0.7, temperature=0.5, max_tokens=8192)
+    api_kwargs = (; top_p=0.7, temperature=0.5, )
+    
+    if startswith(agent.model, "claude") # NOTE: o3m does not support temperature and top_p
+        api_kwargs = (; api_kwargs..., max_tokens=16384)
+    end
     
     if agent.model == "o3m" # NOTE: o3m does not support temperature and top_p
         api_kwargs = (; )

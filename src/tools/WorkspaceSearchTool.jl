@@ -1,3 +1,4 @@
+
 @kwdef mutable struct WorkspaceSearchTool <: AbstractTool
     id::UUID = uuid4()
     query::String
@@ -5,7 +6,7 @@
     result::String = ""
 end
 
-function WorkspaceSearchTool(cmd::ToolTag)
+function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing, root_path::String=pwd())
     root_path = get(cmd.kwargs, "root_path", nothing)
     isnothing(root_path) && @warn "root_path not provided in kwargs, using pwd()" root_path=pwd()
     root_path = something(root_path, pwd())
@@ -15,7 +16,7 @@ function WorkspaceSearchTool(cmd::ToolTag)
     pipeline = high_accuracy ? HIGH_ACCURACY_PIPELINE() : EFFICIENT_PIPELINE()
     
     # Convert the root_path to a vector of strings as expected by Workspace constructor
-    workspace_ctx = init_workspace_context([root_path]; pipeline)
+    workspace_ctx = workspace_ctx === nothing ? init_workspace_context([root_path]; pipeline) : workspace_ctx
     WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
 end
 
