@@ -185,7 +185,7 @@ end
 default_summary_callback(fullpath, full_file::String) = ""
 get_project_name(p) = basename(endswith(p, "/.") ? p[1:end-2] : rstrip(p, '/'))
 
-print_project_tree(w::Workspace; 
+print_project_tree(w::AbstractWorkspace; 
                     show_tokens::Bool=false, 
                     show_files::Bool=true, 
                     filewarning::Bool=true, 
@@ -199,7 +199,7 @@ print_project_tree(w, paths::Vector{String};
                     do_print::Bool=true) = 
     [print_project_tree(w, path; show_tokens, show_files, filewarning, summary_callback, do_print) for path in paths]
 function print_project_tree(
-    w::Workspace, 
+    w::AbstractWorkspace, 
     path::String; 
     show_tokens::Bool = false, 
     show_files::Bool = true, 
