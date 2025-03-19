@@ -30,18 +30,18 @@ function ToolTagExtractor(tools::Vector)
 end
 
 # Get single line tags dynamically from tools
-function get_single_line_tags(extractor::ToolTagExtractor)
-    [toolname(T) for T in extractor.tools if tool_format(T) == :single_line]
+function get_single_line_tags(tools::Vector)
+    [toolname(T) for T in tools if tool_format(T) == :single_line]
 end
 
 # Get multi line tags dynamically from tools
-function get_multi_line_tags(extractor::ToolTagExtractor)
-    [toolname(T) for T in extractor.tools if tool_format(T) == :multi_line]
+function get_multi_line_tags(tools::Vector)
+    [toolname(T) for T in tools if tool_format(T) == :multi_line]
 end
 
 # Get tool map dynamically from tools
-function get_tool_map(extractor::ToolTagExtractor)
-    Dict{String, Any}(toolname(T) => T for T in extractor.tools)
+function get_tool_map(tools::Vector)
+    Dict{String, Any}(toolname(T) => T for T in tools)
 end
 
 function process_immediate_tool!(line::String, stream_parser::ToolTagExtractor, content::String=""; kwargs=Dict())
@@ -49,7 +49,7 @@ function process_immediate_tool!(line::String, stream_parser::ToolTagExtractor, 
     push!(stream_parser.tool_tags, tool_tag)
     
     # Get tool map dynamically
-    tool_map = get_tool_map(stream_parser)
+    tool_map = get_tool_map(stream_parser.tools)
     
     # Create the tool using the tool_map
     tool_creator = tool_map[tool_tag.name]
@@ -69,8 +69,8 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
     # Get tags dynamically
-    single_line_tags = get_single_line_tags(stream_parser)
-    multi_line_tags = get_multi_line_tags(stream_parser)
+    single_line_tags = get_single_line_tags(stream_parser.tools)
+    multi_line_tags = get_multi_line_tags(stream_parser.tools)
     allowed_tools = union(single_line_tags, multi_line_tags)
     
     i = 1
