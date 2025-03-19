@@ -37,6 +37,9 @@ StreamCallbacksExt = "318dcf79-f1de-4874-b31b-6e12fc76f75a"
 ULID = "28ea79d9-6354-52a7-8af1-38e01db141d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
+[extras]
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 Pkg = "≥1.11"
