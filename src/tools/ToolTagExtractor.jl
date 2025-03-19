@@ -14,21 +14,46 @@ export ToolTagExtractor, extract_tool_calls, get_last_tool_result
     last_processed_index::Ref{Int} = Ref(0)
     full_content::String = ""
 
-    single_line_tags::Vector{String} = String[]
-    multi_line_tags::Vector{String} = String[]
+    # Direct reference to the original tools
+    tools::Vector
 end
-# A rather ugly conversion to Type{<:AbstractTool}
+function tool_value(tool::AbstractTool)
+    tool
+end
+function tool_value(tool::Pair{String, T}) where T <: AbstractTool
+    second(tool)
+end
+tool_value(tg) = tg
 
-function ToolTagExtractor(tools::Vector{DataType})
-    single_line_tags = String[toolname(T) for T in tools if tool_format(T) == :single_line]
-    multi_line_tags = String[toolname(T) for T in tools if tool_format(T) == :multi_line]
-    ToolTagExtractor(;single_line_tags, multi_line_tags)
+function ToolTagExtractor(tools::Vector)
+    ToolTagExtractor(tools=tools)
+end
+
+# Get single line tags dynamically from tools
+function get_single_line_tags(extractor::ToolTagExtractor)
+    [toolname(T) for T in extractor.tools if tool_format(T) == :single_line]
+end
+
+# Get multi line tags dynamically from tools
+function get_multi_line_tags(extractor::ToolTagExtractor)
+    [toolname(T) for T in extractor.tools if tool_format(T) == :multi_line]
+end
+
+# Get tool map dynamically from tools
+function get_tool_map(extractor::ToolTagExtractor)
+    Dict{String, Any}(toolname(T) => T for T in extractor.tools)
 end
 
 function process_immediate_tool!(line::String, stream_parser::ToolTagExtractor, content::String=""; kwargs=Dict())
     tool_tag = parse_tool(line, content; kwargs)
     push!(stream_parser.tool_tags, tool_tag)
-    tool = convert_tool(tool_tag)
+    
+    # Get tool map dynamically
+    tool_map = get_tool_map(stream_parser)
+    
+    # Create the tool using the tool_map
+    tool_creator = tool_map[tool_tag.name]
+    tool = tool_creator(tool_tag)
     stream_parser.tool_tasks[tool.id] = @async_showerr preprocess(tool)
 end
 
@@ -43,21 +68,25 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
     stream_parser.full_content *= new_content
     lines = split(stream_parser.full_content[nextind(stream_parser.full_content, stream_parser.last_processed_index[]):end], '\n')
     
-    allowed_tools = union(stream_parser.single_line_tags,stream_parser.multi_line_tags)
+    # Get tags dynamically
+    single_line_tags = get_single_line_tags(stream_parser)
+    multi_line_tags = get_multi_line_tags(stream_parser)
+    allowed_tools = union(single_line_tags, multi_line_tags)
+    
     i = 1
     last_saved_i = 1
     while i <= length(lines)-1
         line = String(lines[i])
         
         # Handle single-line tools
-        if startswith.(line, stream_parser.single_line_tags) |> any
+        if startswith.(line, single_line_tags) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             stream_parser.last_processed_index[] += length(line) + 1
             process_immediate_tool!(line, stream_parser, ""; kwargs)
             last_saved_i = i + 1
             i += 1
             continue
-        elseif startswith.(line, stream_parser.multi_line_tags) |> any
+        elseif startswith.(line, multi_line_tags) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
             if i < length(lines) 
                 if startswith(lines[i+1], "```")
@@ -79,6 +108,7 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
         i += 1
     end
 end
+
 function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,start_idx::Int=1, is_flush=false)
     nesting_level = 1  # Start at 1 since we're already inside a code block
     is_in_multiline_str = false
@@ -117,12 +147,11 @@ function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,star
     return is_flush ? last_block_end : nothing
 end
 
-
 execute(t::Task) = begin
     cmd = fetch(t)
+    @assert false "This might not be worth running $t \n$cmd"
     isnothing(cmd) ? nothing : execute(convert_tool(cmd))
 end
-
 
 function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, kwargs...)
     if !stream_parser.skip_execution
@@ -143,6 +172,7 @@ function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{
 	end
 	return output
 end
+
 function are_tools_cancelled(stream_parser::ToolTagExtractor)
     return any(is_cancelled, fetch.(values(stream_parser.tool_tasks)))
 end

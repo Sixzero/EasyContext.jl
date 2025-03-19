@@ -28,6 +28,8 @@ include("WebSearchTool.jl")
 include("WorkspaceSearchTool.jl")
 include("JuliaSearchTool.jl")
 
+include("ToolGenerators.jl")
+
 include("AbstractExtractor.jl")
 include("ToolTagExtractor.jl")
 

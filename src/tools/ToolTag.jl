@@ -2,7 +2,6 @@ export print_tool_result
 
 include("ToolInterface.jl")
 
-
 @kwdef mutable struct ToolTag <: AbstractTag
     name::String
     content::String = ""

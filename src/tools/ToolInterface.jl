@@ -60,6 +60,7 @@ Usually stop_sequence and toolname are static for type
 """
 toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool) $(join(stacktrace(), "\n"))"; return "")
 toolname(tool::AbstractTool)::String = toolname(typeof(tool))
+toolname(tool::Pair{String, T}) where T = first(tool)
 stop_sequence(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"stop_sequence\" for $(tool) $(join(stacktrace(), "\n"))"; return "")
 stop_sequence(tool::AbstractTool)::String = stop_sequence(typeof(tool))
 get_description(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(tool) $(join(stacktrace(), "\n"))"; return "unknown tool! $(tool)")
@@ -110,15 +111,6 @@ result2string(tool::AbstractTool)::String = ""
 #         (name=name, type=T, desc=get_description(T))
 #         for (name, T) in TOOL_REGISTRY
 #     ])
-# end
-
-# """
-# Create tool instance from ToolTag directly using the registry.
-# Throws KeyError if tool not found.
-# """
-# function create_tool(tag::AbstractTag)
-#     haskey(TOOL_REGISTRY, tag.name) || throw(KeyError("Unknown tool: $(tag.name). Available tools: $(join(keys(TOOL_REGISTRY), ", "))"))
-#     TOOL_REGISTRY[tag.name](tag)
 # end
 
 # # Tools can auto-register in their own modules:

@@ -6,21 +6,15 @@
     result::String = ""
 end
 
-function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing, root_path::String=pwd())
-    root_path = get(cmd.kwargs, "root_path", nothing)
-    isnothing(root_path) && @warn "root_path not provided in kwargs, using pwd()" root_path=pwd()
-    root_path = something(root_path, pwd())
-    
-    # Check if high accuracy mode is requested
-    high_accuracy = get(cmd.kwargs, "high_accuracy", false)
-    pipeline = high_accuracy ? HIGH_ACCURACY_PIPELINE() : EFFICIENT_PIPELINE()
-    
-    # Convert the root_path to a vector of strings as expected by Workspace constructor
-    workspace_ctx = workspace_ctx === nothing ? init_workspace_context([root_path]; pipeline) : workspace_ctx
+function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
+    # Convert the root_path to a vector of strings as expected by WorkspaceCTX constructor
+    workspace_ctx = workspace_ctx
     WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
 end
 
+
 const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
+
 instantiate(::Val{Symbol(WORKSPACE_SEARCH_TAG)}, cmd::ToolTag) = WorkspaceSearchTool(cmd)
 
 toolname(::Type{WorkspaceSearchTool}) = "WORKSPACE_SEARCH"

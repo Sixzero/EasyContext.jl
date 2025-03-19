@@ -3,49 +3,72 @@ using PromptingTools
 using PromptingTools: aigenerate
 using StreamCallbacksExt: needs_tool_execution
 
-export FluidAgent, execute_tools, work, create_FluidAgent
+export FluidAgent, execute_tools, work, create_FluidAgent, SysMessageV1
+
+"""
+Abstract type for system messages that can create themselves
+"""
+abstract type AbstractSysMessage end
+
+"""
+SysMessageV1 is a system message type that can create itself using a provided function
+"""
+@kwdef mutable struct SysMessageV1 <: AbstractSysMessage
+    create_sys_msg::Function
+    content::String = ""
+end
+
+# Initialize the system message content
+function initialize!(sys_msg::SysMessageV1, tools)
+    if isempty(sys_msg.content)
+        sys_msg.content = """
+        $(sys_msg.create_sys_msg())
+
+        $(highlight_code_guide)
+        $(highlight_changes_guide_v2)
+        $(organize_file_guide)
+
+        $(dont_act_chaotic)
+        $(refactor_all)
+        $(simplicity_guide)
+        
+        $(ambiguity_guide)
+        
+        $(test_it_v2)
+        
+        $(no_loggers)
+        $(julia_specific_guide)
+        $(system_information)
+
+        $(get_tool_descriptions(tools))
+
+        If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
+
+        Follow SOLID, KISS and DRY principles. Be concise!
+
+        $(conversaton_starts_here)"""
+    end
+    return sys_msg.content
+end
 
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
 """
-@kwdef mutable struct FluidAgent{E<:AbstractExtractor}
-    tools::Vector{DataType} 
+@kwdef mutable struct FluidAgent{E<:AbstractExtractor, S<:AbstractSysMessage}
+    tools::Vector
     model::String = "claude"
     workspace::String = pwd()
-    tool_map::Dict{String,DataType} = Dict{String,DataType}(toolname(T) => T for T in tools)
-    extractor::E = ToolTagExtractor()
-    sys_msg::String = ""
+    extractor::E
+    sys_msg::S
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector{DataType}, extractor::E=ToolTagExtractor(tools)) where {E <:AbstractExtractor}
-    sys_msg = """
-    $(create_sys_msg())
-
-    $(highlight_code_guide)
-    $(highlight_changes_guide_v2)
-    $(organize_file_guide)
-
-    $(dont_act_chaotic)
-    $(refactor_all)
-    $(simplicity_guide)
+function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector, extractor_type=ToolTagExtractor)
+    @show model
     
-    $(ambiguity_guide)
-    
-    $(test_it_v2)
-    
-    $(no_loggers)
-    $(julia_specific_guide)
-    $(system_information)
-
-    $(get_tool_descriptions(tools))
-
-    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
-
-    Follow SOLID, KISS and DRY principles. Be concise!
-
-    $(conversaton_starts_here)"""
-    agent = FluidAgent(; sys_msg, tools, model, extractor)
+    extractor = extractor_type(tools)
+    sys_msg = SysMessageV1(; create_sys_msg)
+    agent = FluidAgent(; tools, model, extractor, sys_msg)
     agent
 end
 
@@ -58,14 +81,6 @@ function get_tool_descriptions(tools::AbstractVector)
     """
     # Available tools:
     $(join(descriptions, "\n\n"))"""
-end
-
-"""
-Create tool instance from tag using memoized mapping
-"""
-function create_tool(agent::FluidAgent, tag::ToolTag)
-    haskey(agent.tool_map, tag.name) || throw(KeyError("Unknown tool: $(tag.name)"))
-    agent.tool_map[tag.name](tag)
 end
 
 """
@@ -158,7 +173,9 @@ function work(agent::FluidAgent, conv; cache,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing
     )
-
+    # Initialize the system message if it hasn't been initialized yet
+    sys_msg_content = initialize!(agent.sys_msg, agent.tools)
+    
     # Collect unique stop sequences from tools only if IO is stdout
     stop_sequences = io === stdout ? unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)]) : String[]
     
@@ -201,7 +218,7 @@ function work(agent::FluidAgent, conv; cache,
 
 
             response = aigenerate(
-                to_PT_messages(conv, agent.sys_msg);
+                to_PT_messages(conv, sys_msg_content);
                 model=agent.model,
                 cache, 
                 api_kwargs,
