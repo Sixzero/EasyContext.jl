@@ -31,14 +31,15 @@ tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 tool_format(tg::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
 
 
-function assign_client!(tool::WorkspaceToolGenerator, client::APIClient, edge_id::String, agent_id::String)
+function assign_client!(tool::WorkspaceToolGenerator, client, edge_id::String, agent_id::String)
     tool.workspace_context.workspace.client = client
     edge_id != nothing && edge_id != tool.workspace_context.workspace.edge_id && @warn "Edge id changed."
     tool.workspace_context.workspace.edge_id = edge_id
     agent_id != nothing && agent_id != tool.workspace_context.workspace.agent_id && @warn "Agent id changed."
     tool.workspace_context.workspace.agent_id = agent_id
-end
-
-function reset_client!(tool::WorkspaceToolGenerator)
+  end
+  
+  function reset_client!(tool::WorkspaceToolGenerator)
     tool.workspace_context.workspace.client = nothing # we are not resetting edge_id and agent_id, because it might be worth to check later if it is changing between runs
-end
+  end
+  
