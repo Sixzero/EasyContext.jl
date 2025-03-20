@@ -2,6 +2,10 @@ export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator, toolname
 
 abstract type AbstractToolGenerator end
 
+get_description(tool::AbstractToolGenerator)::String = get_description(typeof(tool))
+has_stop_sequence(tool::AbstractToolGenerator)::Bool = has_stop_sequence(typeof(tool))
+has_stop_sequence(tool::Type{<:AbstractToolGenerator})::Bool = stop_sequence(tool) != "" 
+
 struct ToolGenerator <: AbstractToolGenerator
     tool_type::DataType
     args
@@ -17,7 +21,7 @@ stop_sequence(tg::ToolGenerator) = stop_sequence(tg.tool_type)
 tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 
 
-@kwdef struct WorkspaceToolGenerator <: AbstractToolGenerator
+@kwdef mutable struct WorkspaceToolGenerator <: AbstractToolGenerator
     workspace_context::WorkspaceCTX
 end
 function (wtg::WorkspaceToolGenerator)(cmd::ToolTag)
