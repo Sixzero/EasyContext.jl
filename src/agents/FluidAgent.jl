@@ -19,8 +19,8 @@ SysMessageV1 is a system message type that can create itself using a provided fu
 end
 
 # Initialize the system message content
-function initialize!(sys_msg::SysMessageV1, tools)
-    if isempty(sys_msg.content)
+function initialize!(sys_msg::SysMessageV1, tools, force=false)
+    if isempty(sys_msg.content) || force
         sys_msg.content = """
         $(sys_msg.create_sys_msg())
 
