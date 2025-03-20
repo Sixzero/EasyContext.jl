@@ -45,6 +45,7 @@ abstract type AbstractWorkspace end
     show_tokens::Bool = false
 end
 Base.cd(f::Function, workspace::Workspace) = !isempty(workspace.root_path) ? cd(f, workspace.root_path) : f()
+Base.isempty(workspace::Workspace) = isempty(workspace.rel_project_paths)
 
 function Workspace(project_paths::Vector{<:AbstractString}; 
                     resolution_method::AbstractResolutionMethod=FirstAsRootResolution(), 
