@@ -31,7 +31,7 @@ tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 tool_format(tg::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
 
 
-function assign_client!(tool::WorkspaceToolGenerator, client::ApiClient, edge_id::String, agent_id::String)
+function assign_client!(tool::WorkspaceToolGenerator, client::APIClient, edge_id::String, agent_id::String)
     tool.workspace_context.workspace.client = client
     edge_id != nothing && edge_id != tool.workspace_context.workspace.edge_id && @warn "Edge id changed."
     tool.workspace_context.workspace.edge_id = edge_id
