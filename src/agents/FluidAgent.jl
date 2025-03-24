@@ -22,7 +22,7 @@ end
 function create_FluidAgent(model::String="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor)
     extractor = extractor_type(tools)
     sys_msg_v1 = SysMessageV1(; sys_msg)
-    agent = FluidAgent(; tools, model, extractor, sys_msg_v1)
+    agent = FluidAgent(; tools, model, extractor, sys_msg=sys_msg_v1)
     agent
 end
 

@@ -1,6 +1,7 @@
 export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator, toolname
 
 abstract type AbstractToolGenerator end
+get_extra_description(tg::AbstractToolGenerator) = nothing
 
 get_description(tool::AbstractToolGenerator)::String = get_description(typeof(tool))
 has_stop_sequence(tool::AbstractToolGenerator)::Bool = has_stop_sequence(typeof(tool))
@@ -30,6 +31,7 @@ end
 
 toolname(tg::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)
 get_description(tg::WorkspaceToolGenerator) = get_description(WorkspaceSearchTool)
+get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description_raw(tg.workspace_context.workspace)
 has_stop_sequence(tg::WorkspaceToolGenerator) = has_stop_sequence(WorkspaceSearchTool)
 stop_sequence(tg::WorkspaceToolGenerator) = stop_sequence(WorkspaceSearchTool)
 tool_format(tg::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)

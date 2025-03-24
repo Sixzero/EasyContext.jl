@@ -1,3 +1,4 @@
+
 export SysMessageV1
 
 """
@@ -14,11 +15,9 @@ SysMessageV1 is a system message type that can create itself using a provided fu
 end
 
 # Initialize the system message content
-function initialize!(sys::SysMessageV1, agent::AbstractAgent, force=false)
+function initialize!(sys::SysMessageV1, agent, force=false)
     if isempty(sys.content) || force
         sys.content = """$(sys.sys_msg)
-
-        $(workspace_format_description_raw(agent.workspace_context.workspace))
 
         $(highlight_code_guide)
         $(highlight_changes_guide_v2)
@@ -37,6 +36,8 @@ function initialize!(sys::SysMessageV1, agent::AbstractAgent, force=false)
         $(system_information)
 
         $(get_tool_descriptions(agent.tools))
+        
+        $(join(filter(x -> !isnothing(x), get_extra_description.(agent.tools)), "\n\n"))
 
         If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
 

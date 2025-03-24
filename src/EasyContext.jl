@@ -46,6 +46,7 @@ include("loader/loaders.jl")
 include("tools/formats/format.jl")
 
 include("tools/tools.jl")
+include("agents/SysMessages.jl")
 include("agents/FluidAgent.jl")
 include("prompts/guides.jl")
 # include("protocol/CodeBlock.jl")

@@ -66,6 +66,9 @@ stop_sequence(tool::AbstractTool)::String = stop_sequence(typeof(tool))
 get_description(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(tool) $(join(stacktrace(), "\n"))"; return "unknown tool! $(tool)")
 get_description(tool::AbstractTool)::String = get_description(typeof(tool))
 
+get_extra_description(tool::Type{<:AbstractTool}) = nothing
+get_extra_description(tool::AbstractTool) = nothing
+
 has_stop_sequence(tool::Type{<:AbstractTool})::Bool = stop_sequence(tool) != "" 
 has_stop_sequence(tool::AbstractTool)::Bool = has_stop_sequence(typeof(tool))
 
