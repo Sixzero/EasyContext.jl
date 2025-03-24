@@ -3,58 +3,14 @@ using PromptingTools
 using PromptingTools: aigenerate
 using StreamCallbacksExt: needs_tool_execution
 
-export FluidAgent, execute_tools, work, create_FluidAgent, SysMessageV1
+export FluidAgent, execute_tools, work, create_FluidAgent
 
-"""
-Abstract type for system messages that can create themselves
-"""
-abstract type AbstractSysMessage end
-
-"""
-SysMessageV1 is a system message type that can create itself using a provided function
-"""
-@kwdef mutable struct SysMessageV1 <: AbstractSysMessage
-    create_sys_msg::Function
-    content::String = ""
-end
-
-# Initialize the system message content
-function initialize!(sys_msg::SysMessageV1, tools, force=false)
-    if isempty(sys_msg.content) || force
-        sys_msg.content = """
-        $(sys_msg.create_sys_msg())
-
-        $(highlight_code_guide)
-        $(highlight_changes_guide_v2)
-        $(organize_file_guide)
-
-        $(dont_act_chaotic)
-        $(refactor_all)
-        $(simplicity_guide)
-        
-        $(ambiguity_guide)
-        
-        $(test_it_v2)
-        
-        $(no_loggers)
-        $(julia_specific_guide)
-        $(system_information)
-
-        $(get_tool_descriptions(tools))
-
-        If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
-
-        Follow SOLID, KISS and DRY principles. Be concise!
-
-        $(conversaton_starts_here)"""
-    end
-    return sys_msg.content
-end
+abstract type AbstractAgent end
 
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
 """
-@kwdef mutable struct FluidAgent{E<:AbstractExtractor, S<:AbstractSysMessage}
+@kwdef mutable struct FluidAgent{E<:AbstractExtractor, S<:AbstractSysMessage} <: AbstractAgent
     tools::Vector
     model::String = "claude"
     workspace::String = pwd()
@@ -63,12 +19,10 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::String="claude"; create_sys_msg::Function, tools::Vector, extractor_type=ToolTagExtractor)
-    @show model
-    
+function create_FluidAgent(model::String="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor)
     extractor = extractor_type(tools)
-    sys_msg = SysMessageV1(; create_sys_msg)
-    agent = FluidAgent(; tools, model, extractor, sys_msg)
+    sys_msg_v1 = SysMessageV1(; sys_msg)
+    agent = FluidAgent(; tools, model, extractor, sys_msg_v1)
     agent
 end
 
@@ -174,7 +128,7 @@ function work(agent::FluidAgent, conv; cache,
     thinking::Union{Nothing,Int}=nothing
     )
     # Initialize the system message if it hasn't been initialized yet
-    sys_msg_content = initialize!(agent.sys_msg, agent.tools)
+    sys_msg_content = initialize!(agent.sys_msg, agent)
     
     # Collect unique stop sequences from tools only if IO is stdout
     stop_sequences = io === stdout ? unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)]) : String[]
