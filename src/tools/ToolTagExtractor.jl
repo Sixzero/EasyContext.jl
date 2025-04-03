@@ -88,21 +88,19 @@ function extract_tool_calls(new_content::String, stream_parser::ToolTagExtractor
             continue
         elseif startswith.(line, multi_line_tags) |> any
             update_processed_index!(stream_parser, lines, last_saved_i, i)
-            if i < length(lines) 
-                if startswith(lines[i+1], "```")
-                    block_end = find_code_block_end(lines, allowed_tools, i+1, is_flush)  # Pass is_flush here
-                    if !isnothing(block_end)
-                        content = join(lines[i+1:block_end], '\n')
-                        total_length = length(line) + 1 + length(content) + 1  # +1 for newline after tag
-                        stream_parser.last_processed_index[] += total_length
-                        process_immediate_tool!(line, stream_parser, content; kwargs)
-                        last_saved_i = block_end + 1
-                        i = block_end + 1
-                        continue
-                    end
-                else
-                    @warn "No opening ``` tag found for multiline command: $line"
+            if i < length(lines) && startswith(lines[i+1], "```")
+                block_end = find_code_block_end(lines, allowed_tools, i+1, is_flush)  # Pass is_flush here
+                if !isnothing(block_end)
+                    content = join(lines[i+1:block_end], '\n')
+                    total_length = length(line) + 1 + length(content) + 1  # +1 for newline after tag
+                    stream_parser.last_processed_index[] += total_length
+                    process_immediate_tool!(line, stream_parser, content; kwargs)
+                    last_saved_i = block_end + 1
+                    i = block_end + 1
+                    continue
                 end
+            else
+                @warn "No opening ``` tag found for multiline command: $line"
             end
         end
         i += 1
@@ -117,11 +115,12 @@ function find_code_block_end(lines::Vector{<:AbstractString}, allowed_tools,star
     for (i, line) in enumerate(lines[start_idx:end]) # no need for strip
         # Check if we hit another tool
         if any(startswith.(line, allowed_tools))
-            return isnothing(last_block_end) ? nothing : last_block_end
+            isnothing(last_block_end) && @warn "No block end found before new tool call. How can this happen?"
+            return last_block_end
         end
 
         # Handle docstring boundaries
-        if occursin("\"\"\"", line)
+        if count("\"\"\"", line) == 1
             is_in_multiline_str = !is_in_multiline_str
             continue
         end
@@ -175,5 +174,5 @@ function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{
 end
 
 function are_tools_cancelled(stream_parser::ToolTagExtractor)
-    isempty(stream_parser.tool_tasks) ? true : any(is_cancelled, fetch.(values(stream_parser.tool_tasks)))
+    all(is_cancelled, fetch.(values(stream_parser.tool_tasks)))
 end

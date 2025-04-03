@@ -185,14 +185,15 @@ function work(agent::FluidAgent, conv; cache=nothing,
             execute_tools(extractor; no_confirm)
             
             push_message!(conv, create_AI_message(response.content))
-            # Check if any tool was cancelled
-            if are_tools_cancelled(extractor)
-                @info "Tool execution cancelled by user, stopping further processing"
-                break
-            end
-            
+
             # Break if no more tool execution needed
             !needs_tool_execution(cb.run_info) && break
+            
+            # Check if all tools were cancelled
+            if are_tools_cancelled(extractor)
+                @info "All tools were cancelled by user, stopping further processing"
+                break
+            end
             
             # Add tool results to conversation for next iteration
             result = get_tool_results_agent(agent)
