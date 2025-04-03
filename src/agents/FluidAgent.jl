@@ -14,8 +14,8 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     tools::Vector
     model::String = "claude"
     workspace::String = pwd()
-    extractor::E
-    sys_msg::S
+    extractor::E=ToolTagExtractor(; tools)
+    sys_msg::S=SysMessageV1()
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
