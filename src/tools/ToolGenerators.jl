@@ -35,3 +35,7 @@ get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description
 has_stop_sequence(tg::WorkspaceToolGenerator) = has_stop_sequence(WorkspaceSearchTool)
 stop_sequence(tg::WorkspaceToolGenerator) = stop_sequence(WorkspaceSearchTool)
 tool_format(tg::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
+
+EasyContext.preprocess(tool::AbstractToolGenerator) = tool
+EasyContext.get_id(tool::AbstractToolGenerator) = tool.tool.id
+EasyContext.is_cancelled(tool::AbstractToolGenerator) = false

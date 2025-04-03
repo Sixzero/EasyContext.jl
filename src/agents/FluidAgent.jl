@@ -112,11 +112,14 @@ function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::
         max_tokens = max_tokens
     ))
 end
-
+function work(agent::FluidAgent, conv::AbstractString; kwargs...)
+    conv_ctx = Session(; messages=[create_user_message(conv)])
+    work(agent, conv_ctx; kwargs...)
+end
 """
 Run an LLM interaction with tool execution.
 """
-function work(agent::FluidAgent, conv; cache,
+function work(agent::FluidAgent, conv; cache=nothing,
     no_confirm=false,
     highlight_enabled::Bool=true,
     process_enabled::Bool=true,
@@ -131,7 +134,7 @@ function work(agent::FluidAgent, conv; cache,
     sys_msg_content = initialize!(agent.sys_msg, agent)
     
     # Collect unique stop sequences from tools only if IO is stdout
-    stop_sequences = io === stdout ? unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)]) : String[]
+    stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
     
     if length(stop_sequences) > 1
         @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
@@ -170,7 +173,6 @@ function work(agent::FluidAgent, conv; cache,
                 on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
             ))
 
-
             response = aigenerate(
                 to_PT_messages(conv, sys_msg_content);
                 model=agent.model,
@@ -191,7 +193,6 @@ function work(agent::FluidAgent, conv; cache,
             
             # Break if no more tool execution needed
             !needs_tool_execution(cb.run_info) && break
-            length(extractor.tool_tags) == 0 && break
             
             # Add tool results to conversation for next iteration
             result = get_tool_results_agent(agent)
@@ -221,6 +222,7 @@ Apply stop sequence kwargs based on model type and available sequences.
 """
 function apply_stop_seq_kwargs(api_kwargs::NamedTuple, model::String, stop_sequences::Vector{String})
     isempty(stop_sequences) && return api_kwargs
-    key = model == "claude" ? :stop_sequences : :stop
+    startswith(model, "gem") && return api_kwargs
+    key = startswith(model, "claude") ? :stop_sequences : :stop
     merge(api_kwargs, (; key => stop_sequences))
 end

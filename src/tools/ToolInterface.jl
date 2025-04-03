@@ -48,6 +48,7 @@ abstract type AbstractTag end
 abstract type AbstractTool end
 
 preprocess(tool::AbstractTool) = tool
+get_id(tool::AbstractTool) = tool.id
 execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool))"
 
 """

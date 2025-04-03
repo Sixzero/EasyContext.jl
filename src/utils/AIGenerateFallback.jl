@@ -43,7 +43,7 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
     
     e isa TimeoutError && return "Model '$model': Timeout"
     e isa HTTP.Exceptions.StatusError && e.status == 429 && return "Model '$model': Rate limited (429)"
-    return "Model '$model': Error: $(typeof(e))"
+    return "Model '$model': Error: $e"
 end
 
 """
