@@ -33,9 +33,9 @@ A struct for embedding documents using Google's Gecko embedding models.
     location::String = "us-central1"
     model::String = "text-embedding-005"
     task_type::String = "RETRIEVAL_DOCUMENT"
-    auto_truncate::Bool = true
+    auto_truncate::Bool = false
     output_dimensionality::Union{Int, Nothing} = nothing
-    rate_limiter::RateLimiterRPM = RateLimiterRPM(max_requests=100, time_window=60.0)  # 100 requests per minute
+    rate_limiter::RateLimiterRPM = RateLimiterRPM(max_requests=1000, time_window=60.0)  # 100 requests per minute
     http_post::Function = HTTP.post
     verbose::Bool = true
     api_key::String = get(ENV, "VERTEX_AI_API_KEY", "")
@@ -63,7 +63,6 @@ function get_project_id()
         end
     end
     
-    @show project_id
     # Cache the project ID
     PROJECT_ID_CACHE[] = project_id
     
@@ -205,7 +204,7 @@ function get_embeddings(embedder::GoogleGeckoEmbedder, docs::AbstractVector{<:Ab
 
     # Calculate optimal batch size based on document count and desired number of tasks
     # Google supports up to 5 texts per request in most regions
-    max_batch_size = 5
+    max_batch_size = embedder.model === "text-embedding-large-exp-03-07" ? 1 : 5
     
     # Calculate batch size to create at least ntasks batches, but not exceeding max_batch_size
     total_docs = length(docs)
@@ -247,7 +246,7 @@ end
 function create_google_gecko_embedder(;
     project_id::String = get_project_id(),
     location::String = "us-central1",
-    model::String = "text-embedding-005",
+    model::String = "text-embedding-large-exp-03-07", # "text-embedding-005",
     task_type::String = "RETRIEVAL_DOCUMENT",
     output_dimensionality::Union{Int, Nothing} = nothing,
     verbose::Bool = true,

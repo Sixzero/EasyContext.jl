@@ -26,7 +26,6 @@ A struct for embedding documents using Cohere's embedding models.
     api_url::String = "https://api.cohere.ai/v1/embed"
     api_key::String = get(ENV, "COHERE_API_KEY", "")
     model::String = "embed-multilingual-v3.0"
-    truncate::String = "END"
     embedding_types::Vector{String} = ["float"]
     rate_limiter::RateLimiterRPM = RateLimiterRPM(max_requests=300, time_window=60.0)  # 300 requests per minute
     http_post::Function = HTTP.post
@@ -38,6 +37,7 @@ function get_embeddings(embedder::CohereEmbedder, docs::AbstractVector{<:Abstrac
     input_type::String = "search_document", # for the query use: "search_query"
     cost_tracker = Threads.Atomic{Float64}(0.0),
     ntasks::Int = 20,
+    truncate::String = "NONE",
     kwargs...)
 
     headers = [
@@ -51,7 +51,7 @@ function get_embeddings(embedder::CohereEmbedder, docs::AbstractVector{<:Abstrac
             "model" => embedder.model,
             "texts" => batch,
             "input_type" => input_type,
-            "truncate" => embedder.truncate,
+            "truncate" => truncate,
             "embedding_types" => embedder.embedding_types
         )
 

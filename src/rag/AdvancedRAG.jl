@@ -42,7 +42,7 @@ Uses Cohere embedder and BM25 for retrieval with top_k=50, and ReduceGPTReranker
 - `cache_prefix::String="workspace"`: Prefix for the embedder cache
 """
 function EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix")
-    embedder = create_cohere_embedder(cache_prefix=cache_prefix)
+    embedder = create_google_gecko_embedder(cache_prefix=cache_prefix)
     bm25 = BM25Embedder()
     topK = TopK([embedder, bm25]; top_k=50)
     reranker = ReduceGPTReranker(batch_size=30; top_n, model, rerank_prompt)
@@ -62,7 +62,7 @@ Uses Cohere embedder and BM25 for retrieval with top_k=120, and ReduceGPTReranke
 - `cache_prefix::String="workspace"`: Prefix for the embedder cache
 """
 function HIGH_ACCURACY_PIPELINE(; top_n=12, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix")
-    embedder = create_cohere_embedder(cache_prefix=cache_prefix)
+    embedder = create_google_gecko_embedder(cache_prefix=cache_prefix)
     bm25 = BM25Embedder()
     topK = TopK([embedder, bm25]; top_k=120)
     reranker = ReduceGPTReranker(batch_size=40; top_n, model, rerank_prompt)
