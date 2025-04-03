@@ -7,7 +7,7 @@ const RAG = RAGTools
 export NewlineChunker
 
 @kwdef struct NewlineChunker{T<:AbstractChunk} <: AbstractChunker 
-    max_tokens::Int = 8000
+    max_tokens::Int = 16000
     overlap_tokens::Int = 200
     estimation_method::TokenEstimationMethod = CharCountDivTwo
     line_number_token_estimate::Int = 10
