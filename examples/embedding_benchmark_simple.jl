@@ -32,20 +32,24 @@ function run_simple_benchmark()
     
     # Create embedders with unique cache prefixes to avoid interference
     timestamp = Dates.format(now(), "yyyymmdd_HHMMSS")
-    
+    prefix = "bench_$(timestamp)_"
     embedders = [
+        # ("GoogleGecko", EasyContext.GoogleGeckoEmbedder(verbose=false, model="text-embedding-005")),
+        ("GoogleExp0307", EasyContext.GoogleGeckoEmbedder(; 
+                model = "text-embedding-large-exp-03-07", 
+                project_id=EasyContext.get_project_id(), location = "us-central1", task_type = "RETRIEVAL_DOCUMENT", 
+                output_dimensionality = nothing, verbose = false)),
         ("Voyage", EasyContext.VoyageEmbedder(; model="voyage-code-3", input_type=nothing, verbose=false)),
+        
         # ("Voyage", EasyContext.create_voyage_embedder(cache_prefix="bench_$(timestamp)_voyage_", verbose=false)),
         # ("Jina", EasyContext.create_jina_embedder(cache_prefix="bench_$(timestamp)_jina_")),
-        ("Cohere", EasyContext.create_cohere_embedder(cache_prefix="bench_$(timestamp)_cohere_", verbose=false)),
+        # ("Cohere", EasyContext.create_cohere_embedder(cache_prefix=prefix * "cohere_", verbose=false)),
         # ("CohereEng", EasyContext.create_cohere_embedder(model="embed-english-v3.0", cache_prefix="bench_$(timestamp)_cohere_eng_", verbose=false)),
-        
-        ("GoogleGecko", EasyContext.create_google_gecko_embedder(cache_prefix="bench_$(timestamp)_google_", verbose=false, model="text-embedding-005")),
         # ("GoogleMulti", EasyContext.create_google_multilingual_embedder(cache_prefix="bench_$(timestamp)_google_multi_", verbose=false)),
         # ("GooglePreview", EasyContext.create_google_preview_embedder(cache_prefix="bench_$(timestamp)_google_prev_", verbose=false)),
         
         # ("OpenAI", EasyContext.create_openai_embedder(cache_prefix="bench_$(timestamp)_openai_")),
-        ("OpenAI", EasyContext.create_openai_embedder(cache_prefix="bench_$(timestamp)_openai_large", model="text-embedding-3-large")),
+        ("OpenAI", EasyContext.create_openai_embedder(cache_prefix=prefix * "openai_large", model="text-embedding-3-large")),
     ]
     
     # Results storage
