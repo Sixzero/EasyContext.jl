@@ -17,7 +17,7 @@ Whenever you need the content of a file to solve the task you can use the CATFIL
 To get the content of a file you can use the CATFILE tool:
 $(CATFILE_TAG) path/to/file $(STOP_SEQUENCE)
 $(CATFILE_TAG) filepath $(STOP_SEQUENCE)
-or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE:
+or if you don't need immediat result from it then you can use it without $STOP_SEQUENCE.
 """
 
 stop_sequence(cmd::Type{CatFileTool}) = STOP_SEQUENCE

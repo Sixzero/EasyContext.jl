@@ -17,7 +17,7 @@ function ModifyFileTool(cmd::ToolTag)
     ModifyFileTool(
         language=language,
         file_path=file_path,
-        root_path=get(cmd.kwargs, "root_path", ""),
+        root_path=get(cmd.kwargs, "root_path", "."),
         content=content,
         postcontent=""
     )
@@ -164,7 +164,7 @@ function LLM_apply_changes_to_file(root_path::String, file_path::String, content
     isempty(original_content) && return content, content
 
     is_patch_file = language=="patch"
-    merge_prompt = is_patch_file ? get_patch_merge_prompt : get_merge_prompt_v1
+    merge_prompt = is_patch_file ? get_patch_merge_prompt : get_merge_prompt_v2
     # Check file size and choose appropriate method
     if length(original_content) > 10_000
         ai_generated_content = apply_modify_by_replace(original_content, content)
