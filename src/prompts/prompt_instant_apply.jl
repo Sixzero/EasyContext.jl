@@ -30,7 +30,8 @@ function get_merge_prompt_v2(original_content, changes_content)
   2. Keep original formatting (spaces/tabs)
   3. If <CHANGES> contains '... existing code ...' preserve that part from <ORIGINAL>
   4. Keep imports and using statements intact unless explicitly modified
-  5. Return only the final code between <final> and </final> tags
+  5. <CHANGES> might indicate line deletions. In that case remove those lines from <final> result
+  6. Return only the final code between <final> and </final> tags
 
   <ORIGINAL>
   $original_content

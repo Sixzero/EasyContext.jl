@@ -6,16 +6,17 @@ This example demonstrates various ways to use FluidAgent for automation tasks.
 """
 
 # 1. Basic file operations
-function demo_file_operations()
+function demo_file_operations(model="claude")
     println("\n=== File Operations Demo ===")
     
     agent = FluidAgent(
-        tools=(CreateFileTool, ModifyFileTool, CatFileTool),
-        model="claude"
+        tools=[CreateFileTool, ModifyFileTool, CatFileTool],
+        model=model,
+        sys_msg=SysMessageV1(; sys_msg="You are a helpful assistant.")
     )
 
     # Create and modify files
-    response = run(agent, """
+    response = work(agent, """
         1. Create a config.json file with basic settings
         2. Then modify it to add more settings
         3. Show me the final content
@@ -30,12 +31,12 @@ function demo_file_operations()
 end
 
 # 2. Shell command execution
-function demo_shell_commands()
+function demo_shell_commands(model="claude")
     println("\n=== Shell Commands Demo ===")
     
     agent = FluidAgent(
-        tools=(ShellBlockTool,),
-        model="claude"
+        tools=[ShellBlockTool],
+        model=model
     )
 
     # Execute some shell commands
@@ -50,12 +51,12 @@ function demo_shell_commands()
 end
 
 # 3. Multi-step task automation
-function demo_complex_task()
+function demo_complex_task(model="claude")
     println("\n=== Complex Task Demo ===")
     
     agent = FluidAgent(
-        tools=(CreateFileTool, ModifyFileTool, ShellBlockTool),
-        model="claude"
+        tools=[CreateFileTool, ModifyFileTool, ShellBlockTool],
+        model=model
     )
 
     # Complex multi-step task
@@ -75,12 +76,12 @@ function demo_complex_task()
 end
 
 # 4. Streaming demo
-function demo_streaming()
+function demo_streaming(model="claude")
     println("\n=== Streaming Demo ===")
     
     agent = FluidAgent(
-        tools=(CreateFileTool, ModifyFileTool, ShellBlockTool),
-        model="claude"
+        tools=[CreateFileTool, ModifyFileTool, ShellBlockTool],
+        model=model
     )
 
     # Use streaming with syntax highlighting
@@ -111,7 +112,4 @@ function run_demos()
     demo_streaming()
 end
 
-# Run if called directly
-if abspath(PROGRAM_FILE) == @__FILE__
-    run_demos()
-end
+run_demos()

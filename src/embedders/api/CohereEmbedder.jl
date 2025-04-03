@@ -26,7 +26,6 @@ A struct for embedding documents using Cohere's embedding models.
     api_url::String = "https://api.cohere.ai/v1/embed"
     api_key::String = get(ENV, "COHERE_API_KEY", "")
     model::String = "embed-multilingual-v3.0"
-    input_type::String = "search_document"
     truncate::String = "END"
     embedding_types::Vector{String} = ["float"]
     rate_limiter::RateLimiterRPM = RateLimiterRPM(max_requests=300, time_window=60.0)  # 300 requests per minute
@@ -36,6 +35,7 @@ end
 
 function get_embeddings(embedder::CohereEmbedder, docs::AbstractVector{<:AbstractString};
     verbose::Bool = embedder.verbose,
+    input_type::String = "search_document", # for the query use: "search_query"
     cost_tracker = Threads.Atomic{Float64}(0.0),
     ntasks::Int = 20,
     kwargs...)
@@ -50,7 +50,7 @@ function get_embeddings(embedder::CohereEmbedder, docs::AbstractVector{<:Abstrac
         payload = Dict(
             "model" => embedder.model,
             "texts" => batch,
-            "input_type" => embedder.input_type,
+            "input_type" => input_type,
             "truncate" => embedder.truncate,
             "embedding_types" => embedder.embedding_types
         )
@@ -145,12 +145,11 @@ end
 # Add this at the end of the file
 function create_cohere_embedder(;
     model::String = "embed-multilingual-v3.0",
-    input_type::String = "search_document",
     embedding_types::Vector{String} = ["float"],
     verbose::Bool = true,
     cache_prefix="",
 )
-    cohere_embedder = CohereEmbedder(; model, input_type, embedding_types, verbose)
+    cohere_embedder = CohereEmbedder(; model, embedding_types, verbose)
     embedder = CachedBatchEmbedder(; embedder=cohere_embedder, cache_prefix, verbose)
 end
 

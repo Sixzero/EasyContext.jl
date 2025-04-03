@@ -35,18 +35,18 @@ const CACHE_STATE = CacheData()
 end
 
 function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, query::AbstractString; cost_tracker = Threads.Atomic{Float64}(0.0)) where {T}
-    # embeddings = get_embeddings(builder, chunks; cost_tracker)
-    # query_emb = get_embeddings(builder, [query]; cost_tracker)
-    # get_score(Val(:CosineSimilarity), embeddings, reshape(query_emb, :))
+
+    chunks_emb_task = @async_showerr get_embeddings(builder, chunks; cost_tracker)
+    query_emb = reshape(get_embeddings(builder, [query]; input_type="search_query", cost_tracker), :)
+    chunks_emb = fetch(chunks_emb_task)
         # Combine chunks and query into single request
-    all_docs = [chunks..., query]
-    # @time "Cached embeddings" 
-    embeddings = get_embeddings(builder, all_docs; cost_tracker)
+    # all_docs = [chunks..., query]
+    # embeddings = get_embeddings(builder, all_docs; cost_tracker)
     
     # Split embeddings - last column is query embedding
-    chunks_emb = @view embeddings[:, 1:end-1]
-    query_emb = @view embeddings[:, end]
-    
+    # chunks_emb = @view embeddings[:, 1:end-1]
+    # query_emb = @view embeddings[:, end]
+
     get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
 end
 
@@ -82,22 +82,17 @@ function safe_append_cache(cache_file::String, new_entries::Dict{String,Vector{F
     end
 end
 
-function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{T};
-        cost_tracker = Threads.Atomic{Float64}(0.0),
-        target_batch_size_length::Int = 80_000,
-        ntasks::Int = 4 * Threads.nthreads()) where T
+function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{T}; kwargs...) where T
     docs_str = string.(docs) # TODO maybe we could do this later to allocate even less?
 
-    get_embeddings(
-        embedder, docs_str; cost_tracker, target_batch_size_length,ntasks,
-    )
+    get_embeddings( embedder, docs_str; kwargs... )
 end
 
 function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
         cost_tracker = Threads.Atomic{Float64}(0.0),
         target_batch_size_length::Int = 80_000,
         ntasks::Int = 4 * Threads.nthreads(),
-        )
+        kwargs...)
     if isempty(docs)
         embedder.verbose && @info "No documents to embed."
         return Matrix{Float32}(undef, 0, 0)
@@ -127,7 +122,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
         try
             new_embeddings::Matrix{Float32} = get_embeddings(embedder.embedder, docs_to_embed;
                 verbose=embedder.verbose, model, truncate_dimension, cost_tracker,
-                target_batch_size_length, ntasks)
+                target_batch_size_length, ntasks, kwargs...)
 
             # Update cache with new embeddings
             new_entries = Dict(doc_hashes[idx] => new_embeddings[:, i] 
