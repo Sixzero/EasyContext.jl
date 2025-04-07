@@ -17,7 +17,7 @@ get_model_name(embedder::OpenAIBatchEmbedder) = embedder.model
 
 # Add this at the end of the file
 function create_openai_embedder(;
-    model::String = "text-embedding-3-small",
+    model::String = "text-embedding-3-large",
     top_k::Int = 300,
     cache_prefix="",
 )
