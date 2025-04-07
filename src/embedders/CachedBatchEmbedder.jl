@@ -101,7 +101,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     model = get_model_name(embedder)::String
     unique_name = get_embedder_uniq_id(embedder)
     cache_prefix, truncate_dimension = embedder.cache_prefix, embedder.truncate_dimension
-    
+
     cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(unique_name).arrow")
     
     # Load cache
@@ -112,11 +112,11 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
             end
         end
     end
-    
+
     cache = CACHE_STATE.cache[cache_file]
     doc_hashes = [bytes2hex(sha1(doc)) for doc in docs]
-    to_embed_indices = findall(i -> !haskey(cache, doc_hashes[i]), eachindex(docs))
-    
+    to_embed_indices = findall(dochash -> !haskey(cache, dochash), doc_hashes)
+
     if !isempty(to_embed_indices)
         docs_to_embed = docs[to_embed_indices]
         try
@@ -126,7 +126,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
 
             # Update cache with new embeddings
             new_entries = Dict(doc_hashes[idx] => new_embeddings[:, i] 
-                             for (i, idx) in enumerate(to_embed_indices))
+                            for (i, idx) in enumerate(to_embed_indices))
             
             # Update memory cache
             merge!(cache, new_entries)
@@ -137,7 +137,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
             if e isa PartialEmbeddingResults
                 # Handle partial results
                 new_entries = Dict(doc_hashes[to_embed_indices[idx]] => emb 
-                                 for (idx, emb) in e.successful_embeddings)
+                                for (idx, emb) in e.successful_embeddings)
                 
                 # Update memory cache with partial results
                 merge!(cache, new_entries)
@@ -155,20 +155,20 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
             end
         end
     end
-    
+
     # Create all_embeddings array from what we have
     if isempty(cache)
         error("No embeddings available in cache and failed to generate new ones")
     end
-    
+
     # Get embedding dimension from first cached embedding
     embedding_dim = length(first(values(cache)))
     all_embeddings = Matrix{Float32}(undef, embedding_dim, length(docs))
-    
+
     for (i, hash) in enumerate(doc_hashes)
         all_embeddings[:, i] = cache[hash]
     end
-    
+
     if embedder.verbose
         cached_count = length(docs) - length(to_embed_indices)
         cost_text = length(to_embed_indices) > 0 ? " Cost: \$$(round(cost_tracker[], digits=3))" : ""

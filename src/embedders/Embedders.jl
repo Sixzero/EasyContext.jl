@@ -17,6 +17,7 @@ include("api/OpenAIBatchEmbedder.jl")
 include("api/JinaEmbedder.jl")
 include("api/CohereEmbedder.jl")
 include("api/VoyageEmbedder.jl")
+include("api/RandomEmbedder.jl")
 include("api/GoogleGeckoEmbedder.jl")
 
 include("CachedBatchEmbedder.jl")

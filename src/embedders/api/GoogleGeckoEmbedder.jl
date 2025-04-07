@@ -26,7 +26,6 @@ A struct for embedding documents using Google's Gecko embedding models.
 - `rate_limiter::RateLimiterRPM`: A rate limiter to manage API request rates.
 - `http_post::Function`: The function to use for HTTP POST requests.
 - `verbose::Bool`: Whether to print verbose output.
-- `api_key::String`: The API key for authentication.
 """
 @kwdef mutable struct GoogleGeckoEmbedder <: AbstractEasyEmbedder
     project_id::String = get_project_id()
@@ -35,10 +34,9 @@ A struct for embedding documents using Google's Gecko embedding models.
     task_type::String = "RETRIEVAL_DOCUMENT"
     auto_truncate::Bool = false
     output_dimensionality::Union{Int, Nothing} = nothing
-    rate_limiter::RateLimiterRPM = RateLimiterRPM(max_requests=1000, time_window=60.0)  # 100 requests per minute
+    rate_limiter::RateLimiterRPM = RateLimiterRPM(max_requests=360, time_window=60.0)  # quotas: https://cloud.google.com/vertex-ai/generative-ai/docs/quotas
     http_post::Function = HTTP.post
     verbose::Bool = true
-    api_key::String = get(ENV, "VERTEX_AI_API_KEY", "")
 end
 
 # Get project ID from environment or gcloud

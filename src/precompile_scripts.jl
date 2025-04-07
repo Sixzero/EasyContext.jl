@@ -22,9 +22,13 @@ using DataStructures: OrderedDict
         # Initialize workspace context
         # TODO this should happen cd-ed into 
         workspace_context = init_workspace_context(project_paths, verbose=false)
-        embedder = create_openai_embedder(cache_prefix="workspace")
+        
+        # Use RandomEmbedder for precompilation to avoid API calls
+        random_embedder = create_random_embedder(dimensions=1536, seed=42, cache_prefix="random_precompile")
+        
         # Test the filtering functionality with dummy data
-        tmp_score = get_score(embedder, dummy_chunks, "hello")
+        tmp_score = get_score(random_embedder, dummy_chunks, "hello")
+        
         # file_chunks_selected = workspace_context.ws_simi_filterer(indexx, user_question)
         # file_chunks_reranked = rerank(workspace_context.ws_reranker_filterer, file_chunks_selected, user_question; ai_fn=mock_ai_fn)
 
