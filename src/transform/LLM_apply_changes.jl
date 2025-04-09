@@ -14,7 +14,8 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
     # Initialize AIGenerateFallback with model preferences
     ai_manager = AIGenerateFallback(models=model, readtimeout=30)
     aigenerated = try_generate(ai_manager, prompt; api_kwargs=(; temperature), verbose=false)
-    content = extract_tagged_content(aigenerated.content, "final")
+    end_tag = merge_prompt === get_merge_prompt_v1 ? "final" : "FINAL"
+    content = extract_tagged_content(aigenerated.content, end_tag)
     isnothing(content) && @warn "The model: $model failed to generate properly tagged content."
     # res, is_ok = extract_final_content(aigenerated.content)
     # !is_ok && @warn "The model: $model failed to generate the final content."

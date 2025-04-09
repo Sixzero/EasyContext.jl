@@ -4,7 +4,8 @@
 	timestamp::DateTime
 	role::Symbol
 	content::String
-	context::Dict{String,String} = Dict{String,String}()
+	# example context: Dict("base64img_1" => "image1", "base64img_2" => "image2")
+	context::Dict{String, String} = Dict{String, String}()
 	itok::Int=0
 	otok::Int=0
 	cached::Int=0

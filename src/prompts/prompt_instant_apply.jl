@@ -27,11 +27,13 @@ function get_merge_prompt_v2(original_content, changes_content)
   """You are a code merge specialist. Merge the <ORIGINAL> code with the <CHANGES> following these rules:
 
   1. Apply all modifications from <CHANGES> to <ORIGINAL>
-  2. Keep original formatting (spaces/tabs)
+  2. Keep original formatting spaces and tabs
   3. If <CHANGES> contains '... existing code ...' preserve that part from <ORIGINAL>
-  4. Keep imports and using statements intact unless explicitly modified
+  4. Keep imports and using statements intact unless requested
   5. <CHANGES> might indicate line deletions. In that case remove those lines from <final> result
-  6. Return only the final code between <final> and </final> tags
+  6. <CHANGES> might contain instructions. In that case follow them
+  7. In <CHANGES> there might be a non-code part in the end after  "```", keep that part as is
+  8. Return only the final code between <FINAL> tags
 
   <ORIGINAL>
   $original_content
@@ -41,7 +43,7 @@ function get_merge_prompt_v2(original_content, changes_content)
   $changes_content
   </CHANGES>
 
-  Provide merged code between <final> and </final>.
+  Provide merged code between <FINAL> and </FINAL>.
   """
 end
 
