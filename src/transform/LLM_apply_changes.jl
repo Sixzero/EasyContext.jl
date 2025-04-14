@@ -5,8 +5,18 @@ using Random
 include("instant_apply_logger.jl")
 include("../prompts/prompt_instant_apply.jl")
 
+function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector{String}=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=merge_prompt_v2)
+    # Check file size and choose appropriate method
+    return if length(original_content) > 18_000
+        apply_modify_by_replace(original_content, changes_content)
+    else
+        is_patch_file = language == "patch"
+        merge_prompt = is_patch_file ? get_patch_merge_prompt : merge_prompt
+        apply_modify_by_llm(original_content, changes_content; merge_prompt, model)
+    end
+end
 
-function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::Vector{String}=["gem20f", "minimax", "gpt4o"], temperature=0, verbose=false, merge_prompt::Function)
+function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::Vector{String}=["gem20f", "gem25p", "gpt4o"], temperature=0, verbose=false, merge_prompt::Function)
     prompt = merge_prompt(original_content, changes_content)
 
     verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")
