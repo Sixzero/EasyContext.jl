@@ -49,8 +49,22 @@ function to_PT_messages(session::Session, sys_msg::String)
     for (i, msg) in enumerate(session.messages)
         full_content = context_combiner!(msg.content, msg.context)
         messages[i + 1] = if msg.role == :user
+            # Extract file paths from content
             image_paths = validate_image_paths(extract_image_paths(msg.content))
-            isempty(image_paths) ? UserMessage(full_content) : PT.UserMessageWithImages(full_content; image_path=image_paths)
+            
+            # Extract base64 images from context
+            base64_images = filter(p -> startswith(p.first, "base64img_"), msg.context)
+            base64_urls = isempty(base64_images) ? nothing : collect(values(base64_images))
+            
+            if !isempty(image_paths) || !isempty(base64_images)
+                # Use the existing constructor which handles both paths and base64
+                PT.UserMessageWithImages(full_content; 
+                    image_path = isempty(image_paths) ? nothing : image_paths,
+                    image_url = base64_urls)
+            else
+                # No images
+                UserMessage(full_content)
+            end
         elseif msg.role == :assistant 
             AIMessage(full_content)
         else
