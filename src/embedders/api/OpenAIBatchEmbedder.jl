@@ -9,8 +9,33 @@ using SparseArrays
 end
 
 # Delegate the get_embeddings method to the internal BatchEmbedder
-function get_embeddings(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:AbstractString}; kwargs...)
-    get_embeddings(embedder.embedder, docs; model=embedder.model, kwargs...)
+function get_embeddings(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:AbstractString}; verbose=false, target_batch_size_length=80_000,
+    cost_tracker = Threads.Atomic{Float64}(0.0),
+    ntasks::Int = 4 * Threads.nthreads(),
+    kwargs...)
+    @assert !isempty(docs) "The list of docs to get embeddings from should not be empty."
+
+    verbose && @info "Embedding $(length(docs)) documents..."
+    # Notice that we embed multiple docs at once, not one by one
+    # OpenAI supports embedding multiple documents to reduce the number of API calls/network latency time
+    # We do batch them just in case the documents are too large (targeting at most 80K characters per call)
+    avg_length = sum(length.(docs)) / length(docs)
+    embedding_batch_size = floor(Int, target_batch_size_length / avg_length)
+    embeddings = asyncmap(Iterators.partition(docs, embedding_batch_size); ntasks) do docs_chunk
+        msg = aiembed(docs_chunk,
+            RAG._normalize;
+            model=embedder.model,
+            verbose = false,
+            kwargs...)
+        Threads.atomic_add!(cost_tracker, msg.cost) # track costs
+        msg.content
+    end
+    ## Concat across documents and truncate if needed
+    all_embeddings = hcat(embeddings...)
+
+    ## Normalize embeddings
+    verbose && @info "Done embedding. Total cost: \$$(round(cost_tracker[],digits=3))"
+    return all_embeddings
 end
 
 get_model_name(embedder::OpenAIBatchEmbedder) = embedder.model

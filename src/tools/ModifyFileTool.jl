@@ -163,18 +163,10 @@ function LLM_apply_changes_to_file(root_path::String, file_path::String, content
     end
     isempty(original_content) && return content, content
 
-    is_patch_file = language=="patch"
-    merge_prompt = is_patch_file ? get_patch_merge_prompt : get_merge_prompt_v2
-    # Check file size and choose appropriate method
-    if length(original_content) > 10_000
-        ai_generated_content = apply_modify_by_replace(original_content, content)
-    else
-        ai_generated_content = apply_modify_by_llm(original_content, content; merge_prompt, model=models)
-    end
+    ai_generated_content = apply_modify_auto(original_content, content; language, model=models)
 
     original_content, String(ai_generated_content)
 end
-
 # TODO maybe chunks should have this? but just wut a full_parse on the location it is used which returns full content without line cuts? instead of reparse?
 function parse_source(source::String)
     source_nospace = split(source, ' ')[1]

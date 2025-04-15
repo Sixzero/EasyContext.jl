@@ -197,7 +197,10 @@ function work(agent::FluidAgent, conv; cache=nothing,
             
             # Add tool results to conversation for next iteration
             result = get_tool_results_agent(agent)
-            push_message!(conv, create_user_message(result))
+            
+            tool_results_usr_msg = create_user_message(result)
+            # !isa(io, Base.TTY) && write(io, tool_results_usr_msg)
+            push_message!(conv, tool_results_usr_msg)
             sleep(1)
         end
 
