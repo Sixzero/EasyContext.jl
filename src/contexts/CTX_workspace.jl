@@ -36,18 +36,24 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     )
 end
 
-function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing)
+function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing,
+    cost_tracker = Threads.Atomic{Float64}(0.0), time_tracker = Threads.Atomic{Float64}(0.0))
     !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing)
+    
+    start_time = time()
     
     file_chunks = RAG.get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
     isempty(file_chunks) && return ("", nothing, nothing)
     
-    file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query)
+    file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker, time_tracker)
     merged_file_chunks = merge!(workspace_context.tracker_context, file_chunks_reranked)
     
     !isnothing(extractor) && update_changes_from_extractor!(workspace_context.changes_tracker, extractor)
     scr_content = update_changes!(workspace_context.changes_tracker, merged_file_chunks)
     !isnothing(age_tracker) && register_changes!(age_tracker, workspace_context.changes_tracker)
+    
+    # Update time tracker with total time
+    Threads.atomic_add!(time_tracker, time() - start_time)
     
     isa(scr_content, String) && return ("", nothing, nothing)
     
