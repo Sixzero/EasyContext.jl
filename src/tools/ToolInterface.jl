@@ -40,6 +40,7 @@ Interface methods:
 - `toolname(::Type{<:AbstractTool})` - Tool's unique identifier 
 - `stop_sequence(::Type{<:AbstractTool})` - Tool termination marker (if needed)
 - `get_description(::Type{<:AbstractTool})` - Tool's usage documentation
+- `get_cost(cmd::AbstractTool)` - Get the cost of tool execution (if applicable)
 
 Note: The LLM output generation and ToolTag parsing are handled by the Agent.
 Each Tool implementation must provide a constructor that takes a ToolTag.
@@ -50,6 +51,7 @@ abstract type AbstractTool end
 preprocess(tool::AbstractTool) = tool
 get_id(tool::AbstractTool) = tool.id
 execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool))"
+get_cost(tool::AbstractTool) = nothing  # Default implementation returns nothing
 
 """
 Check if tool execution was cancelled by user

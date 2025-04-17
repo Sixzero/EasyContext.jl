@@ -16,19 +16,43 @@ function apply_modify_auto(original_content::String, changes_content::String; la
     end
 end
 
+"""
+    has_meaningful_changes(original::AbstractString, modified::AbstractString) -> Bool
+
+Check if there are meaningful changes between the original and modified content.
+Returns true if the modified content is different from the original content.
+"""
+function has_meaningful_changes(original::AbstractString, modified::AbstractString)
+    return strip(original) != strip(modified)
+end
+
 function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::Vector{String}=["gem20f", "gem25p", "gpt4o"], temperature=0, verbose=false, merge_prompt::Function)
     prompt = merge_prompt(original_content, changes_content)
-
+    end_tag = merge_prompt === get_merge_prompt_v1 ? "final" : "FINAL"
+    
     verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")
 
-    # Initialize AIGenerateFallback with model preferences
-    ai_manager = AIGenerateFallback(models=model, readtimeout=30)
-    aigenerated = try_generate(ai_manager, prompt; api_kwargs=(; temperature), verbose=false)
-    end_tag = merge_prompt === get_merge_prompt_v1 ? "final" : "FINAL"
+    # Define condition function to check for meaningful changes
+    function is_valid_result(result)
+        content = extract_tagged_content(result.content, end_tag)
+        
+        # Check if content was extracted and has meaningful changes
+        if isnothing(content) || 
+           !has_meaningful_changes(original_content, content)
+            verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
+            return false
+        end
+        return true
+    end
+    
+    # Initialize AIGenerateFallback with model preferences and try to generate
+    ai_manager = AIGenerateFallback(models=model)
+    aigenerated = try_generate(ai_manager, prompt; condition=is_valid_result, api_kwargs=(; temperature), verbose=verbose)
+    
+    # Extract content from the generated result
     content = extract_tagged_content(aigenerated.content, end_tag)
     isnothing(content) && @warn "The model: $model failed to generate properly tagged content."
-    # res, is_ok = extract_final_content(aigenerated.content)
-    # !is_ok && @warn "The model: $model failed to generate the final content."
+
     return something(content, changes_content)
 end
 
@@ -82,6 +106,12 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
             println("MISSING:\n$miss")
         end
     end
+    
+    # If no meaningful changes were made, return the changes_content
+    if !has_meaningful_changes(original_content, best_result)
+        return changes_content
+    end
+    
     return best_result
 end
 

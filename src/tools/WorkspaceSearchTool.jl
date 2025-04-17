@@ -4,6 +4,8 @@
     query::String
     workspace_ctx::Union{Nothing,WorkspaceCTX} = nothing
     result::String = ""
+    cost::Float64 = 0.0
+    elapsed_time::Float64 = 0.0
 end
 
 function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
@@ -42,8 +44,19 @@ function execute(tool::WorkspaceSearchTool; no_confirm=false)
         @warn "workspace_ctx is nothing, this should never happen!" 
         return false
     end
-    result, _ = process_workspace_context(tool.workspace_ctx, tool.query)
+    
+    # Initialize cost and time trackers
+    cost_tracker = Threads.Atomic{Float64}(0.0)
+    time_tracker = Threads.Atomic{Float64}(0.0)
+    
+    result, _, _ = process_workspace_context(tool.workspace_ctx, tool.query; 
+                                          cost_tracker=cost_tracker, 
+                                          time_tracker=time_tracker)
+    
     tool.result = result
+    tool.cost = cost_tracker[]
+    tool.elapsed_time = time_tracker[]
+    
     true
 end
 
@@ -53,4 +66,8 @@ function result2string(tool::WorkspaceSearchTool)
     Search results for: $(tool.query)
     
     $(tool.result)"""
+end
+
+function get_cost(tool::WorkspaceSearchTool)
+    return tool.cost
 end

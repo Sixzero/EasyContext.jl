@@ -6,6 +6,7 @@ get_extra_description(tg::AbstractToolGenerator) = nothing
 get_description(tool::AbstractToolGenerator)::String = get_description(typeof(tool))
 has_stop_sequence(tool::AbstractToolGenerator)::Bool = has_stop_sequence(typeof(tool))
 has_stop_sequence(tool::Type{<:AbstractToolGenerator})::Bool = stop_sequence(tool) != "" 
+get_cost(tool::AbstractToolGenerator) = nothing
 
 struct ToolGenerator <: AbstractToolGenerator
     tool_type::DataType

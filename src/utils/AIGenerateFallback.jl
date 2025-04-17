@@ -22,7 +22,7 @@ Manages fallback and retry logic for AI model generation.
 Base.@kwdef mutable struct AIGenerateFallback{T<:Union{String,Vector{String}}}
     models::T
     states::Dict{String,ModelState} = Dict{String,ModelState}()
-    readtimeout::Int = 15
+    readtimeout::Int = 60
 end
 
 # Helper functions
@@ -47,26 +47,32 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
 end
 
 """
-    try_generate(manager::AIGenerateFallback, prompt; kwargs...)
+    try_generate(manager::AIGenerateFallback, prompt; condition=nothing, kwargs...)
 
 Attempts to generate AI response with retry and fallback logic.
+Optional `condition` function can be provided to validate the generated result.
 """
-function try_generate(manager::AIGenerateFallback{String}, prompt; api_kwargs, kwargs...)
+function try_generate(manager::AIGenerateFallback{String}, prompt; condition=nothing, api_kwargs, kwargs...)
     model = manager.models
     state = get!(manager.states, model, ModelState())
     maybe_recover_model!(state)
-    manager.readtimeout *= 4 # we actually should let it run longer, since there is no other model to try...
 
-    if model == "o3m" # TODO: no temperature support for o3m
-        api_kwargs = (; )
-    end
+    api_kwargs = get_api_kwargs_for_model(api_kwargs, model)
+    
     if contains(lowercase(model), "mistral") && haskey(api_kwargs, :top_p)
         api_kwargs = NamedTuple(k => v for (k, v) in pairs(api_kwargs) if k != :top_p)
     end
 
     for attempt in 1:3
         result, time = @timed try
-            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), api_kwargs, kwargs...)
+            res = aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), api_kwargs, kwargs...)
+            
+            # Check condition if provided
+            if !isnothing(condition) && !condition(res)
+                error("Generated content did not meet condition criteria")
+            end
+            
+            res
         catch e
             reason = handle_error!(state, e, model)
             attempt == 3 && (disable_model!(state, "Failed after 3 retries: $reason"); rethrow(e))
@@ -81,14 +87,23 @@ function try_generate(manager::AIGenerateFallback{String}, prompt; api_kwargs, k
     end
 end
 
-function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; api_kwargs, kwargs...)
+function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; condition=nothing, api_kwargs, kwargs...)
     for model in manager.models
+        api_kwargs_for_model = get_api_kwargs_for_model(api_kwargs, model)
+        readtimeout = model == "o3m" || model == "o4m" ? 60 : manager.readtimeout
         state = get!(manager.states, model, ModelState())
         maybe_recover_model!(state)
         !state.available && continue
         
         result, time = @timed try
-            aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), api_kwargs=model == "o3m" ? (; ) : api_kwargs, kwargs...)
+            res = aigenerate(prompt; model, http_kwargs=(; readtimeout), api_kwargs=api_kwargs_for_model, kwargs...)
+            
+            # Check condition if provided
+            if !isnothing(condition) && !condition(res)
+                error("Generated content did not meet condition criteria")
+            end
+            
+            res
         catch e
             reason = handle_error!(state, e, model)
             disable_model!(state, reason)
@@ -99,4 +114,14 @@ function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; api_k
     end
     reasons = ["$m: $(manager.states[m].reason)" for m in manager.models if haskey(manager.states, m)]
     error("All models failed:\n" * join(reasons, "\n"))
+end
+
+function get_api_kwargs_for_model(api_kwargs, model::String)
+    if model == "o3m" || model == "o4m" # TODO: no temperature support for o3m
+        return (; )
+    end
+    if model == "claude"
+        return merge(api_kwargs, (; max_tokens = 16000))
+    end
+    return api_kwargs
 end
