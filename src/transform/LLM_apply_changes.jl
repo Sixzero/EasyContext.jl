@@ -5,7 +5,7 @@ using Random
 include("instant_apply_logger.jl")
 include("../prompts/prompt_instant_apply.jl")
 
-function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector{String}=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=merge_prompt_v2)
+function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector{String}=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2)
     # Check file size and choose appropriate method
     return if length(original_content) > 18_000
         apply_modify_by_replace(original_content, changes_content)
