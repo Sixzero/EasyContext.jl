@@ -10,8 +10,12 @@ import Base: write
 end
 
 struct WorkspaceCTXResult
-    content::String
+    new_chunks::Vector{FileChunk}
+    updated_chunks::Vector{FileChunk}
+    cost::Threads.Atomic{Float64}
+    elapsed::Float64
 end
+
 Base.write(io::IO, ::WorkspaceCTXResult) = nothing
 
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
@@ -36,8 +40,7 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     )
 end
 
-function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing,
-    cost_tracker = Threads.Atomic{Float64}(0.0), time_tracker = Threads.Atomic{Float64}(0.0))
+function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing,)
     !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing)
     
     start_time = time()
@@ -45,7 +48,8 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     file_chunks = RAG.get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
     isempty(file_chunks) && return ("", nothing, nothing)
     
-    file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker, time_tracker)
+    cost_tracker = Threads.Atomic{Float64}(0.0)
+    file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker)
     merged_file_chunks = merge!(workspace_context.tracker_context, file_chunks_reranked)
     
     !isnothing(extractor) && update_changes_from_extractor!(workspace_context.changes_tracker, extractor)
@@ -53,14 +57,16 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     !isnothing(age_tracker) && register_changes!(age_tracker, workspace_context.changes_tracker)
     
     # Update time tracker with total time
-    Threads.atomic_add!(time_tracker, time() - start_time)
+    elapsed = time() - start_time
     
     isa(scr_content, String) && return ("", nothing, nothing)
     
-    result = workspace_ctx_2_string(workspace_context.changes_tracker, scr_content)
-    !isnothing(io) && write(io, WorkspaceCTXResult(result))
+    new_chunks, updated_chunks = get_filtered_chunks(workspace_context.changes_tracker, scr_content)
+    result = WorkspaceCTXResult(new_chunks, updated_chunks, cost_tracker, elapsed)
+    result_str = workspace_ctx_2_string(new_chunks, updated_chunks)
+    !isnothing(io) && write(io, result)
     
-    (result, file_chunks, file_chunks_reranked)
+    (result_str, file_chunks, file_chunks_reranked)
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)

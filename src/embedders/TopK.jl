@@ -37,12 +37,9 @@ TopK(embedder::AbstractEmbedder; top_k::Int=DEFAULT_TOP_K) = TopK(embedder=[embe
 
 # Main interface
 function search(topn::TopK, chunks::AbstractVector{T}, query::AbstractString;
-    cost_tracker = Threads.Atomic{Float64}(0.0),
-    time_tracker = Threads.Atomic{Float64}(0.0)) where T
-    start_time = time()
+    cost_tracker = Threads.Atomic{Float64}(0.0)) where T
     scores = get_score(topn.embedder, chunks, query; cost_tracker)
     result = topN(scores, chunks, topn.top_k)
-    Threads.atomic_add!(time_tracker, time() - start_time)
     return result
 end
 

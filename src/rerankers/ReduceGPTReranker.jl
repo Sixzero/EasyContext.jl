@@ -22,7 +22,6 @@ function rerank(
     query::AbstractString;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
-    time_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Int = reranker.verbose,
 ) where T
     # Initialize AIGenerateFallback with model preferences based on model type
@@ -107,17 +106,17 @@ function rerank(
     final_top_n = remaining_doc_idxs[1:min(top_n, length(remaining_doc_idxs))]
     
     # After getting all runtimes from ai_manager
-    total_time = sum((sum(state.runtimes, init=0.0) for state in values(ai_manager.states)), init=0.0)
-    Threads.atomic_add!(time_tracker, total_time)
+    # total_time = sum((sum(state.runtimes, init=0.0) for state in values(ai_manager.states)), init=0.0)
+    # Threads.atomic_add!(time_tracker, total_time)
     
     if cost_tracker[] > 0 || verbose > 0
         doc_count_str = join(doc_counts, " > ")
         total_cost = round(cost_tracker[], digits=4)
-        time_str = "$(round(total_time, digits=2))s"
+        # time_str = "$(round(total_time, digits=2))s"
         n_models = count(s -> !isempty(s.runtimes), values(ai_manager.states))
-        n_models > 1 && (time_str *= " ($n_models models)")
+        # n_models > 1 && (time_str *= " ($n_models models)")
 
-        println("RankGPT document reduction: $doc_count_str Total cost: \$$(total_cost) Time: $time_str")
+        println("RankGPT document reduction: $doc_count_str Total cost: \$$(total_cost)") # Time: $time_str")
     end
     
     return chunks[final_top_n]

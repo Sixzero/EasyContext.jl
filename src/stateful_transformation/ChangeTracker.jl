@@ -49,11 +49,16 @@ function update_changes!(tracker::ChangeTracker, ctx::AbstractDict{String, T}) w
     tracker.verbose && print_context_updates(tracker; deleted=deleted_keys, item_type="sources")
     return ctx
 end
+function get_filtered_chunks(tracker::ChangeTracker, ctx::Context)
+    new_chunks = [v for (k, v) in ctx.d if tracker.changes[k] == :NEW]
+    updated_chunks = [v for (k, v) in ctx.d if tracker.changes[k] == :UPDATED]
+    return new_chunks, updated_chunks
+end
 
-serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::Context) = serialize(tag, element, scr_state, src_cont.d)
-function serialize(tag::String, element::String, scr_state::ChangeTracker, src_cont::OrderedDict)
+function serialize(tag::String, element::String, new_chunks::Vector, updated_chunks::Vector)
     output = ""
-    new_files = format_element(element, scr_state, src_cont, :NEW)
+    
+    new_files = join([string(chunk) for chunk in new_chunks], '\n')
     if !is_really_empty(new_files)
         output *= """
         <$tag NEW>
@@ -61,7 +66,8 @@ function serialize(tag::String, element::String, scr_state::ChangeTracker, src_c
         </$tag>
         """
     end
-    updated_files = format_element(element, scr_state, src_cont, :UPDATED)
+    
+    updated_files = join([string(chunk) for chunk in updated_chunks], '\n')
     if !is_really_empty(updated_files)
         output *= """
         <$tag UPDATED>
@@ -69,10 +75,9 @@ function serialize(tag::String, element::String, scr_state::ChangeTracker, src_c
         </$tag>
         """
     end
-    output
+    
+    return output
 end
-format_element(element::String, scr_state::ChangeTracker, src_cont::OrderedDict, state::Symbol) = join([string(chunks) for (src, chunks) in src_cont if scr_state.changes[src] == state], '\n')
-
 
 function print_context_updates(tracker::ChangeTracker; deleted, item_type::String="files")
     

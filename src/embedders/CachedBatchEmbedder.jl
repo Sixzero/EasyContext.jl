@@ -35,8 +35,7 @@ const CACHE_STATE = CacheData()
 end
 
 function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, query::AbstractString; 
-    cost_tracker = Threads.Atomic{Float64}(0.0),
-    time_tracker = Threads.Atomic{Float64}(0.0)) where {T}
+    cost_tracker = Threads.Atomic{Float64}(0.0)) where {T}
 
     start_time = time()
     chunks_emb_task = @async_showerr get_embeddings(builder, chunks; cost_tracker)
@@ -51,7 +50,6 @@ function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, quer
     # query_emb = @view embeddings[:, end]
 
     result = get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
-    Threads.atomic_add!(time_tracker, time() - start_time)
     return result
 end
 
