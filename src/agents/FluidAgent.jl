@@ -103,6 +103,11 @@ function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::
         max_tokens = max_tokens
     ))
 end
+
+function get_tool_results_agent(agent::FluidAgent)
+    join(result2string.(fetch.(values(agent.extractor.tool_tasks))), "\n")
+end
+
 function work(agent::FluidAgent, conv::AbstractString; kwargs...)
     conv_ctx = Session(; messages=[create_user_message(conv)])
     work(agent, conv_ctx; kwargs...)
@@ -194,7 +199,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
             tools = [(id, fetch(tool)) for (id, tool) in agent.extractor.tool_tasks]
 
             # Add tool results to conversation for next iteration
-            result = join(result2string.(tools), "\n")
+            result = get_tool_results_agent(agent)
             
             tool_results_usr_msg = create_user_message(result)
             

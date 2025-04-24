@@ -3,14 +3,13 @@
     id::UUID = uuid4()
     query::String
     workspace_ctx::Union{Nothing,WorkspaceCTX} = nothing
-    result_str::String = ""
-    result::Union{Nothing,WorkspaceCTXResult} = nothing
-    io::Union{IO, Nothing} = nothing
+    result::String = ""
+    workspace_ctx_result::Union{Nothing,WorkspaceCTXResult} = nothing
 end
 
-function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing, io=nothing)
+function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
     # Convert the root_path to a vector of strings as expected by WorkspaceCTX constructor
-    WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx, io=io)
+    WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
 end
 
 const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
@@ -43,20 +42,20 @@ function execute(tool::WorkspaceSearchTool; no_confirm=false)
         return false
     end
     
-    result_str, _, _, result::WorkspaceCTXResult = process_workspace_context(tool.workspace_ctx, tool.query; io=tool.io)
+    result, _, _, full_result::WorkspaceCTXResult = process_workspace_context(tool.workspace_ctx, tool.query)
     
-    tool.result_str = result_str
     tool.result = result
+    tool.workspace_ctx_result = full_result
     
     true
 end
 
 function result2string(tool::WorkspaceSearchTool)
-    isempty(tool.result_str) && return "No relevant code found for query: $(tool.query)"
+    isempty(tool.result) && return "No relevant code found for query: $(tool.query)"
     """
     Search results for: $(tool.query)
     
-    $(tool.result_str)"""
+    $(tool.result)"""
 end
 
 function get_cost(tool::WorkspaceSearchTool)
