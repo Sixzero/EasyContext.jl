@@ -3,17 +3,15 @@
     id::UUID = uuid4()
     query::String
     workspace_ctx::Union{Nothing,WorkspaceCTX} = nothing
-    result::String = ""
-    cost::Float64 = 0.0
-    elapsed_time::Float64 = 0.0
+    result_str::String = ""
+    result::Union{Nothing,WorkspaceCTXResult} = nothing
+    io::Union{IO, Nothing} = nothing
 end
 
-function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
+function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing, io=nothing)
     # Convert the root_path to a vector of strings as expected by WorkspaceCTX constructor
-    workspace_ctx = workspace_ctx
-    WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
+    WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx, io=io)
 end
-
 
 const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
 
@@ -45,27 +43,20 @@ function execute(tool::WorkspaceSearchTool; no_confirm=false)
         return false
     end
     
-    # Initialize cost and time trackers
-    cost_tracker = Threads.Atomic{Float64}(0.0)
-    time_tracker = Threads.Atomic{Float64}(0.0)
+    result_str, _, _, result::WorkspaceCTXResult = process_workspace_context(tool.workspace_ctx, tool.query; io=tool.io)
     
-    result, _, _ = process_workspace_context(tool.workspace_ctx, tool.query; 
-                                          cost_tracker=cost_tracker, 
-                                          time_tracker=time_tracker)
-    
+    tool.result_str = result_str
     tool.result = result
-    tool.cost = cost_tracker[]
-    tool.elapsed_time = time_tracker[]
     
     true
 end
 
 function result2string(tool::WorkspaceSearchTool)
-    isempty(tool.result) && return "No relevant code found for query: $(tool.query)"
+    isempty(tool.result_str) && return "No relevant code found for query: $(tool.query)"
     """
     Search results for: $(tool.query)
     
-    $(tool.result)"""
+    $(tool.result_str)"""
 end
 
 function get_cost(tool::WorkspaceSearchTool)

@@ -46,15 +46,6 @@ function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false)
 end
 
 """
-Returns both the full and truncated context strings
-"""
-function get_tool_results_agent(agent::FluidAgent, max_length::Int=20000; filter_tools::Vector{DataType}=DataType[])
-    ctx = get_tool_results(agent.extractor; filter_tools)
-    isempty(ctx) && return ""
-    return ctx
-end
-
-"""
 Get formatted tool results for LLM context
 """
 function get_tool_context(agent::FluidAgent)
@@ -182,9 +173,14 @@ function work(agent::FluidAgent, conv; cache=nothing,
                 verbose=false
             )
             
-            execute_tools(extractor; no_confirm)
-            
             push_message!(conv, create_AI_message(response.content))
+
+            execute_tools(extractor; no_confirm)
+            # idea:
+            # res::TextResult = execute_tool(browser_use_tool(arguments))
+            # res::ImgNTextResult = execute_tool(click_brower_use(arguments))
+            # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
+            # res::VoiceResult = execute_tool(generate_voice(arguments))
 
             # Break if no more tool execution needed
             !needs_tool_execution(cb.run_info) && break
@@ -194,14 +190,20 @@ function work(agent::FluidAgent, conv; cache=nothing,
                 @info "All tools were cancelled by user, stopping further processing"
                 break
             end
-            
+
+            tools = [(id, fetch(tool)) for (id, tool) in agent.extractor.tool_tasks]
+
             # Add tool results to conversation for next iteration
-            result = get_tool_results_agent(agent)
+            result = join(result2string.(tools), "\n")
             
             tool_results_usr_msg = create_user_message(result)
-            # !isa(io, Base.TTY) && write(io, tool_results_usr_msg)
+            
+            !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
+            for (id, tool) in tools
+                !isa(io, Base.TTY) && write(io, tool, id)
+            end
+            
             push_message!(conv, tool_results_usr_msg)
-            sleep(1)
         end
 
         return response

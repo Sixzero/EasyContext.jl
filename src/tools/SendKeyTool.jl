@@ -3,7 +3,7 @@
     id::UUID = uuid4()
     text::String
 end
-SendKeyTool(cmd::ToolTag) = SendKeyTool(text=cmd.args)
+create_tool(SendKeyTool, cmd::ToolTag) = SendKeyTool(text=cmd.args)
 instantiate(::Val{Symbol(SENDKEY_TAG)}, cmd::ToolTag) = SendKeyTool(cmd)
 
 toolname(cmd::Type{SendKeyTool}) = SENDKEY_TAG

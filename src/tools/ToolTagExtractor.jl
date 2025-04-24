@@ -52,8 +52,8 @@ function process_immediate_tool!(line::String, stream_parser::ToolTagExtractor, 
     tool_map = get_tool_map(stream_parser.tools)
     
     # Create the tool using the tool_map
-    tool_creator = tool_map[tool_tag.name]
-    tool = tool_creator(tool_tag)
+    tool_type_or_instance = tool_map[tool_tag.name]
+    tool = create_tool(tool_type_or_instance, tool_tag)
     stream_parser.tool_tasks[get_id(tool)] = @async_showerr preprocess(tool)
 end
 
@@ -159,16 +159,6 @@ function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, kwargs
             execute(tool; no_confirm)
         end
     end
-end
-
-function get_tool_results(stream_parser::ToolTagExtractor; filter_tools::Vector{DataType}=DataType[])
-	output = String[]
-	for (id, task) in stream_parser.tool_tasks
-			tool = fetch(task)
-            !(isempty(filter_tools) || typeof(tool) in filter_tools) && continue
-            push!(output, result2string(tool))
-	end
-	return join(output, "\n")
 end
 
 function are_tools_cancelled(stream_parser::ToolTagExtractor)

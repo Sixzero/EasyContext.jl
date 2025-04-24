@@ -12,7 +12,7 @@ struct ToolGenerator <: AbstractToolGenerator
     tool_type::DataType
     args
 end
-function (tg::ToolGenerator)(cmd::ToolTag)
+function create_tool(tg::ToolGenerator, cmd::ToolTag)
     tg.tool_type(cmd; tg.args...)
 end
 
@@ -25,9 +25,10 @@ tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 
 @kwdef mutable struct WorkspaceToolGenerator <: AbstractToolGenerator
     workspace_context::WorkspaceCTX
+    io::Union{IO, Nothing} = nothing
 end
-function (wtg::WorkspaceToolGenerator)(cmd::ToolTag)
-    WorkspaceSearchTool(cmd, wtg.workspace_context)
+function create_tool(wtg::WorkspaceToolGenerator, cmd::ToolTag)
+    WorkspaceSearchTool(cmd, wtg.workspace_context, wtg.io)
 end
 
 toolname(tg::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)

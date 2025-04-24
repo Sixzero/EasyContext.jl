@@ -6,7 +6,7 @@
 end
 
 const JULIA_SEARCH_TAG = "JULIA_SEARCH"
-function JuliaSearchTool(cmd::ToolTag)
+function create_tool(::Type{JuliaSearchTool}, cmd::ToolTag)
     model = get(cmd.kwargs, "model", ["gem20f", "gem15f", "gpt4om"])
     julia_ctx = init_julia_context(; model)
     JuliaSearchTool(query=cmd.args, julia_ctx=julia_ctx)

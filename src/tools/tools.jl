@@ -18,6 +18,8 @@ include("../contexts/CTX_workspace.jl")
 
 include("utils.jl")
 include("ToolTag.jl")
+include("ToolInterface.jl")
+
 include("ClickTool.jl")
 include("SendKeyTool.jl")
 include("ShellBlockTool.jl")

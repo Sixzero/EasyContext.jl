@@ -1,6 +1,6 @@
 export print_tool_result
 
-include("ToolInterface.jl")
+abstract type AbstractTag end
 
 @kwdef mutable struct ToolTag <: AbstractTag
     name::String

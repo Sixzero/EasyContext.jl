@@ -4,7 +4,7 @@
     title::String
     description::String
 end
-function NewTodoTool(cmd::ToolTag)
+function create_tool(::Type{NewTodoTool}, cmd::ToolTag)
     args = split(strip(cmd.args))
     if length(args) == 3
         NewTodoTool(title=args[1], description=args[2])

@@ -9,7 +9,7 @@ include("diffviews/DiffViews.jl")
     postcontent::String
     model=["gem20f", "orqwenplus", "gpt4o"] # the model handling the LLM apply
 end
-function ModifyFileTool(cmd::ToolTag)
+function create_tool(::Type{ModifyFileTool}, cmd::ToolTag)
     # Clean up file path by removing trailing '>'
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
 

@@ -6,7 +6,7 @@
     content::String
 end
 
-function CreateFileTool(cmd::ToolTag, root_path=nothing)
+function create_tool(::Type{CreateFileTool}, cmd::ToolTag, root_path=nothing)
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
     language, content = parse_code_block(cmd.content)
     # Expand the path during tool creation, similar to CatFileTool

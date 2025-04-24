@@ -34,6 +34,7 @@ Tool execution flow and safety checks:
 
 Interface methods:
 - Constructor `Tool(tag::ToolTag)` - Creates Tool instance from parsed tag
+- `create_tool(::Type{T}, tag::ToolTag)` - Creates Tool instance from parsed tag
 - `preprocess(cmd::AbstractTool)` - Optional data preparation (e.g. LLM modifications)
 - `execute(cmd::AbstractTool)` - Main operation implementation
 - `LLM_safetorun(cmd::AbstractTool)` - Optional AI safety verification
@@ -45,9 +46,10 @@ Interface methods:
 Note: The LLM output generation and ToolTag parsing are handled by the Agent.
 Each Tool implementation must provide a constructor that takes a ToolTag.
 """
-abstract type AbstractTag end
 abstract type AbstractTool end
 
+create_tool(::Type{T}, tag::ToolTag) where T <: AbstractTool = @warn "Unimplemented \"create_tool\" for $(T) $(join(stacktrace(), "\n"))"; return nothing
+create_tool(tool::AbstractTool, tag::ToolTag) = @warn "Unimplemented \"create_tool\" for $(tool) $(join(stacktrace(), "\n"))"; return nothing
 preprocess(tool::AbstractTool) = tool
 get_id(tool::AbstractTool) = tool.id
 execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool))"

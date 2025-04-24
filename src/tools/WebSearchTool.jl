@@ -4,10 +4,8 @@
     query::String
     results::Vector{String} = []
 end
-WebSearchTool(tag::ToolTag) = WebSearchTool(query=strip(tag.args))
+create_tool(::Type{WebSearchTool}, tag::ToolTag) = WebSearchTool(query=strip(tag.args))
 toolname(::Type{WebSearchTool}) = WEB_SEARCH_TAG
-
-
 
 get_description(cmd::Type{WebSearchTool}) = """
 Search the web for information. Provide a search query and get relevant results.

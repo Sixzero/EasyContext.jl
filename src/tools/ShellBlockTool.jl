@@ -8,7 +8,7 @@ export truncate_output
     root_path::Union{Nothing, String} = nothing
     run_results::Vector{String} = []
 end
-function ShellBlockTool(cmd::ToolTag)
+function create_tool(::Type{ShellBlockTool}, cmd::ToolTag)
     language, content = parse_code_block(cmd.content)
     ShellBlockTool(
         language=language, 

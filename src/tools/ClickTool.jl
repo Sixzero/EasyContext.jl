@@ -5,7 +5,7 @@
     x::Int
     y::Int
 end
-function ClickTool(tag::ToolTag)
+function create_tool(::Type{ClickTool}, tag::ToolTag)
     args = split(strip(tag.args))
     if length(args) == 3
         ClickTool(button=Symbol(args[1]), x=parse(Int, args[2]), y=parse(Int, args[3]))
