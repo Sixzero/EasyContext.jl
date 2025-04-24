@@ -12,7 +12,7 @@ end
 struct WorkspaceCTXResult
     new_chunks::Vector{FileChunk}
     updated_chunks::Vector{FileChunk}
-    cost::Threads.Atomic{Float64}
+    cost::Float64
     elapsed::Float64
 end
 
@@ -62,11 +62,11 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     isa(scr_content, String) && return ("", nothing, nothing)
     
     new_chunks, updated_chunks = get_filtered_chunks(workspace_context.changes_tracker, scr_content)
-    result = WorkspaceCTXResult(new_chunks, updated_chunks, cost_tracker, elapsed)
+    result = WorkspaceCTXResult(new_chunks, updated_chunks, cost_tracker[], elapsed)
     result_str = workspace_ctx_2_string(new_chunks, updated_chunks)
     !isnothing(io) && write(io, result)
     
-    (result_str, file_chunks, file_chunks_reranked)
+    (result_str, file_chunks, file_chunks_reranked, result)
 end
 
 function update_changes_from_extractor!(changes_tracker, extractor)
