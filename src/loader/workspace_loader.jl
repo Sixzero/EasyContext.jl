@@ -105,7 +105,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
             rel_root = relpath(root) # to remove ./ start of path
 
             # Get accumulated patterns with caching
-            accumulated_ignore_patterns = get_accumulated_ignore_patterns(
+            accumulated_ignore_patterns::Vector{GitIgnoreFile} = get_accumulated_ignore_patterns(
                 root, path, w.IGNORE_FILES, gitignore_cache
             )
 
@@ -119,14 +119,13 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
             # Process directories
             filter!(dirs) do d
                 dir_path = joinpath(root, d)
-                is_ignored = is_ignored_by_patterns(dir_path, accumulated_ignore_patterns, path)
+                is_ignored = is_ignored_by_patterns(dir_path, accumulated_ignore_patterns)
                 if is_ignored
                     push!(filtered_dirs, dir_path)
                     return false  # Remove from dirs
                 end
                 return true  # Keep in dirs
             end
-
             # Process files
             for file in files_in_dir
                 file_path = joinpath(root, file)
@@ -135,7 +134,7 @@ function get_filtered_files_and_folders(w::Workspace, path::String)
                 dir_path in filtered_dirs && continue
                 
                 # First check if it's ignored, then check if it's a project file
-                is_ignored = is_ignored_by_patterns(file_path, accumulated_ignore_patterns, path)
+                is_ignored = is_ignored_by_patterns(file_path, accumulated_ignore_patterns)
                 
                 if is_ignored ||
                 ignore_file(file_path, w.IGNORED_FILE_PATTERNS) ||

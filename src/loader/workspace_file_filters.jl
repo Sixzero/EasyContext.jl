@@ -39,6 +39,10 @@ struct GitIgnorePattern
     regex::Regex
     is_negation::Bool
 end
+struct GitIgnoreFile
+    path::String
+    patterns::Vector{GitIgnorePattern}
+end
 
 function gitignore_to_regex(pattern::AbstractString)::Union{GitIgnorePattern,Nothing}
     pattern = strip(pattern)
@@ -94,22 +98,22 @@ end
 
 # Add a cache for parsed gitignore files
 mutable struct GitIgnoreCache
-    patterns_by_dir::Dict{String, Vector{GitIgnorePattern}}
-    
-    GitIgnoreCache() = new(Dict{String, Vector{GitIgnorePattern}}())
+    patterns_by_dir::Dict{String, GitIgnoreFile}
+    GitIgnoreCache() = new(Dict{String, GitIgnoreFile}())
 end
 
-function parse_ignore_files(root::AbstractString, IGNORE_FILES::Vector{String}, cache::GitIgnoreCache)::Vector{GitIgnorePattern}
+function parse_ignore_files(folder_path::AbstractString, IGNORE_FILES::Vector{String}, cache::GitIgnoreCache)::Union{GitIgnoreFile,Nothing}
     # Check if we've already parsed this directory
-    haskey(cache.patterns_by_dir, root) && return cache.patterns_by_dir[root]
-    
+    haskey(cache.patterns_by_dir, folder_path) && return cache.patterns_by_dir[folder_path]
+
     raw_patterns = String[]
     for ignore_file in IGNORE_FILES
-        ignore_path = joinpath(root, ignore_file)
+        ignore_path = joinpath(folder_path, ignore_file)
         if isfile(ignore_path)
             append!(raw_patterns, readlines(ignore_path))
         end
     end
+    isempty(raw_patterns) && return nothing
     
     # Compile patterns once
     compiled_patterns = Vector{GitIgnorePattern}()
@@ -121,13 +125,13 @@ function parse_ignore_files(root::AbstractString, IGNORE_FILES::Vector{String}, 
     end
     
     # Cache the result
-    cache.patterns_by_dir[root] = compiled_patterns
-    return compiled_patterns
+    cache.patterns_by_dir[folder_path] = GitIgnoreFile(folder_path, compiled_patterns)
+    return cache.patterns_by_dir[folder_path]
 end
 
 # Get accumulated patterns with caching
 function get_accumulated_ignore_patterns(current_dir::AbstractString, root_path::AbstractString, 
-                                        IGNORE_FILES::Vector{String}, cache::GitIgnoreCache)::Vector{GitIgnorePattern}
+                                        IGNORE_FILES::Vector{String}, cache::GitIgnoreCache)::Vector{GitIgnoreFile}
     # Build path chain from root to current directory
     path_chain = String[]
     temp_dir = current_dir
@@ -140,16 +144,25 @@ function get_accumulated_ignore_patterns(current_dir::AbstractString, root_path:
     end
     
     # Process directories from root to current (for proper precedence)
-    accumulated_patterns = Vector{GitIgnorePattern}()
+    accumulated_patterns = Vector{GitIgnoreFile}()
     for dir in reverse(path_chain)
         # Parse and add patterns from this directory
         dir_patterns = parse_ignore_files(dir, IGNORE_FILES, cache)
-        append!(accumulated_patterns, dir_patterns)
+        !isnothing(dir_patterns) && push!(accumulated_patterns, dir_patterns)
     end
     
     return accumulated_patterns
 end
 
+function is_ignored_by_patterns(
+    file::AbstractString, 
+    ignore_files::Vector{GitIgnoreFile}, 
+)::Bool
+    for ignore_file in ignore_files
+        is_ignored_by_patterns(file, ignore_file.patterns, ignore_file.path) && return true
+    end
+    return false
+end
 function is_ignored_by_patterns(
     file::AbstractString, 
     ignore_patterns::Vector{GitIgnorePattern}, 
