@@ -11,12 +11,18 @@ end
 # Function to check if a specific file is ignored
 function is_file_ignored(folder_path, file_path)
     cache = GitIgnoreCache()
-    patterns = get_accumulated_ignore_patterns(folder_path, folder_path, [".gitignore"], cache)
-    return is_ignored_by_patterns(file_path, patterns, folder_path)
+    patterns = get_accumulated_ignore_patterns(file_path, folder_path, [".gitignore"], cache)
+    return is_ignored_by_patterns(file_path, patterns)
 end
 
-r = check_folder_gitignore(["../todoforai/frontend"])
+# r = check_folder_gitignore(["../todoforai/frontend"])
 # r = check_folder_gitignore([".", "../todoforai/frontend"])
 # r = check_folder_gitignore(["."])
-@show length(r)
-;
+# @show (r)
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/target/release/bundle/appimage/build_appimage.sh") == true
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/build_appimage.sh") == false
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/.next") == true
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/.next") == true
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/.next/also") == true
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/.pnp.js") == true
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/.pnp.jss") == false
