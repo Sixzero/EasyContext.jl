@@ -2,6 +2,9 @@ using FilePathsBase
 using PromptingTools: recursive_splitter
 using PromptingTools.Experimental.RAGTools
 using PromptingTools.Experimental.RAGTools: AbstractChunker
+using PyCall
+using LLMRateLimiters: EncodingStatePBE, partial_encode!, GreedyBPETokenizer, load_bpe_tokenizer
+
 const RAG = RAGTools
 
 export NewlineChunker
@@ -29,10 +32,14 @@ function RAG.get_chunks(chunker::NewlineChunker{T},
     sources::AbstractVector{S},
     verbose::Bool = true) where {T, S<:Union{AbstractPath,AbstractString}}
 
+    SAFETY_MAX_TOKEN_PERCENTAGE = 0.9 # depends on how accurate the approximator token counter is. its max difference is around 6-7%
+    ACCURATE_THRESHOLD_RATIO = 0.5
+
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
     output_chunks = Vector{T}()
 
     formatter_tokens = estimate_tokens(string(T(; source=SourcePath(; path=""))), chunker.estimation_method)
+    effective_max_tokens = chunker.max_tokens * SAFETY_MAX_TOKEN_PERCENTAGE - formatter_tokens - chunker.line_number_token_estimate
 
     for i in eachindex(files_or_docs)
         doc_raw, source = files_or_docs[i], "$(sources[i])"
@@ -41,19 +48,13 @@ function RAG.get_chunks(chunker::NewlineChunker{T},
             continue
         end
 
-        effective_max_tokens = chunker.max_tokens - formatter_tokens - chunker.line_number_token_estimate
-
-        if estimate_tokens(doc_raw, chunker.estimation_method) <= effective_max_tokens
+        estimated_tokens = estimate_tokens(doc_raw, chunker.estimation_method)
+        if estimated_tokens <= effective_max_tokens * ACCURATE_THRESHOLD_RATIO
             push!(output_chunks, T(; source=SourcePath(; path=source), content=doc_raw))
         else
-            chunks, line_ranges = split_text_into_chunks(doc_raw, chunker.estimation_method, effective_max_tokens)
+            chunks, line_ranges = split_text_into_chunks_accurately(doc_raw, effective_max_tokens)
 
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
-                chunk_tokens = estimate_tokens(chunk, chunker.estimation_method)
-                if chunk_tokens > effective_max_tokens * 1.2
-                    @warn "Chunk $(source):$(start_line)-$(end_line) exceeds token limit ($(chunk_tokens) > $(effective_max_tokens)). Skipping."
-                    continue
-                end
                 push!(output_chunks, T(; content=chunk, source=SourcePath(; path=source, from_line=start_line, to_line=end_line)))
             end
         end
@@ -61,10 +62,9 @@ function RAG.get_chunks(chunker::NewlineChunker{T},
     return output_chunks
 end
 
-function split_text_into_chunks(text::String, estimation_method::TokenEstimationMethod, max_tokens::Int)
+function split_text_into_chunks(text::String, estimation_method::TokenEstimationMethod, max_tokens::Number)
     chunks = String[]
     line_ranges = Tuple{Int,Int}[]
-    current_chunk = String[]
     current_tokens = 0
     lines = split(text, '\n')
     start_line = 1
@@ -72,22 +72,55 @@ function split_text_into_chunks(text::String, estimation_method::TokenEstimation
     for (line_number, line) in enumerate(lines)
         line_tokens = estimate_tokens(line, estimation_method)
         
-        if current_tokens + line_tokens > max_tokens && !isempty(current_chunk)
-            push!(chunks, join(current_chunk, '\n'))
+        if current_tokens + line_tokens > max_tokens && line_number > start_line
+            push!(chunks, join(view(lines, start_line:line_number-1), '\n'))
             push!(line_ranges, (start_line, line_number - 1))
-            current_chunk = String[]
             current_tokens = 0
             start_line = line_number
         end
         
-        push!(current_chunk, line)
         current_tokens += line_tokens
     end
 
-    if !isempty(current_chunk)
-        push!(chunks, join(current_chunk, '\n'))
+    if start_line <= length(lines)
+        push!(chunks, join(view(lines, start_line:length(lines)), '\n'))
         push!(line_ranges, (start_line, length(lines)))
     end
 
+    return chunks, line_ranges
+end
+
+function split_text_into_chunks_accurately(text::String, max_tokens::Number)
+    chunks = String[]
+    line_ranges = Tuple{Int,Int}[]
+    lines = split(text, '\n')
+    start_line = 1
+    
+    tokenizer = load_bpe_tokenizer("cl100k_base")
+    state = EncodingStatePBE()
+    
+    for (line_number, line) in enumerate(lines)
+        # Add this line to the current state
+        partial_encode!(tokenizer, line * "\n", state)
+        
+        if length(state.result) > max_tokens && line_number > start_line
+            # Current chunk exceeds max tokens, finalize it
+            chunk_text =  join(view(lines, start_line:line_number-1), '\n')
+            push!(chunks, chunk_text)
+            push!(line_ranges, (start_line, line_number - 1))
+            
+            # Reset for next chunk
+            state = EncodingStatePBE()
+            partial_encode!(tokenizer, line * "\n", state)
+            start_line = line_number
+        end
+    end
+    
+    # Add the final chunk if there are remaining lines
+    if start_line <= length(lines)
+        push!(chunks, join(view(lines, start_line:length(lines)), '\n'))
+        push!(line_ranges, (start_line, length(lines)))
+    end
+    
     return chunks, line_ranges
 end
