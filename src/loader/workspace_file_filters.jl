@@ -88,6 +88,8 @@ function gitignore_to_regex(pattern::AbstractString)::Union{GitIgnorePattern,Not
     if ends_with_slash
         # Only match directories that have at least one file/directory inside them
         regex = regex * "/.*"
+    else
+        regex = regex * "(/.*)?"
     end
     
     # Make sure all patterns match to the end of the string

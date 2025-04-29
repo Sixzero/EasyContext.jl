@@ -38,3 +38,5 @@ function search_and_stream_results(query::String, output=IOBuffer())
     
     # return format_search_output(output)
 end
+
+execute_required_tools(::WebSearchTool) = true

@@ -187,8 +187,9 @@ function work(agent::FluidAgent, conv; cache=nothing,
             # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
             # res::VoiceResult = execute_tool(generate_voice(arguments))
 
+            are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(agent.extractor.tool_tasks)))
             # Break if no more tool execution needed
-            !needs_tool_execution(cb.run_info) && break
+            !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
             
             # Check if all tools were cancelled
             if are_tools_cancelled(extractor)

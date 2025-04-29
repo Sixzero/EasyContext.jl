@@ -61,3 +61,6 @@ end
 function get_cost(tool::WorkspaceSearchTool)
     return tool.cost
 end
+
+
+EasyContext.execute_required_tools(::WorkspaceSearchTool) = true

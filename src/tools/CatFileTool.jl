@@ -32,3 +32,5 @@ function LLM_safetorun(cmd::CatFileTool)
     true
 end
 result2string(tool::CatFileTool)::String = tool.result
+
+execute_required_tools(::CatFileTool) = true
