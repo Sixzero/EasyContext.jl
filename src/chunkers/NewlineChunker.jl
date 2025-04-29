@@ -53,9 +53,11 @@ function RAG.get_chunks(chunker::NewlineChunker{T},
             push!(output_chunks, T(; source=SourcePath(; path=source), content=doc_raw))
         else
             chunks, line_ranges = split_text_into_chunks_accurately(doc_raw, effective_max_tokens)
-
+            is_cut = length(chunks) > 1
+            
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
-                push!(output_chunks, T(; content=chunk, source=SourcePath(; path=source, from_line=start_line, to_line=end_line)))
+                source_obj = is_cut ? SourcePath(; path=source, from_line=start_line, to_line=end_line) : SourcePath(; path=source)
+                push!(output_chunks, T(; content=chunk, source=source_obj))
             end
         end
     end
@@ -90,13 +92,13 @@ function split_text_into_chunks(text::String, estimation_method::TokenEstimation
     return chunks, line_ranges
 end
 
-function split_text_into_chunks_accurately(text::String, max_tokens::Number)
+function split_text_into_chunks_accurately(text::String, max_tokens::Number, verbose = true)
     chunks = String[]
     line_ranges = Tuple{Int,Int}[]
     lines = split(text, '\n')
     start_line = 1
     
-    tokenizer = load_bpe_tokenizer("cl100k_base")
+    tokenizer = load_bpe_tokenizer("cl100k_base", verbose)
     state = EncodingStatePBE()
     
     for (line_number, line) in enumerate(lines)
