@@ -26,3 +26,11 @@ is_file_ignored("../todoforai/frontend", "../todoforai/frontend/.next") == true
 is_file_ignored("../todoforai/frontend", "../todoforai/frontend/.next/also") == true
 is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/.pnp.js") == true
 is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/.pnp.jss") == false
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/target/CACHEDIR.TAG") == true
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/tauri.conf.json") == false
+
+#%%
+
+workspace = init_workspace_context(["../todoforai/frontend"])
+process_workspace_context(workspace, "What is tauri.config.json file?")
+

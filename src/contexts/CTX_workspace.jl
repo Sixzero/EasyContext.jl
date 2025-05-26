@@ -40,13 +40,13 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     )
 end
 
-function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing,)
-    !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing)
+function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing, )
+    !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing, nothing)
     
     start_time = time()
     
     file_chunks = RAG.get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
-    isempty(file_chunks) && return ("", nothing, nothing)
+    isempty(file_chunks) && return ("", nothing, nothing, nothing)
     
     cost_tracker = Threads.Atomic{Float64}(0.0)
     file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker)
@@ -59,7 +59,7 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     # Update time tracker with total time
     elapsed = time() - start_time
     
-    isa(scr_content, String) && return ("", nothing, nothing)
+    isa(scr_content, String) && return ("", nothing, nothing, nothing)
     
     new_chunks, updated_chunks = get_filtered_chunks(workspace_context.changes_tracker, scr_content)
     result = WorkspaceCTXResult(new_chunks, updated_chunks, cost_tracker[], elapsed)

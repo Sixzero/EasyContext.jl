@@ -154,79 +154,64 @@ function work(agent::FluidAgent, conv; cache=nothing,
     api_kwargs = apply_stop_seq_kwargs(api_kwargs, agent.model, stop_sequences)
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
 
-    try
-        response = nothing
-        while true
-            # Create new ToolTagExtractor for each run
-            extractor = typeof(agent.extractor)(agent.tools)
-            agent.extractor = extractor
+    response = nothing
+    while true
+        # Create new ToolTagExtractor for each run
+        extractor = typeof(agent.extractor)(agent.tools)
+        agent.extractor = extractor
 
-            cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
-                on_done = () -> begin
-                    process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
-                    on_done()
-                end,
-                on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
-            ))
+        cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
+            on_done = () -> begin
+                process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
+                on_done()
+            end,
+            on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
+        ))
 
-            response = aigenerate(
-                to_PT_messages(conv, sys_msg_content);
-                model=agent.model,
-                cache, 
-                api_kwargs,
-                streamcallback=cb,
-                verbose=false
-            )
-            
-            push_message!(conv, create_AI_message(response.content))
+        response = aigenerate(
+            to_PT_messages(conv, sys_msg_content);
+            model=agent.model,
+            cache, 
+            api_kwargs,
+            streamcallback=cb,
+            verbose=false
+        )
+        
+        push_message!(conv, create_AI_message(response.content))
 
-            execute_tools(extractor; no_confirm)
-            # idea:
-            # res::TextResult = execute_tool(browser_use_tool(arguments))
-            # res::ImgNTextResult = execute_tool(click_brower_use(arguments))
-            # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
-            # res::VoiceResult = execute_tool(generate_voice(arguments))
+        execute_tools(extractor; no_confirm)
+        # idea:
+        # res::TextResult = execute_tool(browser_use_tool(arguments))
+        # res::ImgNTextResult = execute_tool(click_brower_use(arguments))
+        # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
+        # res::VoiceResult = execute_tool(generate_voice(arguments))
 
-            are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(agent.extractor.tool_tasks)))
-            # Break if no more tool execution needed
-            !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
-            
-            # Check if all tools were cancelled
-            if are_tools_cancelled(extractor)
-                @info "All tools were cancelled by user, stopping further processing"
-                break
-            end
-
-            tools = [(id, fetch(tool)) for (id, tool) in agent.extractor.tool_tasks]
-
-            # Add tool results to conversation for next iteration
-            result = get_tool_results_agent(agent)
-            
-            tool_results_usr_msg = create_user_message(result)
-            
-            !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
-            for (id, tool) in tools
-                !isa(io, Base.TTY) && write(io, tool, id)
-            end
-            
-            push_message!(conv, tool_results_usr_msg)
+        are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(agent.extractor.tool_tasks)))
+        # Break if no more tool execution needed
+        !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
+        
+        # Check if all tools were cancelled
+        if are_tools_cancelled(extractor)
+            @info "All tools were cancelled by user, stopping further processing"
+            break
         end
 
-        return response
-    catch e
-        e isa InterruptException && rethrow(e)
-        # display(catch_backtrace())
-        @error "Error in fluidagent work" exception=(e, catch_backtrace())
-        on_error(e)
+        tools = [(id, fetch(tool)) for (id, tool) in agent.extractor.tool_tasks]
 
-        content = "Error: $(sprint(showerror, e))\n\nStacktrace:\n$(join(string.(stacktrace(catch_backtrace())), "\n"))"
-        push_message!(conv, create_AI_message(content))
-        return (; 
-            content,
-            results = OrderedDict{UUID,String}(),
-            run_info = nothing,
-        )
+        # Add tool results to conversation for next iteration
+        result = get_tool_results_agent(agent)
+        
+        tool_results_usr_msg = create_user_message(result)
+        
+        !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
+        for (id, tool) in tools
+            !isa(io, Base.TTY) && write(io, tool, id)
+        end
+        
+        push_message!(conv, tool_results_usr_msg)
     end
+
+    return response
 end
 
 """
