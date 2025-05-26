@@ -11,7 +11,6 @@ function create_tool(::Type{JuliaSearchTool}, cmd::ToolTag)
     julia_ctx = init_julia_context(; model)
     JuliaSearchTool(query=cmd.args, julia_ctx=julia_ctx)
 end
-instantiate(::Val{Symbol(JULIA_SEARCH_TAG)}, cmd::ToolTag) = JuliaSearchTool(cmd)
 
 stop_sequence(cmd::Type{JuliaSearchTool}) = STOP_SEQUENCE
 toolname(::Type{JuliaSearchTool}) = JULIA_SEARCH_TAG

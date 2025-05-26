@@ -14,7 +14,6 @@ function create_tool(::Type{CreateFileTool}, cmd::ToolTag, root_path=nothing)
     CreateFileTool(; language, file_path, content)
 end
 
-instantiate(::Val{Symbol(CREATE_FILE_TAG)}, cmd::ToolTag) = CreateFileTool(cmd)
 toolname(cmd::Type{CreateFileTool}) = CREATE_FILE_TAG
 get_description(cmd::Type{CreateFileTool}) = """
 To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:

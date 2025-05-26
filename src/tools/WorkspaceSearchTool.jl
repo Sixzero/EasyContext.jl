@@ -7,30 +7,29 @@
     workspace_ctx_result::Union{Nothing,WorkspaceCTXResult} = nothing
 end
 
-function WorkspaceSearchTool(cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
+function create_tool(::Type{WorkspaceSearchTool}, cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
     # Convert the root_path to a vector of strings as expected by WorkspaceCTX constructor
     WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
 end
 
+
 const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
 
-instantiate(::Val{Symbol(WORKSPACE_SEARCH_TAG)}, cmd::ToolTag) = WorkspaceSearchTool(cmd)
-
-toolname(::Type{WorkspaceSearchTool}) = "WORKSPACE_SEARCH"
+toolname(::Type{WorkspaceSearchTool}) = WORKSPACE_SEARCH_TAG
 tool_format(::Type{WorkspaceSearchTool}) = :single_line
 stop_sequence(::Type{WorkspaceSearchTool}) = STOP_SEQUENCE
 
 function get_description(::Type{WorkspaceSearchTool})
-    # TODO later on add it in?
     """
     Options:
     - high_accuracy=true: Use a more accurate but slower search pipeline
     """
+    # later on add it in? ^^
     """
-    Search through the codebase using semantic search:
+    Search smart semantic search:
     WORKSPACE_SEARCH your search query [$STOP_SEQUENCE]
     
-    If you don't find a specific function or functionality in the context, then you can use this tool to search through the codebase for the functionality. 
+    If you don't have a specific function or functionality in the context, then just search for what you're looking for, stating either function names or functionality in the query. 
     
     $STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
     """
@@ -42,7 +41,7 @@ function execute(tool::WorkspaceSearchTool; no_confirm=false)
         return false
     end
     
-    result, _, _, full_result::WorkspaceCTXResult = process_workspace_context(tool.workspace_ctx, tool.query)
+    result, _, _, full_result = process_workspace_context(tool.workspace_ctx, tool.query)
     
     tool.result = result
     tool.workspace_ctx_result = full_result

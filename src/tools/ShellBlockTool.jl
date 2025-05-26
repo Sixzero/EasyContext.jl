@@ -16,7 +16,6 @@ function create_tool(::Type{ShellBlockTool}, cmd::ToolTag)
         root_path=get(cmd.kwargs, "root_path", nothing)
     ) 
 end
-instantiate(::Val{Symbol(SHELL_BLOCK_TAG)}, cmd::ToolTag) = ShellBlockTool(cmd)
 toolname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
 
 get_description(cmd::Type{ShellBlockTool}) =  shell_block_prompt_v1()

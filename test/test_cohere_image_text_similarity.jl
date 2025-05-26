@@ -1,5 +1,5 @@
 using EasyContext
-using EasyContext: CohereEmbedder, get_embeddings_document, get_embeddings_query, get_embeddings_image
+using EasyContext: CohereEmbedder, create_cohere_embedder, get_embeddings_document, get_embeddings_query, get_embeddings_image, get_score, TopK, search
 using Test
 using LinearAlgebra
 using Base64
@@ -12,11 +12,11 @@ using Base64
     end
     
     # Real image with "banana" text
-    banana_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAAAAADm7SDXAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAd0SU1FB+kFFgkHLDJFpnIAAAKPSURBVHja7dpPSJNxHMfx96Mtt5mijErJRM3CjDLUnEJCRngKwg5hF7tJkgUdQgLP0rmDBN66Bp40vHQIumxFq6Q/Ztey1JyB0txw3w4bdO3ZI/y+xPd9G5/L78WeZw8PzBP+j8pcH8AgBlGeQbRlEG0ZRFsG0ZZBtGUQbRlEWwbRlkG0ZRBtGURbBtGWQbRlEG0ZRFsG0ZZBtGUQbQWEjHv3XQv2BpIk7lpQzAv0F46d6uy3eteEQsG+kVS2UYkjICRBn2vAXkH6N243RAbeFj6u32uJdsxzy/sOnPeW10brKrvnfW6lJkFqYe5YVbyG2hURkcUGKjpi5QuHGkQkF+VZrHqwnX0pX1upBYKsEWkaTst6M1Mi8rORwRXJDFVyVURSlFcPb0q+k0lfmxPIHAzlRWSCayIyztmMiCzBAxF5BJfzIjLMTV9bqQW6RxLUznhAjN+wOcPDCuAo9ABJwjMe8Jl6X5uTmz3JWAwgTQ3M7rT3A6xS1g0kGKkDMot0+NpcQCTJdQDe0wovGCzq2qpg6yNXAFI54n42J5Dl9IFTALnn9MIX2gF4wjngZT50oXC8pjo/mxNIgoMewOyv2EDx+oJPs8Xb4Ey0cNg+/GyOIGu7wPYkd0IQYQPI3tilB0jQy9/D/vtWegF+8boJT4n8uEjbloiM0rMtK5dOhCuyInKExyIiG5D0tbl4jmRCXdM090ZpWRYRebefw/HIyQ/EReQrLImILBDO+tmcPEde50bGpsvf1E+8agU4/bQzvXo34RWvntrjhaunK+RnK71g7yOKsnd2bRlEWwbRlkG0ZRBtGURbBtGWQbRlEG0ZRFsG0ZZBtGUQbRlEWwbRlkG0ZRBtGURbBtGWQbT1B+mqxdK4nz9JAAAAAElFTkSuQmCC"
+    banana_image_base64 = "iVBORw0KGgoAAAANSUhEUgAAAMgAAABkCAAAAADm7SDXAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAD/h4/MvwAAAAd0SU1FB+kFFgkRMU3bf3wAAAJWSURBVHja7do/aBNhGMfx752hdEjaWlP81xgVVFBLqg6KHXTQLiIdxMGlOllQs4lC0bUogroqSEYruBREB1FCBQWpVVoUOwgWpFIaq6ARiY2PQxIaIUPu3pI+yPNZrtzvHfIlCdchnvB/8Jf7BViIhShnIdpYiDYWoo2FaGMh2liINhaijYVoYyHaWIg2FqKNhWhjIdpYiDYWoo2FaGMh2oQP6faGl/vFL02IMhaijYUA5NIbmzekvwAwd6dvWzTWNZgrTd3e8M9LW5rX9E8HX8ORsFJcT9DWDomPIiIDQKsPiQ/l9VYKz4e1M4HXUFxCYp1PRZ4l6fkjIkOXJ/JSGN3LwfIa3/SgkL8XY0CCrg0P8cdERCYiPFq8O9/Bu9IamRIRuUZcgq6huHxHevcAdB3h/uK9lft5UfrrxFaAY+Rmg68huIQcqFzGAd6c3h71PG+EmdLtFADrPb4FX0OIOISsq1zmgNtnipHNq5p4P5uvXpv84u/gawhL8BwRgOl08cL81PNs9hDlHxd6VUeCriG4vCPlz8FnOmCksOtq9c1/uax1cnlHspXLbvjEDgC+v6x10mVtQMjjVwCTDzkOrbwFYKjmp9xlbUBItO8JjB5d6OmFw7w+/4Ovg1faa510Wevl8EC8maSlpfIvSj/4cZ9TJ7lYWu+Wjq1gMuja8Afi6rFzbb86z44nATI3dkYW9mUytY+6rPXx7JfYyliINhaijYVoYyHaWIg2FqKNhWhjIdpYiDYWoo2FaGMh2liINhaijYVoYyHaWIg2FqKNhWhjIdr8BexLIpUXfXouAAAAAElFTkSuQmCC"
     banana_image_uri = "data:image/png;base64,$banana_image_base64"
     
     # Create the embedder
-    embedder = CohereEmbedder(
+    embedder = create_cohere_embedder(
         model="embed-v4.0",
         verbose=false
     )
@@ -24,20 +24,21 @@ using Base64
     # Test texts
     texts = [
         "banana",                 # Exact match
+        "a banana text",        # Related
         "a yellow banana",        # Related
-        "Lorem ipsum dolor sit"   # Irrelevant
+        "Lorem ipsum dolor sit",   # Irrelevant
+        "not banana",   # Irrelevant
+        "a julia nyelv egy nagyon szép nyelv"   # Irrelevant
     ]
     
     # Get embeddings
     image_embedding = get_embeddings_image(embedder, String[], images=[banana_image_uri])
     text_embeddings = get_embeddings_document(embedder, texts)
+    text_embeddings_just = get_embeddings_document(embedder, ["just a banana"])
     
-    # Calculate similarities
-    similarities = [
-        dot(image_embedding, text_embeddings[:, i]) / 
-        (norm(image_embedding) * norm(text_embeddings[:, i]))
-        for i in 1:size(text_embeddings, 2)
-    ]
+    similarities = get_score(Val(:CosineSimilarity), text_embeddings, text_embeddings_just[:,1])
+    @show similarities
+    similarities = get_score(Val(:CosineSimilarity), text_embeddings, reshape(image_embedding, :))
     
     # Print similarities for debugging
     @info "Similarities between 'banana' image and texts:" texts similarities
@@ -63,23 +64,9 @@ using Base64
     @info "Similarity between 'banana' image and 'banana' query:" query_similarity
     @test -1.0 <= query_similarity <= 1.0
     @test isfinite(query_similarity)
+
+    result = search(TopK(;embedder, top_k=2), texts, ""; query_images=[banana_image_uri])
+    @test result[1] in texts[1:2]
+    @test result[2] in texts[1:2]
     
-    # Test with get_score function if available
-    if isdefined(EasyContext, :get_score)
-        # Create chunks from texts
-        chunks = [EasyContext.Chunk(text, i, "test") for (i, text) in enumerate(texts)]
-        
-        # Get scores using the image as query
-        scores = EasyContext.get_score(embedder, chunks, banana_image_uri)
-        
-        @info "Scores between 'banana' image and text chunks:" texts scores
-        
-        # Test that scores are valid
-        @test all(0.0 .<= scores .<= 1.0)
-        @test all(isfinite, scores)
-        
-        # Test relative scores
-        @test scores[1] > scores[3]  # "banana" > "Lorem ipsum"
-        @test scores[2] > scores[3]  # "a yellow banana" > "Lorem ipsum"
-    end
 end

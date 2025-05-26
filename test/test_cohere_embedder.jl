@@ -1,5 +1,5 @@
 using EasyContext
-using EasyContext: CohereEmbedder, get_embeddings_document, get_embeddings_image
+using EasyContext: CohereEmbedder, get_embeddings, get_embeddings_document, get_embeddings_image, create_cohere_embedder
 using Test
 using Base64
 using LinearAlgebra
@@ -75,16 +75,12 @@ using LinearAlgebra
         test_image_uri = "data:image/png;base64,$test_png_base64"
         
         # Create the embedder
-        embedder = CohereEmbedder(
-            model="embed-v4.0",
-            verbose=false
-        )
+        embedder = create_cohere_embedder()
         
         # Test embedding both image and text
-        image_embedding = get_embeddings_image(embedder, String[], images=[test_image_uri])
         text_embedding = get_embeddings_document(embedder, ["A test image"])
+        image_embedding = get_embeddings_image(embedder, String[], images=[test_image_uri])
         
-        # Calculate similarity
         similarity = dot(image_embedding, text_embedding) / (norm(image_embedding) * norm(text_embedding))
         
         # Check that similarity is a valid number between -1 and 1

@@ -4,7 +4,6 @@
     text::String
 end
 create_tool(SendKeyTool, cmd::ToolTag) = SendKeyTool(text=cmd.args)
-instantiate(::Val{Symbol(SENDKEY_TAG)}, cmd::ToolTag) = SendKeyTool(cmd)
 
 toolname(cmd::Type{SendKeyTool}) = SENDKEY_TAG
 get_description(cmd::Type{SendKeyTool}) = "Send keyboard input using format: $(SENDKEY_TAG) text $(STOP_SEQUENCE)"

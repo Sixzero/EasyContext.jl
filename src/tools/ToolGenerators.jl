@@ -27,7 +27,7 @@ tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
     workspace_context::WorkspaceCTX
 end
 function create_tool(wtg::WorkspaceToolGenerator, cmd::ToolTag)
-    WorkspaceSearchTool(cmd, wtg.workspace_context)
+    create_tool(WorkspaceSearchTool, cmd, wtg.workspace_context)
 end
 
 toolname(tg::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)

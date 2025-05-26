@@ -147,7 +147,6 @@ end
 execute(t::Task) = begin
     cmd = fetch(t)
     @assert false "This might not be worth running $t \n$cmd"
-    isnothing(cmd) ? nothing : execute(convert_tool(cmd))
 end
 
 function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, kwargs...)

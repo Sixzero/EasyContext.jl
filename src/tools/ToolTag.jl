@@ -9,11 +9,6 @@ abstract type AbstractTag end
     kwargs::AbstractDict = Dict{String,String}()
 end
 
-# Convert raw ToolTag to specific tool types
-function convert_tool(tag::ToolTag)
-    return instantiate(Val(Symbol(tag.name)), tag)
-end
-
 print_tool_result(result) = begin
     print(Crayon(background = (35, 61, 28)))  # Set background
     print("\e[K")  # Clear to end of line with current background color

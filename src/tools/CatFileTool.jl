@@ -9,8 +9,6 @@ create_tool(::Type{CatFileTool}, cmd::ToolTag, root_path=nothing) = begin
     CatFileTool(; id=uuid4(), file_path)
 end
 
-instantiate(::Val{Symbol(CATFILE_TAG)}, cmd::ToolTag) = CatFileTool(cmd)
-
 toolname(cmd::Type{CatFileTool}) = CATFILE_TAG
 get_description(cmd::Type{CatFileTool}) = """
 Whenever you need the content of a file to solve the task you can use the CATFILE tool:

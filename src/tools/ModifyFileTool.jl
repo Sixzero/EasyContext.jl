@@ -22,7 +22,6 @@ function create_tool(::Type{ModifyFileTool}, cmd::ToolTag)
         postcontent=""
     )
 end
-instantiate(::Val{Symbol(MODIFY_FILE_TAG)}, cmd::ToolTag) = ModifyFileTool(cmd)
 
 toolname(cmd::Type{ModifyFileTool}) = MODIFY_FILE_TAG
 get_description(cmd::Type{ModifyFileTool}) = MODIFY_FILE_DESCRIPTION(cmd)
