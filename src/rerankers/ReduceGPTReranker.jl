@@ -22,6 +22,7 @@ function rerank(
     query::AbstractString;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
+    query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing,
     verbose::Int = reranker.verbose,
 ) where T
     # Initialize AIGenerateFallback with model preferences based on model type

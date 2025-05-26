@@ -19,6 +19,19 @@ A struct for generating random embedding vectors for testing and precompilation.
     verbose::Bool = true
 end
 
+function get_embeddings_document(embedder::RandomEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings(embedder, docs; kwargs...)
+end
+function get_embeddings_query(embedder::RandomEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings(embedder, docs; kwargs...)
+end
+function get_embeddings_image(embedder::RandomEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    @assert false "RandomEmbedder does not support image embeddings"
+end
+    
 function get_embeddings(embedder::RandomEmbedder, docs::AbstractVector{<:AbstractString};
     verbose::Bool = embedder.verbose,
     cost_tracker = Threads.Atomic{Float64}(0.0),

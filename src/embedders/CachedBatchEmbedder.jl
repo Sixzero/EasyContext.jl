@@ -32,25 +32,45 @@ const CACHE_STATE = CacheData()
     cache_prefix::String=""
     truncate_dimension::Union{Int, Nothing}=nothing
     verbose::Bool=false
+
+    function CachedBatchEmbedder(embedder::AbstractEmbedder, cache_dir::String, cache_prefix::String, 
+                                truncate_dimension::Union{Int, Nothing}, verbose::Bool)
+        embedder isa CachedBatchEmbedder && error("Nested CachedBatchEmbedder detected. Use the inner embedder directly.")
+        new(embedder, cache_dir, cache_prefix, truncate_dimension, verbose)
+    end
 end
 
 function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, query::AbstractString; 
-    cost_tracker = Threads.Atomic{Float64}(0.0)) where {T}
+    cost_tracker = Threads.Atomic{Float64}(0.0),
+    query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing
+    ) where {T}
 
     start_time = time()
-    chunks_emb_task = @async_showerr get_embeddings(builder, chunks; cost_tracker)
-    query_emb = reshape(get_embeddings(builder, [query]; input_type="search_query", cost_tracker), :)
+    chunks_emb_task = @async_showerr get_embeddings_document(builder, chunks; cost_tracker)
+    query_emb_task = isempty(query) ? nothing : @async_showerr reshape(get_embeddings_query(builder, [query]; cost_tracker), :)
+    query_images_emb_task = if !isnothing(query_images)
+        @async_showerr get_embeddings_image(builder, String[]; images=query_images, cost_tracker)
+    else
+         nothing
+    end
     chunks_emb = fetch(chunks_emb_task)
-        # Combine chunks and query into single request
-    # all_docs = [chunks..., query]
-    # embeddings = get_embeddings(builder, all_docs; cost_tracker)
-    
-    # Split embeddings - last column is query embedding
-    # chunks_emb = @view embeddings[:, 1:end-1]
-    # query_emb = @view embeddings[:, end]
-
-    result = get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
-    return result
+    query_emb = fetch(query_emb_task)
+    query_images_emb = fetch(query_images_emb_task)
+    image_scores = if !isnothing(query_images)
+        [get_score(Val(:CosineSimilarity), chunks_emb, query_images_emb[:, i]) for i in 1:size(query_images_emb, 2)]
+        combine_scores(MaxScoreCombiner(), image_scores)
+    else
+        []
+    end
+    end_scores = if !isempty(query) && !isnothing(query_images)
+        result = get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
+        combine_scores(WeightedCombiner([0.5, 0.5]), [result, image_scores])
+    elseif !isempty(query)
+        get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
+    else
+        image_scores
+    end
+    return end_scores
 end
 
 get_embedder(embedder::CachedBatchEmbedder) = get_embedder(embedder.embedder)
@@ -85,17 +105,31 @@ function safe_append_cache(cache_file::String, new_entries::Dict{String,Vector{F
     end
 end
 
-function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{T}; kwargs...) where T
+# there is no cache for query docs
+function get_embeddings_query(embedder::CachedBatchEmbedder, docs::AbstractVector{T}; kwargs...) where T
     docs_str = string.(docs) # TODO maybe we could do this later to allocate even less?
-
-    get_embeddings( embedder, docs_str; kwargs... )
+    get_embeddings_query(embedder.embedder, docs_str; kwargs...)
 end
 
-function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
-        cost_tracker = Threads.Atomic{Float64}(0.0),
-        target_batch_size_length::Int = 80_000,
-        ntasks::Int = 4 * Threads.nthreads(),
-        kwargs...)
+function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVector{T}; kwargs...) where T
+    docs_str = string.(docs) # TODO maybe we could do this later to allocate even less?
+    get_embeddings_document(embedder, docs_str; kwargs... )
+end
+
+function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings_document(embedder.embedder, docs; kwargs...)
+end
+function get_embeddings_image(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings_image(embedder.embedder, docs; kwargs...)
+end
+
+function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString},
+        cost_tracker,
+        target_batch_size_length,
+        ntasks, kwargs)
+
     if isempty(docs)
         embedder.verbose && @info "No documents to embed."
         return Matrix{Float32}(undef, 0, 0)
@@ -106,7 +140,7 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     cache_prefix, truncate_dimension = embedder.cache_prefix, embedder.truncate_dimension
 
     cache_file = joinpath(embedder.cache_dir, cache_prefix * "embeddings_$(unique_name).arrow")
-    
+
     # Load cache
     if !haskey(CACHE_STATE.cache, cache_file)
         lock(get!(ReentrantLock, CACHE_STATE.file_locks, cache_file)) do
@@ -117,13 +151,14 @@ function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:Ab
     end
 
     cache = CACHE_STATE.cache[cache_file]
-    doc_hashes = [bytes2hex(sha1(doc)) for doc in docs]
+    # Use a combination of hash and length for better uniqueness while maintaining speed
+    doc_hashes = [string(hash(doc), base=16, pad=16) * "_" * string(length(doc)) for doc in docs]
     to_embed_indices = findall(dochash -> !haskey(cache, dochash), doc_hashes)
 
     if !isempty(to_embed_indices)
         docs_to_embed = docs[to_embed_indices]
         try
-            new_embeddings::Matrix{Float32} = get_embeddings(embedder.embedder, docs_to_embed;
+            new_embeddings::Matrix{Float32} = get_embeddings_document(embedder.embedder, docs_to_embed;
                 verbose=embedder.verbose, model, truncate_dimension, cost_tracker,
                 target_batch_size_length, ntasks, kwargs...)
 

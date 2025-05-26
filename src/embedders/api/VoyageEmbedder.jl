@@ -24,14 +24,21 @@ A struct for embedding documents using Voyage AI's embedding models.
     api_url::String = "https://api.voyageai.com/v1/embeddings"
     api_key::String = get(ENV, "VOYAGE_API_KEY", "")
     model::String = "voyage-code-2"
-    input_type::Union{String, Nothing} = nothing
     rate_limiter::RateLimiterTPM = RateLimiterTPM(max_tokens=3_000_000)
     http_post::Function = HTTP.post
     verbose::Bool = true
 end
-
+function get_embeddings_document(embedder::VoyageEmbedder, docs::AbstractVector{<:AbstractString};
+kwargs...)
+    get_embeddings(embedder, docs; input_type="document", kwargs...)
+end
+function get_embeddings_query(embedder::VoyageEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings(embedder, docs; input_type="query", kwargs...)
+end
 function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:AbstractString};
     verbose::Bool = embedder.verbose,
+    input_type::Union{String, Nothing} = nothing,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     kwargs...)
 
@@ -47,8 +54,8 @@ function get_embeddings(embedder::VoyageEmbedder, docs::AbstractVector{<:Abstrac
             "truncation" => false
         )
         
-        if !isnothing(embedder.input_type)
-            payload["input_type"] = embedder.input_type
+        if !isnothing(input_type)
+            payload["input_type"] = input_type
         end
 
         try
@@ -169,11 +176,10 @@ end
 # Add this at the end of the file
 function create_voyage_embedder(;
     model::String = "voyage-code-3", # or voyage-3
-    input_type::Union{String, Nothing} = nothing,
     verbose::Bool = true,
     cache_prefix=""
 )
-    voyage_embedder = VoyageEmbedder(; model, input_type, verbose)
+    voyage_embedder = VoyageEmbedder(; model, verbose)
     embedder = CachedBatchEmbedder(;embedder=voyage_embedder, cache_prefix, verbose)
 end
 

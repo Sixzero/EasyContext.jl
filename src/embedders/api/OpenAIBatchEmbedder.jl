@@ -8,6 +8,18 @@ using SparseArrays
     model::String=MODEL_EMBEDDING
 end
 
+function get_embeddings_document(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings(embedder, docs; kwargs...)
+end
+function get_embeddings_query(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    get_embeddings(embedder, docs; kwargs...)
+end
+function get_embeddings_image(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:AbstractString};
+    kwargs...)
+    @assert false "OpenAI does not support image embedding"
+end
 # Delegate the get_embeddings method to the internal BatchEmbedder
 function get_embeddings(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:AbstractString}; verbose=false, target_batch_size_length=80_000,
     cost_tracker = Threads.Atomic{Float64}(0.0),
@@ -43,7 +55,6 @@ get_model_name(embedder::OpenAIBatchEmbedder) = embedder.model
 # Add this at the end of the file
 function create_openai_embedder(;
     model::String = "text-embedding-3-large",
-    top_k::Int = 300,
     cache_prefix="",
 )
     embedder = CachedBatchEmbedder(; embedder=OpenAIBatchEmbedder(; model=model), cache_prefix)

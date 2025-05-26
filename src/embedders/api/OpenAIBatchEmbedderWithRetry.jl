@@ -65,14 +65,12 @@ end
 # Add this at the end of the file
 function create_openai_embedder_with_retry(;
     model::String = "text-embedding-3-small",
-    top_k::Int = 300,
     cache_prefix="",
 )
     embedder = CachedBatchEmbedder(; 
         embedder=OpenAIBatchEmbedderWithRetry(; model=model), 
         cache_prefix
     )
-    EmbedderSearch(embedder=embedder, top_k=top_k)
 end
 
 export OpenAIBatchEmbedderWithRetry, create_openai_embedder_with_retry

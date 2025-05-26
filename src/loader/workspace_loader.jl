@@ -14,7 +14,7 @@ abstract type AbstractWorkspace end
     PROJECT_FILES::Set{String} = Set{String}([
         "Dockerfile", "docker-compose.yml", "Makefile", "LICENSE", "package.json", 
         "app.json", ".gitignore", "Gemfile", "Cargo.toml", ".eslintrc.json", 
-        "requirements.txt", "requirements", "tsconfig.json", ".env.example" # , "Project.toml"
+        "requirements.txt", "requirements", "tsconfig.json", ".env.example", "tsconfig.json", "tsconfig.node.json", # , "Project.toml"
     ])
     FILE_EXTENSIONS::Set{String} = Set{String}([
         "toml", "ini", "cfg", "conf", "sh", "bash", "zsh", "fish",
@@ -25,13 +25,13 @@ abstract type AbstractWorkspace end
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "mdx", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties", "plist",
         "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg",
-        "code-workspace", "txt"
+        "code-workspace", "txt", "json", "desktop"
     ])
     NONVERBOSE_FILTERED_EXTENSIONS::Set{String} = Set{String}([
         "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
         "doc", "docx", "ppt", "pptx", "xls", "xlsx", "csv", "tsv", "db", "sqlite", "sqlite3",
         "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "ttf", "otf", "woff", "woff2", "eot",
-        "lock", "arrow"
+        "lock", "arrow", "exe", 
     ])
     FILTERED_FOLDERS::Set{String} = Set{String}([
         "build", "dist", "benchmarks", "node_modules", "__pycache__", 

@@ -9,12 +9,12 @@ const DTM_CACHE = Dict{String, RAG.DocumentTermMatrix}()
     normalize=false
 end
 
-function get_score(builder::BM25Embedder, chunks::AbstractVector{T}, query::AbstractString; cost_tracker = Threads.Atomic{Float64}(0.0)) where T
+function get_score(builder::BM25Embedder, chunks::AbstractVector{T}, query::AbstractString; kwargs...) where T
     chunks_str = string.(chunks)
     get_score(builder, chunks_str, query)
 end
 
-function get_score(builder::BM25Embedder, chunks::AbstractVector{<:AbstractString}, query::AbstractString)
+function get_score(builder::BM25Embedder, chunks::AbstractVector{<:AbstractString}, query::AbstractString; kwargs...)
     key = fast_cache_key(chunks)
     dtm = get!(DTM_CACHE, key) do
         get_dtm(builder.processor, chunks)
