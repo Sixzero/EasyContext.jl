@@ -3,7 +3,7 @@ using SHA
 
 const DTM_CACHE = Dict{String, RAGTools.DocumentTermMatrix}()
 
-@kwdef struct BM25Embedder <: AbstractEmbedder
+@kwdef struct BM25Embedder <: RAGTools.AbstractEmbedder
     processor::RAGTools.AbstractProcessor = RAGTools.KeywordsProcessor()
     normalize=false
 end

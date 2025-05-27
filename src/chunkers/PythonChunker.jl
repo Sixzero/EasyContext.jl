@@ -1,4 +1,3 @@
-import RAGTools: AbstractEmbedder
 import RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkIndex, find_tags
 import RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer

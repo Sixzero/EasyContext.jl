@@ -1,11 +1,11 @@
 using PromptingTools
 using LinearAlgebra
-using RAGTools: SimpleIndexer, AbstractEmbedder
+using RAGTools
 using JLD2, Snowball, Pkg
 import Base: *
 
 
-abstract type AbstractEasyEmbedder <: AbstractEmbedder end
+abstract type AbstractEasyEmbedder <: RAGTools.AbstractEmbedder end
 abstract type AbstractRAGPipeline end
 
 include("SimilarityAlgos.jl")

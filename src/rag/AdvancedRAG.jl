@@ -1,6 +1,7 @@
 using Dates
 using SHA
 using EasyContext: create_openai_embedder, create_jina_embedder, create_voyage_embedder
+using RAGTools
 using RAGTools: ChunkEmbeddingsIndex, AbstractChunkIndex
 
 
@@ -12,7 +13,7 @@ using RAGTools: ChunkEmbeddingsIndex, AbstractChunkIndex
 end
 
 # Convenience constructor for vector of embedders
-function TwoLayerRAG(embedders::Vector{<:AbstractEmbedder}, reranker::AbstractReranker; k::Int=50, method::Symbol=:max)
+function TwoLayerRAG(embedders::Vector{<:RAGTools.AbstractEmbedder}, reranker::AbstractReranker; k::Int=50, method::Symbol=:max)
     TwoLayerRAG(top_k=TopK(embedders, method; topK=k), reranker=reranker)
 end
 

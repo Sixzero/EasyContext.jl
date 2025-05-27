@@ -1,5 +1,6 @@
 using SHA
 using Parameters
+using RAGTools
 using RAGTools: AbstractEmbedder
 using PromptingTools: MODEL_EMBEDDING
 using Dates
@@ -21,7 +22,7 @@ end
 
 const CACHE_STATE = CacheData()
 
-@kwdef struct CachedBatchEmbedder <: AbstractEmbedder
+@kwdef struct CachedBatchEmbedder <: RAGTools.AbstractEmbedder
     embedder::AbstractEmbedder = OpenAIBatchEmbedder()
     cache_dir::String = let
         current_file = @__FILE__
@@ -33,7 +34,7 @@ const CACHE_STATE = CacheData()
     truncate_dimension::Union{Int, Nothing}=nothing
     verbose::Bool=false
 
-    function CachedBatchEmbedder(embedder::AbstractEmbedder, cache_dir::String, cache_prefix::String, 
+    function CachedBatchEmbedder(embedder::RAGTools.AbstractEmbedder, cache_dir::String, cache_prefix::String, 
                                 truncate_dimension::Union{Int, Nothing}, verbose::Bool)
         embedder isa CachedBatchEmbedder && error("Nested CachedBatchEmbedder detected. Use the inner embedder directly.")
         new(embedder, cache_dir, cache_prefix, truncate_dimension, verbose)
