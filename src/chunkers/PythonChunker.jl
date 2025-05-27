@@ -1,9 +1,9 @@
-import PromptingTools.Experimental.RAGTools: AbstractEmbedder
-import PromptingTools.Experimental.RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkIndex, find_tags
-import PromptingTools.Experimental.RAGTools: ChunkIndex, AbstractChunker
+import RAGTools: AbstractEmbedder
+import RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkIndex, find_tags
+import RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
 import PromptingTools
-const RAG = PromptingTools.Experimental.RAGTools
+const RAG = RAGTools
 
 @kwdef struct PythonSourceChunk
     name::Symbol

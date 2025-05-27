@@ -5,7 +5,7 @@ using EasyContext: EmbedderSearch, OpenAIBatchEmbedder, CachedBatchEmbedder, Jin
 using EasyContext: BM25Embedder
 using EasyContext: get_index
 using HTTP
-using PromptingTools.Experimental.RAGTools
+using RAGTools
 using JSON3
 using Chairmarks
 using BenchmarkTools

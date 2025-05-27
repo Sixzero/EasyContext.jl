@@ -1,6 +1,6 @@
-import PromptingTools.Experimental.RAGTools: get_chunks, AbstractEmbedder
-import PromptingTools.Experimental.RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkIndex, find_tags
-import PromptingTools.Experimental.RAGTools: ChunkIndex, AbstractChunker
+import RAGTools: get_chunks, AbstractEmbedder
+import RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkIndex, find_tags
+import RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
 import JuliaSyntax
 import JuliaSyntax: @K_str, kind

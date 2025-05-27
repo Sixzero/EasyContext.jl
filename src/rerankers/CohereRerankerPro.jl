@@ -1,6 +1,6 @@
 
-using PromptingTools.Experimental.RAGTools
-using PromptingTools.Experimental.RAGTools: AbstractReranker
+using RAGTools
+using RAGTools: AbstractReranker
 const RAG = RAGTools
 
 

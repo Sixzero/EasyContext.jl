@@ -4,7 +4,7 @@ using DataStructures: OrderedDict
 using EasyContext: CachedBatchEmbedder, get_embedder, create_voyage_embedder, OpenAIBatchEmbedder, BM25Embedder
 using EasyContext: get_embedder_uniq_id, PartialEmbeddingResults, CACHE_STATE
 using HTTP
-using PromptingTools.Experimental.RAGTools
+using RAGTools
 using JSON3
 using Chairmarks
 using BenchmarkTools

@@ -1,9 +1,9 @@
 using PromptingTools
-using PromptingTools.Experimental.RAGTools
+using RAGTools
 using LinearAlgebra
-using PromptingTools.Experimental.RAGTools: SimpleIndexer, AbstractEmbedder
+using RAGTools: SimpleIndexer, AbstractEmbedder
 using JLD2, Snowball, Pkg
-import PromptingTools.Experimental.RAGTools as RAG
+import RAGTools as RAG
 import Base: *
 
 

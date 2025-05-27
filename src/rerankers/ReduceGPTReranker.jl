@@ -1,5 +1,5 @@
 using PromptingTools
-using PromptingTools.Experimental.RAGTools: extract_ranking, AbstractReranker
+using RAGTools: extract_ranking, AbstractReranker
 using Base.Threads
 using HTTP.Exceptions: TimeoutError
 const PT = PromptingTools

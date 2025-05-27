@@ -1,6 +1,6 @@
 using Pkg
 using Base.Threads
-# const RAG = PromptingTools.Experimental.RAGTools
+# const RAG = RAGTools
 
 function RAG.build_index(
   indexer, files_or_docs::Vector{Pkg.API.PackageInfo};

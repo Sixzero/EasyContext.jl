@@ -1,6 +1,6 @@
 
-using PromptingTools.Experimental.RAGTools: AbstractRephraser
-import PromptingTools.Experimental.RAGTools: rephrase
+using RAGTools: AbstractRephraser
+import RAGTools: rephrase
 using PromptingTools
 
 Base.@kwdef struct JuliacodeRephraser <: AbstractRephraser

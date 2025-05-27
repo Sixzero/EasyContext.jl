@@ -1,5 +1,5 @@
-using PromptingTools.Experimental.RAGTools
-import PromptingTools.Experimental.RAGTools as RAG
+using RAGTools
+import RAGTools as RAG
 using SHA
 
 const DTM_CACHE = Dict{String, RAG.DocumentTermMatrix}()

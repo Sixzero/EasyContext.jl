@@ -1,4 +1,4 @@
-using PromptingTools.Experimental.RAGTools: BatchEmbedder, AbstractEmbedder, _normalize
+using RAGTools: BatchEmbedder, AbstractEmbedder, _normalize
 using PromptingTools: MODEL_EMBEDDING
 using SparseArrays
 using Base.Threads

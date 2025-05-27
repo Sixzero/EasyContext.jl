@@ -1,7 +1,7 @@
 using Dates
 using SHA
 using EasyContext: create_openai_embedder, create_jina_embedder, create_voyage_embedder
-using PromptingTools.Experimental.RAGTools: ChunkEmbeddingsIndex, AbstractChunkIndex
+using RAGTools: ChunkEmbeddingsIndex, AbstractChunkIndex
 
 
 

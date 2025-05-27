@@ -1,6 +1,6 @@
 using SHA
 using Parameters
-using PromptingTools.Experimental.RAGTools: AbstractEmbedder
+using RAGTools: AbstractEmbedder
 using PromptingTools: MODEL_EMBEDDING
 using Dates
 using Arrow

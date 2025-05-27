@@ -1,6 +1,6 @@
 using PromptingTools: recursive_splitter
-using PromptingTools.Experimental.RAGTools
-using PromptingTools.Experimental.RAGTools: AbstractChunker
+using RAGTools
+using RAGTools: AbstractChunker
 const RAG = RAGTools
 
 export FullFileChunker

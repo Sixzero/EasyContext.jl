@@ -4,7 +4,7 @@ using EasyContext: CodebaseContextV3, FullFileChunker, RAGContext, SourceChunk, 
 using PromptingTools
 
 # Define the RAG constant
-const RAG = PromptingTools.Experimental.RAGTools
+const RAG = RAGTools
 
 # Define a mock FullFileChunker
 struct MockFullFileChunker <: RAG.AbstractChunker end

@@ -1,4 +1,4 @@
-using PromptingTools.Experimental.RAGTools
+using RAGTools
 
 include("CTX_question.jl")
 include("CTX_conversation.jl")

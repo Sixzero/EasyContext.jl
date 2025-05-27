@@ -2,7 +2,7 @@
 using HTTP
 using JSON3
 using PromptingTools
-using PromptingTools.Experimental.RAGTools: get_embeddings
+using RAGTools: get_embeddings
 using ProgressMeter
 
 """

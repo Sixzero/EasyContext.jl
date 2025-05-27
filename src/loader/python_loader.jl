@@ -1,4 +1,4 @@
-using PromptingTools.Experimental.RAGTools
+using RAGTools
 
 @kwdef struct PythonPkgInfo
     name::String
