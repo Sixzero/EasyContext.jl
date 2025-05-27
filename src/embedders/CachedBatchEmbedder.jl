@@ -1,7 +1,6 @@
 using SHA
 using Parameters
 using RAGTools
-using RAGTools: AbstractEmbedder
 using PromptingTools: MODEL_EMBEDDING
 using Dates
 using Arrow
@@ -23,7 +22,7 @@ end
 const CACHE_STATE = CacheData()
 
 @kwdef struct CachedBatchEmbedder <: RAGTools.AbstractEmbedder
-    embedder::AbstractEmbedder = OpenAIBatchEmbedder()
+    embedder::RAGTools.AbstractEmbedder = OpenAIBatchEmbedder()
     cache_dir::String = let
         current_file = @__FILE__
         default_cache_dir = joinpath(dirname(dirname(dirname(current_file))), "cache")

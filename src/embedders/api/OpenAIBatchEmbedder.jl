@@ -1,5 +1,5 @@
 
-using RAGTools: BatchEmbedder, AbstractEmbedder
+using RAGTools: BatchEmbedder
 using PromptingTools: MODEL_EMBEDDING
 using SparseArrays
 

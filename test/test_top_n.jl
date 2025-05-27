@@ -81,7 +81,7 @@ using EasyContext: MaxScoreEmbedder, RRFScoreEmbedder, WeighterEmbedder
 end
 
 # Mock embedder for testing
-struct MockEmbedder <: AbstractEmbedder
+struct MockEmbedder <: RAGTools.AbstractEmbedder
     scores::Vector{Float64}
 end
 

@@ -1,4 +1,3 @@
-using RAGTools: AbstractEmbedder
 
 abstract type Cacheable end
 abstract type AbstractLoader <: Cacheable end

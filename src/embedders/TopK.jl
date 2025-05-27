@@ -2,12 +2,12 @@ using LinearAlgebra
 
 DEFAULT_TOP_K = 50
 """
-    TopK{T<:AbstractEmbedder}
+    TopK{T<:RAGTools.AbstractEmbedder}
 
 A struct for handling top-N selection with flexible embedder combinations.
 
 # Fields
-- `embedder::Union{AbstractEmbedder,MultiEmbedderCombiner}`: Single embedder or combiner
+- `embedder::Union{RAGTools.AbstractEmbedder,MultiEmbedderCombiner}`: Single embedder or combiner
 - `top_k::Int`: Number of top results to return
 """
 @kwdef struct TopK{T<:Union{RAGTools.AbstractEmbedder,MultiEmbedderCombiner}} <: AbstractRAGPipeline

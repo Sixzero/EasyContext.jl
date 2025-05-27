@@ -1,6 +1,6 @@
 using HTTP
 using JSON3
-using RAGTools: AbstractEmbedder, get_embeddings
+using RAGTools: get_embeddings
 
 struct JinaColBERTEmbedder <: RAGTools.AbstractEmbedder
     api_url::String

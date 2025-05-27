@@ -1,4 +1,4 @@
-abstract type MultiEmbedderCombiner <: AbstractEmbedder end
+abstract type MultiEmbedderCombiner <: RAGTools.AbstractEmbedder end
 
 struct MaxScoreCombiner <: CombinationMethod end
 struct WeightedCombiner <: CombinationMethod 
@@ -29,7 +29,7 @@ end
 
 struct WeighterEmbedder <: MultiEmbedderCombiner
     weights::Vector{Float64}
-    embedders::Vector{AbstractEmbedder}
+    embedders::Vector{RAGTools.AbstractEmbedder}
 end
 
 function get_score(c::WeighterEmbedder, chunks, query; kwargs...)
@@ -38,7 +38,7 @@ function get_score(c::WeighterEmbedder, chunks, query; kwargs...)
 end
 
 struct MaxScoreEmbedder <: MultiEmbedderCombiner
-    embedders::AbstractVector{AbstractEmbedder}
+    embedders::AbstractVector{RAGTools.AbstractEmbedder}
 end
 
 function get_score(c::MaxScoreEmbedder, chunks, query; kwargs...)
@@ -47,7 +47,7 @@ function get_score(c::MaxScoreEmbedder, chunks, query; kwargs...)
 end
 
 struct RRFScoreEmbedder <: MultiEmbedderCombiner
-    embedders::AbstractVector{AbstractEmbedder}
+    embedders::AbstractVector{RAGTools.AbstractEmbedder}
 end
 
 function get_score(c::RRFScoreEmbedder, chunks, query; kwargs...)
@@ -56,7 +56,7 @@ function get_score(c::RRFScoreEmbedder, chunks, query; kwargs...)
 end
 
 struct MeanScoreEmbedder <: MultiEmbedderCombiner
-    embedders::AbstractVector{AbstractEmbedder}
+    embedders::AbstractVector{RAGTools.AbstractEmbedder}
 end
 
 function get_score(c::MeanScoreEmbedder, chunks, query; kwargs...)
