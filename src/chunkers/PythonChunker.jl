@@ -3,7 +3,6 @@ import RAGTools: find_tags, get_embeddings, ChunkEmbeddingsIndex, AbstractChunkI
 import RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
 import PromptingTools
-const RAG = RAGTools
 
 @kwdef struct PythonSourceChunk
     name::Symbol
@@ -27,7 +26,7 @@ file_path_lineno(def::PythonSourceChunk) = "$(def.file_path):$(def.start_line_co
 file_path(def::PythonSourceChunk) = def.file_path
 name_with_signature(def::PythonSourceChunk) = "$(def.name):$(def.signature_hash)"
 
-function RAG.get_chunks(chunker::PythonSourceChunker,
+function RAGTools.get_chunks(chunker::PythonSourceChunker,
         files_or_docs::Vector{<:AbstractString};
         sources::AbstractVector{<:AbstractString} = files_or_docs,
         verbose::Bool = true, import_paths::Vector{String}=String[])

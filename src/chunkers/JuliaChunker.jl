@@ -4,7 +4,6 @@ import RAGTools: ChunkIndex, AbstractChunker
 import ExpressionExplorer
 import PromptingTools
 # using JuliaSyntax
-const RAG = RAGTools
 
 
 @kwdef struct JuliaSourceChunk
@@ -29,7 +28,7 @@ file_path_lineno(def::JuliaSourceChunk) = "$(def.file_path):$(def.start_line_cod
 file_path(def::JuliaSourceChunk) = def.file_path
 name_with_signature(def::JuliaSourceChunk) = "$(def.name):$(def.signature_hash)"
 
-function RAG.get_chunks(chunker::JuliaSourceChunker,
+function RAGTools.get_chunks(chunker::JuliaSourceChunker,
         files_or_docs::Vector{<:AbstractString};
         sources::AbstractVector{<:AbstractString} = files_or_docs,
         verbose::Bool = false, modules::Vector{String}=String[])

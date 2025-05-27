@@ -1,9 +1,7 @@
 using PromptingTools
-using RAGTools
 using LinearAlgebra
 using RAGTools: SimpleIndexer, AbstractEmbedder
 using JLD2, Snowball, Pkg
-import RAGTools as RAG
 import Base: *
 
 

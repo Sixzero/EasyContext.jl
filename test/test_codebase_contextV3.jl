@@ -3,11 +3,9 @@ using EasyContext
 using EasyContext: CodebaseContextV3, FullFileChunker, RAGContext, SourceChunk, AbstractFileSelector, get_project_files
 using PromptingTools
 
-# Define the RAG constant
-const RAG = RAGTools
 
 # Define a mock FullFileChunker
-struct MockFullFileChunker <: RAG.AbstractChunker end
+struct MockFullFileChunker <: RAGTools.AbstractChunker end
 
 # Define a mock FileSelector
 struct MockFileSelector <: AbstractFileSelector end
@@ -21,7 +19,7 @@ function EasyContext.get_files_in_path(selector::MockFileSelector, path::String)
     return ["file1.jl", "file2.jl"]
 end
 
-function RAG.get_chunks(chunker::MockFullFileChunker, files::Vector{<:AbstractString}; kwargs...)
+function RAGTools.get_chunks(chunker::MockFullFileChunker, files::Vector{<:AbstractString}; kwargs...)
     return ["chunk1", "chunk2"], files
 end
 

@@ -7,9 +7,9 @@ end
 
 # TODO add PromptingTools PR to separate get_dtm and get_keywords calculations, since they are composable
 function get_keywords(
-    processor::RAG.KeywordsProcessor, docs::Union{AbstractString, AbstractVector{<:AbstractString}};
+    processor::RAGTools.KeywordsProcessor, docs::Union{AbstractString, AbstractVector{<:AbstractString}};
     stemmer = nothing,
-    stopwords::Set{String} = Set(RAG.STOPWORDS),
+    stopwords::Set{String} = Set(RAGTools.STOPWORDS),
     min_length::Integer = 3
     )
     ## check if extension is available
@@ -20,21 +20,21 @@ function get_keywords(
     ## Preprocess text into tokens
     stemmer = !isnothing(stemmer) ? stemmer : Snowball.Stemmer("english")
     # Single-threaded as stemmer is not thread-safe
-    keywords = RAG.preprocess_tokens(docs, stemmer; stopwords, min_length)
+    keywords = RAGTools.preprocess_tokens(docs, stemmer; stopwords, min_length)
 
     ## Early exit if we only want keywords (search time)
     return keywords
 end
 function get_dtm(
-    processor::RAG.KeywordsProcessor, docs::AbstractVector{<:AbstractString};
+    processor::RAGTools.KeywordsProcessor, docs::AbstractVector{<:AbstractString};
     stemmer = nothing,
-    stopwords::Set{String} = Set(RAG.STOPWORDS),
+    stopwords::Set{String} = Set(RAGTools.STOPWORDS),
     min_length::Integer = 3,
     min_term_freq::Int = 1, max_terms::Int = typemax(Int),
     kwargs...)
     keywords = get_keywords(processor, docs; stemmer, stopwords, min_length)
     ## Create DTM
-    dtm = RAG.document_term_matrix(keywords; min_term_freq, max_terms)
+    dtm = RAGTools.document_term_matrix(keywords; min_term_freq, max_terms)
 
     return dtm
 end

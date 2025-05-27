@@ -13,7 +13,7 @@ include("PythonChunker.jl")
 struct SourceChunker <: AbstractChunker end
 
 
-function RAG.get_chunks(chunker::SourceChunker,
+function RAGTools.get_chunks(chunker::SourceChunker,
         items::Vector{<:Any};
         sources::AbstractVector{<:AbstractString} = String[],
         verbose::Bool = false)

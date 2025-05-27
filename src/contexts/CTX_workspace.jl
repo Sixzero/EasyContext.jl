@@ -45,7 +45,7 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     
     start_time = time()
     
-    file_chunks = RAG.get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
+    file_chunks = RAGTools.get_chunks(NewlineChunker{FileChunk}(), workspace_context.workspace)
     isempty(file_chunks) && return ("", nothing, nothing, nothing)
     
     cost_tracker = Threads.Atomic{Float64}(0.0)

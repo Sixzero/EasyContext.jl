@@ -1,7 +1,6 @@
 using PromptingTools: recursive_splitter
 using RAGTools
 using RAGTools: AbstractChunker
-const RAG = RAGTools
 
 export FullFileChunker
 
@@ -16,15 +15,15 @@ end
 # end
 
 # Delegate methods to the internal GeneralChunker
-RAG.get_chunks(chunker::AbstractChunkerWrappers, docs::Vector{<:AbstractString}; sources::AbstractVector{<:AbstractString} = docs, kwargs...) = RAG.get_chunks(chunker.chunker, docs; sources, kwargs...)
+RAGTools.get_chunks(chunker::AbstractChunkerWrappers, docs::Vector{<:AbstractString}; sources::AbstractVector{<:AbstractString} = docs, kwargs...) = RAGTools.get_chunks(chunker.chunker, docs; sources, kwargs...)
 
-# function RAG.load_text(chunker::Type{FileChunk}; content::AbstractString, source::AbstractString)
+# function RAGTools.load_text(chunker::Type{FileChunk}; content::AbstractString, source::AbstractString)
 #     @assert isfile(source) "Path $source does not exist"
 #     @assert content !== source
 #     @show content
 #     return content, source
 # end
-function RAG.load_text(chunker::Type{FileChunk}, source::AbstractPath)
+function RAGTools.load_text(chunker::Type{FileChunk}, source::AbstractPath)
     @assert isfile(source) "Path $source does not exist"
     return read(source, String), source
 end

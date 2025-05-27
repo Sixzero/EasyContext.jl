@@ -30,7 +30,7 @@ function cached_operation(cache::CachedLoader, operation::Function, args...; kwa
     return result
 end
 # Specific operations using the generic mechanism
-RAG.get_chunks(cache::CachedLoader, args...) = cached_operation(cache, RAG.get_chunks, args...)
+RAGTools.get_chunks(cache::CachedLoader, args...) = cached_operation(cache, RAGTools.get_chunks, args...)
 get_score(cache::CachedLoader, args...; kwargs...) = cached_operation(cache, get_score, args...; kwargs...)
 
 

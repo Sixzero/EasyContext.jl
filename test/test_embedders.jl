@@ -240,7 +240,7 @@ using BenchmarkTools
                 else # Voyage
                     1024
                 end
-                @test size(RAG.chunkdata(index), 1) == emb_size
+                @test size(RAGTools.chunkdata(index), 1) == emb_size
             end
         end
     end

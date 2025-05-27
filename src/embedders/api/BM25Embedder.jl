@@ -1,11 +1,10 @@
 using RAGTools
-import RAGTools as RAG
 using SHA
 
-const DTM_CACHE = Dict{String, RAG.DocumentTermMatrix}()
+const DTM_CACHE = Dict{String, RAGTools.DocumentTermMatrix}()
 
 @kwdef struct BM25Embedder <: AbstractEmbedder
-    processor::RAG.AbstractProcessor = RAG.KeywordsProcessor()
+    processor::RAGTools.AbstractProcessor = RAGTools.KeywordsProcessor()
     normalize=false
 end
 
@@ -21,8 +20,8 @@ function get_score(builder::BM25Embedder, chunks::AbstractVector{<:AbstractStrin
     end
     
     query_keywords = get_keywords(builder.processor, query)
-    RAG.bm25(dtm, query_keywords, normalize=builder.normalize)
+    RAGTools.bm25(dtm, query_keywords, normalize=builder.normalize)
 end
 
-get_finder(builder::BM25Embedder) = RAG.BM25Similarity()
+get_finder(builder::BM25Embedder) = RAGTools.BM25Similarity()
 humanize(e::BM25Embedder) = "BM25"

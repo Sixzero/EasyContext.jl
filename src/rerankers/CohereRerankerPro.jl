@@ -1,7 +1,6 @@
 
 using RAGTools
 using RAGTools: AbstractReranker
-const RAG = RAGTools
 
 
 Base.@kwdef struct CohereRerankerPro <: AbstractReranker
@@ -25,7 +24,7 @@ function rerank(
     sources = collect(keys(chunks))
     contents = collect(values(chunks))
     
-    reranked_indices = RAG.rerank(RAG.CohereReranker(model=reranker.model), query, contents; top_n=top_n)
+    reranked_indices = RAGTools.rerank(RAGTools.CohereReranker(model=reranker.model), query, contents; top_n=top_n)
     
     reranked_sources = sources[reranked_indices]
     reranked_chunks = contents[reranked_indices]
@@ -33,12 +32,12 @@ function rerank(
     return OrderedDict(zip(reranked_sources, reranked_chunks))
 end
 
-# Maintain compatibility with the existing RAG.rerank method
-function RAG.rerank(
+# Maintain compatibility with the existing RAGTools.rerank method
+function RAGTools.rerank(
     reranker::CohereRerankerPro,
-    index::RAG.AbstractDocumentIndex,
+    index::RAGTools.AbstractDocumentIndex,
     query::AbstractString,
-    candidates::RAG.AbstractCandidateChunks;
+    candidates::RAGTools.AbstractCandidateChunks;
     top_n::Int = reranker.top_n,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     verbose::Bool = false,

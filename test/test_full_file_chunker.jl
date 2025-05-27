@@ -5,8 +5,6 @@ using EasyContext: GPT2Approximation, CharCount, get_chunk_standard_format
 using LLMRateLimiters: estimate_tokens, CharCountDivTwo
 using Random
 
-const RAG = RAGTools
-
 @testset "FullFileChunker Tests" begin
     @testset "Constructor" begin
         chunker = FullFileChunker()
@@ -26,7 +24,7 @@ const RAG = RAGTools
             write(test_file, test_content)
 
             chunker = FullFileChunker(max_tokens=200)
-            chunks, sources = RAG.get_chunks(chunker, [test_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
 
             @test length(chunks) > 1  # Should be split into multiple chunks
             @test all(occursin("test.txt:", source) for source in sources)
@@ -51,7 +49,7 @@ const RAG = RAGTools
             write(test_file, test_content)
 
             chunker = FullFileChunker(max_tokens=100)
-            chunks, sources = RAG.get_chunks(chunker, [test_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
 
             for (i, source) in enumerate(sources)
                 file_path, line_range = split(source, ':')
@@ -76,7 +74,7 @@ const RAG = RAGTools
             write(file2, join(["File2 Line $i" for i in 1:20], "\n"))
 
             chunker = FullFileChunker(max_tokens=150)
-            chunks, sources = RAG.get_chunks(chunker, [file1, file2])
+            chunks, sources = RAGTools.get_chunks(chunker, [file1, file2])
 
             @test any(contains(source, "file1.txt") for source in sources)
             @test any(contains(source, "file2.txt") for source in sources)
@@ -93,7 +91,7 @@ const RAG = RAGTools
             write(non_empty_file, "content")
 
             chunker = FullFileChunker()
-            chunks, sources = RAG.get_chunks(chunker, [empty_file, non_empty_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [empty_file, non_empty_file])
 
             @test length(chunks) == 2
             @test length(sources) == 2
@@ -102,7 +100,7 @@ const RAG = RAGTools
             @test sources[2] == non_empty_file
 
             # Check that empty files are processed without breaking the chain
-            chunks, sources = RAG.get_chunks(chunker, [empty_file, non_empty_file, empty_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [empty_file, non_empty_file, empty_file])
             @test length(chunks) == 3
             @test length(sources) == 3
             @test !isempty(chunks[2])
@@ -119,7 +117,7 @@ const RAG = RAGTools
             write(test_file, test_content)
 
             chunker = FullFileChunker(max_tokens=200)
-            chunks, sources = RAG.get_chunks(chunker, [test_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
 
             for source in sources
                 reproduced_chunk = EasyContext.reproduce_chunk(chunker, source)
@@ -141,7 +139,7 @@ const RAG = RAGTools
             write(large_file, large_content)
 
             chunker = FullFileChunker(max_tokens=20000)  # Increased max_tokens
-            chunks, sources = RAG.get_chunks(chunker, [large_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [large_file])
 
             @test length(chunks) > 1
             # Test that each chunk is within the max_tokens limit
@@ -158,7 +156,7 @@ const RAG = RAGTools
             test_content = join(["Line $i" for i in 1:50], "\n")
             write(test_file, test_content)
 
-            chunks, sources = RAG.get_chunks(chunker, [test_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
 
             @test all(startswith(chunk, "SOURCE:") for chunk in chunks)
             @test all(contains(chunk, "CONTENT:") for chunk in chunks)
@@ -172,7 +170,7 @@ const RAG = RAGTools
             write(small_file, small_content)
 
             chunker = FullFileChunker(max_tokens=1000)  # Large enough to fit the whole file
-            chunks, sources = RAG.get_chunks(chunker, [small_file])
+            chunks, sources = RAGTools.get_chunks(chunker, [small_file])
 
             @test length(chunks) == 1
             @test length(sources) == 1
@@ -193,7 +191,7 @@ const RAG = RAGTools
             write(file2, content2)
 
             chunker = FullFileChunker(max_tokens=200)
-            chunks, sources = RAG.get_chunks(chunker, [file1, file2])
+            chunks, sources = RAGTools.get_chunks(chunker, [file1, file2])
 
             @test length(chunks) > 1
             @test any(source -> source == file1, sources)  # Small file should not have line numbers

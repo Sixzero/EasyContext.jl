@@ -3,9 +3,9 @@
     excluded_packages::Vector{String} = String[]  # New field for excluded packages
 end
 
-function RAG.get_chunks(loader::JuliaLoader, chunker::CHUNKER) where {CHUNKER <: AbstractChunker}
+function RAGTools.get_chunks(loader::JuliaLoader, chunker::CHUNKER) where {CHUNKER <: AbstractChunker}
     pkg_infos = get_package_infos(loader.package_scope, loader.excluded_packages)
-    chunks = RAG.get_chunks(chunker, pkg_infos)
+    chunks = RAGTools.get_chunks(chunker, pkg_infos)
     return chunks
 end
 

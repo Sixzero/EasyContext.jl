@@ -5,7 +5,6 @@ using RAGTools: AbstractChunker
 using PyCall
 using LLMRateLimiters: EncodingStatePBE, partial_encode!, GreedyBPETokenizer, load_bpe_tokenizer
 
-const RAG = RAGTools
 
 export NewlineChunker
 
@@ -16,18 +15,18 @@ export NewlineChunker
     line_number_token_estimate::Int = 10
 end
 
-function RAG.get_chunks(chunker::NewlineChunker{T},
+function RAGTools.get_chunks(chunker::NewlineChunker{T},
     file_paths::Vector{<:AbstractPath};
     sources=nothing,
     verbose::Bool = true) where T
-    files_or_docs = [RAG.load_text(T, f)[1] for f in file_paths]
+    files_or_docs = [RAGTools.load_text(T, f)[1] for f in file_paths]
     if isnothing(files_or_docs)
         return Vector{T}()
     end
-    return RAG.get_chunks(chunker, files_or_docs; sources=file_paths, verbose)
+    return RAGTools.get_chunks(chunker, files_or_docs; sources=file_paths, verbose)
 end
 
-function RAG.get_chunks(chunker::NewlineChunker{T},
+function RAGTools.get_chunks(chunker::NewlineChunker{T},
     files_or_docs::Vector{<:AbstractString};
     sources::AbstractVector{S},
     verbose::Bool = true) where {T, S<:Union{AbstractPath,AbstractString}}
