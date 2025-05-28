@@ -26,6 +26,13 @@ function has_meaningful_changes(original::AbstractString, modified::AbstractStri
     return strip(original) != strip(modified)
 end
 
+"""
+    is_complete_replacement(content::AbstractString) -> Bool
+
+Check if the content indicates a complete file replacement.
+"""
+is_complete_replacement(content::AbstractString) = strip(content) == "<COMPLETE_REPLACEMENT/>"
+
 function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::Vector{String}=["gem20f", "gem25p", "gpt4o"], temperature=0, verbose=false, merge_prompt::Function)
     prompt = merge_prompt(original_content, changes_content)
     end_tag = merge_prompt === get_merge_prompt_v1 ? "final" : "FINAL"
@@ -34,6 +41,11 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
 
     # Define condition function to check for meaningful changes
     function is_valid_result(result)
+        # Check for complete replacement indicator
+        if is_complete_replacement(result.content)
+            return true
+        end
+        
         content = extract_tagged_content(result.content, end_tag)
         
         # Check if content was extracted and has meaningful changes
@@ -48,6 +60,12 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
     # Initialize AIGenerateFallback with model preferences and try to generate
     ai_manager = AIGenerateFallback(models=model)
     aigenerated = try_generate(ai_manager, prompt; condition=is_valid_result, api_kwargs=(; temperature), verbose=verbose)
+    
+    # Check for complete replacement indicator
+    if is_complete_replacement(aigenerated.content)
+        verbose && println("\e[38;5;240mDetected complete file replacement\e[0m")
+        return changes_content
+    end
     
     # Extract content from the generated result
     content = extract_tagged_content(aigenerated.content, end_tag)

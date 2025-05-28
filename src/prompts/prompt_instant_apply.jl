@@ -24,26 +24,27 @@ function get_merge_prompt_v1(original_content, changes_content)
 end
 
 function get_merge_prompt_v2(original_content, changes_content)
-  """You are a code merge specialist. Merge the <ORIGINAL> code with the changes inside <CHANGES> tags. 
+  """You are a code merge specialist. Merge the <ORIGINAL> code with the changes inside <PATCH> tags. 
   
   # Follow these rules:
-  1. Apply ALL modifications from <CHANGES> to <ORIGINAL>.
-  2. If <CHANGES> contains '... existing code ...' preserve that part from <ORIGINAL>.
-  3. <CHANGES> might indicate line deletions. In that case remove those lines from <final> result.
-  4. <CHANGES> might contain instructions. In that case follow them.
-  5. <CHANGES> might contain non-code parts in the end after  "```" keep that part as is.
+  1. Apply ALL modifications from <PATCH> to <ORIGINAL>.
+  2. If <PATCH> contains '... existing code ...' preserve that part from <ORIGINAL>.
+  3. <PATCH> might indicate line deletions. In that case remove those lines from <final> result.
+  4. <PATCH> might contain instructions. In that case follow them.
+  5. <PATCH> might contain non-code parts in the end after  "```" keep that part as is.
   6. Keep original formatting (spaces/tabs)
   7. Return only the final code between <FINAL> tags with ALL the changes applied.
+  8. If <PATCH> contains a complete file replacement (full file content), return exactly: <COMPLETE_REPLACEMENT/>
 
   <ORIGINAL>
   $original_content
   </ORIGINAL>
 
-  <CHANGES>
+  <PATCH>
   $changes_content
-  </CHANGES>
+  </PATCH>
 
-  Provide merged code between <FINAL> and </FINAL>.
+  Provide merged code between <FINAL> and </FINAL>, or <COMPLETE_REPLACEMENT/> if patch contains full file.
   """
 end
 
