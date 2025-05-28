@@ -16,10 +16,10 @@ end
 function get_score(builder::BM25Embedder, chunks::AbstractVector{<:AbstractString}, query::AbstractString; kwargs...)
     key = fast_cache_key(chunks)
     dtm = get!(DTM_CACHE, key) do
-        get_dtm(builder.processor, chunks)
+        get_dtm_easycontext(builder.processor, chunks)
     end
     
-    query_keywords = get_keywords(builder.processor, query)
+    query_keywords = get_keywords_easycontext(builder.processor, query)
     RAGTools.bm25(dtm, query_keywords, normalize=builder.normalize)
 end
 

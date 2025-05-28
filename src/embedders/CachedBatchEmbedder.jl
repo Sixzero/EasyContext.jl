@@ -111,24 +111,23 @@ function get_embeddings_query(embedder::CachedBatchEmbedder, docs::AbstractVecto
     get_embeddings_query(embedder.embedder, docs_str; kwargs...)
 end
 
-function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVector{T}; kwargs...) where T
-    docs_str = string.(docs) # TODO maybe we could do this later to allocate even less?
-    get_embeddings_document(embedder, docs_str; kwargs... )
-end
-
-function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
-    kwargs...)
-    get_embeddings_document(embedder.embedder, docs; kwargs...)
-end
 function get_embeddings_image(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString};
     kwargs...)
     get_embeddings_image(embedder.embedder, docs; kwargs...)
 end
 
-function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString},
-        cost_tracker,
-        target_batch_size_length,
-        ntasks, kwargs)
+function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{T}; kwargs...) where T
+    docs_str = string.(docs)
+    get_embeddings_document(embedder, docs_str; kwargs... )
+end
+function get_embeddings(embedder::CachedBatchEmbedder, docs::AbstractVector{<:AbstractString}; kwargs...)
+    get_embeddings_document(embedder, docs; kwargs...)
+end
+function get_embeddings_document(embedder::CachedBatchEmbedder, docs_raw::AbstractVector{T};
+    cost_tracker = Threads.Atomic{Float64}(0.0),
+    target_batch_size_length=80_000,
+    ntasks=4, ) where T
+    docs = string.(docs_raw) # TODO maybe we could do this later to allocate even less?
 
     if isempty(docs)
         embedder.verbose && @info "No documents to embed."
@@ -160,7 +159,7 @@ function get_embeddings_document(embedder::CachedBatchEmbedder, docs::AbstractVe
         try
             new_embeddings::Matrix{Float32} = get_embeddings_document(embedder.embedder, docs_to_embed;
                 verbose=embedder.verbose, model, truncate_dimension, cost_tracker,
-                target_batch_size_length, ntasks, kwargs...)
+                target_batch_size_length, ntasks, )
 
             # Update cache with new embeddings
             new_entries = Dict(doc_hashes[idx] => new_embeddings[:, i] 
