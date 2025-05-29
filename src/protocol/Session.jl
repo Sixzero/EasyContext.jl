@@ -42,25 +42,29 @@ conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
 
 
-function to_PT_messages(session::Session, sys_msg::String)
+function to_PT_messages(session::Session, sys_msg::String, images_in_messages_supported::Bool=false)
     messages = Vector{PT.AbstractChatMessage}(undef, length(session.messages) + 1)
     messages[1] = SystemMessage(sys_msg)
     
     for (i, msg) in enumerate(session.messages)
         full_content = context_combiner!(msg.content, msg.context)
         messages[i + 1] = if msg.role == :user
-            # Extract file paths from content
-            image_paths = validate_image_paths(extract_image_paths(msg.content))
-            
-            # Extract base64 images from context
-            base64_images = filter(p -> startswith(p.first, "base64img_"), msg.context)
-            base64_urls = isempty(base64_images) ? nothing : collect(values(base64_images))
-            
-            if !isempty(image_paths) || !isempty(base64_images)
-                # Use the existing constructor which handles both paths and base64
-                PT.UserMessageWithImages(full_content; 
-                    image_path = isempty(image_paths) ? nothing : image_paths,
-                    image_url = base64_urls)
+            if images_in_messages_supported
+                # Extract file paths from content
+                image_paths = validate_image_paths(extract_image_paths(msg.content))
+                
+                # Extract base64 images from context
+                base64_images = filter(p -> startswith(p.first, "base64img_"), msg.context)
+                base64_urls = isempty(base64_images) ? nothing : collect(values(base64_images))
+                
+                if !isempty(image_paths) || !isempty(base64_images)
+                    # Use the existing constructor which handles both paths and base64
+                    PT.UserMessageWithImages(full_content; 
+                        image_path = isempty(image_paths) ? nothing : image_paths,
+                        image_url = base64_urls)
+                else
+                    UserMessage(full_content)
+                end
             else
                 # No images
                 UserMessage(full_content)
