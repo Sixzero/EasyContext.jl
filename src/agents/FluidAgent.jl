@@ -202,13 +202,13 @@ function work(agent::FluidAgent, conv; cache=nothing,
         result = get_tool_results_agent(agent)
         
         tool_results_usr_msg = create_user_message(result)
+        push_message!(conv, tool_results_usr_msg)
         
         !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
         for (id, tool) in tools
             !isa(io, Base.TTY) && write(io, tool, id)
         end
         
-        push_message!(conv, tool_results_usr_msg)
     end
 
     return response
