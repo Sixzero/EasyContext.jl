@@ -3,15 +3,15 @@
     id::UUID = uuid4()
     language::String = "txt"
     file_path::String
+    root_path::Union{String, AbstractPath, Nothing} = nothing
     content::String
 end
 
 function create_tool(::Type{CreateFileTool}, cmd::ToolTag, root_path=nothing)
     file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
     language, content = parse_code_block(cmd.content)
-    # Expand the path during tool creation, similar to CatFileTool
-    file_path = expand_path(file_path, root_path === nothing ? get(cmd.kwargs, "root_path", "") : root_path)
-    CreateFileTool(; language, file_path, content)
+    root_path = root_path === nothing ? get(cmd.kwargs, "root_path", nothing) : root_path
+    CreateFileTool(; language, file_path, root_path, content)
 end
 
 toolname(cmd::Type{CreateFileTool}) = CREATE_FILE_TAG
@@ -25,8 +25,8 @@ It is important you ALWAYS close with "```$(END_OF_CODE_BLOCK) after the code bl
 stop_sequence(cmd::Type{CreateFileTool}) = ""
 
 function execute(tool::CreateFileTool; no_confirm=false)
-    # Path is already expanded during tool creation
-    path = tool.file_path
+    # Use the utility function to handle path expansion
+    path = expand_path(tool.file_path, tool.root_path)
     
     shell_cmd = process_create_command(path, tool.content)
     shortened_code = get_shortened_code(shell_cmd, 4, 2)
