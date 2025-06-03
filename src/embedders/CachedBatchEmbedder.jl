@@ -1,7 +1,6 @@
 using SHA
 using Parameters
 using RAGTools
-using PromptingTools: MODEL_EMBEDDING
 using Dates
 using Arrow
 using DataFrames
