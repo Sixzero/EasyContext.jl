@@ -135,7 +135,7 @@ using UUIDs
                 @test read("test.txt", String) == "Hello World\n"
                 
                 # Check results
-                @test !isempty(get_tool_results_agent(agent))
+                @test !isempty(get_tool_results_agent(agent.extractor.tool_tasks))
             end
         end
     end
@@ -186,7 +186,7 @@ using UUIDs
                 # Verify execution order
                 @test isfile("file1.txt")
                 @test read("file1.txt", String) == "Modified\n"
-                @test !isempty(get_tool_results_agent(agent))
+                @test !isempty(get_tool_results_agent(agent.extractor.tool_tasks))
             end
         end
     end
@@ -219,9 +219,9 @@ using UUIDs
                 execute_tools(agent.extractor; no_confirm=true)
                 
                 # Check error handling
-                @test !isempty(get_tool_results_agent(agent))
+                @test !isempty(get_tool_results_agent(agent.extractor.tool_tasks))
                 # Check if any tool result contains "No such file"
-                @test occursin("No such file", get_tool_results_agent(agent))
+                @test occursin("No such file", get_tool_results_agent(agent.extractor.tool_tasks))
             end
         end
     end
