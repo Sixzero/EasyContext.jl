@@ -16,7 +16,7 @@ struct WorkspaceCTXResult
     elapsed::Float64
 end
 
-Base.write(io::IO, ::WorkspaceCTXResult) = nothing
+Base.write(io::Base.TTY, ::WorkspaceCTXResult) = nothing
 
 Base.cd(f::Function, workspace_ctx::WorkspaceCTX) = cd(f, workspace_ctx.workspace)
 
