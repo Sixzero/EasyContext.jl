@@ -207,7 +207,6 @@ function work(agent::FluidAgent, conv; cache=nothing,
         prev_assistant_msg_id = conv.messages[end].id
         !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
         for (id, tool) in tools
-            @show id
             !isa(io, Base.TTY) && write(io, tool, id, prev_assistant_msg_id)
         end
         
