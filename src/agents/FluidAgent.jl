@@ -186,7 +186,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
         # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
         # res::VoiceResult = execute_tool(generate_voice(arguments))
 
-        are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(agent.extractor.tool_tasks)))
+        are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(agent.extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
         # Break if no more tool execution needed
         !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
         
@@ -204,9 +204,11 @@ function work(agent::FluidAgent, conv; cache=nothing,
         tool_results_usr_msg = create_user_message(result)
         push_message!(conv, tool_results_usr_msg)
         
+        prev_assistant_msg_id = conv.messages[end].id
         !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
         for (id, tool) in tools
-            !isa(io, Base.TTY) && write(io, tool, id)
+            @show id
+            !isa(io, Base.TTY) && write(io, tool, id, prev_assistant_msg_id)
         end
         
     end

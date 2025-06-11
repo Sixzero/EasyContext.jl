@@ -71,7 +71,9 @@ comments indicate where unchanged code has been skipped to spare rewriting the w
 Always close the code block with "```$(END_OF_CODE_BLOCK)".
 """
 stop_sequence(cmd::Type{ModifyFileTool}) = ""
+tool_format(::Type{ModifyFileTool}) = :multi_line
 
+execute_required_tools(::ModifyFileTool) = false
 execute(cmd::ModifyFileTool; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
 preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
 

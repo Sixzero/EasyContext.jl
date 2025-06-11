@@ -24,7 +24,7 @@ $(END_OF_BLOCK_TAG)
 """
 
 function parse_code_block(content::String)
-	lines = split(content, '\n')
+	lines = split(strip(content), '\n')
 	first_line = first(lines)
 	
 	if startswith(first_line, "```")
