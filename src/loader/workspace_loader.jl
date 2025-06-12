@@ -25,11 +25,11 @@ abstract type AbstractWorkspace end
         "fasl", "jl", "r", "R", "Rmd", "mat", "asm", "s", "dart", "sql", "md", "mdx", "markdown",
         "rst", "adoc", "tex", "sty", "gradle", "sbt", "xml", "properties", "plist",
         "proto", "proto3", "graphql", "prisma", "yml", "yaml", "svg",
-        "code-workspace", "txt", "json", "desktop"
+        "code-workspace", "txt", "json", "desktop", "csv", "tsv"
     ])
     NONVERBOSE_FILTERED_EXTENSIONS::Set{String} = Set{String}([
         "jld2", "png", "jpg", "jpeg", "ico", "gif", "pdf", "zip", "tar", "tgz", "lock", "gz", "bz2", "xz",
-        "doc", "docx", "ppt", "pptx", "xls", "xlsx", "csv", "tsv", "db", "sqlite", "sqlite3",
+        "doc", "docx", "ppt", "pptx", "xls", "xlsx", "db", "sqlite", "sqlite3",
         "mp3", "mp4", "wav", "avi", "mov", "mkv", "webm", "ttf", "otf", "woff", "woff2", "eot",
         "lock", "arrow", "exe", 
     ])
@@ -389,11 +389,11 @@ The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WO
 with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
 Our workspace has a root path: $(ws.root_path)
 The projects and their folders:
-""" * join(print_project_tree(ws, show_files=true, summary_callback=default_summary_callback,  do_print=false), "\n")
+""" * join(print_project_tree(ws, show_files=true, summary_callback=default_summary_callback,  do_print=false), "\n") * """
+Our shell cwd is also: $(ws.root_path)
 
-workspace_format_description(ws::AbstractWorkspace)  = """
-The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
-with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
-Our workspace has a root path: $(ws.root_path)
-The projects and their folders:
-""" * join(print_project_tree(ws, show_files=true, summary_callback=LLM_summary,  do_print=true), "\n")
+The system is:
+$(get_system())
+The used SHELL is:
+$(get_shell())
+"""

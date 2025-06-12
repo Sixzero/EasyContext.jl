@@ -41,4 +41,4 @@ EasyContext.preprocess(tool::AbstractToolGenerator) = tool
 EasyContext.get_id(tool::AbstractToolGenerator) = tool.tool.id
 EasyContext.is_cancelled(tool::AbstractToolGenerator) = false
 
-EasyContext.execute_required_tools(tg::AbstractToolGenerator) = (@warn "Undecided whether to require tool execution for $(tg)"; false)
+EasyContext.execute_required_tools(tg::AbstractToolGenerator) = (@warn "Undecided whether to require tool execution for $(typeof(tg))"; false)

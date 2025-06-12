@@ -1,7 +1,7 @@
 using FilePathsBase
 using PromptingTools: recursive_splitter
 using RAGTools
-using RAGTools: AbstractChunker, AbstractChunk
+using RAGTools: AbstractChunker
 using PyCall
 using LLMRateLimiters: EncodingStatePBE, partial_encode!, GreedyBPETokenizer, load_bpe_tokenizer
 
@@ -26,37 +26,37 @@ function RAGTools.get_chunks(chunker::NewlineChunker{T},
     return RAGTools.get_chunks(chunker, files_or_docs; sources=file_paths, verbose)
 end
 
-function RAGTools.get_chunks(chunker::NewlineChunker{T},
+function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType},
     files_or_docs::Vector{<:AbstractString};
     sources::AbstractVector{S},
-    verbose::Bool = true) where {T, S<:Union{AbstractPath,AbstractString}}
+    verbose::Bool = true) where {ChunkType, S<:Union{AbstractPath,AbstractString}}
 
     SAFETY_MAX_TOKEN_PERCENTAGE = 0.9 # depends on how accurate the approximator token counter is. its max difference is around 6-7%
     ACCURATE_THRESHOLD_RATIO = 0.5
 
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
-    output_chunks = Vector{T}()
+    output_chunks = Vector{ChunkType}()
 
-    formatter_tokens = estimate_tokens(string(T(; source=SourcePath(; path=""))), chunker.estimation_method)
+    formatter_tokens = estimate_tokens(string(ChunkType(; source=SourcePath(; path=""), content="")), chunker.estimation_method)
     effective_max_tokens = chunker.max_tokens * SAFETY_MAX_TOKEN_PERCENTAGE - formatter_tokens - chunker.line_number_token_estimate
 
     for i in eachindex(files_or_docs)
         doc_raw, source = files_or_docs[i], "$(sources[i])"
         if isempty(doc_raw)
-            push!(output_chunks, T(; source=SourcePath(; path=source), content=""))
+            push!(output_chunks, ChunkType(; source=SourcePath(; path=source), content=""))
             continue
         end
 
         estimated_tokens = estimate_tokens(doc_raw, chunker.estimation_method)
         if estimated_tokens <= effective_max_tokens * ACCURATE_THRESHOLD_RATIO
-            push!(output_chunks, T(; source=SourcePath(; path=source), content=doc_raw))
+            push!(output_chunks, ChunkType(; source=SourcePath(; path=source), content=doc_raw))
         else
             chunks, line_ranges = split_text_into_chunks_accurately(doc_raw, effective_max_tokens)
             is_cut = length(chunks) > 1
             
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
                 source_obj = is_cut ? SourcePath(; path=source, from_line=start_line, to_line=end_line) : SourcePath(; path=source)
-                push!(output_chunks, T(; content=chunk, source=source_obj))
+                push!(output_chunks, ChunkType(; content=chunk, source=source_obj))
             end
         end
     end

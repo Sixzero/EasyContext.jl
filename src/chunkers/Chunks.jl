@@ -9,9 +9,11 @@ mutable struct SourcePath
   to_line::Union{Int,Nothing}
   
   function SourcePath(; path::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
-    # Only check if the file exists if the path doesn't contain line number indicators
+    # Only check if the file exists if the path contains line number indicators
     if occursin(":", path)
-      @warn "Creating SourcePath with non-existent file: $path (pwd: $(pwd()))" stacktrace()
+      if !startswith(path, "http")
+        @warn "Creating SourcePath with non-existent file: $path (pwd: $(pwd()))" stacktrace()
+      end
     end
     new(path, from_line, to_line)
   end
