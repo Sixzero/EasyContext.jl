@@ -126,16 +126,17 @@ using UUIDs
                 ```endblock
                 """
                 
+                extract = agent.extractor_type(agent.tools)
                 # Extract and execute tools directly
-                extract_tool_calls(mock_content, agent.extractor, devnull; is_flush=true)
-                execute_tools(agent.extractor; no_confirm=true)
+                extract_tool_calls(mock_content, extract, devnull; is_flush=true)
+                execute_tools(extract; no_confirm=true)
                 
                 # Verify file was created
                 @test isfile("test.txt")
                 @test read("test.txt", String) == "Hello World\n"
                 
                 # Check results
-                @test !isempty(get_tool_results_agent(agent.extractor.tool_tasks))
+                @test !isempty(get_tool_results_agent(extract.tool_tasks))
             end
         end
     end
@@ -179,14 +180,15 @@ using UUIDs
                 ```endblock
                 """
                 
+                extractor = agent.extractor_type(agent.tools)
                 # Extract and execute tools directly
-                extract_tool_calls(mock_content, agent.extractor, devnull; is_flush=true)
-                execute_tools(agent.extractor; no_confirm=true)
+                extract_tool_calls(mock_content, extractor, devnull; is_flush=true)
+                execute_tools(extractor; no_confirm=true)
                 
                 # Verify execution order
                 @test isfile("file1.txt")
                 @test read("file1.txt", String) == "Modified\n"
-                @test !isempty(get_tool_results_agent(agent.extractor.tool_tasks))
+                @test !isempty(get_tool_results_agent(extractor.tool_tasks))
             end
         end
     end
@@ -214,14 +216,15 @@ using UUIDs
                 CATFILE non_existent.txt
                 """
                 
+                extractor = agent.extractor_type(agent.tools)
                 # Extract and execute tools directly
-                extract_tool_calls(mock_content, agent.extractor, devnull; is_flush=true)
-                execute_tools(agent.extractor; no_confirm=true)
+                extract_tool_calls(mock_content, extractor, devnull; is_flush=true)
+                execute_tools(extractor; no_confirm=true)
                 
                 # Check error handling
-                @test !isempty(get_tool_results_agent(agent.extractor.tool_tasks))
+                @test !isempty(get_tool_results_agent(extractor.tool_tasks))
                 # Check if any tool result contains "No such file"
-                @test occursin("No such file", get_tool_results_agent(agent.extractor.tool_tasks))
+                @test occursin("No such file", get_tool_results_agent(extractor.tool_tasks))
             end
         end
     end

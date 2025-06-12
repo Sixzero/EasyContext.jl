@@ -10,19 +10,19 @@ abstract type AbstractAgent end
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
 """
-@kwdef mutable struct FluidAgent{E<:AbstractExtractor, S<:AbstractSysMessage} <: AbstractAgent
+@kwdef mutable struct FluidAgent{S<:AbstractSysMessage} <: AbstractAgent
     tools::Vector
     model::String = "claude"
     workspace::String = pwd()
-    extractor::E=ToolTagExtractor(; tools)
+    extractor_type=ToolTagExtractor
     sys_msg::S=SysMessageV1()
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
 function create_FluidAgent(model::String="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor)
-    extractor = extractor_type(tools)
+    # extractor = extractor_type(tools)
     sys_msg_v1 = SysMessageV1(; sys_msg)
-    agent = FluidAgent(; tools, model, extractor, sys_msg=sys_msg_v1)
+    agent = FluidAgent(; tools, model, extractor_type, sys_msg=sys_msg_v1)
     agent
 end
 
@@ -124,7 +124,8 @@ function work(agent::FluidAgent, conv; cache=nothing,
     on_start=noop,
     io=stdout,
     tool_kwargs=Dict(),
-    thinking::Union{Nothing,Int}=nothing
+    thinking::Union{Nothing,Int}=nothing,
+    MAX_NUMBER_OF_TOOL_CALLS=4,
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -155,10 +156,9 @@ function work(agent::FluidAgent, conv; cache=nothing,
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
 
     response = nothing
-    while true
+    for i in 1:MAX_NUMBER_OF_TOOL_CALLS
         # Create new ToolTagExtractor for each run
-        extractor = typeof(agent.extractor)(agent.tools)
-        agent.extractor = extractor
+        extractor = agent.extractor_type(agent.tools)
 
         cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
             on_done = () -> begin
@@ -186,7 +186,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
         # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
         # res::VoiceResult = execute_tool(generate_voice(arguments))
 
-        are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(agent.extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
+        are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
         # Break if no more tool execution needed
         !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
         
@@ -196,15 +196,16 @@ function work(agent::FluidAgent, conv; cache=nothing,
             break
         end
 
-        tools = [(id, fetch(tool)) for (id, tool) in agent.extractor.tool_tasks]
+        tools = [(id, fetch(tool)) for (id, tool) in extractor.tool_tasks]
 
         # Add tool results to conversation for next iteration
-        result = get_tool_results_agent(agent.extractor.tool_tasks)
-        
-        tool_results_usr_msg = create_user_message(result)
-        push_message!(conv, tool_results_usr_msg)
+        result = get_tool_results_agent(extractor.tool_tasks)
         
         prev_assistant_msg_id = conv.messages[end].id
+        tool_results_usr_msg = create_user_message(result)
+
+        push_message!(conv, tool_results_usr_msg)
+        
         !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
         for (id, tool) in tools
             !isa(io, Base.TTY) && write(io, tool, id, prev_assistant_msg_id)
