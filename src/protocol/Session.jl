@@ -66,8 +66,10 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
                 UserMessage(full_content)
             end
         elseif msg.role == :assistant 
+            full_content = context_combiner!(msg.content, msg.context)
             AIMessage(full_content)
         else
+            full_content = context_combiner!(msg.content, msg.context)
             UserMessage(full_content)
         end
     end
