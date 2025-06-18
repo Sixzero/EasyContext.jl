@@ -105,7 +105,11 @@ function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::
 end
 
 function get_tool_results_agent(tool_tasks)
-    join(result2string.(fetch.(values(tool_tasks))), "\n")
+    tasks = fetch.(values(tool_tasks))
+    str_results = join(result2string.(tasks), "\n")
+    img_results = filter!(x -> !isempty(x), resultimg2base64.(tasks))
+    audio_results = filter!(x -> !isempty(x), resultaudio2base64.(tasks))
+    (str_results, img_results, audio_results)
 end
 
 function work(agent::FluidAgent, conv::AbstractString; kwargs...)
@@ -199,10 +203,10 @@ function work(agent::FluidAgent, conv; cache=nothing,
         tools = [(id, fetch(tool)) for (id, tool) in extractor.tool_tasks]
 
         # Add tool results to conversation for next iteration
-        result = get_tool_results_agent(extractor.tool_tasks)
+        result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
         
         prev_assistant_msg_id = conv.messages[end].id
-        tool_results_usr_msg = create_user_message(result)
+        tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
 
         push_message!(conv, tool_results_usr_msg)
         

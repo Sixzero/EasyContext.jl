@@ -29,6 +29,16 @@ function create_user_message(user_query, context::Dict{String,String}=Dict{Strin
     Message(timestamp=now(UTC), role=:user, content=user_query, context=context)
 end
 
+function create_user_message_with_vectors(user_query; images_base64::Vector{String}=String[], audio_base64::Vector{String}=String[])
+	context = Dict{String,String}()
+	for (i, img) in enumerate(images_base64)
+			context["base64img_$i"] = img
+	end
+	for (i, audio) in enumerate(audio_base64)
+			context["base64audio_$i"] = audio
+	end
+	Message(timestamp=now(UTC), role=:user, content=user_query, context=context)
+end
 
 update_message(msg::M, itok, otok, cached, cache_read, price, elapsed) where {M <: MSG} = begin
 	msg.itok       = itok

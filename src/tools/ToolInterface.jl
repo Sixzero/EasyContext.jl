@@ -86,6 +86,8 @@ tool_format(tool::AbstractTool)::Symbol = tool_format(typeof(tool))
 
 
 result2string(tool::AbstractTool)::String = ""
+resultimg2base64(tool::AbstractTool)::String = ""
+resultaudio2base64(tool::AbstractTool)::String = ""
 
 # This is a fallback, in case a model would forget tool calling request after the end of conversation, we automatically execute tools that REQUIRE execution, like CATFILE and WEBSEARCH and WORKSPACE_SEARCH
 execute_required_tools(::Type{<:AbstractTool}) = false
