@@ -37,7 +37,7 @@ function initialize!(sys::SysMessageV1, agent, force=false)
 
         $(get_tool_descriptions(agent.tools))
         
-        $(join(filter(x -> !isnothing(x), get_extra_description.(agent.tools)), "\n\n"))
+        $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(agent.tools)), "\n\n"))
 
         If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
 

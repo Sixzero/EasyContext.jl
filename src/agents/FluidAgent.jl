@@ -125,7 +125,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
-    MAX_NUMBER_OF_TOOL_CALLS=4,
+    MAX_NUMBER_OF_TOOL_CALLS=6,
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -189,7 +189,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
         are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
         # Break if no more tool execution needed
         !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
-        
+
         # Check if all tools were cancelled
         if are_tools_cancelled(extractor)
             @info "All tools were cancelled by user, stopping further processing"
