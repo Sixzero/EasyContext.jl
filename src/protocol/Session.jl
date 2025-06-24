@@ -51,16 +51,16 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             # Extract file paths from content
             image_paths = imagepaths_in_messages_supported ? validate_image_paths(extract_image_paths(msg.content)) : String[]
             
-            # Extract base64 images from context
-            base64_images = filter(p -> startswith(p.first, "base64img_"), msg.context)
-            base64_urls = isempty(base64_images) ? nothing : collect(values(base64_images))
+            # Extract base64 images from context - check both key naming and data:image prefix
+            base64_images = filter(p -> startswith(p.first, "base64img_") || startswith(p.second, "data:image"), collect(msg.context))
+            base64_urls = isempty(base64_images) ? String[] : [p.second for p in base64_images]
             
-            if !isempty(image_paths) || !isempty(base64_images)
+            if !isempty(image_paths) || !isempty(base64_urls)
                 # Use the existing constructor which handles both paths and base64
                 new_content = context_combiner!(msg.content, msg.context, false)
                 PT.UserMessageWithImages(new_content; 
                     image_path = isempty(image_paths) ? nothing : image_paths,
-                    image_url = base64_urls)
+                    image_url = isempty(base64_urls) ? nothing : base64_urls)
             else
                 full_content = context_combiner!(msg.content, msg.context)
                 UserMessage(full_content)

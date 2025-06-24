@@ -107,8 +107,14 @@ end
 function get_tool_results_agent(tool_tasks)
     tasks = fetch.(values(tool_tasks))
     str_results = join(result2string.(tasks), "\n")
-    img_results = filter!(x -> !isempty(x), resultimg2base64.(tasks))
-    audio_results = filter!(x -> !isempty(x), resultaudio2base64.(tasks))
+    img_results = String[]
+    for img_vec in resultimg2base64.(tasks)
+        !isnothing(img_vec) && append!(img_results, img_vec)
+    end
+    audio_results = String[]
+    for audio_vec in resultaudio2base64.(tasks)
+        !isnothing(audio_vec) && append!(audio_results, audio_vec)
+    end
     (str_results, img_results, audio_results)
 end
 
@@ -164,7 +170,12 @@ function work(agent::FluidAgent, conv; cache=nothing,
         # Create new ToolTagExtractor for each run
         extractor = agent.extractor_type(agent.tools)
 
-        cb = create(StreamCallbackTYPE(; io, on_start, on_error, highlight_enabled, process_enabled,
+        cb = create(StreamCallbackTYPE(; 
+            io, 
+            on_start, 
+            on_error, 
+            highlight_enabled, 
+            process_enabled,
             on_done = () -> begin
                 process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
                 on_done()

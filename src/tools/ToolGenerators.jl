@@ -40,7 +40,7 @@ tool_format(tg::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
 EasyContext.preprocess(tool::AbstractToolGenerator) = tool
 EasyContext.get_id(tool::AbstractToolGenerator) = tool.tool.id
 EasyContext.is_cancelled(tool::AbstractToolGenerator) = false
-EasyContext.resultimg2base64(tool::AbstractToolGenerator) = ""
-EasyContext.resultaudio2base64(tool::AbstractToolGenerator) = ""
+EasyContext.resultimg2base64(tool::AbstractToolGenerator) = nothing
+EasyContext.resultaudio2base64(tool::AbstractToolGenerator) = nothing
 
 EasyContext.execute_required_tools(tg::AbstractToolGenerator) = (@warn "Undecided whether to require tool execution for $(typeof(tg))"; false)
