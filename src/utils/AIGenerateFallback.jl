@@ -90,7 +90,7 @@ end
 function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; condition=nothing, api_kwargs, kwargs...)
     for model in manager.models
         api_kwargs_for_model = get_api_kwargs_for_model(api_kwargs, model)
-        readtimeout = model == "o3m" || model == "o4m" ? 60 : manager.readtimeout
+        readtimeout = is_openai_reasoning_model(model) ? 60 : manager.readtimeout
         state = get!(manager.states, model, ModelState())
         maybe_recover_model!(state)
         !state.available && continue
@@ -117,11 +117,15 @@ function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; condi
 end
 
 function get_api_kwargs_for_model(api_kwargs, model::String)
-    if model == "o3m" || model == "o4m" # TODO: no temperature support for o3m
+    if is_openai_reasoning_model(model) # TODO: no temperature support for o3m
         return (; )
     end
     if model == "claude"
         return merge(api_kwargs, (; max_tokens = 16000))
     end
     return api_kwargs
+end
+
+function is_openai_reasoning_model(model::String)
+    return model == "o3" || model == "o3m" || model == "o4m"
 end

@@ -118,6 +118,15 @@ function get_tool_results_agent(tool_tasks)
     (str_results, img_results, audio_results)
 end
 
+"""
+Check if response content contains any stop sequences, indicating tool execution is needed.
+This is a fallback for models that don't properly support stop sequences.
+"""
+function content_has_stop_sequences(content::AbstractString, stop_sequences::Vector{String})
+    isempty(stop_sequences) && return false
+    any(seq -> occursin(seq, content), stop_sequences)
+end
+
 function work(agent::FluidAgent, conv::AbstractString; kwargs...)
     conv_ctx = Session(; messages=[create_user_message(conv)])
     work(agent, conv_ctx; kwargs...)
@@ -154,7 +163,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
         api_kwargs = (; api_kwargs..., max_tokens=16384)
     end
     
-    if agent.model == "o3m" # NOTE: o3m does not support temperature and top_p
+    if is_openai_reasoning_model(agent.model) # NOTE: o3m does not support temperature and top_p
         api_kwargs = (; )
     end
 
@@ -202,8 +211,12 @@ function work(agent::FluidAgent, conv; cache=nothing,
         # res::VoiceResult = execute_tool(generate_voice(arguments))
 
         are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
+        
+        # Check if tool execution is needed - either from callback or content contains stop sequences
+        needs_execution = needs_tool_execution(cb.run_info) || content_has_stop_sequences(response.content, stop_sequences)
+        
         # Break if no more tool execution needed
-        !needs_tool_execution(cb.run_info) && isempty(are_there_simple_tools) && break
+        !needs_execution && isempty(are_there_simple_tools) && break
 
         # Check if all tools were cancelled
         if are_tools_cancelled(extractor)
@@ -237,6 +250,7 @@ Apply stop sequence kwargs based on model type and available sequences.
 function apply_stop_seq_kwargs(api_kwargs::NamedTuple, model::String, stop_sequences::Vector{String})
     isempty(stop_sequences) && return api_kwargs
     startswith(model, "gem") && return api_kwargs
+    is_openai_reasoning_model(model) && return api_kwargs
     key = startswith(model, "claude") ? :stop_sequences : :stop
     merge(api_kwargs, (; key => stop_sequences))
 end
