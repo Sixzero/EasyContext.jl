@@ -15,11 +15,11 @@ Base.@kwdef mutable struct ModelState
 end
 
 """
-    AIGenerateFallback{T<:Union{String,Vector{String}}}
+    AIGenerateFallback
 
 Manages fallback and retry logic for AI model generation.
 """
-Base.@kwdef mutable struct AIGenerateFallback{T<:Union{String,Vector{String}}}
+Base.@kwdef mutable struct AIGenerateFallback{T}
     models::T
     states::Dict{String,ModelState} = Dict{String,ModelState}()
     readtimeout::Int = 60
@@ -46,86 +46,72 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
     return "Model '$model': Error: $e"
 end
 
+# Single model attempt - DRY principle
+function attempt_generate(model_or_config, prompt, manager, state; condition=nothing, api_kwargs=NamedTuple(), kwargs...)
+    model_name = get_model_name(model_or_config)
+    readtimeout = is_openai_reasoning_model(model_name) ? 60 : manager.readtimeout
+    
+    # Prepare kwargs based on model type - now centralized in ModelConfig
+    final_api_kwargs, final_kwargs = if model_or_config isa ModelConfig
+        merged_api = get_api_kwargs_for_model(model_or_config, api_kwargs)
+        merged_kw = merge(model_or_config.default_kwargs, kwargs)
+        (merged_api, merged_kw)
+    else
+        (get_api_kwargs_for_model(model_name, api_kwargs), kwargs)
+    end
+
+    res = aigenerate_with_config(model_or_config, prompt; 
+        http_kwargs=(; readtimeout), 
+        api_kwargs=final_api_kwargs, 
+        final_kwargs...)
+    
+    # Check condition if provided
+    if !isnothing(condition) && !condition(res)
+        error("Generated content did not meet condition criteria")
+    end
+    
+    res
+end
+
 """
     try_generate(manager::AIGenerateFallback, prompt; condition=nothing, kwargs...)
 
 Attempts to generate AI response with retry and fallback logic.
-Optional `condition` function can be provided to validate the generated result.
 """
-function try_generate(manager::AIGenerateFallback{String}, prompt; condition=nothing, api_kwargs, kwargs...)
-    model = manager.models
-    state = get!(manager.states, model, ModelState())
-    maybe_recover_model!(state)
-
-    api_kwargs = get_api_kwargs_for_model(api_kwargs, model)
+function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, api_kwargs=NamedTuple(), kwargs...)
+    models = manager.models isa AbstractVector ? manager.models : [manager.models]
     
-    if contains(lowercase(model), "mistral") && haskey(api_kwargs, :top_p)
-        api_kwargs = NamedTuple(k => v for (k, v) in pairs(api_kwargs) if k != :top_p)
-    end
-
-    for attempt in 1:3
-        result, time = @timed try
-            res = aigenerate(prompt; model, http_kwargs=(; readtimeout=manager.readtimeout), api_kwargs, kwargs...)
-            
-            # Check condition if provided
-            if !isnothing(condition) && !condition(res)
-                error("Generated content did not meet condition criteria")
-            end
-            
-            res
-        catch e
-            reason = handle_error!(state, e, model)
-            attempt == 3 && (disable_model!(state, "Failed after 3 retries: $reason"); rethrow(e))
-            sleep_time = 2^attempt
-            @warn "Model attempt $attempt/3: $reason Sleeping for $sleep_time seconds"
-            e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(sleep_time)
-            e isa TimeoutError && (manager.readtimeout *= 2) # NOTE: This is not a good idea, but it's a quick fix
-            continue
-        end
-        push!(state.runtimes, time)
-        return result
-    end
-end
-
-function try_generate(manager::AIGenerateFallback{Vector{String}}, prompt; condition=nothing, api_kwargs, kwargs...)
-    for model in manager.models
-        api_kwargs_for_model = get_api_kwargs_for_model(api_kwargs, model)
-        readtimeout = is_openai_reasoning_model(model) ? 60 : manager.readtimeout
-        state = get!(manager.states, model, ModelState())
+    for model_or_config in models
+        model_name = get_model_name(model_or_config)
+        state = get!(manager.states, model_name, ModelState())
         maybe_recover_model!(state)
         !state.available && continue
         
-        result, time = @timed try
-            res = aigenerate(prompt; model, http_kwargs=(; readtimeout), api_kwargs=api_kwargs_for_model, kwargs...)
-            
-            # Check condition if provided
-            if !isnothing(condition) && !condition(res)
-                error("Generated content did not meet condition criteria")
+        # Retry logic for single model
+        for attempt in 1:3
+            result, time_taken = @timed try
+                attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs, kwargs...)
+            catch e
+                reason = handle_error!(state, e, model_name)
+                if attempt == 3
+                    disable_model!(state, "Failed after 3 retries: $reason")
+                    break
+                end
+                
+                sleep_time = 2^attempt
+                @warn "Model attempt $attempt/3: $reason Sleeping for $sleep_time seconds"
+                e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(sleep_time)
+                e isa TimeoutError && (manager.readtimeout *= 2)
+                continue
             end
             
-            res
-        catch e
-            reason = handle_error!(state, e, model)
-            disable_model!(state, reason)
-            continue
+            push!(state.runtimes, time_taken)
+            return result
         end
-        push!(state.runtimes, time)
-        return result
     end
-    reasons = ["$m: $(manager.states[m].reason)" for m in manager.models if haskey(manager.states, m)]
+    
+    # All models failed
+    model_names = [get_model_name(m) for m in models]
+    reasons = ["$m: $(manager.states[m].reason)" for m in model_names if haskey(manager.states, m)]
     error("All models failed:\n" * join(reasons, "\n"))
-end
-
-function get_api_kwargs_for_model(api_kwargs, model::String)
-    if is_openai_reasoning_model(model) # TODO: no temperature support for o3m
-        return (; )
-    end
-    if model == "claude"
-        return merge(api_kwargs, (; max_tokens = 16000))
-    end
-    return api_kwargs
-end
-
-function is_openai_reasoning_model(model::String)
-    return model == "o3" || model == "o3m" || model == "o4m"
 end

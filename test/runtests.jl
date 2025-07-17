@@ -15,4 +15,5 @@ using Test
     include("test_workspace_search_tool.jl")
     include("test_workspace_ctx.jl")
     include("test_rag_pipelines.jl")
+    include("test_model_config.jl")
 end

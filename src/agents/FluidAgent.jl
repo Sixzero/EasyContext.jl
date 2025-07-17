@@ -12,7 +12,7 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
 """
 @kwdef mutable struct FluidAgent{S<:AbstractSysMessage} <: AbstractAgent
     tools::Vector
-    model::String = "claude"
+    model::Union{String,ModelConfig} = "claude"
     workspace::String = pwd()
     extractor_type=ToolTagExtractor
     sys_msg::S=SysMessageV1()
@@ -149,80 +149,51 @@ function work(agent::FluidAgent, conv; cache=nothing,
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
     
-    # Collect unique stop sequences from tools only if IO is stdout
+    # Collect unique stop sequences from tools
     stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
+    length(stop_sequences) > 1 && @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
     
-    if length(stop_sequences) > 1
-        @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
-    end
+    model_name = get_model_name(agent.model)
     
-    # Base API kwargs without stop sequences
-    api_kwargs = (; top_p=0.7, temperature=0.5, )
+    # Base API kwargs - now using centralized logic
+    base_kwargs = (; top_p=0.7, temperature=0.5)
+    api_kwargs = get_api_kwargs_for_model(model_name, base_kwargs)
     
-    if startswith(agent.model, "claude") # NOTE: o3m does not support temperature and top_p
-        api_kwargs = (; api_kwargs..., max_tokens=16384)
-    end
+    # Apply thinking and stop sequences using centralized functions
+    api_kwargs = apply_thinking_kwargs(api_kwargs, model_name, thinking)
+    api_kwargs = apply_stop_sequences(model_name, api_kwargs, stop_sequences)
     
-    if is_openai_reasoning_model(agent.model) # NOTE: o3m does not support temperature and top_p
-        api_kwargs = (; )
-    end
-
-    # Apply thinking API parameters if specified
-    api_kwargs = apply_thinking_kwargs(api_kwargs, agent.model, thinking)
-    
-    # Apply stop sequences
-    api_kwargs = apply_stop_seq_kwargs(api_kwargs, agent.model, stop_sequences)
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
-
     response = nothing
+    
     for i in 1:MAX_NUMBER_OF_TOOL_CALLS
         # Create new ToolTagExtractor for each run
         extractor = agent.extractor_type(agent.tools)
 
         cb = create(StreamCallbackTYPE(; 
-            io, 
-            on_start, 
-            on_error, 
-            highlight_enabled, 
-            process_enabled,
+            io, on_start, on_error, highlight_enabled, process_enabled,
             on_done = () -> begin
                 process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
                 on_done()
             end,
             on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
         ))
-        model = agent.model
-        response = aigenerate(
-            to_PT_messages(conv, sys_msg_content);
-            model,
-            cache, 
-            api_kwargs,
-            streamcallback=cb,
-            verbose=false
-        )
+        
+        # @save "conv.jld2" conv api_kwargs agent.model sys_msg_content cache
+        
+        response = aigenerate_with_config(agent.model, to_PT_messages(conv, sys_msg_content);
+            cache, api_kwargs, streamcallback=cb, verbose=false)
         
         push_message!(conv, create_AI_message(response.content))
-
         execute_tools(extractor; no_confirm)
-        # idea:
-        # res::TextResult = execute_tool(browser_use_tool(arguments))
-        # res::ImgNTextResult = execute_tool(click_brower_use(arguments))
-        # res::ImgNTextResult = execute_tool(browser_use_tool(arguments))
-        # res::VoiceResult = execute_tool(generate_voice(arguments))
 
         are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
         
         # Check if tool execution is needed - either from callback or content contains stop sequences
         needs_execution = needs_tool_execution(cb.run_info) || content_has_stop_sequences(response.content, stop_sequences)
         
-        # Break if no more tool execution needed
-        !needs_execution && isempty(are_there_simple_tools) && break
-
-        # Check if all tools were cancelled
-        if are_tools_cancelled(extractor)
-            @info "All tools were cancelled by user, stopping further processing"
-            break
-        end
+        (!needs_execution && isempty(are_there_simple_tools)) && break
+        are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
 
         tools = [(id, fetch(tool)) for (id, tool) in extractor.tool_tasks]
 
@@ -234,23 +205,13 @@ function work(agent::FluidAgent, conv; cache=nothing,
 
         push_message!(conv, tool_results_usr_msg)
         
-        !isa(io, Base.TTY) && write(io, create_user_message("Tool results."))
-        for (id, tool) in tools
-            !isa(io, Base.TTY) && write(io, tool, id, prev_assistant_msg_id)
+        if !isa(io, Base.TTY)
+            write(io, create_user_message("Tool results."))
+            for (id, tool) in tools
+                write(io, tool, id, prev_assistant_msg_id)
+            end
         end
-        
     end
 
     return response
-end
-
-"""
-Apply stop sequence kwargs based on model type and available sequences.
-"""
-function apply_stop_seq_kwargs(api_kwargs::NamedTuple, model::String, stop_sequences::Vector{String})
-    isempty(stop_sequences) && return api_kwargs
-    startswith(model, "gem") && return api_kwargs
-    is_openai_reasoning_model(model) && return api_kwargs
-    key = startswith(model, "claude") ? :stop_sequences : :stop
-    merge(api_kwargs, (; key => stop_sequences))
 end
