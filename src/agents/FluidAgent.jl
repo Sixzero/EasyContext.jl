@@ -19,7 +19,7 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::String="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor)
+function create_FluidAgent(model::Union{String, ModelConfig}="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor)
     # extractor = extractor_type(tools)
     sys_msg_v1 = SysMessageV1(; sys_msg)
     agent = FluidAgent(; tools, model, extractor_type, sys_msg=sys_msg_v1)

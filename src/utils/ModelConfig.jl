@@ -95,7 +95,10 @@ Generate AI response using a ModelConfig with merged defaults, or a model name s
 function aigenerate_with_config(config::ModelConfig, prompt; kwargs...)
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     final_api_kwargs = get_api_kwargs_for_model(config, base_api_kwargs)
-    merged_kwargs = merge(config.default_kwargs, kwargs, (; api_kwargs = final_api_kwargs))
+    
+    # Convert kwargs to NamedTuple and merge properly
+    kwargs_nt = NamedTuple(kwargs)
+    merged_kwargs = merge(config.default_kwargs, kwargs_nt, (; api_kwargs = final_api_kwargs))
     aigenerate(config.schema, prompt; model = config.name, merged_kwargs...)
 end
 

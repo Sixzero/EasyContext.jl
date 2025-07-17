@@ -5,8 +5,9 @@
     root_path::Union{String, AbstractPath, Nothing} = nothing
     result::String = ""
 end
-create_tool(::Type{CatFileTool}, cmd::ToolTag, root_path=nothing) = begin
+create_tool(::Type{CatFileTool}, cmd::ToolTag) = begin
     file_path = cmd.args
+    root_path = get(cmd.kwargs, "root_path", nothing)
     CatFileTool(; id=uuid4(), file_path, root_path)
 end
 
