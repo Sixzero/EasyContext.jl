@@ -68,6 +68,8 @@ To modify the file, always try to highlight the changes and relevant code and tr
 "... existing code ..."
 comments indicate where unchanged code has been skipped to spare rewriting the whole codebase again.
 
+To make multiple changes to the same file, list ALL changes in a single MODIFY block for that file and if necessary use "...existing code..." block to separate the changes.
+
 Always close the code block with "```$(END_OF_CODE_BLOCK)".
 """
 stop_sequence(cmd::Type{ModifyFileTool}) = ""
