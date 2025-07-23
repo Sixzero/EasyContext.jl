@@ -24,6 +24,7 @@ tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 
 
 @kwdef mutable struct WorkspaceToolGenerator <: AbstractToolGenerator
+    edge_id::String
     workspace_context::WorkspaceCTX
 end
 function create_tool(wtg::WorkspaceToolGenerator, cmd::ToolTag)
