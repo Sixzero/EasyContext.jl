@@ -94,7 +94,7 @@ end
 
 # replace_models = ["gpt4om", "gem15f"]
 # replace_models = ["tqwen25b72"]
-function apply_modify_by_replace(original_content::AbstractString, changes_content::AbstractString; models=["gem20f", "tqwen25b72", "gpt4om", ], temperature=0, verbose=false)
+function apply_modify_by_replace(original_content::AbstractString, changes_content::AbstractString; models=["gem25f", "gem20f", "claude"], temperature=0, verbose=false)
     best_result = original_content
     best_missing_patterns = String[]
     prompt = get_replace_prompt(original_content, changes_content)
