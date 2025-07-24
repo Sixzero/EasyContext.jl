@@ -31,12 +31,12 @@ end
 
 # Get single line tags dynamically from tools
 function get_single_line_tags(tools::Vector)
-    [toolname(T) for T in tools if tool_format(T) == :single_line]
+    String[toolname(T) for T in tools if tool_format(T) == :single_line]
 end
 
 # Get multi line tags dynamically from tools
 function get_multi_line_tags(tools::Vector)
-    [toolname(T) for T in tools if tool_format(T) == :multi_line]
+    String[toolname(T) for T in tools if tool_format(T) == :multi_line]
 end
 
 # Get tool map dynamically from tools

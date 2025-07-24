@@ -20,6 +20,7 @@ Configuration specification for AI models with default parameters and metadata.
     cost_of_token_generation::Float64 = 0.0
     default_api_kwargs::NamedTuple = NamedTuple()
     default_kwargs::NamedTuple = NamedTuple()
+    extras::NamedTuple = NamedTuple()
 end
 
 # Single responsibility: extract model name from either string or config
