@@ -19,10 +19,9 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::Union{String, ModelConfig}="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor)
-    # extractor = extractor_type(tools)
-    sys_msg_v1 = SysMessageV1(; sys_msg)
-    agent = FluidAgent(; tools, model, extractor_type, sys_msg=sys_msg_v1)
+function create_FluidAgent(model::Union{String, ModelConfig}="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor, custom_system_message::Union{String, Nothing}=nothing)
+    sys_msg_v2 = SysMessageV2(; sys_msg, custom_system_message)
+    agent = FluidAgent(; tools, model, extractor_type, sys_msg=sys_msg_v2)
     agent
 end
 
@@ -178,8 +177,8 @@ function work(agent::FluidAgent, conv; cache=nothing,
             end,
             on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
         ))
-        
-        # @save "conv.jld2" conv api_kwargs agent.model sys_msg_content cache
+        model = agent.model
+        @save "conv.jld2" conv sys_msg_content model api_kwargs cache
         
         response = aigenerate_with_config(agent.model, to_PT_messages(conv, sys_msg_content);
             cache, api_kwargs, streamcallback=cb, verbose=false)

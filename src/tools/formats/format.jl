@@ -1,11 +1,13 @@
-code_format(content::String, language::String="") = ""*
-"""```$language
-$content
-```$(END_OF_CODE_BLOCK)"""
-
-raw_format(content::String) = """```
-$content
-```"""
+function code_format(content::String, language::String="") 
+	"""```$language
+	$(strip(content))
+	```$(END_OF_CODE_BLOCK)"""
+end
+function raw_format(content::String) 
+	"""```
+	$content
+	```"""
+end
 
 function file_format(filepath::String, content::String, language::String="")
     return """
@@ -13,15 +15,17 @@ function file_format(filepath::String, content::String, language::String="")
     $(code_format(content, language))"""
 end
 
-source_format(tag::String, filepath::String, content::String) = """$tag $filepath
-$(raw_format(content))"""
+function source_format(tag::String, filepath::String, content::String)
+	"""$tag $filepath
+	$(raw_format(content))"""
+end
 
-
-email_format(to::String, subject::String, content::String) = ""*
-"""$(EMAIL_TAG) to=$to subject="$subject"
-$content
-$(END_OF_BLOCK_TAG)
-"""
+function email_format(to::String, subject::String, content::String)
+	"""$(EMAIL_TAG) to=$to subject="$subject"
+	$content
+	$(END_OF_BLOCK_TAG)
+	"""
+end
 
 function parse_code_block(content::String)
 	lines = split(strip(content), '\n')
