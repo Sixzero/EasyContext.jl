@@ -139,6 +139,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
     process_enabled::Bool=true,
     on_error=noop,
     on_done=noop,
+    on_finish=noop,
     on_start=noop,
     io=stdout,
     tool_kwargs=Dict(),
@@ -211,6 +212,8 @@ function work(agent::FluidAgent, conv; cache=nothing,
             end
         end
     end
+
+    on_finish()
 
     return response
 end
