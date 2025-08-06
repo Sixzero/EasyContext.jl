@@ -48,6 +48,7 @@ function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType},
         end
 
         estimated_tokens = estimate_tokens(doc_raw, chunker.estimation_method)
+        @show estimated_tokens
         if estimated_tokens <= effective_max_tokens * ACCURATE_THRESHOLD_RATIO
             push!(output_chunks, ChunkType(; source=SourcePath(; path=source), content=doc_raw))
         else
@@ -91,10 +92,10 @@ function split_text_into_chunks(text::String, estimation_method::TokenEstimation
     return chunks, line_ranges
 end
 
-function split_text_into_chunks_accurately(text::String, max_tokens::Number, verbose = true)
+function split_text_into_chunks_accurately(text::AbstractString, max_tokens::Number, verbose = true, separator::String = "\n")
     chunks = String[]
     line_ranges = Tuple{Int,Int}[]
-    lines = split(text, '\n')
+    lines = split(text, separator)
     start_line = 1
     
     tokenizer = load_bpe_tokenizer("cl100k_base", verbose)
@@ -102,24 +103,53 @@ function split_text_into_chunks_accurately(text::String, max_tokens::Number, ver
     
     for (line_number, line) in enumerate(lines)
         # Add this line to the current state
-        partial_encode!(tokenizer, line * "\n", state)
-        
-        if length(state.result) > max_tokens && line_number > start_line
-            # Current chunk exceeds max tokens, finalize it
-            chunk_text =  join(view(lines, start_line:line_number-1), '\n')
-            push!(chunks, chunk_text)
-            push!(line_ranges, (start_line, line_number - 1))
-            
+        line_with_sep = line * separator
+        partial_encode!(tokenizer, line_with_sep, state)
+        token_count = length(state.result)
+
+        if token_count > max_tokens
+            if line_number > start_line
+                # Current chunk exceeds max tokens, finalize it
+                chunk_text = join(view(lines, start_line:line_number-1), separator)
+                push!(chunks, chunk_text)
+                push!(line_ranges, (start_line, line_number - 1))
+            end
+
             # Reset for next chunk
             state = EncodingStatePBE()
-            partial_encode!(tokenizer, line * "\n", state)
+            partial_encode!(tokenizer, line_with_sep, state)
+            
+            # Check if single line is too long after reset
+            if length(state.result) > max_tokens
+                if separator == "\n"
+                    # Split this line using sentence separator
+                    sub_chunks, sub_ranges = split_text_into_chunks_accurately(line, max_tokens, verbose, ".")
+                    append!(chunks, sub_chunks)
+                    # Adjust line ranges for sub-chunks
+                    for (sub_start, sub_end) in sub_ranges
+                        push!(line_ranges, (line_number, line_number))
+                    end
+                    state = EncodingStatePBE()
+                    start_line = line_number + 1
+                    continue
+                else
+                    # Already at sentence level, just add as is (truncate if needed)
+                    @warn "Sentences TOO LONG, we cannot handle! Length: $(length(line))"
+                    push!(chunks, line)
+                    push!(line_ranges, (line_number, line_number))
+                    state = EncodingStatePBE()
+                    start_line = line_number + 1
+                    continue
+                end
+            end
+            
             start_line = line_number
         end
     end
     
     # Add the final chunk if there are remaining lines
     if start_line <= length(lines)
-        push!(chunks, join(view(lines, start_line:length(lines)), '\n'))
+        push!(chunks, join(view(lines, start_line:length(lines)), separator))
         push!(line_ranges, (start_line, length(lines)))
     end
     
