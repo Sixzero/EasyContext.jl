@@ -48,7 +48,6 @@ function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType},
         end
 
         estimated_tokens = estimate_tokens(doc_raw, chunker.estimation_method)
-        @show estimated_tokens
         if estimated_tokens <= effective_max_tokens * ACCURATE_THRESHOLD_RATIO
             push!(output_chunks, ChunkType(; source=SourcePath(; path=source), content=doc_raw))
         else
