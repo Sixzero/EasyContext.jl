@@ -5,14 +5,14 @@ using Random
 include("instant_apply_logger.jl")
 include("../prompts/prompt_instant_apply.jl")
 
-function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector{String}=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2, verbose=false)
+function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2, verbose=false)
     # Check file size and choose appropriate method
     return if length(original_content) > 20_000
-        apply_modify_by_replace(original_content, changes_content; verbose)
+        apply_modify_by_replace(original_content, changes_content; models=model, verbose)
     else
         is_patch_file = language == "patch"
         merge_prompt = is_patch_file ? get_patch_merge_prompt : merge_prompt
-        apply_modify_by_llm(original_content, changes_content; merge_prompt, model, verbose)
+        apply_modify_by_llm(original_content, changes_content; merge_prompt, models=model, verbose)
     end
 end
 
@@ -33,11 +33,11 @@ Check if the content indicates a complete file replacement.
 """
 is_complete_replacement(content::AbstractString) = occursin("<COMPLETE_REPLACEMENT/>", strip(content)) && length(strip(content)) <= 50
 
-function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; model::Vector{String}=["gem25f"], temperature=0, verbose=false, merge_prompt::Function)
+function apply_modify_by_llm(original_content::AbstractString, changes_content::AbstractString; models::Vector=["gem25f"], temperature=0, verbose=false, merge_prompt::Function)
     prompt = merge_prompt(original_content, changes_content)
     end_tag = merge_prompt === get_merge_prompt_v1 ? "final" : "FINAL"
     
-    verbose && println("\e[38;5;240mProcessing diff with AI ($model) for higher quality...\e[0m")
+    verbose && println("\e[38;5;240mProcessing diff with AI ($models) for higher quality...\e[0m")
 
     # Define condition function to check for meaningful changes
     function is_valid_result(result)
@@ -58,7 +58,7 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
     end
     
     # Initialize AIGenerateFallback with model preferences and try to generate
-    ai_manager = AIGenerateFallback(models=model)
+    ai_manager = AIGenerateFallback(models=models)
     aigenerated = try_generate(ai_manager, prompt; condition=is_valid_result, api_kwargs=(; temperature), verbose)
     
     # Check for complete replacement indicator
@@ -69,7 +69,7 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
     
     # Extract content from the generated result
     content = extract_tagged_content(aigenerated.content, end_tag)
-    isnothing(content) && @warn "The model: $model failed to generate properly tagged content."
+    isnothing(content) && @warn "The model: $models failed to generate properly tagged content."
 
     return something(content, changes_content)
 end
@@ -102,7 +102,7 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
     for (i, model) in enumerate(models)
         try
             verbose && println("\e[38;5;240mGenerating replacement patterns with AI ($model)...\e[0m")
-            aigenerated = aigenerate(prompt, model=model, api_kwargs=(; temperature), verbose=false)
+            aigenerated = aigenerate_with_config(model, prompt; api_kwargs=(; temperature), verbose=false)
             replacements = extract_tagged_content(aigenerated.content, "REPLACEMENTS")
             matches = extract_all_tagged_pairs(replacements)
 

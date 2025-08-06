@@ -32,9 +32,10 @@ function get_merge_prompt_v2(original_content, changes_content)
   3. <PATCH> might indicate line deletions. In that case remove those lines from <final> result.
   4. <PATCH> might contain instructions. In that case follow them.
   5. <PATCH> might contain non-code parts in the end after  "```" keep that part as is.
-  6. Keep original formatting (spaces/tabs)
-  7. Return only the final code between <FINAL> tags with ALL the changes applied.
-  8. If <PATCH> contains a complete file replacement (full file content), return exactly: <COMPLETE_REPLACEMENT/>
+  6. Keep original formatting (spaces/tabs) also comments.
+  7. The final code should be valid code.
+  8. Return only the final code between <FINAL> tags with ALL the changes applied.
+  9. If <PATCH> contains a complete file replacement (its already the endresult the merged file), return exactly: <COMPLETE_REPLACEMENT/>
 
   <ORIGINAL>
   $original_content
