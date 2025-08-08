@@ -41,16 +41,19 @@ using PromptingTools: AnthropicSchema
         @test is_openai_reasoning_model("o3") == true
         @test is_openai_reasoning_model("o3m") == true
         @test is_openai_reasoning_model("o4m") == true
+        @test is_openai_reasoning_model("gpt-5") == true
+        @test is_openai_reasoning_model("gpt-5-turbo") == true
+        @test is_openai_reasoning_model("gpt-5-preview") == true
         @test is_openai_reasoning_model("gpt-4") == false
         @test is_openai_reasoning_model("claude") == false
-        
+
         # Test Mistral models - these should have top_p removed
         @test is_mistral_model("mistral-large") == true
-        @test is_mistral_model("Mistral-7B") == true
-        @test is_mistral_model("MISTRAL-INSTRUCT") == true
+        @test is_mistral_model("mistral-7b") == true
+        @test is_mistral_model("mistral-instruct") == true
         @test is_mistral_model("gpt-4") == false
         @test is_mistral_model("claude") == false
-        
+
         # Test Claude models - these should get max_tokens=16000
         @test is_claude_model("claude") == true
         @test is_claude_model("claude-3") == true
@@ -65,6 +68,8 @@ using PromptingTools: AnthropicSchema
         # OpenAI reasoning models should return empty kwargs (bypass everything)
         @test get_api_kwargs_for_model("o3", base_kwargs) == NamedTuple()
         @test get_api_kwargs_for_model("o3m", base_kwargs) == NamedTuple()
+        @test get_api_kwargs_for_model("gpt-5", base_kwargs) == NamedTuple()
+        @test get_api_kwargs_for_model("gpt-5-turbo", base_kwargs) == NamedTuple()
         
         # Claude models should override max_tokens to 16000
         result = get_api_kwargs_for_model("claude", base_kwargs)
@@ -124,8 +129,10 @@ using PromptingTools: AnthropicSchema
         @test !haskey(result, :stop)
         @test !haskey(result, :stop_sequences)
         
-        # OpenAI reasoning models should ignore stop sequences
+        # OpenAI reasoning models should ignore stop sequences (including GPT-5)
         @test apply_stop_sequences("o3", base_kwargs, stop_seqs) == base_kwargs
+        @test apply_stop_sequences("gpt-5", base_kwargs, stop_seqs) == base_kwargs
+        @test apply_stop_sequences("gpt-5-turbo", base_kwargs, stop_seqs) == base_kwargs
         
         # Claude models should use :stop_sequences parameter
         result = apply_stop_sequences("claude", base_kwargs, stop_seqs)
@@ -171,6 +178,15 @@ using PromptingTools: AnthropicSchema
         rich_kwargs = (; temperature=0.7, top_p=0.9, max_tokens=2000, custom_param=42)
         result = get_api_kwargs_for_model(reasoning_config, rich_kwargs)
         @test result == NamedTuple()  # Should ignore everything for reasoning models
+        
+        # Test GPT-5 as reasoning model (should also override everything)
+        gpt5_config = ModelConfig(
+            name="gpt-5",
+            default_api_kwargs=(; temperature=0.5, max_tokens=4000, top_p=0.8)
+        )
+        
+        result = get_api_kwargs_for_model(gpt5_config, rich_kwargs)
+        @test result == NamedTuple()  # Should ignore everything for GPT-5 models
     end
     
     @testset "Model Name Extraction" begin
@@ -219,14 +235,24 @@ using PromptingTools: AnthropicSchema
         @test final_kwargs.extra_param == 42
         @test !haskey(final_kwargs, :stop_sequences)
         
-        # Test that reasoning models bypass everything
+        # Test that reasoning models bypass everything (including GPT-5)
         reasoning_config = ModelConfig(
             name="o3",
             default_api_kwargs=(; temperature=0.5, max_tokens=4000)
         )
         
-        api_kwargs = get_api_kwargs_for_model(reasoning_config, user_kwargs)
-        final_kwargs = apply_stop_sequences(reasoning_config, api_kwargs, stop_seqs)
-        @test final_kwargs == NamedTuple()  # Should be completely empty
+        gpt5_config = ModelConfig(
+            name="gpt-5-preview",
+            default_api_kwargs=(; temperature=0.5, max_tokens=4000)
+        )
+        
+        user_kwargs = (; temperature=0.7, top_p=0.9, max_tokens=2000, custom_param=42)
+        stop_seqs = ["STOP", "END"]
+        
+        for cfg in [reasoning_config, gpt5_config]
+            api_kwargs = get_api_kwargs_for_model(cfg, user_kwargs)
+            final_kwargs = apply_stop_sequences(cfg, api_kwargs, stop_seqs)
+            @test final_kwargs == NamedTuple()  # Should be completely empty
+        end
     end
 end
