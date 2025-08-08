@@ -8,7 +8,7 @@ include("../prompts/prompt_instant_apply.jl")
 function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2, verbose=false)
     # Check file size and choose appropriate method
     return if length(original_content) > 20_000
-        apply_modify_by_replace(original_content, changes_content; models=model, verbose)
+        apply_modify_by_replace(original_content, changes_content; verbose)
     else
         is_patch_file = language == "patch"
         merge_prompt = is_patch_file ? get_patch_merge_prompt : merge_prompt
