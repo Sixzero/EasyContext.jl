@@ -28,8 +28,8 @@ get_model_name(model::String) = model
 get_model_name(config::ModelConfig) = config.name
 
 # Model-specific logic centralized in ModelConfig
-is_openai_reasoning_model(model_name::String) = model_name in ("o3", "o3m", "o4m")
-is_mistral_model(model_name::String) = contains(lowercase(model_name), "mistral")
+is_openai_reasoning_model(model_name::String) = model_name in ("o3", "o3m", "o4m") || startswith(model_name, "gpt-5")
+is_mistral_model(model_name::String) = startswith(model_name, "mistral")
 is_claude_model(model_name::String) = model_name == "claude" || startswith(model_name, "claude")
 
 """
@@ -52,8 +52,13 @@ end
 
 Apply stop sequences for ModelConfig.
 """
-apply_stop_sequences(config::ModelConfig, api_kwargs::NamedTuple, stop_sequences::Vector{String}) = 
+apply_stop_sequences(config::ModelConfig, api_kwargs::NamedTuple, stop_sequences::Vector{String}) = begin
+    if config.schema isa CerebrasOpenAISchema
+        @info "CerebrasOpenAISchema does not support stop sequences"
+        return api_kwargs
+    end
     apply_stop_sequences(config.name, api_kwargs, stop_sequences)
+end
 
 """
     get_api_kwargs_for_model(model_name::String, base_api_kwargs)
