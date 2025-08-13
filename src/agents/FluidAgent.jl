@@ -179,7 +179,7 @@ function work(agent::FluidAgent, conv; cache=nothing,
             on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
         ))
         model = agent.model
-        @save "conv.jld2" conv sys_msg_content model api_kwargs cache
+        # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
         
         response = aigenerate_with_config(agent.model, to_PT_messages(conv, sys_msg_content);
             cache, api_kwargs, streamcallback=cb, verbose=false)
