@@ -126,14 +126,14 @@ function content_has_stop_sequences(content::AbstractString, stop_sequences::Vec
     any(seq -> occursin(seq, content), stop_sequences)
 end
 
-function work(agent::FluidAgent, conv::AbstractString; kwargs...)
-    conv_ctx = Session(; messages=[create_user_message(conv)])
+function work(agent::FluidAgent, session::AbstractString; kwargs...)
+    conv_ctx = Session(; messages=[create_user_message(session)])
     work(agent, conv_ctx; kwargs...)
 end
 """
 Run an LLM interaction with tool execution.
 """
-function work(agent::FluidAgent, conv; cache=nothing,
+function work(agent::FluidAgent, session::Session; cache=nothing,
     no_confirm=false,
     highlight_enabled::Bool=true,
     process_enabled::Bool=true,
@@ -165,8 +165,11 @@ function work(agent::FluidAgent, conv; cache=nothing,
     
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
+    i = 0
     
-    for i in 1:MAX_NUMBER_OF_TOOL_CALLS
+    while i < MAX_NUMBER_OF_TOOL_CALLS || sum(length(msg.content) for msg in session.messages) < 40000
+        i += 1
+        
         # Create new ToolTagExtractor for each run
         extractor = agent.extractor_type(agent.tools)
 
@@ -181,10 +184,10 @@ function work(agent::FluidAgent, conv; cache=nothing,
         model = agent.model
         # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
         
-        response = aigenerate_with_config(agent.model, to_PT_messages(conv, sys_msg_content);
+        response = aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
             cache, api_kwargs, streamcallback=cb, verbose=false)
         
-        push_message!(conv, create_AI_message(response.content))
+        push_message!(session, create_AI_message(response.content))
         execute_tools(extractor; no_confirm)
 
         are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
@@ -200,10 +203,10 @@ function work(agent::FluidAgent, conv; cache=nothing,
         # Add tool results to conversation for next iteration
         result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
         
-        prev_assistant_msg_id = conv.messages[end].id
+        prev_assistant_msg_id = session.messages[end].id
         tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
 
-        push_message!(conv, tool_results_usr_msg)
+        push_message!(session, tool_results_usr_msg)
         
         if !isa(io, Base.TTY)
             write(io, create_user_message("Tool results."))
