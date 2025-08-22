@@ -46,7 +46,7 @@ get_source(s::SourcePath) = string(s)
 
 get_content(chunk::String) = chunk
 get_content(chunk::AbstractChunk) = chunk.content
-need_source_reparse(chunk::FileChunk) = true 
+need_source_reparse(chunk::FileChunk) = isnothing(chunk.source.from_line) && isnothing(chunk.source.to_line)
 need_source_reparse(chunk::SourceChunk) = false
 need_source_reparse(chunk::String) = false
 
