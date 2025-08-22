@@ -59,7 +59,7 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
     
     # Initialize AIGenerateFallback with model preferences and try to generate
     ai_manager = AIGenerateFallback(models=models)
-    aigenerated = try_generate(ai_manager, prompt; condition=is_valid_result, api_kwargs=(; temperature), verbose)
+    aigenerated = try_generate(ai_manager, prompt; condition=is_valid_result, api_kwargs=(; temperature), verbose, retries=1)
     
     # Check for complete replacement indicator
     if is_complete_replacement(aigenerated.content)
