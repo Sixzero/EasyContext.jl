@@ -78,7 +78,7 @@ end
 
 Attempts to generate AI response with retry and fallback logic.
 """
-function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, api_kwargs=NamedTuple(), kwargs...)
+function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, api_kwargs=NamedTuple(), retries=3, kwargs...)
     models = manager.models isa AbstractVector ? manager.models : [manager.models]
     
     for model_or_config in models
@@ -88,13 +88,13 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
         !state.available && continue
         
         # Retry logic for single model
-        for attempt in 1:3
+        for attempt in 1:retries
             result, time_taken = @timed try
                 attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs, kwargs...)
             catch e
                 reason = handle_error!(state, e, model_name)
-                if attempt == 3
-                    disable_model!(state, "Failed after 3 retries: $reason")
+                if attempt == retries
+                    disable_model!(state, "Failed after $retries retries: $reason")
                     break
                 end
                 
