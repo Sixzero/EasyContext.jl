@@ -60,7 +60,7 @@ reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_conte
 
 # Shared sliding extractor used by both local and remote sources
 function extract_content_with_sliding(content::String, from_line::Union{Int,Nothing}, to_line::Union{Int,Nothing}, previous_content::String="", tolerance::Int=10)
-  isnothing(from_line) && return content, 1, length(split(content, '\n'))
+  isnothing(from_line) && return content, from_line, to_line
   lines = split(content, '\n')
   total = length(lines)
   if isempty(previous_content) || isnothing(to_line)
