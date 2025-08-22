@@ -57,20 +57,43 @@ function did_chunk_change(chunk::FileChunk, old_chunk::FileChunk)
 end
 reparse_chunk(source::SourcePath) = FileChunk(source, get_updated_file_content(source, ""))
 reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source, chunk.content))
-function get_updated_file_content(source::SourcePath, safety_content="")
-    file_path, from, to = source.path, source.from_line, source.to_line
-    # Expand tilde in file path to handle paths starting with ~
-    expanded_path = expanduser(file_path)
-    
-    if !isfile(expanded_path)
-        @warn "File not found: $file_path (expanded: $expanded_path, pwd: $(pwd()))"
-        return safety_content
+
+# Shared sliding extractor used by both local and remote sources
+function extract_content_with_sliding(content::String, from_line::Union{Int,Nothing}, to_line::Union{Int,Nothing}, previous_content::String="", tolerance::Int=10)
+  isnothing(from_line) && return content, 1, length(split(content, '\n'))
+  lines = split(content, '\n')
+  total = length(lines)
+  if isempty(previous_content) || isnothing(to_line)
+    actual_to = isnothing(to_line) ? total : min(to_line, total)
+    return join(lines[from_line:actual_to], '\n'), from_line, actual_to
+  end
+  prev_lines = split(previous_content, '\n')
+  win_len = length(prev_lines)
+  for off in -tolerance:tolerance
+    s = max(1, from_line + off)
+    e = min(total, s + win_len - 1)
+    e < s && continue
+    test_content = join(lines[s:e], '\n')
+    if test_content == previous_content
+      return test_content, s, e
     end
-    
-    chunks_dict = read(expanded_path, String)
-    isnothing(from) && return chunks_dict
-    lines = split(chunks_dict, '\n')
-    return join(lines[from:min(to, length(lines))], '\n')
+  end
+  actual_to = isnothing(to_line) ? total : min(to_line, total)
+  join(lines[from_line:actual_to], '\n'), from_line, actual_to
+end
+
+function get_updated_file_content(source::SourcePath, previous_content="")
+  file_path, from, to = source.path, source.from_line, source.to_line
+  expanded_path = expanduser(file_path)
+  if !isfile(expanded_path)
+    @warn "File not found: $file_path (expanded: $expanded_path, pwd: $(pwd()))"
+    return previous_content
+  end
+  content = read(expanded_path, String)
+  extracted, new_from, new_to = extract_content_with_sliding(content, from, to, previous_content)
+  source.from_line = new_from
+  source.to_line = new_to
+  extracted
 end
 
 # Improve equality comparison for FileChunk to focus on meaningful content
