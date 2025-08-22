@@ -144,7 +144,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
-    MAX_NUMBER_OF_TOOL_CALLS=6,
+    MAX_NUMBER_OF_TOOL_CALLS=8,
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -157,11 +157,11 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     
     # Base API kwargs - now using centralized logic
     base_kwargs = (; top_p=0.7, temperature=0.5)
-    api_kwargs = get_api_kwargs_for_model(model_name, base_kwargs)
+    api_kwargs = get_api_kwargs_for_model(agent.model, base_kwargs)
     
     # Apply thinking and stop sequences using centralized functions
     api_kwargs = apply_thinking_kwargs(api_kwargs, model_name, thinking)
-    api_kwargs = apply_stop_sequences(model_name, api_kwargs, stop_sequences)
+    api_kwargs = apply_stop_sequences(agent.model, api_kwargs, stop_sequences)
     
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
@@ -172,14 +172,17 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
         
         # Create new ToolTagExtractor for each run
         extractor = agent.extractor_type(agent.tools)
-
+        extractor_fn(text) = begin
+            extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
+        end
+    
         cb = create(StreamCallbackTYPE(; 
             io, on_start, on_error, highlight_enabled, process_enabled,
             on_done = () -> begin
                 process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
                 on_done()
             end,
-            on_content = process_enabled ? (text -> extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)) : noop,
+            on_content = process_enabled ? extractor_fn : noop,
         ))
         model = agent.model
         # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
