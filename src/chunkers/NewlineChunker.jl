@@ -37,26 +37,26 @@ function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType},
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
     output_chunks = Vector{ChunkType}()
 
-    formatter_tokens = estimate_tokens(string(ChunkType(; source=SourcePath(; path=""), content="")), chunker.estimation_method)
+    formatter_tokens = estimate_tokens(string(ChunkType(; source="", content="")), chunker.estimation_method)
     effective_max_tokens = chunker.max_tokens * SAFETY_MAX_TOKEN_PERCENTAGE - formatter_tokens - chunker.line_number_token_estimate
 
     for i in eachindex(files_or_docs)
         doc_raw, source = files_or_docs[i], "$(sources[i])"
         if isempty(doc_raw)
-            push!(output_chunks, ChunkType(; source=SourcePath(; path=source), content=""))
+            push!(output_chunks, ChunkType(; source=source, content=""))
             continue
         end
 
         estimated_tokens = estimate_tokens(doc_raw, chunker.estimation_method)
         if estimated_tokens <= effective_max_tokens * ACCURATE_THRESHOLD_RATIO
-            push!(output_chunks, ChunkType(; source=SourcePath(; path=source), content=doc_raw))
+            push!(output_chunks, ChunkType(; source=source, content=doc_raw))
         else
             chunks, line_ranges = split_text_into_chunks_accurately(doc_raw, effective_max_tokens)
             is_cut = length(chunks) > 1
             
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
-                source_obj = is_cut ? SourcePath(; path=source, from_line=start_line, to_line=end_line) : SourcePath(; path=source)
-                push!(output_chunks, ChunkType(; content=chunk, source=source_obj))
+                chunk_obj = is_cut ? ChunkType(; source, content=chunk, from_line=start_line, to_line=end_line) : ChunkType(; source, content=chunk)
+                push!(output_chunks, chunk_obj)
             end
         end
     end

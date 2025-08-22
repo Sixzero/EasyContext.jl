@@ -8,16 +8,18 @@ mutable struct SourcePath
   from_line::Union{Int,Nothing}
   to_line::Union{Int,Nothing}
   
-  function SourcePath(; path::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
-    # Only check if the file exists if the path contains line number indicators
-    if occursin(":", path)
-      if !startswith(path, "http")
-        @warn "Creating SourcePath with non-existent file: $path (pwd: $(pwd()))" stacktrace()
-      end
-    end
-    new(path, from_line, to_line)
-  end
+
 end
+function SourcePath(; path::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
+  # Only check if the file exists if the path contains line number indicators
+  if occursin(":", path)
+    if !startswith(path, "http")
+      @warn "Creating SourcePath with non-existent file: $path (pwd: $(pwd()))" stacktrace()
+    end
+  end
+  SourcePath(path, from_line, to_line)
+end
+
 Base.string(s::SourcePath) = "$(s.path)"* (isnothing(s.from_line) ? "" : ":$(s.from_line)") * (isnothing(s.to_line) ? "" : "-$(s.to_line)")
 @kwdef struct SourceChunk <: AbstractChunk
   source::SourcePath
@@ -28,10 +30,14 @@ end
 Base.string(s::SourceChunk) = "# $(string(s.source))"* (isnothing(s.containing_module) ? "" : " $(s.containing_module)") * "\n$(s.content)"
 
 
-@kwdef struct FileChunk <: AbstractChunk
+struct FileChunk <: AbstractChunk
   source::SourcePath
-  content::AbstractString=""
+  content::AbstractString
 end
+function FileChunk(; source::String, content::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
+  FileChunk(SourcePath(; path=source, from_line, to_line), content)
+end
+
 Base.string(s::FileChunk) = "# $(string(s.source))\n$(s.content)"
 
 get_source(chunk::String) = chunk
@@ -49,6 +55,7 @@ function did_chunk_change(chunk::FileChunk, old_chunk::FileChunk)
   content = get_updated_file_content(chunk.source)
   # TODO ...
 end
+reparse_chunk(source::SourcePath) = FileChunk(source, get_updated_file_content(source, ""))
 reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source, chunk.content))
 function get_updated_file_content(source::SourcePath, safety_content="")
     file_path, from, to = source.path, source.from_line, source.to_line

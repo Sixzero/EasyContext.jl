@@ -9,9 +9,9 @@ import Base: write
     changes_tracker::ChangeTracker
 end
 
-struct WorkspaceCTXResult
-    new_chunks::Vector{FileChunk}
-    updated_chunks::Vector{FileChunk}
+struct WorkspaceCTXResult{T <: AbstractChunk}
+    new_chunks::Vector{T}
+    updated_chunks::Vector{T}
     cost::Float64
     elapsed::Float64
 end
