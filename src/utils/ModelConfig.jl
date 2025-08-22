@@ -54,7 +54,7 @@ Apply stop sequences for ModelConfig.
 """
 apply_stop_sequences(config::ModelConfig, api_kwargs::NamedTuple, stop_sequences::Vector{String}) = begin
     if config.schema isa CerebrasOpenAISchema
-        @info "CerebrasOpenAISchema does not support stop sequences"
+        # @info "CerebrasOpenAISchema does not support stop sequences with streaming"
         return api_kwargs
     end
     apply_stop_sequences(config.name, api_kwargs, stop_sequences)
