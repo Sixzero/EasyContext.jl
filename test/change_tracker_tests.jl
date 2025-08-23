@@ -199,11 +199,10 @@ Base.:(==)(a::DummyChunk, b::DummyChunk) = a.source == b.source && strip(a.conte
         write(temp_file, "Content with trailing space ")
 
         # Create two FileChunks with the same content but different whitespace
-        source_path = SourcePath(path=temp_file)
-        chunk1 = FileChunk(source=source_path, content="""
+        chunk1 = FileChunk(source=temp_file, content="""
         Content with trailing space 
         """)
-        chunk2 = FileChunk(source=source_path, content="Content with trailing space")
+        chunk2 = FileChunk(source=temp_file, content="Content with trailing space")
         
         # Test equality with our improved comparison
         @test chunk1 == chunk2
