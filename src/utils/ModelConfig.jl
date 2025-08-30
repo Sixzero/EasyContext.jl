@@ -31,6 +31,7 @@ get_model_name(config::ModelConfig) = config.name
 is_openai_reasoning_model(model_name::String) = model_name in ("o3", "o3m", "o4m") || startswith(model_name, "gpt-5")
 is_mistral_model(model_name::String) = startswith(model_name, "mistral")
 is_claude_model(model_name::String) = model_name == "claude" || startswith(model_name, "claude")
+is_grok_model(model_name::String) = startswith(model_name, "grok")
 
 """
     apply_stop_sequences(model_name::String, api_kwargs::NamedTuple, stop_sequences::Vector{String})
@@ -41,6 +42,7 @@ function apply_stop_sequences(model_name::String, api_kwargs::NamedTuple, stop_s
     isempty(stop_sequences) && return api_kwargs
     startswith(model_name, "gem") && return api_kwargs  # Gemini doesn't support stop sequences
     is_openai_reasoning_model(model_name) && return api_kwargs  # Reasoning models don't support stop sequences
+    is_grok_model(model_name) && return api_kwargs  # Grok models don't support stop sequences
     
     # Different models use different parameter names for stop sequences
     key = startswith(model_name, "claude") ? :stop_sequences : :stop
