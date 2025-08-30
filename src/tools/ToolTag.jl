@@ -15,7 +15,7 @@ print_tool_result(result) = begin
     print(result, "\e[0m")
 end 
 
-function parse_tool(first_line::String, content::String=""; kwargs=Dict())
+function parse_tool(first_line::AbstractString, content::String=""; kwargs=Dict())
     tag_end = findfirst(' ', first_line)
     name = String(strip(first_line[1:something(tag_end, length(first_line))]))
     args = isnothing(tag_end) ? "" : String(strip(first_line[tag_end+1:end]))
