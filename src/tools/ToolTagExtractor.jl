@@ -41,7 +41,15 @@ end
 
 # Get tool map dynamically from tools
 function get_tool_map(tools::Vector)
-    Dict{String, Any}(toolname(T) => T for T in tools)
+    tool_map = Dict{String, Any}()
+    for T in tools
+        # Skip tools that don't expose a tool tag
+        tool_format(T) == :no_tool_format && continue
+        name = toolname(T)
+        isempty(name) && continue
+        tool_map[name] = T
+    end
+    tool_map
 end
 
 function process_immediate_tool!(line::String, stream_parser::ToolTagExtractor, content::String=""; kwargs=Dict())
