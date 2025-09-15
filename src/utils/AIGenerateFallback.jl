@@ -41,9 +41,7 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
     state.last_error_type = typeof(e)
     state.last_error_time = time()
     
-    e isa TimeoutError && return "Model '$model': Timeout"
-    e isa HTTP.Exceptions.StatusError && e.status == 429 && return "Model '$model': Rate limited (429)"
-    return "Model '$model': Error: $e"
+    return "Model '$model': $e"
 end
 
 # Single model attempt - DRY principle
