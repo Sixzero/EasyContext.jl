@@ -37,10 +37,9 @@ function build_base_system_content(sys_msg::String, tools)
     
     $(ambiguity_guide)
     
-    $(test_it_v2)
+    $(test_it)
     
     $(no_loggers)
-    $(julia_specific_guide)
     $(system_information)
 
     $(get_tool_descriptions(tools))
