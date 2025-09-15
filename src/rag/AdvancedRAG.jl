@@ -34,7 +34,7 @@ humanize(m::AbstractRAGPipeline) =
 
 # Predefined RAG pipeline configurations
 """
-    EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, cache_prefix="workspace")
+    EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, cache_prefix="workspace", verbose=0)
 
 Creates an efficient RAG pipeline with a good balance between performance and accuracy.
 Uses Cohere embedder and BM25 for retrieval with top_k=50, and ReduceGPTReranker with gem20f/gem15f models.
@@ -43,19 +43,21 @@ Uses Cohere embedder and BM25 for retrieval with top_k=50, and ReduceGPTReranker
 - `top_n::Int=10`: Number of documents to return after reranking
 - `rerank_prompt::Function=create_rankgpt_prompt_v2`: Function to create the reranking prompt
 - `cache_prefix::String="workspace"`: Prefix for the embedder cache
+- `verbose::Int=0`: Verbosity level (0=quiet, 1=normal, 2=detailed)
 """
-function EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix")
+function EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix", verbose=1)
     # embedder = create_openai_embedder(cache_prefix=cache_prefix)
-    embedder = EasyContext.create_cohere_embedder(model="embed-v4.0", cache_prefix=cache_prefix)
+    embedder_verbose = verbose > 0
+    embedder = EasyContext.create_cohere_embedder(model="embed-v4.0", cache_prefix=cache_prefix, verbose=embedder_verbose)
     bm25 = BM25Embedder()
     topK = TopK([embedder, bm25]; top_k=50)
-    reranker = ReduceGPTReranker(batch_size=30; top_n, model, rerank_prompt)
+    reranker = ReduceGPTReranker(batch_size=30; top_n, model, rerank_prompt, verbose)
     
     TwoLayerRAG(; topK, reranker)
 end
 
 """
-    HIGH_ACCURACY_PIPELINE(; top_n=12, rerank_prompt=create_rankgpt_prompt_v2, cache_prefix="workspace")
+    HIGH_ACCURACY_PIPELINE(; top_n=12, rerank_prompt=create_rankgpt_prompt_v2, cache_prefix="workspace", verbose=0)
 
 Creates a high accuracy RAG pipeline optimized for precision over speed.
 Uses Cohere embedder and BM25 for retrieval with top_k=120, and ReduceGPTReranker with gpt4om model.
@@ -64,13 +66,15 @@ Uses Cohere embedder and BM25 for retrieval with top_k=120, and ReduceGPTReranke
 - `top_n::Int=12`: Number of documents to return after reranking
 - `rerank_prompt::Function=create_rankgpt_prompt_v2`: Function to create the reranking prompt
 - `cache_prefix::String="workspace"`: Prefix for the embedder cache
+- `verbose::Int=0`: Verbosity level (0=quiet, 1=normal, 2=detailed)
 """
-function HIGH_ACCURACY_PIPELINE(; top_n=12, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix")
+function HIGH_ACCURACY_PIPELINE(; top_n=12, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix", verbose=0)
     # embedder = create_openai_embedder(cache_prefix=cache_prefix)
-    embedder = EasyContext.create_cohere_embedder(model="embed-v4.0", cache_prefix=cache_prefix)
+    embedder_verbose = verbose > 0
+    embedder = EasyContext.create_cohere_embedder(model="embed-v4.0", cache_prefix=cache_prefix, verbose=embedder_verbose)
     bm25 = BM25Embedder()
     topK = TopK([embedder, bm25]; top_k=120)
-    reranker = ReduceGPTReranker(batch_size=40; top_n, model, rerank_prompt)
+    reranker = ReduceGPTReranker(batch_size=40; top_n, model, rerank_prompt, verbose)
     
     TwoLayerRAG(; topK, reranker)
 end
