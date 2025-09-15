@@ -125,13 +125,16 @@ using EasyContext
 # embedder = EasyContext.create_voyage_embedder(cache_prefix="bench_test_voyage_", verbose=false)
 # embedder = EasyContext.create_google_gecko_embedder(cache_prefix="bench_test_googlegecko_", verbose=false)
 # embedder = EasyContext.create_google_experimental_embedder(cache_prefix="bench_test_googlegecko_", verbose=false)
-embedder = EasyContext.create_random_embedder(seed=42, cache_prefix="random2_precompile")
+
+embedder = EasyContext.create_cohere_embedder(model="embed-v4.0", cache_prefix="bench_cohere_embed-v4.0_", verbose=false)
+# embedder = EasyContext.create_random_embedder(seed=42, cache_prefix="random2_precompile")
 # embedder = EasyContext.VoyageEmbedder()
-small_dataset = [join(["Hello, world $(rand(1:1000)) Igen, jó lenne tudni, hogy miért ilyen nagy! $i" for i in 1:22], "\n") for _ in 1:100]
+small_dataset = [join(["Hello, world Igen, jó lenne tudni, hogy miért ilyen nagy! $i" for i in 1:23], "\n") for _ in 1:100]
 tracker = Threads.Atomic{Float64}(0.0)
 # @edit EasyContext.get_embeddings(embedder, small_dataset, tracker, 80_000, 4, NamedTuple())
 # @code_warntype EasyContext.get_embeddings(embedder, small_dataset, tracker, 80_000, 4, NamedTuple())
-@time small_result = EasyContext.get_embeddings(embedder, small_dataset, tracker, 80_000, 4, NamedTuple())
+@time small_result = EasyContext.get_embeddings(embedder, small_dataset)
+@show size(small_result)
 # EasyContext.get_project_id()
 ;
 
