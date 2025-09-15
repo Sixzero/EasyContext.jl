@@ -40,14 +40,32 @@ end
 
 Base.string(s::FileChunk) = "# $(string(s.source))\n$(s.content)"
 
+# New FunctionResultChunk for dynamic function-based content
+struct FunctionResultChunk <: AbstractChunk
+  method::Function  # Closure that generates the content
+  content::AbstractString  # Last cached result
+  source::String  # Unique identifier for this function result
+end
+
+function FunctionResultChunk(method::Function, source::String)
+  # Initialize with method() result
+  FunctionResultChunk(method, string(method()), source)
+end
+
+Base.string(s::FunctionResultChunk) = "# $(s.source)\n$(s.content)"
+
 get_source(chunk::String) = chunk
 get_source(chunk::AbstractChunk) = get_source(chunk.source)
+get_source(chunk::FunctionResultChunk) = chunk.source
 get_source(s::SourcePath) = string(s)
 
 get_content(chunk::String) = chunk
 get_content(chunk::AbstractChunk) = chunk.content
+get_content(chunk::FunctionResultChunk) = chunk.content
+
 need_source_reparse(chunk::FileChunk) = isnothing(chunk.source.from_line) && isnothing(chunk.source.to_line)
 need_source_reparse(chunk::SourceChunk) = false
+need_source_reparse(chunk::FunctionResultChunk) = true  # Always reparse function results to get fresh data
 need_source_reparse(chunk::String) = false
 
 # TODO maybe we could use such thing? or even better, we could also store a file's age and just use that whether it has changed or not and only return with the new chunk if it has changed otherwise nothing? also naming could be adjusted to be more consistent
@@ -55,8 +73,10 @@ function did_chunk_change(chunk::FileChunk, old_chunk::FileChunk)
   content = get_updated_file_content(chunk.source)
   # TODO ...
 end
+
 reparse_chunk(source::SourcePath) = FileChunk(source, get_updated_file_content(source, ""))
 reparse_chunk(chunk::FileChunk) = FileChunk(chunk.source, get_updated_file_content(chunk.source, chunk.content))
+reparse_chunk(chunk::FunctionResultChunk) = FunctionResultChunk(chunk.method, string(chunk.method()), chunk.source)
 
 # Shared sliding extractor used by both local and remote sources
 function extract_content_with_sliding(content::String, from_line::Union{Int,Nothing}, to_line::Union{Int,Nothing}, previous_content::String="", tolerance::Int=10)
