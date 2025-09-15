@@ -2,6 +2,7 @@
 using RAGTools: BatchEmbedder
 using PromptingTools: MODEL_EMBEDDING
 using SparseArrays
+using LinearAlgebra: normalize
 
 @kwdef struct OpenAIBatchEmbedder <: AbstractEasyEmbedder
     embedder::BatchEmbedder=BatchEmbedder()
@@ -35,7 +36,7 @@ function get_embeddings(embedder::OpenAIBatchEmbedder, docs::AbstractVector{<:Ab
     embedding_batch_size = floor(Int, target_batch_size_length / avg_length)
     embeddings = asyncmap(Iterators.partition(docs, embedding_batch_size); ntasks) do docs_chunk
         msg = aiembed(docs_chunk,
-            RAGTools._normalize;
+            normalize;
             model=embedder.model,
             verbose = false,
             kwargs...)
