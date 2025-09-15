@@ -212,7 +212,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
         push_message!(session, tool_results_usr_msg)
         
         if !isa(io, Base.TTY)
-            write(io, create_user_message(""))
+            write(io, create_user_message("Automatic tool results."))
             for (id, tool) in tools
                 write(io, tool, id, prev_assistant_msg_id)
             end
