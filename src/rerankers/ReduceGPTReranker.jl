@@ -7,7 +7,7 @@ const PT = PromptingTools
 
 Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
-    model::Union{AbstractString,Vector{String}}="dscode"
+    model::Union{AbstractString,Vector{String},ModelConfig}="dscode"
     max_batch_tokens::Int=64000  # Token limit per batch
     temperature::Float64=0.0
     top_n::Int=10
@@ -110,7 +110,7 @@ function rerank(
     # total_time = sum((sum(state.runtimes, init=0.0) for state in values(ai_manager.states)), init=0.0)
     # Threads.atomic_add!(time_tracker, total_time)
     
-    if cost_tracker[] > 0 || verbose > 0
+    if verbose > 1 || (cost_tracker[] > 0 && verbose > 0)
         doc_count_str = join(doc_counts, " > ")
         total_cost = round(cost_tracker[], digits=4)
         # time_str = "$(round(total_time, digits=2))s"
@@ -125,7 +125,20 @@ end
 
 function humanize(reranker::ReduceGPTReranker)
     prompt_str = reranker.rerank_prompt == create_rankgpt_prompt_v2 ? "" : ", prompt=" * last(split(string(reranker.rerank_prompt), "_"))
-    model_str = reranker.model isa AbstractString ? reranker.model : "[" * join(reranker.model, ",") * "]"
+    
+    model_str = if reranker.model isa AbstractString
+        reranker.model
+    elseif reranker.model isa Vector{<:AbstractString}
+        "[" * join(reranker.model, ",") * "]"
+    elseif reranker.model isa ModelConfig
+        if reranker.model.schema !== nothing
+            "$(reranker.model.name)[$(typeof(reranker.model.schema).name.name)]"
+        else
+            reranker.model.name
+        end
+    else
+        string(reranker.model)
+    end
     
     "ReduceGPT(model=$(model_str), batch=$(reranker.batch_size), top_n=$(reranker.top_n)$(prompt_str))"
 end
