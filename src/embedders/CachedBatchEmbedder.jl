@@ -54,6 +54,15 @@ function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, quer
     end
     chunks_emb = fetch(chunks_emb_task)
     query_emb = fetch(query_emb_task)
+    
+    # Debug print only if nothing
+    if chunks_emb === nothing && length(chunks) > 0
+        @warn "Debug: chunks_emb is nothing, but chunks were not empty: $(length(chunks))"
+    end
+    if query_emb === nothing && !isempty(query)
+        @warn "Debug: query_emb is nothing, but query was not empty: $query"
+    end
+    
     query_images_emb = fetch(query_images_emb_task)
     image_scores = if !isnothing(query_images)
         [get_score(Val(:CosineSimilarity), chunks_emb, query_images_emb[:, i]) for i in 1:size(query_images_emb, 2)]
