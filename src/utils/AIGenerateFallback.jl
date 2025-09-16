@@ -12,6 +12,7 @@ Base.@kwdef mutable struct ModelState
     available::Bool = true
     reason::String = ""
     runtimes::Vector{Float64} = Float64[]
+    current_api_key_index::Int = 1
 end
 
 """
@@ -23,6 +24,7 @@ Base.@kwdef mutable struct AIGenerateFallback{T}
     models::T
     states::Dict{String,ModelState} = Dict{String,ModelState}()
     readtimeout::Int = 60
+    api_key_rotation::Bool = true  # Enable API key rotation by default
 end
 
 # Helper functions
@@ -43,6 +45,17 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
     
     return "Model '$model': $e"
 end
+
+# Resolve schema type for API-key rotation (returns `Union{Type,Nothing}`)
+get_schema_type(model_or_config, model_name::AbstractString) = begin
+    model_spec = get(PromptingTools.MODEL_REGISTRY, model_name, nothing)
+    if isnothing(model_spec) || isnothing(model_spec.schema)
+        nothing
+    else
+        typeof(model_spec.schema)
+    end
+end
+get_schema_type(mc::ModelConfig, ::AbstractString) = isnothing(mc.schema) ? nothing : typeof(mc.schema)
 
 # Single model attempt - DRY principle
 function attempt_generate(model_or_config, prompt, manager, state; condition=nothing, api_kwargs=NamedTuple(), kwargs...)
@@ -85,19 +98,29 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
         maybe_recover_model!(state)
         !state.available && continue
         
+        # Get schema type for API key rotation (or nothing if unknown)
+        schema_type = get_schema_type(model_or_config, model_name)
+        
         # Retry logic for single model
         for attempt in 1:retries
             result, time_taken = @timed try
                 attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs, kwargs...)
             catch e
                 reason = handle_error!(state, e, model_name)
+                
+                # Try API key rotation on quota/rate limit errors (only if schema is known)
+                if schema_type !== nothing && is_quota_exceeded_error(e) && rotate_api_key!(manager, model_name, schema_type)
+                    @info "Retrying with rotated API key for $model_name"
+                    continue  # Retry with new API key
+                end
+                
                 if attempt == retries
                     disable_model!(state, "Failed after $retries retries: $reason")
                     break
                 end
                 
                 sleep_time = 2^attempt
-                @warn "Model attempt $attempt/3: $reason Sleeping for $sleep_time seconds"
+                @warn "Model attempt $attempt/$retries: $reason Sleeping for $sleep_time seconds"
                 e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(sleep_time)
                 e isa TimeoutError && (manager.readtimeout *= 2)
                 continue

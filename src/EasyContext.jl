@@ -36,6 +36,7 @@ include("protocol/Session.jl")
 include("stateful_transformation/StatefulTransformators.jl")
 
 include("utils/AIGenerateFallback.jl")
+include("utils/APIKeyRotation.jl")
 include("rerankers/ChunkBatchers.jl")
 include("rerankers/rerank_prompts.jl")
 include("rerankers/ReduceGPTReranker.jl")

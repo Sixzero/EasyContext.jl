@@ -153,6 +153,13 @@ using PromptingTools: AnthropicSchema
         result = apply_stop_sequences(claude_config, base_kwargs, stop_seqs)
         @test result.stop_sequences == stop_seqs
         @test !haskey(result, :stop)
+
+        # Grok models should ignore stop sequences (exact and startswith)
+        @test apply_stop_sequences("grok-code-fast-1", base_kwargs, stop_seqs) == base_kwargs
+        result = apply_stop_sequences("grok-2", base_kwargs, stop_seqs)
+        @test result == base_kwargs
+        @test !haskey(result, :stop)
+        @test !haskey(result, :stop_sequences)
     end
     
     @testset "Edge Cases and Complex Scenarios" begin
