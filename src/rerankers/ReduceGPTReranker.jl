@@ -1,9 +1,10 @@
 using PromptingTools
-using RAGTools: extract_ranking, AbstractReranker
+using RAGTools: AbstractReranker
 using Base.Threads
 using HTTP.Exceptions: TimeoutError
 const PT = PromptingTools
 
+include("RankingExtractor.jl")  # Include our local extract_ranking function
 
 Base.@kwdef mutable struct ReduceGPTReranker <: AbstractReranker 
     batch_size::Int=30
@@ -43,7 +44,7 @@ function rerank(
                 api_kwargs=(; temperature, top_p=0.1),
                 verbose=false
             )
-            rankings = extract_ranking(response.content)
+            rankings = extract_ranking(response.content; verbose=verbose)
 
             if all(1 .<= rankings .<= length(doc_batch))
                 Threads.atomic_add!(cost_tracker, response.cost)

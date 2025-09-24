@@ -5,15 +5,53 @@ using Random
 include("instant_apply_logger.jl")
 include("../prompts/prompt_instant_apply.jl")
 
-function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector=["gem20f", "gem25p", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2, verbose=false, replace_threshold=30000)
-    # Check file size and choose appropriate method
-    return if length(original_content) > replace_threshold
-        apply_modify_by_replace(original_content, changes_content; verbose)
-    else
-        is_patch_file = language == "patch"
-        merge_prompt = is_patch_file ? get_patch_merge_prompt : merge_prompt
-        apply_modify_by_llm(original_content, changes_content; merge_prompt, models=model, verbose)
+# New: DRY - core function that returns both content and response (cost/tokens)
+function apply_modify_auto_with_response(original_content::String, changes_content::String; language::String="", model::Vector=["gem20f", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2, verbose=false, replace_threshold=30000)
+    if length(original_content) > replace_threshold
+        # Replace path - no LLM call; return zeroed meta
+        content = apply_modify_by_replace(original_content, changes_content; verbose)
+        return (content, (cost=0.0, tokens=(0, 0)))
     end
+    is_patch_file = language == "patch"
+    mp = is_patch_file ? get_patch_merge_prompt : merge_prompt
+    return apply_modify_by_llm_with_response(original_content, changes_content; merge_prompt=mp, models=model, verbose)
+end
+
+# New: LLM variant returning both content and response with cost/tokens
+function apply_modify_by_llm_with_response(original_content::AbstractString, changes_content::AbstractString; models::Vector=["gem25f"], temperature=0, verbose=false, merge_prompt::Function)
+    prompt = merge_prompt(original_content, changes_content)
+    end_tag = merge_prompt === get_merge_prompt_v1 ? "final" : "FINAL"
+    verbose && println("\e[38;5;240mProcessing diff with AI ($models) for higher quality...\e[0m")
+
+    function is_valid_result(result)
+        if is_complete_replacement(result.content)
+            return true
+        end
+        content = extract_tagged_content(result.content, end_tag)
+        if isnothing(content) || !has_meaningful_changes(original_content, content)
+            verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
+            return false
+        end
+        true
+    end
+
+    ai_manager = AIGenerateFallback(models=models)
+    aigenerated = try_generate(ai_manager, prompt; condition=is_valid_result, api_kwargs=(; temperature), verbose, retries=1)
+    
+    if is_complete_replacement(aigenerated.content)
+        verbose && println("\e[38;5;240mDetected complete file replacement\e[0m")
+        return (changes_content, aigenerated)
+    end
+
+    content = extract_tagged_content(aigenerated.content, end_tag)
+    isnothing(content) && @warn "The model: $models failed to generate properly tagged content."
+    return (something(content, changes_content), aigenerated)
+end
+
+# Refactor: keep original API but delegate to core
+function apply_modify_auto(original_content::String, changes_content::String; language::String="", model::Vector=["gem20f", "gpt4o"], merge_prompt::Function=get_merge_prompt_v2, verbose=false, replace_threshold=30000)
+    content, _resp = apply_modify_auto_with_response(original_content, changes_content; language, model, merge_prompt, verbose, replace_threshold)
+    content
 end
 
 """
