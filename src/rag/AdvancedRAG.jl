@@ -45,7 +45,7 @@ Uses Cohere embedder and BM25 for retrieval with top_k=50, and ReduceGPTReranker
 - `cache_prefix::String="workspace"`: Prefix for the embedder cache
 - `verbose::Int=0`: Verbosity level (0=quiet, 1=normal, 2=detailed)
 """
-function EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, model=["gem20f", "gem15f", "orqwenplus"], cache_prefix="prefix", verbose=1)
+function EFFICIENT_PIPELINE(; top_n=10, rerank_prompt=create_rankgpt_prompt_v2, model=["gemf", "grokfast"], cache_prefix="prefix", verbose=1)
     # embedder = create_openai_embedder(cache_prefix=cache_prefix)
     embedder_verbose = verbose > 0
     embedder = EasyContext.create_cohere_embedder(model="embed-v4.0", cache_prefix=cache_prefix, verbose=embedder_verbose)
