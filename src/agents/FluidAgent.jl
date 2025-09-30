@@ -156,7 +156,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     model_name = get_model_name(agent.model)
     
     # Base API kwargs - now using centralized logic
-    base_kwargs = (; top_p=0.7, temperature=0.5)
+    base_kwargs = (; top_p=0.7)
     api_kwargs = get_api_kwargs_for_model(agent.model, base_kwargs)
     
     # Apply thinking and stop sequences using centralized functions
