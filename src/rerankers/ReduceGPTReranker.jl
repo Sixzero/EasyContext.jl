@@ -37,8 +37,17 @@ function rerank(
     function rerank_batch(doc_batch)
         max_retries = 2
         for attempt in 1:max_retries
-            prompt = reranker.rerank_prompt(query, doc_batch, top_n)
+            prompt_result = reranker.rerank_prompt(query, doc_batch, top_n)
             temperature = attempt == 1 ? reranker.temperature : 0.5
+
+            # Handle both string and vector prompts
+            prompt = if prompt_result isa AbstractString
+                !isnothing(query_images) ? [PT.UserMessageWithImages(prompt_result; image_url=query_images)] : prompt_result
+            elseif prompt_result isa Vector && !isnothing(query_images)
+                vcat(prompt_result[1:end-1], [PT.UserMessageWithImages(prompt_result[end].content; image_url=query_images)])
+            else
+                prompt_result
+            end
 
             response = try_generate(ai_manager, prompt; 
                 api_kwargs=(; temperature, top_p=0.1),
@@ -54,7 +63,7 @@ function rerank(
         end
         
         @error "Failed to get valid rankings after $max_retries attempts."
-        return 1:length(doc_batch)  # Return sequential ranking as fallback
+        return 1:length(doc_batch)
     end
     
     remaining_doc_idxs = collect(1:total_docs)

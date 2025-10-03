@@ -40,7 +40,7 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     )
 end
 
-function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing, )
+function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, age_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing, query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing, )
     !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing, nothing)
     
     start_time = time()
@@ -49,7 +49,7 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     isempty(file_chunks) && return ("", nothing, nothing, nothing)
     
     cost_tracker = Threads.Atomic{Float64}(0.0)
-    file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker)
+    file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker, query_images)
     merged_file_chunks = merge!(workspace_context.tracker_context, file_chunks_reranked)
     
     !isnothing(extractor) && update_changes_from_extractor!(workspace_context.changes_tracker, extractor)

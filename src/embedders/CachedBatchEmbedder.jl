@@ -44,40 +44,34 @@ function get_score(builder::CachedBatchEmbedder, chunks::AbstractVector{T}, quer
     query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing
     ) where {T}
 
-    start_time = time()
     chunks_emb_task = @async_showerr get_embeddings_document(builder, chunks; cost_tracker)
     query_emb_task = isempty(query) ? nothing : @async_showerr reshape(get_embeddings_query(builder, [query]; cost_tracker), :)
-    query_images_emb_task = if !isnothing(query_images)
-        @async_showerr get_embeddings_image(builder, String[]; images=query_images, cost_tracker)
-    else
-         nothing
-    end
+    query_images_emb_task = isnothing(query_images) ? nothing : @async_showerr get_embeddings_image(builder, String[]; images=query_images, cost_tracker)
+    
     chunks_emb = fetch(chunks_emb_task)
     query_emb = fetch(query_emb_task)
-    
-    # Debug print only if nothing
-    if chunks_emb === nothing && length(chunks) > 0
-        @warn "Debug: chunks_emb is nothing, but chunks were not empty: $(length(chunks))"
-    end
-    if query_emb === nothing && !isempty(query)
-        @warn "Debug: query_emb is nothing, but query was not empty: $query"
-    end
-    
     query_images_emb = fetch(query_images_emb_task)
-    image_scores = if !isnothing(query_images)
-        [get_score(Val(:CosineSimilarity), chunks_emb, query_images_emb[:, i]) for i in 1:size(query_images_emb, 2)]
-        combine_scores(MaxScoreCombiner(), image_scores)
+
+    # Debug warnings
+    chunks_emb === nothing && length(chunks) > 0 && @warn "chunks_emb is nothing, but chunks were not empty: $(length(chunks))"
+    query_emb === nothing && !isempty(query) && @warn "query_emb is nothing, but query was not empty: $query"
+    
+    image_scores = if !isnothing(query_images_emb)
+        per_img_scores = [get_score(Val(:CosineSimilarity), chunks_emb, query_images_emb[:, i]) for i in 1:size(query_images_emb, 2)]
+        combine_scores(MaxScoreCombiner(), per_img_scores)
     else
-        []
+        Float32[]
     end
-    end_scores = if !isempty(query) && !isnothing(query_images)
-        result = get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
-        combine_scores(WeightedCombiner([0.5, 0.5]), [result, image_scores])
-    elseif !isempty(query)
+    
+    end_scores = if !isnothing(query_emb) && !isnothing(query_images_emb)
+        text_scores = get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
+        combine_scores(WeightedCombiner([0.5, 0.5]), [text_scores, image_scores])
+    elseif !isnothing(query_emb)
         get_score(Val(:CosineSimilarity), chunks_emb, query_emb)
     else
         image_scores
     end
+    
     return end_scores
 end
 
