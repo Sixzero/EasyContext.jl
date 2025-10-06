@@ -8,6 +8,47 @@ using LLMRateLimiters: EncodingStatePBE, partial_encode!, GreedyBPETokenizer, lo
 
 export NewlineChunker
 
+const MAX_WORD_LEN = 400
+
+"""
+    remove_ultra_long_words(text::AbstractString) -> String
+
+Remove words longer than MAX_WORD_LEN characters.
+Returns cleaned text or empty string if nothing remains.
+"""
+function remove_ultra_long_words(text::AbstractString)
+    io = IOBuffer()
+    i = firstindex(text)
+    has_content = false
+    removed_words = 0
+
+    while i <= lastindex(text)
+        if isspace(text[i])
+            print(io, text[i])
+            i = nextind(text, i)
+        else
+            j = i
+            while j <= lastindex(text) && !isspace(text[j])
+                j = nextind(text, j)
+            end
+            word = text[i:prevind(text, j)]
+            if length(word) <= MAX_WORD_LEN
+                print(io, word)
+                has_content = true
+            else
+                removed_words += 1
+            end
+            i = j
+        end
+    end
+
+    result = String(take!(io))
+    if removed_words > 0
+        @warn "Removed $removed_words ultra-long words (>$MAX_WORD_LEN chars)"
+    end
+    return has_content ? result : ""
+end
+
 @kwdef struct NewlineChunker{T<:AbstractChunk} <: AbstractChunker 
     max_tokens::Int = 8000
     overlap_tokens::Int = 200
@@ -132,10 +173,20 @@ function split_text_into_chunks_accurately(text::AbstractString, max_tokens::Num
                     start_line = line_number + 1
                     continue
                 else
-                    # Already at sentence level, just add as is (truncate if needed)
-                    @warn "Sentences TOO LONG, we cannot handle! Length: $(length(line))"
-                    push!(chunks, line)
-                    push!(line_ranges, (line_number, line_number))
+                    # Already at sentence level, try removing ultra-long words
+                    cleaned = remove_ultra_long_words(line)
+                    if !isempty(cleaned)
+                        state_test = EncodingStatePBE()
+                        partial_encode!(tokenizer, cleaned, state_test)
+                        if length(state_test.result) <= max_tokens
+                            push!(chunks, cleaned)
+                            push!(line_ranges, (line_number, line_number))
+                        else
+                            @warn "Dropping line $line_number: still too long after removing ultra-long words ($(length(state_test.result)) tokens)"
+                        end
+                    else
+                        @warn "Dropping line $line_number: empty after removing ultra-long words"
+                    end
                     state = EncodingStatePBE()
                     start_line = line_number + 1
                     continue
