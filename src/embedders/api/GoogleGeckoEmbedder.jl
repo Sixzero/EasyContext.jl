@@ -86,6 +86,7 @@ function get_auth_token(embedder::GoogleGeckoEmbedder; force_refresh::Bool=false
         # Use regular user token first (this worked in curl)
         String(strip(read(`gcloud auth print-access-token`, String)))
     catch e
+        e isa InterruptException && rethrow(e)
         error("Failed to get authentication token. Tried both regular and application-default tokens. Error: $e. Make sure you're authenticated with gcloud.")
     end
     

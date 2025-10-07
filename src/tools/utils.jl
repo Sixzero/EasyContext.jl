@@ -27,6 +27,7 @@ function format_cmd_output(output, error, process; debug_msg=nothing)
                 println(debug_msg)
             end
         catch e
+            e isa InterruptException && rethrow(e)
             @info "Failed to parse JSON response" error=e
         end
     end

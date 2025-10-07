@@ -34,6 +34,7 @@ function is_diff_service_available(port::AbstractString)
     HTTP.get("http://localhost:$port/health", readtimeout=2)
     return true
   catch
+    e isa InterruptException && rethrow(e)
     # Try to start monacomeld if command exists
     try
       if success(`which monacomeld`)
@@ -42,10 +43,12 @@ function is_diff_service_available(port::AbstractString)
           HTTP.get("http://localhost:$port/health", readtimeout=4)
           return true
         catch
+          e isa InterruptException && rethrow(e)
           return false
         end
       end
     catch
+      e isa InterruptException && rethrow(e)
       return false
     end
   end

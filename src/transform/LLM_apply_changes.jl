@@ -152,6 +152,7 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
                 isempty(missing_patterns) && return best_result # Perfect match found
             end
         catch e
+            e isa InterruptException && rethrow(e)
             i < length(models) && verbose && @warn "Failed with model $model, retrying with $(models[i+1])" exception=e
         end
     end

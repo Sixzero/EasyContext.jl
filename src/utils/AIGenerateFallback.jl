@@ -106,6 +106,7 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
             result, time_taken = @timed try
                 attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs, kwargs...)
             catch e
+                e isa InterruptException && rethrow(e)
                 reason = handle_error!(state, e, model_name)
                 
                 # Try API key rotation on quota/rate limit errors (only if schema is known)
