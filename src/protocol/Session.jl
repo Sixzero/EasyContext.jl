@@ -2,12 +2,12 @@ export Session, initSession
 include("SessionImageSupport.jl")
 
 @kwdef mutable struct Session{M <: MSG} <: CONV
-    id::String = short_ulid()
+    id::String = uuid4() #TODO: Check it if we don't use it then will it cause issues?
     timestamp::DateTime = now(UTC)
     messages::Vector{M} = Message[]
     status::Symbol = :PENDING
 end
-# Session(c::Conversation) = Session(short_ulid(), now(), c.messages, :UNSTARTED)
+# Session(c::Conversation) = Session(uuid4(), now(), c.messages, :UNSTARTED)
 initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
 
 function push_message!(conv::Session, msg::AIMessage, stop_sequence::String="")
