@@ -1,6 +1,6 @@
 
 @kwdef mutable struct Message <: MSG
-	id::String=short_ulid()
+	id::String=uuid4()
 	timestamp::DateTime
 	role::Symbol
 	content::String
