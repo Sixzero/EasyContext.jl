@@ -2,7 +2,7 @@ export Session, initSession
 include("SessionImageSupport.jl")
 
 @kwdef mutable struct Session{M <: MSG} <: CONV
-    id::String = uuid4() #TODO: Check it if we don't use it then will it cause issues?
+    id::String = string(uuid4()) #TODO: Check it if we don't use it then will it cause issues?
     timestamp::DateTime = now(UTC)
     messages::Vector{M} = Message[]
     status::Symbol = :PENDING

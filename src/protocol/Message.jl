@@ -1,6 +1,6 @@
 
 @kwdef mutable struct Message <: MSG
-	id::String=uuid4() #TODO: Check it remove this will it cause issues??
+	id::String=string(uuid4()) #TODO: Check it remove this will it cause issues??
 	timestamp::DateTime
 	role::Symbol
 	content::String
