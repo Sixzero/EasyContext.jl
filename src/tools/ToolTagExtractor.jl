@@ -42,12 +42,13 @@ end
 # Get tool map dynamically from tools
 function get_tool_map(tools::Vector)
     tool_map = Dict{String, Any}()
-    for T in tools
+    for tool in tools
         # Skip tools that don't expose a tool tag
-        tool_format(T) == :no_tool_format && continue
-        name = toolname(T)
+        tool_format(tool) == :no_tool_format && continue
+        name = toolname(tool)
         isempty(name) && continue
-        tool_map[name] = T
+        haskey(tool_map, name) && @warn "Overwriting toolname, silently losing a tool. Name: $name The tool: $tool"
+        tool_map[name] = tool
     end
     tool_map
 end
