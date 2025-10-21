@@ -23,9 +23,10 @@ RAGTools.get_chunks(chunker::AbstractChunkerWrappers, docs::Vector{<:AbstractStr
 #     @show content
 #     return content, source
 # end
-function RAGTools.load_text(chunker::Type{FileChunk}, source::AbstractPath)
-    @assert isfile(source) "Path $source does not exist"
-    return read(source, String), source
+function RAGTools.load_text(chunker::Type{FileChunk}, source::AbstractPath, root_path)
+    filepath = joinpath(root_path, string(source))
+    @assert isfile(filepath) "Path $source does not exist"
+    return read(filepath, String)
 end
 
 function reproduce_chunk(chunker::FullFileChunker, source::AbstractString)

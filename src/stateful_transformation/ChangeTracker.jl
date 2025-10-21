@@ -58,7 +58,7 @@ end
 function serialize(tag::String, element::String, new_chunks::Vector, updated_chunks::Vector)
     output = ""
     
-    new_files = join([string(chunk) for chunk in new_chunks], '\n')
+    new_files = join([string(chunk) for chunk in new_chunks], "\n\n")
     if !is_really_empty(new_files)
         output *= """
         <$tag NEW>
@@ -67,7 +67,7 @@ function serialize(tag::String, element::String, new_chunks::Vector, updated_chu
         """
     end
     
-    updated_files = join([string(chunk) for chunk in updated_chunks], '\n')
+    updated_files = join([string(chunk) for chunk in updated_chunks], "\n\n")
     if !is_really_empty(updated_files)
         output *= """
         <$tag UPDATED>

@@ -56,21 +56,23 @@ end
     line_number_token_estimate::Int = 10
 end
 
-function RAGTools.get_chunks(chunker::NewlineChunker{T},
+function get_chunks_w_root_path(chunker::NewlineChunker{T},
     file_paths::Vector{<:AbstractPath};
     sources=nothing,
-    verbose::Bool = true) where T
-    files_or_docs = [RAGTools.load_text(T, f)[1] for f in file_paths]
+    verbose::Bool = true,
+    root_path=nothing) where T
+    files_or_docs = [RAGTools.load_text(T, f, root_path) for f in file_paths]
     if isnothing(files_or_docs)
         return Vector{T}()
     end
-    return RAGTools.get_chunks(chunker, files_or_docs; sources=file_paths, verbose)
+    return RAGTools.get_chunks(chunker, files_or_docs; sources=file_paths, verbose, root_path)
 end
 
 function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType},
     files_or_docs::Vector{<:AbstractString};
     sources::AbstractVector{S},
-    verbose::Bool = true) where {ChunkType, S<:Union{AbstractPath,AbstractString}}
+    verbose::Bool = true,
+    root_path) where {ChunkType, S<:Union{AbstractPath,AbstractString}}
 
     SAFETY_MAX_TOKEN_PERCENTAGE = 0.9 # depends on how accurate the approximator token counter is. its max difference is around 6-7%
     ACCURATE_THRESHOLD_RATIO = 0.5
@@ -78,25 +80,25 @@ function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType},
     @assert length(sources) == length(files_or_docs) "Length of `sources` must match length of `files_or_docs`"
     output_chunks = Vector{ChunkType}()
 
-    formatter_tokens = estimate_tokens(string(ChunkType(; source="", content="")), chunker.estimation_method)
+    formatter_tokens = estimate_tokens(string(ChunkType(; source="", content="", root_path)), chunker.estimation_method)
     effective_max_tokens = chunker.max_tokens * SAFETY_MAX_TOKEN_PERCENTAGE - formatter_tokens - chunker.line_number_token_estimate
 
     for i in eachindex(files_or_docs)
         doc_raw, source = files_or_docs[i], "$(sources[i])"
         if isempty(doc_raw)
-            push!(output_chunks, ChunkType(; source=source, content=""))
+            push!(output_chunks, ChunkType(; source=source, content="", root_path))
             continue
         end
 
         estimated_tokens = estimate_tokens(doc_raw, chunker.estimation_method)
         if estimated_tokens <= effective_max_tokens * ACCURATE_THRESHOLD_RATIO
-            push!(output_chunks, ChunkType(; source=source, content=doc_raw))
+            push!(output_chunks, ChunkType(; source=source, content=doc_raw, root_path))
         else
             chunks, line_ranges = split_text_into_chunks_accurately(doc_raw, effective_max_tokens)
             is_cut = length(chunks) > 1
             
             for (chunk_index, (chunk, (start_line, end_line))) in enumerate(zip(chunks, line_ranges))
-                chunk_obj = is_cut ? ChunkType(; source, content=chunk, from_line=start_line, to_line=end_line) : ChunkType(; source, content=chunk)
+                chunk_obj = is_cut ? ChunkType(; source, content=chunk, from_line=start_line, to_line=end_line, root_path) : ChunkType(; source, content=chunk, root_path)
                 push!(output_chunks, chunk_obj)
             end
         end

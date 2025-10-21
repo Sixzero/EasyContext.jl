@@ -75,13 +75,11 @@ function Workspace(project_paths::Vector{<:AbstractString};
 
     return workspace
 end
-function RAGTools.get_chunks(chunker, ws::AbstractWorkspace)
+function RAGTools.get_chunks(chunker::NewlineChunker{ChunkType}, ws::AbstractWorkspace) where {ChunkType}
     file_paths = get_project_files(ws)
     isempty(file_paths) && return Vector{eltype(typeof(chunker).parameters[1])}()
     paths = [Path(p) for p in file_paths]
-    cd(ws) do
-        RAGTools.get_chunks(chunker, paths)
-    end
+    get_chunks_w_root_path(chunker, paths, root_path=ws.root_path)
 end
 
 function get_project_files(w::Workspace)

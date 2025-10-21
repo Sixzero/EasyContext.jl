@@ -1,10 +1,10 @@
 using EasyContext
-using EasyContext: get_accumulated_ignore_patterns, is_ignored_by_patterns, GitIgnoreCache, Workspace
+using EasyContext: get_accumulated_ignore_patterns, is_ignored_by_patterns, GitIgnoreCache
 using EasyContext: get_filtered_files_and_folders, get_project_files
 
 # Function to check files in a folder against gitignore rules
 function check_folder_gitignore(folder_paths)
-    workspace = Workspace(folder_paths, verbose=false)
+    workspace = EasyContext.Workspace(folder_paths, verbose=false)
     included_files = get_project_files(workspace)
 end
 
@@ -19,6 +19,7 @@ end
 # r = check_folder_gitignore([".", "../todoforai/frontend"])
 # r = check_folder_gitignore(["."])
 # @show (r)
+is_file_ignored("../todoforai/frontend", "../todoforai/frontend/out/404.html") == true
 is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/target/release/bundle/appimage/build_appimage.sh") == true
 is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/build_appimage.sh") == false
 is_file_ignored("../todoforai/frontend", "../todoforai/frontend/src-tauri/.next") == true

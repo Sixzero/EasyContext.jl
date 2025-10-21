@@ -5,19 +5,18 @@ abstract type AbstractChunk end
 # TODO maybe rename to FilePath ?
 mutable struct SourcePath
   path::AbstractString
+  root_path::AbstractString
   from_line::Union{Int,Nothing}
   to_line::Union{Int,Nothing}
-  
-
 end
-function SourcePath(; path::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
+function SourcePath(; path::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing, root_path::AbstractString="")
   # Only check if the file exists if the path contains line number indicators
   if occursin(":", path)
     if !startswith(path, "http")
       @warn "Creating SourcePath with non-existent file: $path (pwd: $(pwd()))" stacktrace()
     end
   end
-  SourcePath(path, from_line, to_line)
+  SourcePath(path, root_path, from_line, to_line)
 end
 
 Base.string(s::SourcePath) = "$(s.path)"* (isnothing(s.from_line) ? "" : ":$(s.from_line)") * (isnothing(s.to_line) ? "" : "-$(s.to_line)")
@@ -34,8 +33,8 @@ struct FileChunk <: AbstractChunk
   source::SourcePath
   content::AbstractString
 end
-function FileChunk(; source::String, content::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing)
-  FileChunk(SourcePath(; path=source, from_line, to_line), content)
+function FileChunk(; source::String, content::AbstractString, from_line::Union{Int,Nothing}=nothing, to_line::Union{Int,Nothing}=nothing, root_path::AbstractString="")
+  FileChunk(SourcePath(; path=source, root_path, from_line, to_line), content)
 end
 
 Base.string(s::FileChunk) = "# $(string(s.source))\n$(s.content)"
@@ -103,7 +102,7 @@ function extract_content_with_sliding(content::String, from_line::Union{Int,Noth
 end
 
 function get_updated_file_content(source::SourcePath, previous_content="")
-  file_path, from, to = source.path, source.from_line, source.to_line
+  file_path, from, to = joinpath(source.root_path, source.path), source.from_line, source.to_line
   expanded_path = expanduser(file_path)
   if !isfile(expanded_path)
     @warn "File not found: $file_path (expanded: $expanded_path, pwd: $(pwd()))"

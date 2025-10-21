@@ -28,15 +28,17 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     show_tokens=false, 
     verbose=true, 
     virtual_ws=nothing, 
-    pipeline=EFFICIENT_PIPELINE())
+    pipeline=EFFICIENT_PIPELINE(),
+    tracker_context::Context{FileChunk}=WorkspaceContext, 
+    changes_tracker::ChangeTracker{FileChunk}=WorkspaceChangeTracker)
     
     workspace = Workspace(project_paths; virtual_ws, verbose, show_tokens)
     
     WorkspaceCTX(
         pipeline,
         workspace,
-        WorkspaceContext,
-        WorkspaceChangeTracker,
+        tracker_context,
+        changes_tracker,
     )
 end
 
