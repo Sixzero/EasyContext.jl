@@ -102,9 +102,8 @@ function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::
         max_tokens = max_tokens
     ))
 end
-
 function get_tool_results_agent(tool_tasks)
-    tasks = fetch.(values(tool_tasks))
+    tasks = filter!(!isnothing, fetch.(values(tool_tasks)))
     str_results = join(result2string.(tasks), "\n")
     img_results = String[]
     for img_vec in resultimg2base64.(tasks)
