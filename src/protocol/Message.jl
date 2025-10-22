@@ -34,9 +34,9 @@ function create_user_message_with_vectors(user_query; images_base64::Vector{Stri
 	for (i, img) in enumerate(images_base64)
 			context["base64img_$i"] = img
 	end
-	for (i, audio) in enumerate(audio_base64)
-			context["base64audio_$i"] = audio
-	end
+	# for (i, audio) in enumerate(audio_base64)
+	# 		context["base64audio_$i"] = audio
+	# end
 	Message(timestamp=now(UTC), role=:user, content=user_query, context=context)
 end
 
