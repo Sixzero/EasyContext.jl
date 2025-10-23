@@ -3,7 +3,7 @@ export process_julia_context, init_julia_context
 import Base: write
 
 @kwdef mutable struct JuliaCTX
-    rag_pipeline::TwoLayerRAG
+    rag_pipeline::AbstractRAGPipeline
     tracker_context::Context
     changes_tracker::ChangeTracker
 

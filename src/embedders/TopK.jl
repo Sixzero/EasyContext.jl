@@ -48,3 +48,15 @@ humanize(t::TopK) = "Top$(t.top_k)($(humanize(t.embedder)))"
 
 # Export humanize
 export humanize
+
+# --- NULL TopK for no-op RAG pipelines ---
+struct NullTopK <: AbstractRAGPipeline end
+
+# Return no retrieved chunks
+function search(::NullTopK, chunks::Vector{T}, _query::AbstractString; query_images=nothing, cost_tracker=Threads.Atomic{Float64}(0.0)) where T
+    T[]
+end
+
+humanize(::NullTopK) = "TopK:OFF"
+
+export NullTopK

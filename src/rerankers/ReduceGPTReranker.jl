@@ -152,3 +152,15 @@ function humanize(reranker::ReduceGPTReranker)
     
     "ReduceGPT(model=$(model_str), batch=$(reranker.batch_size), top_n=$(reranker.top_n)$(prompt_str))"
 end
+
+# --- NULL Reranker for no-op RAG pipelines ---
+struct NullReranker <: AbstractReranker end
+
+# Pass-through (will be empty anyway)
+function rerank(::NullReranker, results, _rerank_query; cost_tracker=Threads.Atomic{Float64}(0.0), query_images=nothing)
+    results
+end
+
+humanize(::NullReranker) = "Reranker:OFF"
+
+export NullReranker

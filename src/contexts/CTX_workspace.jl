@@ -3,7 +3,7 @@ export process_workspace_context, init_workspace_context
 import Base: write
 
 @kwdef mutable struct WorkspaceCTX
-    rag_pipeline::TwoLayerRAG          
+    rag_pipeline::AbstractRAGPipeline          
     workspace::AbstractWorkspace
     tracker_context::Context           
     changes_tracker::ChangeTracker
