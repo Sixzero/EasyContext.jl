@@ -23,7 +23,7 @@ Manages fallback and retry logic for AI model generation.
 Base.@kwdef mutable struct AIGenerateFallback{T}
     models::T
     states::Dict{String,ModelState} = Dict{String,ModelState}()
-    readtimeout::Int = 60
+    readtimeout::Int = 30
     api_key_rotation::Bool = true  # Enable API key rotation by default
 end
 
