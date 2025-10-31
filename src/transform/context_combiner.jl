@@ -1,10 +1,9 @@
-context_combiner(contexts::Vector{String}) = """$(join(contexts, "\n\n"))"""
+context_combiner(contexts::Vector{String}) = join(contexts, "\n\n")
 function context_combiner!(user_question, context::String)
-  """
-  $context
-  <UserQuestion>
-  $user_question
-  </UserQuestion>"""
+  isempty(context) && return user_question
+  """$context
+
+  $user_question"""
 end
 
 # Helper function to check if a string is a data URL (base64 encoded content)
