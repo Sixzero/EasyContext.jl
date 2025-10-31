@@ -66,6 +66,7 @@ include("transform/transformations.jl")
 
 include("contexts/Contexts.jl")
 
+include("compatibility.jl")
 
 
 

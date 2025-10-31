@@ -10,12 +10,12 @@ abstract type AbstractAgent end
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
 """
-@kwdef mutable struct FluidAgent{S<:AbstractSysMessage} <: AbstractAgent
+@kwdef mutable struct FluidAgent <: AbstractAgent
     tools::Vector
     model::Union{String,ModelConfig} = "claude"
     workspace::String = pwd()
     extractor_type=ToolTagExtractor
-    sys_msg::S=SysMessageV1()
+    sys_msg::AbstractSysMessage=SysMessageV1()
 end 
 
 # create_FluidAgent to prevent conflict with the constructor
