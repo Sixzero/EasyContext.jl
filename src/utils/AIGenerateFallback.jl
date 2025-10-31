@@ -60,7 +60,7 @@ get_schema_type(mc::ModelConfig, ::AbstractString) = isnothing(mc.schema) ? noth
 # Single model attempt - DRY principle
 function attempt_generate(model_or_config, prompt, manager, state; condition=nothing, api_kwargs=NamedTuple(), kwargs...)
     model_name = get_model_name(model_or_config)
-    readtimeout = is_openai_reasoning_model(model_name) ? 60 : manager.readtimeout
+    readtimeout = is_openai_reasoning_model(model_name) ? 30 : manager.readtimeout
     
     # Prepare kwargs based on model type - now centralized in ModelConfig
     final_api_kwargs, final_kwargs = if model_or_config isa ModelConfig
