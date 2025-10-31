@@ -25,6 +25,12 @@ function create_FluidAgent(model::Union{String, ModelConfig}="claude"; sys_msg::
     agent
 end
 
+# New function that directly accepts a system message object
+function create_FluidAgent_with_sysmsg(model::Union{String, ModelConfig}, sysmsg::AbstractSysMessage; tools::Vector, extractor_type=ToolTagExtractor)
+    agent = FluidAgent(; tools, model, extractor_type, sys_msg=sysmsg)
+    agent
+end
+
 get_tool_descriptions(agent::FluidAgent) = get_tool_descriptions(agent.tools)
 """
 Get tool descriptions for system prompt

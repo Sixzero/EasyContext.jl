@@ -1,5 +1,5 @@
 
-export SysMessageV1
+export SysMessageV1, SysMessageV2, SysMessageWithTools
 
 """
 Abstract type for system messages that can create themselves
@@ -23,7 +23,23 @@ SysMessageV2 extends SysMessageV1 with support for custom system messages from A
     content::String = ""
 end
 
-# Helper function to build the base system message content
+"""
+SysMessageWithTools provides a minimal system message with only tools and custom content
+"""
+@kwdef mutable struct SysMessageWithTools <: AbstractSysMessage
+    custom_system_prompt::String = ""
+    content::String = ""
+end
+
+# Add structural equality (compare configuration fields, ignore content)
+import Base: ==
+
+==(a::AbstractSysMessage, b::AbstractSysMessage) = false
+==(a::SysMessageV1, b::SysMessageV1) = a.sys_msg == b.sys_msg
+==(a::SysMessageV2, b::SysMessageV2) = a.sys_msg == b.sys_msg && a.custom_system_message == b.custom_system_message
+==(a::SysMessageWithTools, b::SysMessageWithTools) = a.custom_system_prompt == b.custom_system_prompt
+
+# Helper function to build the base system message content (for Default Coder)
 function build_base_system_content(sys_msg::String, tools)
     """$(sys_msg)
 
@@ -53,6 +69,19 @@ function build_base_system_content(sys_msg::String, tools)
     $(conversaton_starts_here)"""
 end
 
+# Helper function to build custom system message with tools
+function build_custom_with_tools_content(custom_system_prompt::String, tools)
+    base_content = isempty(custom_system_prompt) ? "" : "$(custom_system_prompt)\n\n"
+    
+    """$(base_content)$(get_tool_descriptions(tools))
+    
+    $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(tools)), "\n\n"))
+
+    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
+
+    Follow SOLID, KISS and DRY principles. Be concise!"""
+end
+
 # Initialize SysMessageV1 using the shared base content
 function initialize!(sys::SysMessageV1, agent, force=false)
     if isempty(sys.content) || force
@@ -68,6 +97,14 @@ function initialize!(sys::SysMessageV2, agent, force=false)
         custom_part = isnothing(sys.custom_system_message) || isempty(sys.custom_system_message) ? 
             "" : "\n\n$(sys.custom_system_message)"
         sys.content = base_content * custom_part
+    end
+    return sys.content
+end
+
+# Initialize SysMessageWithTools with custom content and tools
+function initialize!(sys::SysMessageWithTools, agent, force=false)
+    if isempty(sys.content) || force
+        sys.content = build_custom_with_tools_content(sys.custom_system_prompt, agent.tools)
     end
     return sys.content
 end
