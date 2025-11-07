@@ -25,6 +25,7 @@ function rerank(
     cost_tracker = Threads.Atomic{Float64}(0.0),
     query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing,
     verbose::Int = reranker.verbose,
+    request_id=nothing,
 ) where T
     # Initialize AIGenerateFallback with model preferences based on model type
     ai_manager = AIGenerateFallback(models=reranker.model)
@@ -51,7 +52,8 @@ function rerank(
 
             response = try_generate(ai_manager, prompt; 
                 api_kwargs=(; temperature, top_p=0.1),
-                verbose=false
+                verbose=false,
+                request_id
             )
             rankings = extract_ranking(response.content; verbose=verbose)
 
@@ -157,7 +159,7 @@ end
 struct NullReranker <: AbstractReranker end
 
 # Pass-through (will be empty anyway)
-function rerank(::NullReranker, results, _rerank_query; cost_tracker=Threads.Atomic{Float64}(0.0), query_images=nothing)
+function rerank(::NullReranker, results, _rerank_query; cost_tracker=Threads.Atomic{Float64}(0.0), query_images=nothing, request_id=nothing)
     results
 end
 

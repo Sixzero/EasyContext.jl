@@ -96,11 +96,23 @@ function get_api_kwargs_for_model(config::ModelConfig, base_api_kwargs::NamedTup
 end
 
 """
-    aigenerate_with_config(model::Union{ModelConfig,String}, prompt; kwargs...)
+    aigenerate_with_config(model::Union{ModelConfig,String}, prompt; 
+                          request_id::Union{String, Nothing} = nothing,
+                          kwargs...)
 
 Generate AI response using a ModelConfig with merged defaults, or a model name string.
+Optionally uses APIKeyManager for key selection.
 """
-function aigenerate_with_config(config::ModelConfig, prompt; kwargs...)
+function aigenerate_with_config(config::ModelConfig, prompt; 
+                               request_id::Union{String, Nothing} = nothing,
+                               kwargs...)
+    # Get API key from global manager
+    if !haskey(kwargs, :api_key)
+        # Get API key from global manager
+        api_key = get_api_key_for_model(config, request_id, string(prompt))
+        !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
+    end
+
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     final_api_kwargs = get_api_kwargs_for_model(config, base_api_kwargs)
     
@@ -110,4 +122,37 @@ function aigenerate_with_config(config::ModelConfig, prompt; kwargs...)
     aigenerate(config.schema, prompt; model = config.name, merged_kwargs...)
 end
 
-aigenerate_with_config(model::String, prompt; kwargs...) = aigenerate(prompt; model, kwargs...)
+function aigenerate_with_config(model::String, prompt; 
+                               request_id::Union{String, Nothing} = nothing,
+                               kwargs...)
+    if !haskey(kwargs, :api_key)
+        # Get API key from global manager
+        api_key = get_api_key_for_model(model, request_id, string(prompt))
+        !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
+    end
+    aigenerate(prompt; model, kwargs...)
+end
+
+"""
+    set_api_key_for_schema!(schema::AbstractPromptSchema, api_key::String)
+
+Set the API key for a specific schema type in PromptingTools.
+"""
+function set_api_key_for_schema!(schema::Union{AbstractPromptSchema, Nothing}, api_key::String)
+    isnothing(schema) && return
+    
+    if schema isa OpenAISchema
+        PromptingTools.OPENAI_API_KEY = api_key
+    elseif schema isa CerebrasOpenAISchema
+        PromptingTools.CEREBRAS_API_KEY = api_key
+    elseif schema isa MistralOpenAISchema
+        PromptingTools.MISTRAL_API_KEY = api_key
+    elseif schema isa AnthropicSchema
+        PromptingTools.ANTHROPIC_API_KEY = api_key
+    elseif schema isa GoogleSchema
+        PromptingTools.GOOGLE_API_KEY = api_key
+    elseif schema isa GroqOpenAISchema
+        PromptingTools.GROQ_API_KEY = api_key
+    # Add more schema types as needed
+    end
+end

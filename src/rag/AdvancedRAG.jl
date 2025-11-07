@@ -20,11 +20,12 @@ function search(method::TwoLayerRAG, chunks::Vector{T}, query::AbstractString;
     rerank_query::Union{AbstractString, Nothing}=nothing,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing,
+    request_id=nothing,
     ) where T
     
     rerank_query = rerank_query === nothing ? query : rerank_query
-    results = search(method.topK, chunks, query; query_images, cost_tracker)
-    return rerank(method.reranker, results, rerank_query; cost_tracker, query_images)
+    results = search(method.topK, chunks, query; query_images, cost_tracker, request_id)
+    return rerank(method.reranker, results, rerank_query; cost_tracker, query_images, request_id)
 end
 
 @kwdef mutable struct TwoLayerRAGWithTimings <: AbstractRAGPipeline
@@ -38,16 +39,17 @@ function search(method::TwoLayerRAGWithTimings, chunks::Vector{T}, query::Abstra
     rerank_query::Union{AbstractString, Nothing}=nothing,
     cost_tracker = Threads.Atomic{Float64}(0.0),
     query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing,
+    request_id=nothing,
     ) where T
     
     rerank_query = rerank_query === nothing ? query : rerank_query
 
     start_search = time()
-    results = search(method.topK, chunks, query; query_images, cost_tracker)
+    results = search(method.topK, chunks, query; query_images, cost_tracker, request_id)
     push!(method.search_times, time() - start_search)
 
     start_rerank = time()
-    final_results = rerank(method.reranker, results, rerank_query; cost_tracker, query_images)
+    final_results = rerank(method.reranker, results, rerank_query; cost_tracker, query_images, request_id)
     push!(method.rerank_times, time() - start_rerank)
 
     return final_results
