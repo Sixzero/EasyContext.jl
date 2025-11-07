@@ -65,7 +65,7 @@ function save_stats_to_file!(api_key::StringApiKey)
                 haskey(file, key_hash) && delete!(file, key_hash)  # required to overwrite
                 file[key_hash] = Dict(
                     "schema_name" => api_key.schema_name,
-                    "tokens_used_last_minute" => get_current_usage(api_key),
+                    "tokens_used_last_minute" => LLMRateLimiters.current_usage(api_key.rate_limiter),
                     "last_save_time" => api_key.last_save_time
                 )
             end
@@ -89,24 +89,6 @@ function update_usage!(api_key::StringApiKey, tokens::Int)
     end
 end
 
-"""
-    get_current_usage(api_key::StringApiKey) -> Int
-
-Get current token usage in the sliding window.
-"""
-get_current_usage(api_key::StringApiKey) = LLMRateLimiters.current_usage(api_key.rate_limiter)
-
-"""
-    can_handle_tokens(api_key::StringApiKey, tokens::Int) -> Bool
-
-Check if the API key can handle the requested number of tokens.
-"""
-can_handle_tokens(api_key::StringApiKey, tokens::Int) = LLMRateLimiters.can_add_tokens(api_key.rate_limiter, tokens)
-
-"""
-    add_api_keys!(manager::APIKeyManager, schema_type::Type{<:AbstractPromptSchema}, keys::Vector{String}, max_tokens_per_minute::Int = 1_000_000)
-
-Add API keys for a specific schema type with rate limiting.
 """
 function add_api_keys!(manager::APIKeyManager, schema_type::Type{<:AbstractPromptSchema}, keys::Vector{String}, max_tokens_per_minute::Int = 1_000_000)
     if !haskey(manager.schema_to_api_keys, schema_type)
@@ -161,14 +143,14 @@ function find_api_key_for_request(manager::APIKeyManager, schema_type::Type{<:Ab
         if time() - last_t <= manager.affinity_window
             # Find the matching key object
             idx = findfirst(k -> k.key == key_str, api_keys)
-            if !isnothing(idx) && can_handle_tokens(api_keys[idx], estimated_tokens)
+            if !isnothing(idx) && LLMRateLimiters.can_add_tokens(api_keys[idx].rate_limiter, estimated_tokens)
                 return api_keys[idx]
             end
         end
     end
 
     # 2) Simply choose the key with lowest current usage
-    return argmin(k -> get_current_usage(k), api_keys)
+    return argmin(k -> LLMRateLimiters.current_usage(k.rate_limiter), api_keys)
 end
 
 """

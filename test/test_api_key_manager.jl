@@ -9,8 +9,8 @@ using PromptingTools: OpenAISchema, AbstractPromptSchema, CerebrasOpenAISchema
         api_key = EasyContext.StringApiKey("test_key_123")
         @test api_key.key == "test_key_123"
         @test api_key.schema_name == "OpenAISchema"
-        @test EasyContext.get_current_usage(api_key) == 0
-        @test EasyContext.can_handle_tokens(api_key, 1000)
+        @test LLMRateLimiters.current_usage(api_key.rate_limiter) == 0
+        @test LLMRateLimiters.can_add_tokens(api_key.rate_limiter, 1000)
     end
     
     @testset "APIKeyManager initialization" begin
@@ -140,13 +140,13 @@ using PromptingTools: OpenAISchema, AbstractPromptSchema, CerebrasOpenAISchema
         
         # Get the key object to check usage
         key_obj = manager.schema_to_api_keys[OpenAISchema][1]
-        initial_usage = EasyContext.get_current_usage(key_obj)
+        initial_usage = LLMRateLimiters.current_usage(key_obj.rate_limiter)
         
         # Make a request
         EasyContext.get_api_key_for_model("gpt-3.5-turbo", "test_request", "hello world test"; manager=manager)
         
         # Usage should have increased
-        new_usage = EasyContext.get_current_usage(key_obj)
+        new_usage = LLMRateLimiters.current_usage(key_obj.rate_limiter)
         @test new_usage > initial_usage
     end
     
