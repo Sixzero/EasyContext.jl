@@ -89,7 +89,6 @@ function update_usage!(api_key::StringApiKey, tokens::Int)
     end
 end
 
-"""
 function add_api_keys!(manager::APIKeyManager, schema_type::Type{<:AbstractPromptSchema}, keys::Vector{String}, max_tokens_per_minute::Int = 1_000_000)
     if !haskey(manager.schema_to_api_keys, schema_type)
         manager.schema_to_api_keys[schema_type] = StringApiKey[]
