@@ -42,8 +42,9 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
     state.failures += 1
     state.last_error_type = typeof(e)
     state.last_error_time = time()
+    state.reason = "$e"
     
-    return "Model '$model': $e"
+    return state.reason
 end
 
 # Resolve schema type for API-key rotation (returns `Union{Type,Nothing}`)
