@@ -24,15 +24,12 @@ function apply_modify_by_llm_with_response(original_content::AbstractString, cha
     verbose && println("\e[38;5;240mProcessing diff with AI ($models) for higher quality...\e[0m")
 
     function is_valid_result(result)
-        if is_complete_replacement(result.content)
-            return true
-        end
+        is_complete_replacement(result.content) && return true
         content = extract_tagged_content(result.content, end_tag)
-        if isnothing(content) || !has_meaningful_changes(original_content, content)
-            verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
-            return false
-        end
-        true
+        isnothing(content) && return false
+        strip(original_content) == strip(content) || has_meaningful_changes(original_content, content) && return true
+        verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
+        return false
     end
 
     ai_manager = AIGenerateFallback(models=models)
@@ -79,7 +76,6 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
 
     # Define condition function to check for meaningful changes
     function is_valid_result(result)
-        # Check for complete replacement indicator
         if is_complete_replacement(result.content)
             return true
         end
@@ -87,12 +83,16 @@ function apply_modify_by_llm(original_content::AbstractString, changes_content::
         content = extract_tagged_content(result.content, end_tag)
         
         # Check if content was extracted and has meaningful changes
-        if isnothing(content) || 
-           !has_meaningful_changes(original_content, content)
+        if isnothing(content)
             verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
             return false
         end
-        return true
+        # Accept if no changes (equal after strip) or meaningful changes
+        if strip(original_content) == strip(content) || has_meaningful_changes(original_content, content)
+            return true
+        end
+        verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
+        return false
     end
     
     # Initialize AIGenerateFallback with model preferences and try to generate
