@@ -1,8 +1,6 @@
 # ./src/transform/LLM_CodeCriticsArchitect.jl
-using PromptingTools: SystemMessage, UserMessage
 using Markdown
-using StreamCallbacksExt
-using StreamCallbacksExt: format_ai_meta, format_user_meta
+using OpenRouter: format_ai_meta, format_user_meta
 
 export CodeCriticsArchitectContext, LLM_CodeCriticsArchitect
 
@@ -46,10 +44,10 @@ function transform(ctx::CodeCriticsArchitectContext, query, session::Session; io
     if ctx.model == "o3m" # NOTE: o3m does not support temperature and top_p
         api_kwargs = (; )
     end
-    response = aigenerate([
+    response = aigen([
         SystemMessage(CRITICS_SYSTEM_PROMPT),
         UserMessage(prompt)
-    ], model=ctx.model, api_kwargs=api_kwargs, streamcallback=cb)
+    ], ctx.model; streamcallback=cb, api_kwargs...)
     
     content = response.content
     display(ctx, content)

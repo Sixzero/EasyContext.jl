@@ -1,5 +1,4 @@
 using EasyContext
-using PromptingTools
 
 """
 This example demonstrates various ways to use FluidAgent for automation tasks.

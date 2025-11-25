@@ -1,8 +1,6 @@
-using PromptingTools
 using RAGTools: AbstractReranker
 using Base.Threads
 using HTTP.Exceptions: TimeoutError
-const PT = PromptingTools
 
 include("RankingExtractor.jl")  # Include our local extract_ranking function
 
@@ -43,15 +41,15 @@ function rerank(
 
             # Handle both string and vector prompts
             prompt = if prompt_result isa AbstractString
-                !isnothing(query_images) ? [PT.UserMessageWithImages(prompt_result; image_url=query_images)] : prompt_result
+                !isnothing(query_images) ? [UserMessage(; content=prompt_result, image_data=query_images)] : prompt_result
             elseif prompt_result isa Vector && !isnothing(query_images)
-                vcat(prompt_result[1:end-1], [PT.UserMessageWithImages(prompt_result[end].content; image_url=query_images)])
+                vcat(prompt_result[1:end-1], [UserMessage(; content=prompt_result[end].content, image_data=query_images)])
             else
                 prompt_result
             end
 
             response = try_generate(ai_manager, prompt; 
-                api_kwargs=(; temperature, top_p=0.1),
+                api_kwargs=(; temperature, ), # top_p=0.1
                 verbose=false,
                 request_id
             )

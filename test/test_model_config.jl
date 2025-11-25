@@ -2,38 +2,30 @@ using Test
 using EasyContext
 using PromptingTools
 using RAGTools
-using EasyContext: ModelConfig, get_model_name, is_openai_reasoning_model, is_mistral_model, is_claude_model, 
+using OpenRouter: ModelConfig
+using EasyContext: get_model_name, is_openai_reasoning_model, is_mistral_model, is_claude_model, 
                    get_api_kwargs_for_model, apply_stop_sequences, aigenerate_with_config
 using PromptingTools: AnthropicSchema
 
 @testset "ModelConfig Tests" begin
     
     @testset "ModelConfig Construction" begin
-        # Test basic construction
-        config = ModelConfig(name="test-model")
-        @test config.name == "test-model"
+        # Test basic construction with new structure
+        config = ModelConfig(slug="test-model")
+        @test config.slug == "test-model"
         @test config.schema === nothing
-        @test config.cost_of_token_prompt == 0.0
-        @test config.cost_of_token_generation == 0.0
-        @test config.default_api_kwargs == NamedTuple()
-        @test config.default_kwargs == NamedTuple()
+        @test config.kwargs == NamedTuple()
         
         # Test construction with all fields
         config = ModelConfig(
-            name="claude-3",
+            slug="anthropic:claude-3",
             schema=AnthropicSchema(),
-            cost_of_token_prompt=0.001,
-            cost_of_token_generation=0.002,
-            default_api_kwargs=(; temperature=0.7, max_tokens=4000),
-            default_kwargs=(; verbose=true)
+            kwargs=(; temperature=0.7, max_tokens=4000)
         )
-        @test config.name == "claude-3"
+        @test config.slug == "anthropic:claude-3"
         @test config.schema isa AnthropicSchema
-        @test config.cost_of_token_prompt == 0.001
-        @test config.cost_of_token_generation == 0.002
-        @test config.default_api_kwargs.temperature == 0.7
-        @test config.default_api_kwargs.max_tokens == 4000
-        @test config.default_kwargs.verbose == true
+        @test config.kwargs.temperature == 0.7
+        @test config.kwargs.max_tokens == 4000
     end
     
     @testset "Model Type Detection Logic" begin
@@ -89,25 +81,25 @@ using PromptingTools: AnthropicSchema
     end
     
     @testset "API Kwargs with ModelConfig Defaults" begin
-        # Test that ModelConfig defaults are merged but base_kwargs take precedence
+        # Test that ModelConfig kwargs are merged but base_kwargs take precedence
         config = ModelConfig(
-            name="claude-3",
-            default_api_kwargs=(; max_tokens=8000, temperature=0.5, top_k=10)
+            slug="anthropic:claude-3",
+            kwargs=(; max_tokens=8000, temperature=0.5, top_k=10)
         )
         
         base_kwargs = (; temperature=0.7, top_p=0.9)
         result = get_api_kwargs_for_model(config, base_kwargs)
         
-        # base_kwargs should override config defaults
+        # base_kwargs should override config kwargs
         @test result.temperature == 0.7  # from base_kwargs, not config's 0.5
         @test result.top_p == 0.9  # from base_kwargs
         @test result.top_k == 10  # from config (not in base_kwargs)
         @test result.max_tokens == 16000  # Claude-specific override
         
-        # Test Mistral with config defaults
+        # Test Mistral with config kwargs
         mistral_config = ModelConfig(
-            name="mistral-large",
-            default_api_kwargs=(; temperature=0.3, top_p=0.8, max_tokens=2000)
+            slug="mistral:mistral-large",
+            kwargs=(; temperature=0.3, top_p=0.8, max_tokens=2000)
         )
         
         result = get_api_kwargs_for_model(mistral_config, base_kwargs)
@@ -149,7 +141,7 @@ using PromptingTools: AnthropicSchema
         @test !haskey(result, :stop_sequences)
         
         # Test with ModelConfig
-        claude_config = ModelConfig(name="claude-3")
+        claude_config = ModelConfig(slug="anthropic:claude-3")
         result = apply_stop_sequences(claude_config, base_kwargs, stop_seqs)
         @test result.stop_sequences == stop_seqs
         @test !haskey(result, :stop)
@@ -178,8 +170,8 @@ using PromptingTools: AnthropicSchema
         
         # Test ModelConfig with reasoning model (should override everything)
         reasoning_config = ModelConfig(
-            name="o3",
-            default_api_kwargs=(; temperature=0.5, max_tokens=4000, top_p=0.8)
+            slug="openai:o3",
+            kwargs=(; temperature=0.5, max_tokens=4000, top_p=0.8)
         )
         
         rich_kwargs = (; temperature=0.7, top_p=0.9, max_tokens=2000, custom_param=42)
@@ -188,8 +180,8 @@ using PromptingTools: AnthropicSchema
         
         # Test GPT-5 as reasoning model (should also override everything)
         gpt5_config = ModelConfig(
-            name="gpt-5",
-            default_api_kwargs=(; temperature=0.5, max_tokens=4000, top_p=0.8)
+            slug="openai:gpt-5",
+            kwargs=(; temperature=0.5, max_tokens=4000, top_p=0.8)
         )
         
         result = get_api_kwargs_for_model(gpt5_config, rich_kwargs)
@@ -200,25 +192,25 @@ using PromptingTools: AnthropicSchema
         # Test that get_model_name works correctly for both types
         @test get_model_name("gpt-4") == "gpt-4"
         
-        config = ModelConfig(name="claude-3")
-        @test get_model_name(config) == "claude-3"
+        config = ModelConfig(slug="anthropic:claude-3")
+        @test get_model_name(config) == "anthropic:claude-3"
         
         # This enables polymorphic usage in other functions
         models = [
             "gpt-4",
-            ModelConfig(name="claude-3"),
-            ModelConfig(name="mistral-large")
+            ModelConfig(slug="anthropic:claude-3"),
+            ModelConfig(slug="mistral:mistral-large")
         ]
         
         names = [get_model_name(m) for m in models]
-        @test names == ["gpt-4", "claude-3", "mistral-large"]
+        @test names == ["gpt-4", "anthropic:claude-3", "mistral:mistral-large"]
     end
     
     @testset "Integration: Full Workflow" begin
-        # Test realistic scenario: Mistral model with config defaults and stop sequences
+        # Test realistic scenario: Mistral model with config kwargs and stop sequences
         config = ModelConfig(
-            name="mistral-large",
-            default_api_kwargs=(; temperature=0.3, top_p=0.8, max_tokens=2000, custom_param="test")
+            slug="mistral:mistral-large",
+            kwargs=(; temperature=0.3, top_p=0.8, max_tokens=2000, custom_param="test")
         )
         
         # User provides some overrides
@@ -244,13 +236,13 @@ using PromptingTools: AnthropicSchema
         
         # Test that reasoning models bypass everything (including GPT-5)
         reasoning_config = ModelConfig(
-            name="o3",
-            default_api_kwargs=(; temperature=0.5, max_tokens=4000)
+            slug="openai:o3",
+            kwargs=(; temperature=0.5, max_tokens=4000)
         )
         
         gpt5_config = ModelConfig(
-            name="gpt-5-preview",
-            default_api_kwargs=(; temperature=0.5, max_tokens=4000)
+            slug="openai:gpt-5-preview",
+            kwargs=(; temperature=0.5, max_tokens=4000)
         )
         
         user_kwargs = (; temperature=0.7, top_p=0.9, max_tokens=2000, custom_param=42)

@@ -1,37 +1,35 @@
 export ModelConfig, aigenerate_with_config
+using OpenRouter: extract_provider_from_model, ModelConfig
+import PromptingTools: AbstractPromptSchema, OpenAISchema, CerebrasOpenAISchema, MistralOpenAISchema,
+    AnthropicSchema, GoogleSchema, GroqOpenAISchema
 
-# Import all available schemas from PromptingTools
-using PromptingTools: AbstractPromptSchema, OpenAISchema, CustomOpenAISchema, LocalServerOpenAISchema,
-    MistralOpenAISchema, DatabricksOpenAISchema, AzureOpenAISchema, FireworksOpenAISchema,
-    TogetherOpenAISchema, GroqOpenAISchema, DeepSeekOpenAISchema, OpenRouterOpenAISchema,
-    CerebrasOpenAISchema, SambaNovaOpenAISchema, XAIOpenAISchema, GoogleOpenAISchema,
-    MiniMaxOpenAISchema, OllamaSchema, ChatMLSchema, OllamaManagedSchema, GoogleSchema,
-    AnthropicSchema, ShareGPTSchema, TracerSchema, SaverSchema
-
-"""
-    ModelConfig
-
-Configuration specification for AI models with default parameters and metadata.
-"""
-@kwdef mutable struct ModelConfig
-    name::String
-    schema::Union{AbstractPromptSchema, Nothing} = nothing
-    cost_of_token_prompt::Float64 = 0.0
-    cost_of_token_generation::Float64 = 0.0
-    default_api_kwargs::NamedTuple = NamedTuple()
-    default_kwargs::NamedTuple = NamedTuple()
-    extras::NamedTuple = NamedTuple()
-end
+# Re-export ModelConfig from OpenRouter
+# Base.@kwdef mutable struct ModelConfig
+#     slug::String  # provider:author/modelid format
+#     schema::Union{AbstractRequestSchema, Nothing} = nothing
+#     kwargs::NamedTuple = NamedTuple()
+# end
 
 # Single responsibility: extract model name from either string or config
 get_model_name(model::String) = model
-get_model_name(config::ModelConfig) = config.name
+get_model_name(config::ModelConfig) = config.slug
 
-# Model-specific logic centralized in ModelConfig
-is_openai_reasoning_model(model_name::String) = model_name in ("o3", "o3m", "o4m") || startswith(model_name, "gpt-5")
-is_mistral_model(model_name::String) = startswith(model_name, "mistral")
-is_claude_model(model_name::String) = model_name == "claude" || startswith(model_name, "claude")
-is_grok_model(model_name::String) = startswith(model_name, "grok")
+# Helper: provider slug from model name, with OpenRouter's fallback behaviour.
+_get_provider(model_name::String) = extract_provider_from_model(model_name)
+
+# Model-specific logic centralized in ModelConfig (now purely provider-based)
+is_openai_reasoning_model(model_name::String) =
+    _get_provider(model_name) == "openai"
+
+is_mistral_model(model_name::String) = _get_provider(model_name) == "mistral"
+
+is_claude_model(model_name::String) = _get_provider(model_name) == "anthropic"
+
+is_grok_model(model_name::String) = _get_provider(model_name) == "xai"
+
+# Gemini detection (used only for stop-sequence support)
+is_gemini_model(model_name::String) =
+    _get_provider(model_name) in ("google", "google-ai-studio")
 
 """
     apply_stop_sequences(model_name::String, api_kwargs::NamedTuple, stop_sequences::Vector{String})
@@ -40,12 +38,12 @@ Apply stop sequences to API kwargs based on model type.
 """
 function apply_stop_sequences(model_name::String, api_kwargs::NamedTuple, stop_sequences::Vector{String})
     isempty(stop_sequences) && return api_kwargs
-    startswith(model_name, "gem") && return api_kwargs  # Gemini doesn't support stop sequences
+    is_gemini_model(model_name) && return api_kwargs            # Gemini doesn't support stop sequences
     is_openai_reasoning_model(model_name) && return api_kwargs  # Reasoning models don't support stop sequences
-    is_grok_model(model_name) && return api_kwargs  # Grok models don't support stop sequences
+    is_grok_model(model_name) && return api_kwargs              # Grok models don't support stop sequences
     
     # Different models use different parameter names for stop sequences
-    key = startswith(model_name, "claude") ? :stop_sequences : :stop
+    key = is_claude_model(model_name) ? :stop_sequences : :stop
     merge(api_kwargs, (; key => stop_sequences))
 end
 
@@ -59,7 +57,7 @@ apply_stop_sequences(config::ModelConfig, api_kwargs::NamedTuple, stop_sequences
         # @info "CerebrasOpenAISchema does not support stop sequences with streaming"
         return api_kwargs
     end
-    apply_stop_sequences(config.name, api_kwargs, stop_sequences)
+    apply_stop_sequences(config.slug, api_kwargs, stop_sequences)
 end
 
 """
@@ -88,11 +86,11 @@ end
 Get model-specific API kwargs, applying model-specific rules and merging with defaults.
 """
 function get_api_kwargs_for_model(config::ModelConfig, base_api_kwargs::NamedTuple)
-    # Merge config defaults with base kwargs first
-    merged_kwargs = merge(config.default_api_kwargs, base_api_kwargs)
+    # Merge config kwargs with base kwargs first
+    merged_kwargs = merge(config.kwargs, base_api_kwargs)
     
     # Then apply model-specific rules using the string version
-    return get_api_kwargs_for_model(config.name, merged_kwargs)
+    return get_api_kwargs_for_model(config.slug, merged_kwargs)
 end
 
 """
@@ -113,13 +111,7 @@ function aigenerate_with_config(config::ModelConfig, prompt;
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
 
-    base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
-    final_api_kwargs = get_api_kwargs_for_model(config, base_api_kwargs)
-    
-    # Convert kwargs to NamedTuple and merge properly
-    kwargs_nt = NamedTuple(kwargs)
-    merged_kwargs = merge(config.default_kwargs, kwargs_nt, (; api_kwargs = final_api_kwargs))
-    aigenerate(config.schema, prompt; model = config.name, merged_kwargs...)
+    aigen(prompt, config; kwargs...)
 end
 
 function aigenerate_with_config(model::String, prompt; 
@@ -130,29 +122,7 @@ function aigenerate_with_config(model::String, prompt;
         api_key = get_api_key_for_model(model, request_id, string(prompt))
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
-    aigenerate(prompt; model, kwargs...)
-end
-
-"""
-    set_api_key_for_schema!(schema::AbstractPromptSchema, api_key::String)
-
-Set the API key for a specific schema type in PromptingTools.
-"""
-function set_api_key_for_schema!(schema::Union{AbstractPromptSchema, Nothing}, api_key::String)
-    isnothing(schema) && return
-    
-    if schema isa OpenAISchema
-        PromptingTools.OPENAI_API_KEY = api_key
-    elseif schema isa CerebrasOpenAISchema
-        PromptingTools.CEREBRAS_API_KEY = api_key
-    elseif schema isa MistralOpenAISchema
-        PromptingTools.MISTRAL_API_KEY = api_key
-    elseif schema isa AnthropicSchema
-        PromptingTools.ANTHROPIC_API_KEY = api_key
-    elseif schema isa GoogleSchema
-        PromptingTools.GOOGLE_API_KEY = api_key
-    elseif schema isa GroqOpenAISchema
-        PromptingTools.GROQ_API_KEY = api_key
-    # Add more schema types as needed
-    end
+    base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
+    filtered_kwargs = NamedTuple(k => v for (k, v) in pairs(kwargs) if k != :api_kwargs)
+    aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
 end

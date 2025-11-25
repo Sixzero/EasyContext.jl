@@ -1,5 +1,4 @@
 import Base
-using PromptingTools: AbstractMessage
 
 @kwdef mutable struct Classify{T}
 	patterns::Dict{String, T}

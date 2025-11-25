@@ -1,7 +1,6 @@
 
-using StreamCallbacksExt
-using StreamCallbacksExt: format_ai_meta, format_user_meta
-using StreamCallbacksExt: dict_user_meta, dict_ai_meta
+using OpenRouter
+using OpenRouter: format_ai_meta, format_user_meta
 
 export StreamCallbackConfig, create
 include("syntax_highlight.jl")
@@ -32,7 +31,7 @@ create(config::StreamCallbackConfig) = begin
 
     # StreamCallbackChannelWrapper(;
         # callback = 
-    StreamCallbackWithHooks(
+    HttpStreamHooks(
             content_formatter = content_handler,
             on_meta_usr       = (tokens, cost, elapsed) -> (flush_state(state); format_user_meta(tokens, cost, elapsed)),
             on_meta_ai        = (tokens, cost, elapsed) -> (flush_state(state); format_ai_meta(tokens, cost, elapsed)), 

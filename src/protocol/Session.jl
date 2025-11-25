@@ -1,4 +1,6 @@
+using OpenRouter: AbstractMessage, SystemMessage, UserMessage, AIMessage
 export Session, initSession
+
 include("SessionImageSupport.jl")
 
 @kwdef mutable struct Session{M <: MSG} <: CONV
@@ -43,8 +45,9 @@ conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "c
 
 
 function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_messages_supported::Bool=false)
-    messages = Vector{PT.AbstractChatMessage}(undef, length(session.messages) + 1)
-    messages[1] = SystemMessage(sys_msg)
+    
+    messages = Vector{AbstractMessage}(undef, length(session.messages) + 1)
+    messages[1] = SystemMessage(content=sys_msg)
     
     for (i, msg) in enumerate(session.messages)
         messages[i + 1] = if msg.role == :user
@@ -55,23 +58,59 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             base64_images = filter(p -> startswith(p.first, "base64img_") || startswith(p.second, "data:image"), collect(msg.context))
             base64_urls = isempty(base64_images) ? String[] : [p.second for p in base64_images]
             
+            # Combine content with context
+            full_content = context_combiner!(msg.content, msg.context, false)
+            
+            # Create OpenRouter UserMessage with image data
             if !isempty(image_paths) || !isempty(base64_urls)
-                # Use the existing constructor which handles both paths and base64
-                new_content = context_combiner!(msg.content, msg.context, false)
-                PT.UserMessageWithImages(new_content; 
-                    image_path = isempty(image_paths) ? nothing : image_paths,
-                    image_url = isempty(base64_urls) ? nothing : base64_urls)
+                # Convert file paths to data URLs if needed
+                all_image_data = String[]
+                for path in image_paths
+                    if isfile(path)
+                        # Convert file to data URL (you may need to implement this helper)
+                        push!(all_image_data, file_to_data_url(path))
+                    end
+                end
+                append!(all_image_data, base64_urls)
+                
+                UserMessage(content=full_content, image_data=all_image_data)
             else
-                full_content = context_combiner!(msg.content, msg.context)
-                UserMessage(full_content)
+                UserMessage(content=full_content)
             end
         elseif msg.role == :assistant 
             full_content = context_combiner!(msg.content, msg.context)
-            AIMessage(full_content)
+            AIMessage(content=full_content)
         else
             full_content = context_combiner!(msg.content, msg.context)
-            UserMessage(full_content)
+            UserMessage(content=full_content)
         end
     end
     return messages
+end
+
+# Helper function to convert file path to data URL (add this if not exists)
+function file_to_data_url(filepath::String)
+    if !isfile(filepath)
+        return ""
+    end
+    
+    # Determine MIME type based on extension
+    ext = lowercase(splitext(filepath)[2])
+    mime_type = if ext == ".jpg" || ext == ".jpeg"
+        "image/jpeg"
+    elseif ext == ".png"
+        "image/png"
+    elseif ext == ".gif"
+        "image/gif"
+    elseif ext == ".webp"
+        "image/webp"
+    else
+        "image/jpeg"  # default
+    end
+    
+    # Read file and encode as base64
+    data = read(filepath)
+    b64_data = base64encode(data)
+    
+    return "data:$mime_type;base64,$b64_data"
 end

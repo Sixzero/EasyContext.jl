@@ -1,4 +1,4 @@
-using PromptingTools: recursive_splitter
+import PromptingTools: recursive_splitter
 using RAGTools
 using RAGTools: AbstractChunker
 

@@ -1,7 +1,6 @@
 
 using RAGTools: AbstractRephraser
 import RAGTools: rephrase
-using PromptingTools
 
 Base.@kwdef struct JuliacodeRephraser <: AbstractRephraser
   template::Symbol=:RAGRephraserByKeywords
@@ -16,7 +15,7 @@ function rephrase(rephraser::JuliacodeRephraser, question::AbstractString;
   placeholders = only(aitemplates(template)).variables # only one template should be found
   @assert (:query in placeholders) "Provided RAG Template $(template) is not suitable. It must have a placeholder: `query`."
 
-  msg = aigenerate(template; query = question, verbose, model, kwargs...)
+  msg = aigen(template, model; query = question, verbose, kwargs...)
   Threads.atomic_add!(cost_tracker, msg.cost)
   useful_doc_ideas, possible_files_to_edit = parse_and_evaluate_script(msg.content)
   @show length.((useful_doc_ideas, possible_files_to_edit))

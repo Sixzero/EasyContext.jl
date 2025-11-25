@@ -3,7 +3,7 @@ using EasyContext
 using PromptingTools
 using EasyContext: Session, UserMessage, AIMessage, push_message!
 using EasyContext: get_tool_results_agent, extract_tool_calls, pickStreamCallbackforIO
-using StreamCallbacksExt: StreamCallbackWithHooks
+using OpenRouter: HttpStreamHooks
 using UUIDs
 
 @testset failfast=true "FluidAgent Tests" begin
@@ -23,7 +23,7 @@ using UUIDs
         # Override pickStreamCallbackforIO for our custom IO type
         function EasyContext.pickStreamCallbackforIO(io::CostTrackingIO)
             function create_cost_tracking_callback(config)
-                return StreamCallbackWithHooks(
+                return HttpStreamHooks(
                     content_formatter = config.on_content,
                     on_meta_usr = (tokens, cost, elapsed) -> nothing,
                     on_meta_ai = (tokens, cost, elapsed) -> nothing,

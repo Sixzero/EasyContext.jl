@@ -1,7 +1,6 @@
 
 using HTTP
 using JSON3
-using PromptingTools
 using RAGTools: get_embeddings
 using ProgressMeter
 

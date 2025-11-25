@@ -1,9 +1,7 @@
 using RAGTools: BatchEmbedder, _normalize
-using PromptingTools: MODEL_EMBEDDING
+import PromptingTools: MODEL_EMBEDDING
 using SparseArrays
 using Base.Threads
-using PromptingTools
-const PT = PromptingTools
 
 @kwdef struct OpenAIBatchEmbedderWithRetry <: AbstractEasyEmbedder
     embedder::BatchEmbedder=BatchEmbedder()

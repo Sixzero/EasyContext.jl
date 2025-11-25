@@ -1,5 +1,4 @@
-using StreamCallbacksExt
-using StreamCallbacksExt: RunInfo
+using OpenRouter: RunInfo
 
 @kwdef mutable struct Conversation{M <: MSG} <: CONV
     system_message::M
@@ -64,12 +63,12 @@ function to_dict_nosys_detailed(conv::CONV)
     [to_dict(message) for message in conv.messages]
 end
 # just unwrap it.
-update_last_user_message_meta(conv::CONV, callback::StreamCallbackChannelWrapper) = update_last_user_message_meta(conv, callback.callback)
-function update_last_user_message_meta(conv::CONV, callback::Union{StreamCallbackWithHooks, StreamCallbackWithTokencounts})
-    tokens::TokenCounts, run_info::RunInfo, flavor, model = callback.total_tokens, callback.run_info, callback.flavor, callback.model
-    elapsed = run_info.last_message_time - run_info.creation_time
-    update_last_user_message_meta(conv, tokens.input, tokens.output, tokens.cache_write, tokens.cache_read, StreamCallbacksExt.get_cost(flavor, model, tokens), elapsed)
-end
+# update_last_user_message_meta(conv::CONV, callback::StreamCallbackChannelWrapper) = update_last_user_message_meta(conv, callback.callback)
+# function update_last_user_message_meta(conv::CONV, callback::Union{StreamCallbackWithHooks, StreamCallbackWithTokencounts})
+#     tokens::TokenCounts, run_info::RunInfo, flavor, model = callback.total_tokens, callback.run_info, callback.flavor, callback.model
+#     elapsed = run_info.last_message_time - run_info.creation_time
+#     update_last_user_message_meta(conv, tokens.input, tokens.output, tokens.cache_write, tokens.cache_read, OpenRouter.get_cost(flavor, model, tokens), elapsed)
+# end
 update_last_user_message_meta(conv::CONV, itok::Int, otok::Int, cached::Int, cache_read::Int, price, elapsed::Number) = update_message(conv.messages[end], itok, otok, cached, cache_read, price, elapsed)
 
 last_msg(conv::CONV) = conv.messages[end].content

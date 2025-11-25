@@ -1,5 +1,3 @@
-
-using PromptingTools
 using Dates
 
 export optimize_reranker, analyze_missing_targets

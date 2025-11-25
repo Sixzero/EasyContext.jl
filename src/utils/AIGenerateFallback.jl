@@ -12,7 +12,6 @@ Base.@kwdef mutable struct ModelState
     available::Bool = true
     reason::String = ""
     runtimes::Vector{Float64} = Float64[]
-    current_api_key_index::Int = 1
 end
 
 """
@@ -24,7 +23,6 @@ Base.@kwdef mutable struct AIGenerateFallback{T}
     models::T
     states::Dict{String,ModelState} = Dict{String,ModelState}()
     readtimeout::Int = 30
-    api_key_rotation::Bool = true  # Enable API key rotation by default
 end
 
 # Helper functions
@@ -47,35 +45,14 @@ function handle_error!(state::ModelState, e::Exception, model::String="X")
     return state.reason
 end
 
-# Resolve schema type for API-key rotation (returns `Union{Type,Nothing}`)
-get_schema_type(model_or_config, model_name::AbstractString) = begin
-    model_spec = get(PromptingTools.MODEL_REGISTRY, model_name, nothing)
-    if isnothing(model_spec) || isnothing(model_spec.schema)
-        nothing
-    else
-        typeof(model_spec.schema)
-    end
-end
-get_schema_type(mc::ModelConfig, ::AbstractString) = isnothing(mc.schema) ? nothing : typeof(mc.schema)
-
 # Single model attempt - DRY principle
-function attempt_generate(model_or_config, prompt, manager, state; condition=nothing, api_kwargs=NamedTuple(), kwargs...)
+function attempt_generate(model_or_config, prompt, manager, state; condition=nothing, kwargs...)
     model_name = get_model_name(model_or_config)
     readtimeout = is_openai_reasoning_model(model_name) ? 30 : manager.readtimeout
     
-    # Prepare kwargs based on model type - now centralized in ModelConfig
-    final_api_kwargs, final_kwargs = if model_or_config isa ModelConfig
-        merged_api = get_api_kwargs_for_model(model_or_config, api_kwargs)
-        merged_kw = merge(model_or_config.default_kwargs, kwargs)
-        (merged_api, merged_kw)
-    else
-        (get_api_kwargs_for_model(model_name, api_kwargs), kwargs)
-    end
-
     res = aigenerate_with_config(model_or_config, prompt; 
-        http_kwargs=(; readtimeout), 
-        api_kwargs=final_api_kwargs, 
-        final_kwargs...)
+        # http_kwargs=(; readtimeout), 
+        kwargs...)
     
     # Check condition if provided
     if !isnothing(condition) && !condition(res)
@@ -99,22 +76,14 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
         maybe_recover_model!(state)
         !state.available && continue
         
-        # Get schema type for API key rotation (or nothing if unknown)
-        schema_type = get_schema_type(model_or_config, model_name)
-        
         # Retry logic for single model
         for attempt in 1:retries
             result, time_taken = @timed try
-                attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs, kwargs...)
+                attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs..., kwargs...)
             catch e
                 e isa InterruptException && rethrow(e)
+                rethrow(e)
                 reason = handle_error!(state, e, model_name)
-                
-                # Try API key rotation on quota/rate limit errors (only if schema is known)
-                if schema_type !== nothing && is_quota_exceeded_error(e) && rotate_api_key!(manager, model_name, schema_type)
-                    @info "Retrying with rotated API key for $model_name"
-                    continue  # Retry with new API key
-                end
                 
                 if attempt == retries
                     disable_model!(state, "Failed after $retries retries: $reason")

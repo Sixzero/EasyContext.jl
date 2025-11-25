@@ -1,4 +1,3 @@
-using PromptingTools: SystemMessage, UserMessage
 using Markdown
 
 export ExecutionPlannerContext, LLM_ExecutionPlanner
@@ -39,10 +38,10 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session; io::IO
     if ctx.model == "o3m" # NOTE: o3m does not support temperature and top_p
         api_kwargs = (; )
     end
-    response = aigenerate([
+    response = aigen([
         SystemMessage(PLANNER_SYSTEM_PROMPT),
         UserMessage(prompt)
-    ], model=ctx.model, api_kwargs=api_kwargs, http_kwargs=(; readtimeout=300), streamcallback=cb)
+    ], ctx.model; streamcallback=cb, api_kwargs...)
     
     content = response.content
     display(ctx, content)

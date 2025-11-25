@@ -1,7 +1,6 @@
 using UUIDs
-using PromptingTools
-using PromptingTools: aigenerate
-using StreamCallbacksExt: needs_tool_execution
+import PromptingTools: aigenerate
+using OpenRouter: needs_tool_execution
 
 export FluidAgent, execute_tools, work, create_FluidAgent
 

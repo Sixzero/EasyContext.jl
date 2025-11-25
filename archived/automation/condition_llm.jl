@@ -1,4 +1,3 @@
-using PromptingTools
 
 """
     condition_llm(condition::AbstractString; model::AbstractString="gpt4om", verbose::Bool=false)

@@ -1,4 +1,4 @@
-using PromptingTools: create_template
+import PromptingTools: create_template
 
 
 function get_merge_prompt_v1(original_content, changes_content)

@@ -1,6 +1,5 @@
 using EasyContext
 using EasyContext: push_message!, BM25Embedder, TopK, julia_ctx_2_string, get_source
-using PromptingTools
 
 """
 This example demonstrates how to use JuliaSearchTool and JuliaCTX for searching Julia code.

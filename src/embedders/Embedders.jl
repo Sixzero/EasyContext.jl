@@ -1,4 +1,4 @@
-using PromptingTools
+import PromptingTools
 using LinearAlgebra
 using RAGTools
 using JLD2, Snowball, Pkg

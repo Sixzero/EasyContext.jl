@@ -1,6 +1,7 @@
 using EasyContext
-using PrecompileTools
+using OpenRouter
 using DataStructures: OrderedDict
+using PrecompileTools
 
 @setup_workload begin
     # Dummy values for testing
@@ -16,7 +17,7 @@ using DataStructures: OrderedDict
     ]
 
     # Mock AI function that doesn't make API calls
-    mock_ai_fn(prompt; kwargs...) = PromptingTools.AIMessage("1,2")
+    mock_ai_fn(prompt; kwargs...) = OpenRouter.AIMessage("1,2")
 
     @time "Precompilation EasyContext.jl" @compile_workload begin
         # Initialize workspace context

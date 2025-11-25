@@ -1,6 +1,6 @@
 
 using RAGTools: BatchEmbedder
-using PromptingTools: MODEL_EMBEDDING
+import PromptingTools: MODEL_EMBEDDING
 using SparseArrays
 using LinearAlgebra: normalize
 

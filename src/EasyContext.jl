@@ -7,8 +7,8 @@ using LLMRateLimiters: TokenEstimationMethod, airatelimited, RateLimiterRPM, Rat
 using Dates
 using UUIDs
 
-using PromptingTools
-using PromptingTools: UserMessage, AIMessage, SystemMessage
+using OpenRouter
+using OpenRouter: UserMessage, AIMessage, SystemMessage
 
 export search
 export EFFICIENT_PIPELINE, HIGH_ACCURACY_PIPELINE

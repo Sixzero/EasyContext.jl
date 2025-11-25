@@ -1,5 +1,4 @@
 
-using PromptingTools
 using Random
 
 include("instant_apply_logger.jl")
