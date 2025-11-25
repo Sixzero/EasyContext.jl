@@ -26,9 +26,7 @@ function apply_modify_by_llm_with_response(original_content::AbstractString, cha
         is_complete_replacement(result.content) && return true
         content = extract_tagged_content(result.content, end_tag)
         isnothing(content) && return false
-        strip(original_content) == strip(content) || has_meaningful_changes(original_content, content) && return true
-        verbose && println("\e[38;5;240mGenerated content didn't meet criteria\e[0m")
-        return false
+        return true
     end
 
     ai_manager = AIGenerateFallback(models=models)
