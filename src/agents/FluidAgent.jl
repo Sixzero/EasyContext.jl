@@ -149,6 +149,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
     MAX_NUMBER_OF_TOOL_CALLS=8,
+    exit_signal::Ref{Bool}=Ref(false),
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -172,6 +173,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     i = 0
     
     while i < MAX_NUMBER_OF_TOOL_CALLS || sum(length(msg.content) for msg in session.messages) < 40000
+        exit_signal[] && (@info "Exit signal received, stopping gracefully"; break)
         i += 1
         
         # Create new ToolTagExtractor for each run
