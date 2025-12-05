@@ -213,7 +213,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
         result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
         
         prev_assistant_msg_id = session.messages[end].id
-        tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
+        tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio) ## TODO why we have differences... AttahcmentSystem should unite all of these...
 
         push_message!(session, tool_results_usr_msg)
         
