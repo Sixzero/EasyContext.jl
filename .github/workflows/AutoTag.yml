@@ -1,0 +1,36 @@
+name: AutoTag
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'Project.toml'
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Check version change and tag
+        run: |
+          VERSION=$(grep '^version' Project.toml | sed 's/version = "\(.*\)"/\1/')
+          TAG="v$VERSION"
+
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG$"; then
+            echo "Tag $TAG already exists, skipping"
+            exit 0
+          fi
+
+          git show HEAD^:Project.toml > /tmp/old_project.toml 2>/dev/null || echo 'version = "0.0.0"' > /tmp/old_project.toml
+          OLD_VERSION=$(grep '^version' /tmp/old_project.toml | sed 's/version = "\(.*\)"/\1/')
+
+          if [ "$VERSION" != "$OLD_VERSION" ]; then
+            echo "Version changed from $OLD_VERSION to $VERSION, creating tag $TAG"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG"
+            git push origin "$TAG"
+          else
+            echo "Version unchanged ($VERSION), skipping"
+          fi
