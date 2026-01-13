@@ -1,8 +1,14 @@
 using UUIDs
 import PromptingTools: aigenerate
 using OpenRouter: needs_tool_execution
+using HTTP: RequestError
 
 export FluidAgent, execute_tools, work, create_FluidAgent
+
+# Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
+is_interrupt(e::InterruptException) = true
+is_interrupt(e::RequestError) = e.error isa InterruptException
+is_interrupt(e) = false
 
 abstract type AbstractAgent end
 
@@ -130,6 +136,19 @@ function content_has_stop_sequences(content::AbstractString, stop_sequences::Vec
     any(seq -> occursin(seq, content), stop_sequences)
 end
 
+"""
+Save partial AI content on interrupt. Appends [interrupted] marker.
+If no AI content generated, appends [interrupted] to last user message.
+"""
+function save_interrupted_content!(session::Session, extractor::Union{AbstractExtractor, Nothing})
+    partial_content = isnothing(extractor) ? "" : extractor.full_content
+    if !isempty(strip(partial_content))
+        push_message!(session, create_AI_message(partial_content * "\n[interrupted]"))
+    elseif !isempty(session.messages) && session.messages[end].role == :user
+        session.messages[end].content *= " [interrupted]"
+    end
+end
+
 function work(agent::FluidAgent, session::AbstractString; kwargs...)
     conv_ctx = Session(; messages=[create_user_message(session)])
     work(agent, conv_ctx; kwargs...)
@@ -149,79 +168,89 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
     MAX_NUMBER_OF_TOOL_CALLS=8,
-    exit_signal::Ref{Bool}=Ref(false),
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
-    
+
     # Collect unique stop sequences from tools
     stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
     length(stop_sequences) > 1 && @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
-    
+
     model_name = get_model_name(agent.model)
-    
+
     # Base API kwargs - now using centralized logic
     base_kwargs = (; top_p=0.7)
     api_kwargs = get_api_kwargs_for_model(agent.model, base_kwargs)
-    
+
     # Apply thinking and stop sequences using centralized functions
     api_kwargs = apply_thinking_kwargs(api_kwargs, model_name, thinking)
     api_kwargs = apply_stop_sequences(agent.model, api_kwargs, stop_sequences)
-    
+
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
+    extractor = nothing  # Declare here so it's accessible in catch block
     i = 0
-    
-    while i < MAX_NUMBER_OF_TOOL_CALLS || sum(length(msg.content) for msg in session.messages) < 40000
-        exit_signal[] && (@info "Exit signal received, stopping gracefully"; break)
-        i += 1
-        
-        # Create new ToolTagExtractor for each run
-        extractor = agent.extractor_type(agent.tools)
-        extractor_fn(text) = begin
-            extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
-        end
-    
-        cb = create(StreamCallbackTYPE(; 
-            io, on_start, on_error, highlight_enabled, process_enabled,
-            on_done = () -> begin
-                process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
-                on_done()
-            end,
-            on_content = process_enabled ? extractor_fn : noop,
-        ))
-        model = agent.model
-        # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
-        
-        response = aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
-            cache, api_kwargs, streamcallback=cb, verbose=false)
-        
-        push_message!(session, create_AI_message(response.content))
-        execute_tools(extractor; no_confirm)
 
-        are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
-        
-        # Check if tool execution is needed - either from callback or content contains stop sequences
-        needs_execution = needs_tool_execution(cb.run_info) || content_has_stop_sequences(response.content, stop_sequences)
-        
-        (!needs_execution && isempty(are_there_simple_tools)) && break
-        are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
+    try
+        while i < MAX_NUMBER_OF_TOOL_CALLS || sum(length(msg.content) for msg in session.messages) < 40000
+            i += 1
 
-        tools = [(id, fetch(tool)) for (id, tool) in extractor.tool_tasks]
-
-        # Add tool results to conversation for next iteration
-        result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
-        
-        prev_assistant_msg_id = session.messages[end].id
-        tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio) ## TODO why we have differences... AttahcmentSystem should unite all of these...
-
-        push_message!(session, tool_results_usr_msg)
-        
-        if !isa(io, Base.TTY)
-            write(io, create_user_message("Automatic tool results."))
-            for (id, tool) in tools
-                execute_required_tools(tool) && write(io, tool, id, prev_assistant_msg_id)
+            # Create new ToolTagExtractor for each run
+            extractor = agent.extractor_type(agent.tools)
+            extractor_fn(text) = begin
+                extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
             end
+
+            cb = create(StreamCallbackTYPE(;
+                io, on_start, on_error, highlight_enabled, process_enabled,
+                on_done = () -> begin
+                    process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
+                    on_done()
+                end,
+                on_content = process_enabled ? extractor_fn : noop,
+            ))
+            model = agent.model
+            # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
+
+            response = aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
+                cache, api_kwargs, streamcallback=cb, verbose=false)
+
+            push_message!(session, create_AI_message(response.content))
+            execute_tools(extractor; no_confirm)
+
+            are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
+
+            # Check if tool execution is needed - either from callback or content contains stop sequences
+            needs_execution = needs_tool_execution(cb.run_info) || content_has_stop_sequences(response.content, stop_sequences)
+
+            (!needs_execution && isempty(are_there_simple_tools)) && break
+            are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
+
+            tools = [(id, fetch(tool)) for (id, tool) in extractor.tool_tasks]
+
+            # Add tool results to conversation for next iteration
+            result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
+
+            prev_assistant_msg_id = session.messages[end].id
+            tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
+
+            push_message!(session, tool_results_usr_msg)
+
+            if !isa(io, Base.TTY)
+                write(io, create_user_message("Automatic tool results."))
+                for (id, tool) in tools
+                    execute_required_tools(tool) && write(io, tool, id, prev_assistant_msg_id)
+                end
+            end
+        end
+    catch e
+        if is_interrupt(e)
+            @info "Interrupt caught in work()" exception_type=typeof(e) has_extractor=!isnothing(extractor)
+            save_interrupted_content!(session, extractor)
+            on_finish()
+            rethrow(e)
+        else
+            rethrow(e)
         end
     end
 
