@@ -50,8 +50,8 @@ end
 """
 Execute a single tool
 """
-function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false)
-    result = execute(tool; no_confirm)
+function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false, kwargs...)
+    result = execute(tool; no_confirm, kwargs...)
     result
 end
 
