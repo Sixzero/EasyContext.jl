@@ -168,6 +168,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
     MAX_NUMBER_OF_TOOL_CALLS=8,
+    permissions::Dict=Dict(),  # Tool permission allowlist
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -216,7 +217,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 cache, api_kwargs, streamcallback=cb, verbose=false)
 
             push_message!(session, create_AI_message(response.content))
-            execute_tools(extractor; no_confirm)
+            execute_tools(extractor; no_confirm, io, permissions)
 
             are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
 
@@ -226,22 +227,11 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             (!needs_execution && isempty(are_there_simple_tools)) && break
             are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
 
-            tools = [(id, fetch(tool)) for (id, tool) in extractor.tool_tasks]
-
             # Add tool results to conversation for next iteration
             result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
-
-            prev_assistant_msg_id = session.messages[end].id
             tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
-
             push_message!(session, tool_results_usr_msg)
-
-            if !isa(io, Base.TTY)
-                write(io, create_user_message("Automatic tool results."))
-                for (id, tool) in tools
-                    execute_required_tools(tool) && write(io, tool, id, prev_assistant_msg_id)
-                end
-            end
+            # Note: Tool result writing to io is now handled by postexecute! in BlockExtractor
         end
     catch e
         if is_interrupt(e)

@@ -158,7 +158,7 @@ execute(t::Task) = begin
     @assert false "This might not be worth running $t \n$cmd"
 end
 
-function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, kwargs...)
+function execute_tools(stream_parser::ToolTagExtractor; no_confirm=false, io=stdout, permissions::Dict=Dict(), kwargs...)
     if !stream_parser.skip_execution
         # Execute in order
         for (id, task) in stream_parser.tool_tasks
