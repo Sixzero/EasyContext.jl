@@ -16,6 +16,7 @@ export EFFICIENT_PIPELINE, HIGH_ACCURACY_PIPELINE
 include("utils/utils.jl")
 include("utils/UserConfirmation.jl")
 include("utils/ModelConfig.jl")
+include("utils/ModelContextLimits.jl")
 include("action/greet.jl")
 
 include("input/input.jl")
