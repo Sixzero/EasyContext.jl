@@ -135,17 +135,21 @@ function calculate_keep_count(compactor::ContextCompactor, conv::Session)
 end
 
 """
-    do_compact!(compactor::ContextCompactor, conv::Session; keep::Union{Int,Nothing}=nothing) -> String
+    do_compact!(compactor::ContextCompactor, conv::Session; keep=nothing, on_compacting=nothing) -> String
 
 Compact the conversation: summarize old messages, cut, prepend summary.
 Returns the generated summary.
 
 If `keep` is not provided, uses calculate_keep_count for adaptive cutting.
+If `on_compacting` is provided, it's called when compaction starts (useful for showing a spinner).
 """
-function do_compact!(compactor::ContextCompactor, conv::Session; keep::Union{Int,Nothing}=nothing)
+function do_compact!(compactor::ContextCompactor, conv::Session; keep::Union{Int,Nothing}=nothing, on_compacting::Union{Function,Nothing}=nothing)
     keep = something(keep, calculate_keep_count(compactor, conv))
 
     length(conv.messages) <= keep && return compactor.last_summary
+
+    # Notify that compaction is starting (caller can show spinner)
+    on_compacting !== nothing && on_compacting()
 
     # Ensure we don't start with an assistant message after cutting
     if keep > 0 && keep <= length(conv.messages)
@@ -176,16 +180,17 @@ function do_compact!(compactor::ContextCompactor, conv::Session; keep::Union{Int
 end
 
 """
-    maybe_compact!(compactor::ContextCompactor, conv::Session) -> Bool
+    maybe_compact!(compactor::ContextCompactor, conv::Session; on_compacting=nothing) -> Bool
 
 Check if compacting is needed and do it if so. Returns true if compacted.
+If `on_compacting` is provided, it's called when compaction starts (useful for showing a spinner).
 """
-function maybe_compact!(compactor::ContextCompactor, conv::Session)
+function maybe_compact!(compactor::ContextCompactor, conv::Session; on_compacting::Union{Function,Nothing}=nothing)
     if should_compact(compactor, conv)
         limit = get_effective_context_limit(compactor)
         current_tokens = estimate_context_tokens(compactor, conv)
         @info "Compacting triggered by context size" current_tokens threshold=limit*compactor.compact_threshold context_limit=limit
-        do_compact!(compactor, conv)
+        do_compact!(compactor, conv; on_compacting)
         return true
     end
     return false
