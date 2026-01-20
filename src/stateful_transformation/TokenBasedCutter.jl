@@ -1,4 +1,4 @@
-export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats
+export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats, cleanup_sources!
 
 """
 TokenBasedCutter triggers cutting based on token usage.
@@ -25,6 +25,9 @@ Uses SourceTracker for token-aware source cleanup.
     # Summarization
     summarizer_model::String = "claudeh"
     last_summary::String = ""
+
+    # Track compaction to avoid double-summarization
+    last_compaction_msg_count::Int = 0  # Message count after last compaction
 end
 
 """
@@ -83,6 +86,16 @@ function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracke
 
     current_tokens = estimate_conversation_tokens(cutter, conv)
     threshold = limit * cutter.compact_threshold
+
+    # Skip if we recently compacted and haven't added many messages
+    # (prevents double-summarization in same turn)
+    if cutter.last_compaction_msg_count > 0
+        msgs_added = length(conv.messages) - cutter.last_compaction_msg_count
+        if msgs_added <= 2  # Just AI response + tool results
+            return false
+        end
+    end
+
     return current_tokens >= threshold
 end
 
@@ -156,6 +169,9 @@ function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, 
     sources_to_cut = get_sources_to_cut(source_tracker, source_tokens_to_free)
     remove_sources!(source_tracker, sources_to_cut, contexts...)
 
+    # Track message count to prevent double-summarization
+    cutter.last_compaction_msg_count = length(conv.messages)
+
     @info "TokenBasedCutter: cut conversation" kept=length(conv.messages) tokens_freed sources_removed=length(sources_to_cut)
 
     return cutter.last_summary
@@ -200,4 +216,34 @@ function token_usage_stats(cutter::TokenBasedCutter, conv, source_tracker::Sourc
         will_cut = context_limit > 0 && current_tokens >= threshold_tokens,
         would_keep = calculate_keep(cutter, conv, source_tracker),
     )
+end
+
+"""
+    cleanup_sources!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, contexts...)
+
+Clean up old sources without conversation compaction.
+Call this post-session to ensure source cleanup happens even if conversation compaction was skipped.
+"""
+function cleanup_sources!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, contexts...)
+    isempty(contexts) && return String[]
+
+    limit = get_effective_limit(cutter)
+    limit <= 0 && return String[]
+
+    # Calculate how many source tokens we should keep
+    # Target: sources should be proportional to conversation tokens
+    conv_tokens = estimate_conversation_tokens(cutter, conv)
+    target_source_tokens = round(Int, conv_tokens * 0.5)  # Sources ~50% of conv tokens
+
+    current_source_tokens = get_total_tokens(source_tracker)
+    tokens_to_free = current_source_tokens - target_source_tokens
+
+    tokens_to_free <= 0 && return String[]
+
+    sources_to_cut = get_sources_to_cut(source_tracker, tokens_to_free)
+    remove_sources!(source_tracker, sources_to_cut, contexts...)
+
+    !isempty(sources_to_cut) && @info "Source cleanup" sources_removed=length(sources_to_cut) tokens_freed=tokens_to_free
+
+    return sources_to_cut
 end
