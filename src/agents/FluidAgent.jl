@@ -164,11 +164,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_done=noop,
     on_finish=noop,
     on_start=noop,
+    on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
     MAX_NUMBER_OF_TOOL_CALLS=8,
     permissions::Dict=Dict(),  # Tool permission allowlist
+    cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
+    source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -212,6 +215,13 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             ))
             model = agent.model
             # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
+
+            # Check if compaction is needed before LLM call
+            if cutter !== nothing && source_tracker !== nothing && should_cut(cutter, session, source_tracker)
+                on_status("COMPACTING")
+                do_cut!(cutter, session, source_tracker)
+                on_status("WORKING")
+            end
 
             response = aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
                 cache, api_kwargs, streamcallback=cb, verbose=false)

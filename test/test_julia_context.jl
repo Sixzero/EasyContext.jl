@@ -97,10 +97,10 @@ using DataStructures: OrderedDict
         chunk_counts = [count(x -> x == '\n', result) + 1 for result in results]
         @test issorted(chunk_counts, rev=true)
 
-        # Optional: Test with age_tracker
-        age_tracker = AgeTracker()
-        result_with_age_tracker = process_julia_context(julia_context, "How does garbage collection work in Julia?", age_tracker=age_tracker)
-        @test !isempty(result_with_age_tracker)
+        # Optional: Test with source_tracker
+        source_tracker = SourceTracker()
+        result_with_source_tracker = process_julia_context(julia_context, "How does garbage collection work in Julia?", source_tracker=source_tracker)
+        @test !isempty(result_with_source_tracker)
     end
 end
 @testset "JuliaCTX Tests" begin
