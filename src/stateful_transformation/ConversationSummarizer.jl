@@ -2,27 +2,51 @@ export summarize_conversation, format_messages_for_summary
 
 using PromptingTools
 
-const CONVERSATION_SUMMARY_PROMPT = """You are summarizing a conversation that will be partially truncated. Your summary will be the ONLY memory of what happened before.
+const CONVERSATION_SUMMARY_PROMPT = """This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
 
-Your job: Extract what the assistant MUST remember to continue helping effectively.
+Create a summary with two sections:
 
-Capture these (if present):
-1. **DIRECTION**: What is the user trying to achieve? What's the end goal?
-2. **APPROACH**: What technical approach/architecture was chosen and WHY?
-3. **PROGRESS**: What was actually done? Files created/modified, functions implemented, etc.
-4. **CONSTRAINTS**: User preferences, requirements, limitations mentioned ("don't use X", "must support Y")
-5. **DEAD ENDS**: What was tried and DIDN'T work? (so we don't repeat mistakes)
-6. **PENDING**: What was mentioned but not yet done?
+## Analysis
+Write a chronological narrative of what happened in the conversation. Walk through the key events in order - what the user asked, what was tried, what worked or didn't, and how the conversation evolved. This helps understand the context and reasoning behind decisions.
 
-Format as a dense but clear summary. Use bullet points. Be specific with file names, function names, error messages.
+## Summary
+Organize the key information into these categories:
 
-Example good summary:
-- Goal: Implement auth system with JWT tokens
-- Chose Redis for session store (faster than Postgres for this use case)
-- Created src/auth/jwt.jl with generate_token/validate_token functions
-- User wants explicit error messages, not generic "auth failed"
-- FAILED: bcrypt was too slow, switched to argon2
-- TODO: refresh token logic not yet implemented
+1. **Primary Request and Intent**
+   - What is the user trying to accomplish overall?
+   - What specific outcomes are they looking for?
+
+2. **Key Technical Concepts**
+   - Technologies, libraries, patterns discussed
+   - Important domain knowledge established
+
+3. **Files and Code Sections**
+   - List files that were created or modified
+   - Include relevant code snippets that would be needed to continue the work
+   - Note specific line numbers or function names when relevant
+
+4. **Errors and Fixes**
+   - What problems were encountered?
+   - How were they resolved?
+
+5. **Problem Solving**
+   - Key decisions made and their rationale
+   - Alternative approaches that were considered or rejected
+
+6. **All User Messages**
+   - Include the user's messages, preserving their wording to maintain intent and tone
+
+7. **Pending Tasks**
+   - What was mentioned but not yet completed?
+
+8. **Current Work**
+   - What was the conversation focused on when it ended?
+   - What was the user's last question or request?
+
+9. **Optional Next Step**
+   - What would logically come next based on the conversation flow?
+
+Be specific with file paths, function names, and error messages. Include actual code snippets when they're essential for continuing the work.
 
 Conversation to summarize:
 """
@@ -36,9 +60,10 @@ function format_messages_for_summary(messages::Vector{<:MSG})
     parts = String[]
     for msg in messages
         role = msg.role == :user ? "User" : "Assistant"
-        # Truncate very long messages to keep summary request manageable
-        content = if length(msg.content) > 3000
-            msg.content[1:1500] * "\n...[truncated]...\n" * msg.content[end-1500:end]
+        # Truncate very long messages but keep more context for code preservation
+        # Use first()/last() for safe UTF-8 character-based truncation (not byte-based)
+        content = if length(msg.content) > 6000
+            first(msg.content, 3000) * "\n...[truncated]...\n" * last(msg.content, 2500)
         else
             msg.content
         end
@@ -58,13 +83,17 @@ function summarize_conversation(messages::Vector{<:MSG}; model="claudeh", previo
     prompt = CONVERSATION_SUMMARY_PROMPT * format_messages_for_summary(messages)
 
     if !isempty(previous_summary)
-        prompt = """There is also a summary from even earlier in the conversation that should be incorporated:
+        prompt = """There is also a summary from even earlier in the conversation:
 
 <earlier_summary>
 $previous_summary
 </earlier_summary>
 
-Merge the earlier summary with the new information below. Keep what's still relevant, update what changed.
+Merge this earlier summary with the new conversation below. The merged summary should:
+- Preserve the chronological flow from the earlier summary and continue it with new events
+- Update any information that has changed (completed tasks, resolved errors, etc.)
+- Keep user messages from both periods
+- Remove information that is no longer relevant
 
 """ * prompt
     end
