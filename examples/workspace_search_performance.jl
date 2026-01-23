@@ -7,21 +7,22 @@ using Statistics
 println("=== Workspace Search Performance Test ===")
 
 # Configuration
-folder_path = "/path/to/folder"
-pipeline = EFFICIENT_PIPELINE(model=["gemfl"], verbose=2)
+# folder_path = expanduser("~/repo/todoforai/frontend")
+folder_path = expanduser("~/repo/todoforai/edge")
+pipeline = EFFICIENT_PIPELINE(model=["google-ai-studio:google/gemini-2.5-flash-preview-09-2025"], verbose=2)
 verbose = false
 
 println("Folder: $folder_path")
-println("Pipeline: EFFICIENT_PIPELINE with gemf model")
+println("Pipeline: EFFICIENT_PIPELINE")
 println()
 
-# Test queries for todoforai/frontend
+# Test queries
 test_queries = [
     "API endpoints",
-    "tauri configuration",
-    "React components", 
-    "database schema",
     "authentication logic",
+    "tauri configuration",
+    "React components",
+    "database schema",
 ]
 
 const tracker_context = Context{FileChunk}()
@@ -37,7 +38,7 @@ println()
 
 # Run tests for each query
 results = []
-for (i, query) in enumerate(test_queries[1:3])
+for (i, query) in enumerate(test_queries)
     println("[$i/$(length(test_queries))] Testing query: \"$query\"")
     
     # Benchmark the search
