@@ -24,7 +24,6 @@ shell_block_prompt_v2() = shell_block_prompt_base() * """
 Ex. before staging files and creating a PR check diffs with:
 $(SHELL_BLOCK_TAG)
 $(code_format("git diff | cat", "sh"))
-$(STOP_SEQUENCE)
 """
 
 shell_block_prompt_base() = """

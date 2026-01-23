@@ -8,9 +8,8 @@ create_tool(::Type{WebSearchTool}, tag::ToolTag) = WebSearchTool(query=strip(tag
 toolname(::Type{WebSearchTool}) = WEB_SEARCH_TAG
 
 get_description(cmd::Type{WebSearchTool}) = """
-Search the web for information. Provide a search query and get relevant results.
-Format: Use "$(WEB_SEARCH_TAG)" followed by your search query or URL link. 
-$(WEB_SEARCH_TAG) query $(STOP_SEQUENCE)
+Search the web:
+$(WEB_SEARCH_TAG) query
 """
 stop_sequence(cmd::Type{WebSearchTool}) = STOP_SEQUENCE
 

@@ -14,7 +14,10 @@ function create_tool(::Type{ClickTool}, tag::ToolTag)
     end
 end
 toolname(::Type{ClickTool}) = CLICK_TAG
-get_description(::Type{ClickTool}) = "Click on the given coordinates using format: $(CLICK_TAG) x y $(STOP_SEQUENCE)"
+get_description(::Type{ClickTool}) = """
+Click on coordinates:
+$(CLICK_TAG) x y
+"""
 stop_sequence(::Type{ClickTool}) = STOP_SEQUENCE
 
 execute(tool::ClickTool; no_confirm=false) = "Clicking at coordinates ($(tool.x), $(tool.y)) with $(tool.button) button"

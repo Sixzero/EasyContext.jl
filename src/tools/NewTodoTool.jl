@@ -13,7 +13,7 @@ function create_tool(::Type{NewTodoTool}, cmd::ToolTag)
     end
 end
 get_description(cmd::Type{NewTodoTool}) = """
-Create a new todo with title and description using format: 
+Create a new todo:
 $(NEW_TODO_TAG) project_name message
 """
 stop_sequence(cmd::Type{NewTodoTool}) = ""

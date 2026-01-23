@@ -18,10 +18,8 @@ tool_format(::Type{JuliaSearchTool}) = :single_line
 
 function get_description(::Type{JuliaSearchTool})
     """
-    Search through Julia packages using semantic search:
-    $JULIA_SEARCH_TAG your search query [$STOP_SEQUENCE]
-    
-    $STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
+    Search Julia packages:
+    $JULIA_SEARCH_TAG search_query
     """
 end
 

@@ -21,17 +21,8 @@ stop_sequence(::Type{WorkspaceSearchTool}) = STOP_SEQUENCE
 
 function get_description(::Type{WorkspaceSearchTool})
     """
-    Options:
-    - high_accuracy=true: Use a more accurate but slower search pipeline
-    """
-    # later on add it in? ^^
-    """
-    Search smart semantic search:
-    WORKSPACE_SEARCH your search query [$STOP_SEQUENCE]
-    
-    If you don't have a specific function or functionality in the context, then just search for what you're looking for, stating either function names or functionality in the query. 
-    
-    $STOP_SEQUENCE is optional, if provided the tool will be instantly executed.
+    Semantic search in workspace:
+    WORKSPACE_SEARCH search_query
     """
 end
 

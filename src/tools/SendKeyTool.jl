@@ -6,7 +6,10 @@ end
 create_tool(::Type{SendKeyTool}, cmd::ToolTag) = SendKeyTool(text=cmd.args)
 
 toolname(cmd::Type{SendKeyTool}) = SENDKEY_TAG
-get_description(cmd::Type{SendKeyTool}) = "Send keyboard input using format: $(SENDKEY_TAG) text $(STOP_SEQUENCE)"
+get_description(cmd::Type{SendKeyTool}) = """
+Send keyboard input:
+$(SENDKEY_TAG) text
+"""
 stop_sequence(cmd::Type{SendKeyTool}) = ""
 tool_format(::Type{SendKeyTool}) = :single_line
 
