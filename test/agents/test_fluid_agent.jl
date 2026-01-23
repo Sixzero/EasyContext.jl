@@ -63,7 +63,7 @@ using UUIDs
                 
                 # Create a mock response with cost information
                 return (;
-                    content = "I'll help you list the directory contents:\n\nSHELL_BLOCK\n```sh\nls -la\n```endblock",
+                    content = "I'll help you list the directory contents:\n\nBASH\n```sh\nls -la\n```endblock",
                     usage = (;
                         prompt_tokens = 100,
                         completion_tokens = 50,
@@ -113,14 +113,14 @@ using UUIDs
 
                 First, let's create the file:
 
-                CREATE test.txt
+                WRITE test.txt
                 ```
                 Hello World
                 ```endblock
 
                 Now, let's list the directory contents:
 
-                SHELL_BLOCK
+                BASH
                 ```sh
                 ls -la
                 ```endblock
@@ -167,14 +167,14 @@ using UUIDs
 
                 First, let's create the file:
 
-                CREATE file1.txt
+                WRITE file1.txt
                 ```
                 Original
                 ```endblock
 
                 Now, let's modify it:
 
-                MODIFY file1.txt
+                UPDATE file1.txt
                 ```
                 Modified
                 ```endblock
@@ -213,7 +213,7 @@ using UUIDs
                 mock_content = """
                 I'll try to read the content of that file:
 
-                CATFILE non_existent.txt
+                READ non_existent.txt
                 """
                 
                 extractor = agent.extractor_type(agent.tools)

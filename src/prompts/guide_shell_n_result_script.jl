@@ -16,9 +16,9 @@ Optionally write "$(STOP_SEQUENCE)" after tools and you will get back the run re
 If you are working on something in a step by step manner, or you just need to know the result of the command before you can write the next command. 
 
 # Feedback will be provided in the next message:
-Example of shell script usage: 
-SHELL_BLOCK
-```sh 
+Example of shell script usage:
+BASH
+```sh
 script
 ```
 

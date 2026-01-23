@@ -2,12 +2,12 @@
 const STOP_SEQUENCE = "#RUN"
 
 
-const CATFILE_TAG 	    = "CATFILE"
+const CATFILE_TAG 	    = "READ"
 const SENDKEY_TAG 	    = "SENDKEY"
 const CLICK_TAG  		    = "CLICK"
-const SHELL_BLOCK_TAG   = "SHELL_BLOCK"
-const CREATE_FILE_TAG   = "CREATE"
-const MODIFY_FILE_TAG   = "MODIFY"
+const SHELL_BLOCK_TAG   = "BASH"
+const CREATE_FILE_TAG   = "WRITE"
+const MODIFY_FILE_TAG   = "UPDATE"
 const EMAIL_TAG         = "EMAIL"
 const WEB_SEARCH_TAG    = "WEB_SEARCH"
 const END_OF_BLOCK_TAG  = "END_OF_BLOCK"

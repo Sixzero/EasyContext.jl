@@ -24,7 +24,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         This is a modification
         ```endblock
         Some text between
-        CREATE new_file.txt
+        WRITE new_file.txt
         ```
         New file content
         ```endblock
@@ -40,10 +40,10 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
     @testset "Nested tags" begin
         parser = ToolTagExtractor([ShellBlockTool, CatFileTool])
         content = """
-        SHELL_BLOCK_TAG arg1
+        BASH arg1
         ```
         First line
-        CATFILE arg2
+        READ arg2
         Last line
         ```
         Other things.
@@ -55,10 +55,10 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
     @testset "Unclosed tags handling" begin
         parser = ToolTagExtractor([ShellBlockTool, CatFileTool, CreateFileTool])
 
-        # Test unclosed CREATE tag
+        # Test unclosed WRITE tag
         content = """
         Some text before
-        CREATE new_file.txt
+        WRITE new_file.txt
         ```julia
         code content
         ```
@@ -75,7 +75,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         # Test streaming content in chunks
         content1 = """
         Some text before
-        CREATE testfile3.txt
+        WRITE testfile3.txt
         ```julia
         """
         content2 = """
@@ -101,7 +101,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         This is a modification
         ```
         Some text between
-        CREATE new_file.txt
+        WRITE new_file.txt
         ```
         New file content
         ```endblock
@@ -109,19 +109,19 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         """
 
         extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/test/root"))
-        
+
         @test length(parser.tool_tags) == 2
-        
-        # Test first tool tag (SHELL_BLOCK)
+
+        # Test first tool tag (BASH)
         shell_tag = parser.tool_tags[1]
         @test shell_tag.name == SHELL_BLOCK_TAG
         @test shell_tag.args == "path/to/file"
         @test shell_tag.content == "```julia\necho ALL OK\nThis is a modification\n```"
         @test shell_tag.kwargs["root_path"] == "/test/root"
 
-        # Test second tool tag (CREATE)
+        # Test second tool tag (WRITE)
         create_tag = parser.tool_tags[2]
-        @test create_tag.name == "CREATE"
+        @test create_tag.name == "WRITE"
         @test create_tag.args == "new_file.txt"
         @test create_tag.content == "```\nNew file content\n```endblock"
         @test create_tag.kwargs["root_path"] == "/test/root"
@@ -133,14 +133,14 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         Some text
         CLICK 100 200
         SENDKEY ctrl+c
-        CATFILE /tmp/test.txt
+        READ /tmp/test.txt
         More text
         """
 
         extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/test/root"))
-        
+
         @test length(parser.tool_tags) == 3
-        
+
         click_tag = parser.tool_tags[1]
         @test click_tag.name == "CLICK"
         @test click_tag.args == "100 200"
@@ -152,7 +152,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         @test isempty(sendkey_tag.content)
 
         catfile_tag = parser.tool_tags[3]
-        @test catfile_tag.name == "CATFILE"
+        @test catfile_tag.name == "READ"
         @test catfile_tag.args == "/tmp/test.txt"
         @test isempty(catfile_tag.content)
     end
@@ -175,7 +175,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         yeah we know
         \"\"\"
         Some text between
-        CREATE new_file.txt
+        WRITE new_file.txt
         ```
         New file content
         another_multiline_assignment = \"\"\"
@@ -199,7 +199,7 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         @test !occursin("yeah we know", shell_tag.content) # Verify multiline assignment wasn't captured
 
         create_tag = parser.tool_tags[2]
-        @test create_tag.name == "CREATE"
+        @test create_tag.name == "WRITE"
         @test create_tag.args == "new_file.txt"
         @test create_tag.content == "```\nNew file content\nanother_multiline_assignment = \"\"\"\nyeah we know it again\n\"\"\"\nyes\n```"
         @test occursin("yeah we know it again", create_tag.content) # This multiline assignment should be part of content
@@ -210,14 +210,14 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         Some text
         CLICK 100 200
         SENDKEY ctrl+c
-        CATFILE /tmp/test.txt $STOP_SEQUENCE
+        READ /tmp/test.txt $STOP_SEQUENCE
         More text
         """
 
         extract_tool_calls(content, parser, stdout; kwargs=Dict("root_path" => "/test/root"))
-        
+
         @test length(parser.tool_tags) == 3
-        
+
         click_tag = parser.tool_tags[1]
         @test click_tag.name == "CLICK"
         @test click_tag.args == "100 200"
@@ -229,17 +229,17 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
         @test isempty(sendkey_tag.content)
 
         catfile_tag = parser.tool_tags[3]
-        @test catfile_tag.name == "CATFILE"
+        @test catfile_tag.name == "READ"
         @test catfile_tag.args == "/tmp/test.txt"
         @test isempty(catfile_tag.content)
     end
 
     @testset "ToolTag argument parsing" begin
         parser = ToolTagExtractor([ShellBlockTool, CatFileTool, JuliaSearchTool])
-        
+
         # Test single quoted argument
         content = """
-        CATFILE "path/to/my file.txt"
+        READ "path/to/my file.txt"
         """
         extract_tool_calls(content, parser)
         @test parser.tool_tags[1].args == "path/to/my file.txt"
@@ -262,14 +262,14 @@ using EasyContext: SHELL_BLOCK_TAG, AbstractTool, are_tools_cancelled
     end
     @testset "Tool cancellation detection" begin
         parser = ToolTagExtractor([ShellBlockTool])
-    
+
         content = """
-        SHELL_BLOCK
+        BASH
         ```sh
         echo "First command"
         ```endblock
-        
-        SHELL_BLOCK
+
+        BASH
         ```sh
         echo "Second command"
         ```endblock
