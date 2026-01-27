@@ -41,6 +41,7 @@ function parse_code_block(content::String)
 end
 
 function parse_raw_block(content::String)
+	content = strip(content)
 	if startswith(content, "```")
 		return join(split(content, '\n')[2:end-1], '\n')
 	end
