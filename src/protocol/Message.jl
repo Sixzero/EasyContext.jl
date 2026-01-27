@@ -50,4 +50,6 @@ update_message(msg::M, itok, otok, cached, cache_read, price, elapsed) where {M 
 	msg
 end
 
+Base.write(io::IO, msg::Message) = println(io, "[$(msg.role)] $(msg.content)")
+
 export create_user_message, create_AI_message

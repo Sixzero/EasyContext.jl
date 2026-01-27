@@ -227,12 +227,18 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 cache, api_kwargs, streamcallback=cb, verbose=false)
 
             push_message!(session, create_AI_message(response.content))
-            execute_tools(extractor; no_confirm, io, permissions)
-
-            are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
 
             # Check if tool execution is needed - either from callback or content contains stop sequences
             needs_execution = needs_tool_execution(cb.run_info) || content_has_stop_sequences(response.content, stop_sequences)
+
+            # Create user message for tool results BEFORE execute_tools so attachments go to user msg
+            if needs_execution
+                write(io, create_user_message(""))  # Creates user message, updates io.message_id
+            end
+
+            execute_tools(extractor; no_confirm, io, permissions)
+
+            are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
 
             (!needs_execution && isempty(are_there_simple_tools)) && break
             are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
@@ -241,7 +247,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
             tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
             push_message!(session, tool_results_usr_msg)
-            # Note: Tool result writing to io is now handled by postexecute! in BlockExtractor
         end
     catch e
         if is_interrupt(e)

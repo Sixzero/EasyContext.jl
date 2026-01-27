@@ -1,6 +1,6 @@
 name = "EasyContext"
 uuid = "5067fbba-b9ec-41e5-aa31-a8c1ac509a30"
-version = "0.8.0"
+version = "0.8.1"
 authors = ["SixZero <havliktomi@hotmail.com>"]
 
 [deps]
