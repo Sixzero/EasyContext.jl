@@ -1,5 +1,11 @@
 # Tool interfaces.
 
+# Tool description format: :block or :call
+# :block = "TOOL_NAME args #RUN" style
+# :call  = "tool_name(param: value)" style
+# Change this and recompile to switch formats
+const TOOL_DESCRIPTION_FORMAT = :call
+
 """
 Tool execution flow and safety checks:
 
@@ -88,6 +94,59 @@ tool_format(tool::AbstractTool)::Symbol = tool_format(typeof(tool))
 result2string(tool::AbstractTool)::String = ""
 resultimg2base64(tool::AbstractTool)::String = ""
 resultaudio2base64(tool::AbstractTool)::String = ""
+
+"""
+Get tool schema for dynamic description generation.
+Returns nothing by default (use legacy get_description).
+Tools can override this to enable format-aware descriptions.
+
+Returns: NamedTuple with (name, description, params) or nothing
+  - params is a Vector of NamedTuple (name, type, description, required)
+"""
+get_tool_schema(::Type{<:AbstractTool}) = nothing
+get_tool_schema(tool::AbstractTool) = get_tool_schema(typeof(tool))
+
+"""
+Generate a tool description from a schema based on TOOL_DESCRIPTION_FORMAT.
+Tools with schemas can use this in their get_description():
+
+    get_description(::Type{MyTool}) = description_from_schema(get_tool_schema(MyTool))
+"""
+function description_from_schema(schema::NamedTuple)
+    name = string(schema.name)
+    desc = string(get(schema, :description, ""))
+    params = get(schema, :params, [])
+
+    if TOOL_DESCRIPTION_FORMAT == :call
+        # Function call format: tool_name(param: type, ...)
+        if isempty(params)
+            param_str = ""
+        else
+            param_strs = String[]
+            for p in params
+                pname = string(p.name)
+                ptype = string(get(p, :type, "string"))
+                opt = get(p, :required, true) ? "" : "?"
+                push!(param_strs, "$(pname)$(opt): $(ptype)")
+            end
+            param_str = join(param_strs, ", ")
+        end
+        return """$(desc)
+$(name)($(param_str))"""
+    else
+        # Block format: TOOL_NAME <param> #RUN
+        upper_name = uppercase(name)
+        if isempty(params)
+            param_str = ""
+        else
+            param_str = " " * join(["<$(p.name)>" for p in params], " ")
+        end
+        return """$(desc)
+$(upper_name)$(param_str) #RUN"""
+    end
+end
+
+description_from_schema(::Nothing) = "Unknown tool"
 
 # This is a fallback, in case a model would forget tool calling request after the end of conversation, we automatically execute tools that REQUIRE execution, like CATFILE and WEBSEARCH and WORKSPACE_SEARCH
 execute_required_tools(::Type{<:AbstractTool}) = false
