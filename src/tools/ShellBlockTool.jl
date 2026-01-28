@@ -24,31 +24,6 @@ const SHELL_SCHEMA = (
 )
 get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
 get_description(cmd::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
-shell_block_prompt_v1() = shell_block_prompt_base()
-shell_block_prompt_v2() = shell_block_prompt_base() * """
-Ex. before staging files and creating a PR check diffs with:
-bash(command:
-```sh
-git diff | cat
-```)
-"""
-
-shell_block_prompt_base() = """
-ShellBlockTool:
-You propose the sh script that should be run in a most concise short way!
-Assume all standard cli tools are available - do not attempt installations.
-
-Example:
-bash(command:
-```sh
-your command here
-```)
-
-The results will be found in the next user message.
-"""
-shell_block_prompt_v0() = shell_block_prompt_base() * """
-If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! Wait for feedback.
-"""
 
 execute_required_tools(::ShellBlockTool) = false
 

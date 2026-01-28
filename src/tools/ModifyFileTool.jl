@@ -34,44 +34,6 @@ const MODIFYFILE_SCHEMA = (
 )
 get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
 get_description(cmd::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
-
-# Legacy description functions (deprecated - use get_description instead)
-MODIFY_FILE_DESCRIPTION(cmd) = """
-To modify an existing file, use modify_file with the file path and code changes.
-
-Example:
-modify_file(file_path: "path/to/file.ts", content:
-```typescript
-// ... existing code ...
-const newValue = 42;
-// ... existing code ...
-```)
-
-Use '... existing code ...' comments to indicate where unchanged code is skipped.
-"""
-MODIFY_FILE_DESCRIPTION_V2(cmd::Type{ModifyFileTool}) = """
-To modify an existing file, use modify_file with the file path and code changes.
-
-Examples:
-modify_file(file_path: "path/to/file1.ts", content:
-```typescript
-// ... existing code ...
-const updatedValue = 42;
-// ... existing code ...
-```)
-
-modify_file(file_path: "path/to/file2.py", content:
-```python
-# ... existing code ...
-def new_function():
-    pass
-# ... existing code ...
-```)
-
-Use '... existing code ...' comments to indicate where unchanged code is skipped.
-To make multiple changes to the same file, list ALL changes in a single modify_file call.
-"""
-stop_sequence(cmd::Type{ModifyFileTool}) = ""
 tool_format(::Type{ModifyFileTool}) = :multi_line
 
 execute_required_tools(::ModifyFileTool) = false
