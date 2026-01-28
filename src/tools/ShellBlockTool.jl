@@ -16,38 +16,41 @@ function create_tool(::Type{ShellBlockTool}, cmd::ToolTag)
         root_path=get(cmd.kwargs, "root_path", nothing)
     ) 
 end
-toolname(cmd::Type{ShellBlockTool}) = "shell"
+toolname(cmd::Type{ShellBlockTool}) = "bash"
 const SHELL_SCHEMA = (
-    name = "shell",
+    name = "bash",
     description = "Execute shell commands. Propose concise sh scripts",
-    params = [(name = "commands", type = "string", description = "Shell commands (in code block)", required = true)]
+    params = [(name = "command", type = "codeblock", description = "Shell commands to execute", required = true)]
 )
 get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
 get_description(cmd::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
 shell_block_prompt_v1() = shell_block_prompt_base()
 shell_block_prompt_v2() = shell_block_prompt_base() * """
 Ex. before staging files and creating a PR check diffs with:
-$(SHELL_BLOCK_TAG)
-$(code_format("git diff | cat", "sh"))
+bash(command:
+```sh
+git diff | cat
+```)
 """
 
 shell_block_prompt_base() = """
-ShellBlockTool: 
+ShellBlockTool:
 You propose the sh script that should be run in a most concise short way!
 Assume all standard cli tools are available - do not attempt installations.
 
-Format:
-$(SHELL_BLOCK_TAG)
-$(code_format("command", "sh"))
+Example:
+bash(command:
+```sh
+your command here
+```)
 
-The results will be found in the next user message. You can ask for immediate feedback with $STOP_SEQUENCE. 
+The results will be found in the next user message.
 """
 shell_block_prompt_v0() = shell_block_prompt_base() * """
 If you asked to run an sh block. Never do it! You MUSTN'T run any sh block, it will be run by the SYSTEM later! Wait for feedback.
 """
 
 execute_required_tools(::ShellBlockTool) = false
-stop_sequence(cmd::Type{ShellBlockTool}) = STOP_SEQUENCE
 
 tool_format(::Type{ShellBlockTool}) = :multi_line
 

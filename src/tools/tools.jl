@@ -1,23 +1,26 @@
 
+# STOP_SEQUENCE is deprecated - CallFormat doesn't use stop sequences
+# Kept as "#RUN" to detect if it's accidentally used somewhere
 const STOP_SEQUENCE = "#RUN"
 
-
-const CATFILE_TAG 	    = "READ"
-const SENDKEY_TAG 	    = "SENDKEY"
-const CLICK_TAG  		    = "CLICK"
-const SHELL_BLOCK_TAG   = "BASH"
-const CREATE_FILE_TAG   = "WRITE"
-const MODIFY_FILE_TAG   = "UPDATE"
-const EMAIL_TAG         = "EMAIL"
-const WEB_SEARCH_TAG    = "WEB_SEARCH"
-const END_OF_BLOCK_TAG  = "END_OF_BLOCK"
-const END_OF_CODE_BLOCK = "endblock"
+# Tool names for CallFormat (lowercase function-call style)
+const CATFILE_TAG 	    = "cat_file"
+const SENDKEY_TAG 	    = "send_key"
+const CLICK_TAG  		    = "click"
+const SHELL_BLOCK_TAG   = "bash"
+const CREATE_FILE_TAG   = "create_file"
+const MODIFY_FILE_TAG   = "modify_file"
+const EMAIL_TAG         = "email"
+const WEB_SEARCH_TAG    = "web_search"
+const END_OF_BLOCK_TAG  = "END_OF_BLOCK"  # Internal marker, not a tool name
+const END_OF_CODE_BLOCK = "endblock"      # Internal marker, not a tool name
 
 include("../contexts/CTX_julia.jl")
 include("../contexts/CTX_workspace.jl")
 
 include("utils.jl")
 include("ToolTag.jl")
+include("CallFormat.jl")  # Must come before ToolInterface
 include("ToolInterface.jl")
 
 include("ClickTool.jl")
@@ -37,6 +40,12 @@ include("ToolTagExtractor.jl")
 
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool
 export toolname, get_description, get_tool_schema, description_from_schema, stop_sequence, has_stop_sequence
-export TOOL_DESCRIPTION_FORMAT
+
+# CallFormat exports
+export CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
+export ToolSchema, ParamSchema
+export generate_tool_definition, generate_tool_definitions, generate_format_documentation
+export get_default_call_style, set_default_call_style!
+export namedtuple_to_tool_schema
 
 export STOP_SEQUENCE

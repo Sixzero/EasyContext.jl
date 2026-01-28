@@ -62,7 +62,7 @@ function build_base_system_content(sys_msg::String, tools)
     
     $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(tools)), "\n\n"))
 
-    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
+    If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
     Follow SOLID, KISS and DRY principles. Be concise!
 
@@ -77,7 +77,7 @@ function build_custom_with_tools_content(custom_system_prompt::String, tools)
     
     $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(tools)), "\n\n"))
 
-    If a tool doesn't return results after asking for results with $STOP_SEQUENCE then don't rerun it, but write, we didn't receive results from the specific tool.
+    If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
     Follow SOLID, KISS and DRY principles. Be concise!"""
 end
@@ -97,6 +97,7 @@ function initialize!(sys::SysMessageV2, agent, force=false)
         custom_part = isnothing(sys.custom_system_message) || isempty(sys.custom_system_message) ? 
             "" : "\n\n$(sys.custom_system_message)"
         sys.content = base_content * custom_part
+        @info "SYSTEM_PROMPT" length=length(sys.content) content=sys.content
     end
     return sys.content
 end

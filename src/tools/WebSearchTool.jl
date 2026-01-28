@@ -13,8 +13,6 @@ const WEBSEARCH_SCHEMA = (
 )
 get_tool_schema(::Type{WebSearchTool}) = WEBSEARCH_SCHEMA
 get_description(cmd::Type{WebSearchTool}) = description_from_schema(WEBSEARCH_SCHEMA)
-stop_sequence(cmd::Type{WebSearchTool}) = STOP_SEQUENCE
-
 
 function execute(cmd::WebSearchTool; no_confirm=false)
     print_query(cmd.query)

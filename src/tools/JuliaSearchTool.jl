@@ -5,14 +5,12 @@
     result::String = ""
 end
 
-const JULIA_SEARCH_TAG = "JULIA_SEARCH"
 function create_tool(::Type{JuliaSearchTool}, cmd::ToolTag)
     model = get(cmd.kwargs, "model", ["gem20f", "gem15f", "gpt4om"])
     julia_ctx = init_julia_context(; model)
     JuliaSearchTool(query=cmd.args, julia_ctx=julia_ctx)
 end
 
-stop_sequence(cmd::Type{JuliaSearchTool}) = STOP_SEQUENCE
 toolname(::Type{JuliaSearchTool}) = "julia_search"
 tool_format(::Type{JuliaSearchTool}) = :single_line
 const JULIASEARCH_SCHEMA = (

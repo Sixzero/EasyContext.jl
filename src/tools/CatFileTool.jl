@@ -46,7 +46,6 @@ const CATFILE_SCHEMA = (
 get_tool_schema(::Type{CatFileTool}) = CATFILE_SCHEMA
 get_description(cmd::Type{CatFileTool}) = description_from_schema(CATFILE_SCHEMA)
 
-stop_sequence(cmd::Type{CatFileTool}) = STOP_SEQUENCE
 tool_format(::Type{CatFileTool}) = :single_line
 
 execute(cmd::CatFileTool; no_confirm::Bool=false) = let

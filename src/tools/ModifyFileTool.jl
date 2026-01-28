@@ -29,57 +29,47 @@ const MODIFYFILE_SCHEMA = (
     description = "Modify an existing file with code changes. Use '... existing code ...' comments to skip unchanged parts",
     params = [
         (name = "file_path", type = "string", description = "Path to file to modify", required = true),
-        (name = "content", type = "string", description = "Code changes (in code block)", required = true),
+        (name = "content", type = "codeblock", description = "Code changes", required = true),
     ]
 )
 get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
 get_description(cmd::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
+
+# Legacy description functions (deprecated - use get_description instead)
 MODIFY_FILE_DESCRIPTION(cmd) = """
-To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)":
+To modify an existing file, use modify_file with the file path and code changes.
 
-$(MODIFY_FILE_TAG) path/to/file1
-$(code_format("code_changes", "language"))
-
-So to update and modify existing files use this pattern to virtually create a file changes that is then applied by an external tool comments like:
+Example:
+modify_file(file_path: "path/to/file.ts", content:
+```typescript
 // ... existing code ...
-
-$(MODIFY_FILE_TAG) path/to/file2
-$(code_format("code_changes_with_existing_code_comments", "language"))
-
-To modify the codebase with changes try to focus on changes and indicate if codes are unchanged and skipped:
-$(MODIFY_FILE_TAG) filepath
-$(code_format("code_changes_without_unchanged_code", "language"))
-
-To modify the file, always try to highlight the changes and relevant code and use comment like:
+const newValue = 42;
 // ... existing code ...
-comments indicate where unchanged code has been skipped and spare rewriting the whole codebase again.
+```)
 
-It is important you ALWAYS close the code block with "```$(END_OF_CODE_BLOCK)" in the next line.
+Use '... existing code ...' comments to indicate where unchanged code is skipped.
 """
 MODIFY_FILE_DESCRIPTION_V2(cmd::Type{ModifyFileTool}) = """
-To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)".
+To modify an existing file, use modify_file with the file path and code changes.
 
 Examples:
-$(MODIFY_FILE_TAG) path/to/file1
-$(code_format("multiline_code_changes", "language"))
+modify_file(file_path: "path/to/file1.ts", content:
+```typescript
+// ... existing code ...
+const updatedValue = 42;
+// ... existing code ...
+```)
 
-$(MODIFY_FILE_TAG) path/to/file2
-$(code_format(""" # ... existing code ...
-some same lines
-new line with code changes
-some same lines
- # ... existing code ...""", "language"))
+modify_file(file_path: "path/to/file2.py", content:
+```python
+# ... existing code ...
+def new_function():
+    pass
+# ... existing code ...
+```)
 
-$(MODIFY_FILE_TAG) filepath
-$(code_format("code_changes_without_unchanged_code", "language"))
-
-To modify the file, always try to highlight the changes and relevant code and try to skip the unchanged code parts. Use comments like:
-"... existing code ..."
-comments indicate where unchanged code has been skipped to spare rewriting the whole codebase again.
-
-To make multiple changes to the same file, list ALL changes in a single MODIFY block for that file and if necessary use "...existing code..." block to separate the changes.
-
-Always close the code block with "```$(END_OF_CODE_BLOCK)".
+Use '... existing code ...' comments to indicate where unchanged code is skipped.
+To make multiple changes to the same file, list ALL changes in a single modify_file call.
 """
 stop_sequence(cmd::Type{ModifyFileTool}) = ""
 tool_format(::Type{ModifyFileTool}) = :multi_line

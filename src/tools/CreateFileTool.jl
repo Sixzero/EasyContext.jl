@@ -23,12 +23,11 @@ const CREATEFILE_SCHEMA = (
     description = "Create a new file with content",
     params = [
         (name = "file_path", type = "string", description = "Path for the new file", required = true),
-        (name = "content", type = "string", description = "File content (in code block)", required = true),
+        (name = "content", type = "codeblock", description = "File content", required = true),
     ]
 )
 get_tool_schema(::Type{CreateFileTool}) = CREATEFILE_SCHEMA
 get_description(cmd::Type{CreateFileTool}) = description_from_schema(CREATEFILE_SCHEMA)
-stop_sequence(cmd::Type{CreateFileTool}) = ""
 
 function execute(tool::CreateFileTool; no_confirm=false)
     # Use the utility function to handle path expansion

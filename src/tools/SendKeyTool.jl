@@ -13,7 +13,6 @@ const SENDKEY_SCHEMA = (
 )
 get_tool_schema(::Type{SendKeyTool}) = SENDKEY_SCHEMA
 get_description(cmd::Type{SendKeyTool}) = description_from_schema(SENDKEY_SCHEMA)
-stop_sequence(cmd::Type{SendKeyTool}) = ""
 tool_format(::Type{SendKeyTool}) = :single_line
 
 execute(cmd::SendKeyTool; no_confirm=false) = "Sending keys: $(cmd.text)"

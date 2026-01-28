@@ -24,7 +24,6 @@ const CLICK_SCHEMA = (
 )
 get_tool_schema(::Type{ClickTool}) = CLICK_SCHEMA
 get_description(::Type{ClickTool}) = description_from_schema(CLICK_SCHEMA)
-stop_sequence(::Type{ClickTool}) = STOP_SEQUENCE
 
 execute(tool::ClickTool; no_confirm=false) = "Clicking at coordinates ($(tool.x), $(tool.y)) with $(tool.button) button"
 tool_format(::Type{ClickTool}) = :single_line

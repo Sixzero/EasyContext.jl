@@ -13,11 +13,9 @@ function create_tool(::Type{WorkspaceSearchTool}, cmd::ToolTag, workspace_ctx::W
 end
 
 
-const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
-
 toolname(::Type{WorkspaceSearchTool}) = "workspace_search"
 tool_format(::Type{WorkspaceSearchTool}) = :single_line
-stop_sequence(::Type{WorkspaceSearchTool}) = STOP_SEQUENCE
+
 const WORKSPACESEARCH_SCHEMA = (
     name = "workspace_search",
     description = "Semantic search in workspace for code and files",
