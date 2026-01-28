@@ -36,6 +36,7 @@ include("AbstractExtractor.jl")
 include("ToolTagExtractor.jl")
 
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool
-export toolname, get_description, stop_sequence, has_stop_sequence
+export toolname, get_description, get_tool_schema, description_from_schema, stop_sequence, has_stop_sequence
+export TOOL_DESCRIPTION_FORMAT
 
 export STOP_SEQUENCE
