@@ -1,6 +1,19 @@
 
 export SysMessageV1, SysMessageV2, SysMessageWithTools
 
+const tool_calling_guide = """
+## Tool Calling Format
+Call tools using this exact format:
+tool_name(param1: "value1", param2: "value2")
+
+Examples:
+cat_file(file_path: "/src/main.jl")
+web_search(query: "Julia async programming")
+modify_file(file_path: "/src/app.jl", content: "new content here")
+
+IMPORTANT: Do NOT use XML-style formats like <function_calls>, <invoke>, or any XML tags for tool calls.
+"""
+
 """
 Abstract type for system messages that can create themselves
 """
@@ -59,8 +72,10 @@ function build_base_system_content(sys_msg::String, tools)
     $(system_information)
 
     $(get_tool_descriptions(tools))
-    
+
     $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(tools)), "\n\n"))
+
+    $(tool_calling_guide)
 
     If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
@@ -74,9 +89,10 @@ function build_custom_with_tools_content(custom_system_prompt::String, tools)
     base_content = isempty(custom_system_prompt) ? "" : "$(custom_system_prompt)\n\n"
     
     """$(base_content)$(get_tool_descriptions(tools))
-    
+
     $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(tools)), "\n\n"))
 
+    $(tool_calling_guide)
     If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
     Follow SOLID, KISS and DRY principles. Be concise!"""
