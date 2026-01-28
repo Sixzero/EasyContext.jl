@@ -38,7 +38,7 @@ end
 
 get_tool_descriptions(agent::FluidAgent) = get_tool_descriptions(agent.tools)
 """
-Get tool descriptions for system prompt
+Get tool descriptions for system prompt.
 """
 function get_tool_descriptions(tools::AbstractVector)
     descriptions = get_description.(tools)

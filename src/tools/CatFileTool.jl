@@ -37,14 +37,14 @@ create_tool(::Type{CatFileTool}, cmd::ToolTag, root_path=nothing) = begin
     CatFileTool(; id=uuid4(), file_path, root_path, line_start, line_end)
 end
 
-toolname(cmd::Type{CatFileTool}) = CATFILE_TAG
-get_description(cmd::Type{CatFileTool}) = """
-Read file content:
-$(CATFILE_TAG) path/to/file
-$(CATFILE_TAG) path/to/file:10-20   # lines 10-20
-$(CATFILE_TAG) path/to/file:10-     # line 10 to EOF
-$(CATFILE_TAG) path/to/file:-20     # last 20 lines (tail)
-"""
+toolname(cmd::Type{CatFileTool}) = "cat_file"
+const CATFILE_SCHEMA = (
+    name = "cat_file",
+    description = "Read file content. Supports line ranges: file:10-20, file:10-, file:-20 (tail)",
+    params = [(name = "file_path", type = "string", description = "Path to file, optionally with line range", required = true)]
+)
+get_tool_schema(::Type{CatFileTool}) = CATFILE_SCHEMA
+get_description(cmd::Type{CatFileTool}) = description_from_schema(CATFILE_SCHEMA)
 
 stop_sequence(cmd::Type{CatFileTool}) = STOP_SEQUENCE
 tool_format(::Type{CatFileTool}) = :single_line

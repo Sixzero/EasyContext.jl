@@ -13,11 +13,17 @@ function create_tool(::Type{ClickTool}, tag::ToolTag)
         ClickTool(button=:left, x=parse(Int, args[1]), y=parse(Int, args[2]))
     end
 end
-toolname(::Type{ClickTool}) = CLICK_TAG
-get_description(::Type{ClickTool}) = """
-Click on coordinates:
-$(CLICK_TAG) x y
-"""
+toolname(::Type{ClickTool}) = "click"
+const CLICK_SCHEMA = (
+    name = "click",
+    description = "Click on screen coordinates",
+    params = [
+        (name = "x", type = "number", description = "X coordinate", required = true),
+        (name = "y", type = "number", description = "Y coordinate", required = true),
+    ]
+)
+get_tool_schema(::Type{ClickTool}) = CLICK_SCHEMA
+get_description(::Type{ClickTool}) = description_from_schema(CLICK_SCHEMA)
 stop_sequence(::Type{ClickTool}) = STOP_SEQUENCE
 
 execute(tool::ClickTool; no_confirm=false) = "Clicking at coordinates ($(tool.x), $(tool.y)) with $(tool.button) button"

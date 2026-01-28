@@ -5,11 +5,14 @@
 end
 create_tool(::Type{SendKeyTool}, cmd::ToolTag) = SendKeyTool(text=cmd.args)
 
-toolname(cmd::Type{SendKeyTool}) = SENDKEY_TAG
-get_description(cmd::Type{SendKeyTool}) = """
-Send keyboard input:
-$(SENDKEY_TAG) text
-"""
+toolname(cmd::Type{SendKeyTool}) = "send_key"
+const SENDKEY_SCHEMA = (
+    name = "send_key",
+    description = "Send keyboard input",
+    params = [(name = "text", type = "string", description = "Text to send", required = true)]
+)
+get_tool_schema(::Type{SendKeyTool}) = SENDKEY_SCHEMA
+get_description(cmd::Type{SendKeyTool}) = description_from_schema(SENDKEY_SCHEMA)
 stop_sequence(cmd::Type{SendKeyTool}) = ""
 tool_format(::Type{SendKeyTool}) = :single_line
 

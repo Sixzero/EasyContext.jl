@@ -15,16 +15,16 @@ end
 
 const WORKSPACE_SEARCH_TAG = "WORKSPACE_SEARCH"
 
-toolname(::Type{WorkspaceSearchTool}) = WORKSPACE_SEARCH_TAG
+toolname(::Type{WorkspaceSearchTool}) = "workspace_search"
 tool_format(::Type{WorkspaceSearchTool}) = :single_line
 stop_sequence(::Type{WorkspaceSearchTool}) = STOP_SEQUENCE
-
-function get_description(::Type{WorkspaceSearchTool})
-    """
-    Semantic search in workspace:
-    WORKSPACE_SEARCH search_query
-    """
-end
+const WORKSPACESEARCH_SCHEMA = (
+    name = "workspace_search",
+    description = "Semantic search in workspace for code and files",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+get_tool_schema(::Type{WorkspaceSearchTool}) = WORKSPACESEARCH_SCHEMA
+get_description(::Type{WorkspaceSearchTool}) = description_from_schema(WORKSPACESEARCH_SCHEMA)
 
 function execute(tool::WorkspaceSearchTool; no_confirm=false)
     if isnothing(tool.workspace_ctx)

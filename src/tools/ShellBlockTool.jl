@@ -16,9 +16,14 @@ function create_tool(::Type{ShellBlockTool}, cmd::ToolTag)
         root_path=get(cmd.kwargs, "root_path", nothing)
     ) 
 end
-toolname(cmd::Type{ShellBlockTool}) = SHELL_BLOCK_TAG
-
-get_description(cmd::Type{ShellBlockTool}) =  shell_block_prompt_v1()
+toolname(cmd::Type{ShellBlockTool}) = "shell"
+const SHELL_SCHEMA = (
+    name = "shell",
+    description = "Execute shell commands. Propose concise sh scripts",
+    params = [(name = "commands", type = "string", description = "Shell commands (in code block)", required = true)]
+)
+get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
+get_description(cmd::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
 shell_block_prompt_v1() = shell_block_prompt_base()
 shell_block_prompt_v2() = shell_block_prompt_base() * """
 Ex. before staging files and creating a PR check diffs with:

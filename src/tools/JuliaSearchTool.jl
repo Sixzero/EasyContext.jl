@@ -13,15 +13,15 @@ function create_tool(::Type{JuliaSearchTool}, cmd::ToolTag)
 end
 
 stop_sequence(cmd::Type{JuliaSearchTool}) = STOP_SEQUENCE
-toolname(::Type{JuliaSearchTool}) = JULIA_SEARCH_TAG
+toolname(::Type{JuliaSearchTool}) = "julia_search"
 tool_format(::Type{JuliaSearchTool}) = :single_line
-
-function get_description(::Type{JuliaSearchTool})
-    """
-    Search Julia packages:
-    $JULIA_SEARCH_TAG search_query
-    """
-end
+const JULIASEARCH_SCHEMA = (
+    name = "julia_search",
+    description = "Search Julia packages and documentation",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+get_tool_schema(::Type{JuliaSearchTool}) = JULIASEARCH_SCHEMA
+get_description(::Type{JuliaSearchTool}) = description_from_schema(JULIASEARCH_SCHEMA)
 
 function execute(tool::JuliaSearchTool; no_confirm=false)
     if isnothing(tool.julia_ctx)

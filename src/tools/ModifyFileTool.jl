@@ -23,8 +23,17 @@ function create_tool(::Type{ModifyFileTool}, cmd::ToolTag)
     )
 end
 
-toolname(cmd::Type{ModifyFileTool}) = MODIFY_FILE_TAG
-get_description(cmd::Type{ModifyFileTool}) = MODIFY_FILE_DESCRIPTION(cmd)
+toolname(cmd::Type{ModifyFileTool}) = "modify_file"
+const MODIFYFILE_SCHEMA = (
+    name = "modify_file",
+    description = "Modify an existing file with code changes. Use '... existing code ...' comments to skip unchanged parts",
+    params = [
+        (name = "file_path", type = "string", description = "Path to file to modify", required = true),
+        (name = "content", type = "string", description = "Code changes (in code block)", required = true),
+    ]
+)
+get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
+get_description(cmd::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
 MODIFY_FILE_DESCRIPTION(cmd) = """
 To modify or update an existing file "$(MODIFY_FILE_TAG)" tags followed by the filepath and the codeblock like this and finished with an "```$(END_OF_CODE_BLOCK)":
 

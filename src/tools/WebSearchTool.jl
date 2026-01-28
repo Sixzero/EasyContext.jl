@@ -5,12 +5,14 @@
     results::Vector{String} = []
 end
 create_tool(::Type{WebSearchTool}, tag::ToolTag) = WebSearchTool(query=strip(tag.args))
-toolname(::Type{WebSearchTool}) = WEB_SEARCH_TAG
-
-get_description(cmd::Type{WebSearchTool}) = """
-Search the web:
-$(WEB_SEARCH_TAG) query
-"""
+toolname(::Type{WebSearchTool}) = "web_search"
+const WEBSEARCH_SCHEMA = (
+    name = "web_search",
+    description = "Search the web for information",
+    params = [(name = "query", type = "string", description = "Search query", required = true)]
+)
+get_tool_schema(::Type{WebSearchTool}) = WEBSEARCH_SCHEMA
+get_description(cmd::Type{WebSearchTool}) = description_from_schema(WEBSEARCH_SCHEMA)
 stop_sequence(cmd::Type{WebSearchTool}) = STOP_SEQUENCE
 
 

@@ -12,12 +12,18 @@ function create_tool(::Type{NewTodoTool}, cmd::ToolTag)
         NewTodoTool(title=args[1], description=args[2])
     end
 end
-get_description(cmd::Type{NewTodoTool}) = """
-Create a new todo:
-$(NEW_TODO_TAG) project_name message
-"""
+toolname(cmd::Type{NewTodoTool}) = "new_todo"
 stop_sequence(cmd::Type{NewTodoTool}) = ""
-toolname(cmd::Type{NewTodoTool}) = NEW_TODO_TAG
+const NEWTODO_SCHEMA = (
+    name = "new_todo",
+    description = "Create a new todo item",
+    params = [
+        (name = "title", type = "string", description = "Todo title", required = true),
+        (name = "description", type = "string", description = "Todo description", required = true),
+    ]
+)
+get_tool_schema(::Type{NewTodoTool}) = NEWTODO_SCHEMA
+get_description(cmd::Type{NewTodoTool}) = description_from_schema(NEWTODO_SCHEMA)
 
 execute(cmd::NewTodoTool) = "Creating todo: $(cmd.title) - $(cmd.description)"
 

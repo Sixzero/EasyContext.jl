@@ -17,14 +17,17 @@ end
 tool_format(::Type{CreateFileTool}) = :multi_line
 execute_required_tools(::CreateFileTool) = false
 
-toolname(cmd::Type{CreateFileTool}) = CREATE_FILE_TAG
-get_description(cmd::Type{CreateFileTool}) = """
-To create new file you can use "$(CREATE_FILE_TAG)" tag with file_path like this:
-$(CREATE_FILE_TAG) path/to/file
-$(code_format("new_file_content", "language"))
-
-It is important you ALWAYS close with "```$(END_OF_CODE_BLOCK) after the code block!".
-"""
+toolname(cmd::Type{CreateFileTool}) = "create_file"
+const CREATEFILE_SCHEMA = (
+    name = "create_file",
+    description = "Create a new file with content",
+    params = [
+        (name = "file_path", type = "string", description = "Path for the new file", required = true),
+        (name = "content", type = "string", description = "File content (in code block)", required = true),
+    ]
+)
+get_tool_schema(::Type{CreateFileTool}) = CREATEFILE_SCHEMA
+get_description(cmd::Type{CreateFileTool}) = description_from_schema(CREATEFILE_SCHEMA)
 stop_sequence(cmd::Type{CreateFileTool}) = ""
 
 function execute(tool::CreateFileTool; no_confirm=false)
