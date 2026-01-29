@@ -1,43 +1,46 @@
-export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator, toolname
+export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator
 
-using ToolCallFormat: ParsedCall
+using ToolCallFormat: ParsedCall, AbstractTool
+using ToolCallFormat: toolname, get_description, tool_format, get_extra_description
+using ToolCallFormat: create_tool, preprocess, get_id, is_cancelled, get_cost
+using ToolCallFormat: resultimg2base64, resultaudio2base64, execute_required_tools
 
 abstract type AbstractToolGenerator end
-get_extra_description(tg::AbstractToolGenerator) = nothing
 
-get_description(tool::AbstractToolGenerator)::String = get_description(typeof(tool))
-get_cost(tool::AbstractToolGenerator) = nothing
+ToolCallFormat.get_extra_description(::AbstractToolGenerator) = nothing
+ToolCallFormat.get_description(tool::AbstractToolGenerator) = get_description(typeof(tool))
+ToolCallFormat.get_cost(::AbstractToolGenerator) = nothing
 
 struct ToolGenerator <: AbstractToolGenerator
     tool_type::DataType
     args
 end
-function create_tool(tg::ToolGenerator, call::ParsedCall)
+
+function ToolCallFormat.create_tool(tg::ToolGenerator, call::ParsedCall)
     create_tool(tg.tool_type, call; tg.args...)
 end
 
-toolname(tg::ToolGenerator) = toolname(tg.tool_type)
-get_description(tg::ToolGenerator) = get_description(tg.tool_type)
-tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
-
+ToolCallFormat.toolname(tg::ToolGenerator) = toolname(tg.tool_type)
+ToolCallFormat.get_description(tg::ToolGenerator) = get_description(tg.tool_type)
+ToolCallFormat.tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 
 @kwdef mutable struct WorkspaceToolGenerator <: AbstractToolGenerator
     edge_id::String
     workspace_context::WorkspaceCTX
 end
-function create_tool(wtg::WorkspaceToolGenerator, call::ParsedCall)
+
+function ToolCallFormat.create_tool(wtg::WorkspaceToolGenerator, call::ParsedCall)
     create_tool(WorkspaceSearchTool, call, wtg.workspace_context)
 end
 
-toolname(tg::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)
-get_description(tg::WorkspaceToolGenerator) = get_description(WorkspaceSearchTool)
-get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description_raw(tg.workspace_context.workspace)
-tool_format(tg::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
+ToolCallFormat.toolname(::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)
+ToolCallFormat.get_description(::WorkspaceToolGenerator) = get_description(WorkspaceSearchTool)
+ToolCallFormat.get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description_raw(tg.workspace_context.workspace)
+ToolCallFormat.tool_format(::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
 
-EasyContext.preprocess(tool::AbstractToolGenerator) = tool
-EasyContext.get_id(tool::AbstractToolGenerator) = tool.tool.id
-EasyContext.is_cancelled(tool::AbstractToolGenerator) = false
-EasyContext.resultimg2base64(tool::AbstractToolGenerator) = nothing
-EasyContext.resultaudio2base64(tool::AbstractToolGenerator) = nothing
-
-EasyContext.execute_required_tools(tg::AbstractToolGenerator) = (@warn "Undecided whether to require tool execution for $(typeof(tg))"; false)
+ToolCallFormat.preprocess(::AbstractToolGenerator) = nothing
+ToolCallFormat.get_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? tool.tool.id : nothing
+ToolCallFormat.is_cancelled(::AbstractToolGenerator) = false
+ToolCallFormat.resultimg2base64(::AbstractToolGenerator) = nothing
+ToolCallFormat.resultaudio2base64(::AbstractToolGenerator) = nothing
+ToolCallFormat.execute_required_tools(::AbstractToolGenerator) = (@warn "Undecided execute_required for $(typeof(tg))"; false)

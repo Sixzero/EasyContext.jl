@@ -1,6 +1,8 @@
 export truncate_output
 
-using ToolCallFormat: ParsedCall
+using ToolCallFormat: ParsedCall, AbstractTool
+using ToolCallFormat: toolname, get_tool_schema, get_description, description_from_schema
+using ToolCallFormat: tool_format, execute, result2string, execute_required_tools, create_tool, is_cancelled
 
 @kwdef mutable struct ShellBlockTool <: AbstractTool
     id::UUID = uuid4()
@@ -9,37 +11,33 @@ using ToolCallFormat: ParsedCall
     root_path::Union{Nothing, String} = nothing
     run_results::Vector{String} = []
 end
-function create_tool(::Type{ShellBlockTool}, call::ParsedCall)
-    # Content comes from call.content or kwargs
+
+function ToolCallFormat.create_tool(::Type{ShellBlockTool}, call::ParsedCall)
     content_pv = get(call.kwargs, "command", nothing)
     raw_content = content_pv !== nothing ? content_pv.value : call.content
     language, content = parse_code_block(raw_content)
     root_path_pv = get(call.kwargs, "root_path", nothing)
-    ShellBlockTool(
-        language=language,
-        content=content,
-        root_path=root_path_pv !== nothing ? root_path_pv.value : nothing
-    )
+    ShellBlockTool(language=language, content=content, root_path=root_path_pv !== nothing ? root_path_pv.value : nothing)
 end
-toolname(cmd::Type{ShellBlockTool}) = "bash"
+
+ToolCallFormat.toolname(::Type{ShellBlockTool}) = "bash"
+
 const SHELL_SCHEMA = (
     name = "bash",
     description = "Execute shell commands. Propose concise sh scripts",
     params = [(name = "command", type = "codeblock", description = "Shell commands to execute", required = true)]
 )
-get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
-get_description(cmd::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
 
-execute_required_tools(::ShellBlockTool) = false
-
-tool_format(::Type{ShellBlockTool}) = :multi_line
+ToolCallFormat.get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
+ToolCallFormat.get_description(::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
+ToolCallFormat.execute_required_tools(::ShellBlockTool) = false
+ToolCallFormat.tool_format(::Type{ShellBlockTool}) = :multi_line
 
 const EXECUTION_CANCELLED = "Execution cancelled by user."
 
-function execute(cmd::ShellBlockTool; no_confirm=false)
-    # !(lowercase(cmd.language) in ["bash", "sh", "zsh"]) && return ""
+function ToolCallFormat.execute(cmd::ShellBlockTool; no_confirm=false, kwargs...)
     print_code(cmd.content)
-    
+
     result = if no_confirm || get_user_confirmation()
         print_output_header()
         if isnothing(cmd.root_path)
@@ -53,10 +51,10 @@ function execute(cmd::ShellBlockTool; no_confirm=false)
         EXECUTION_CANCELLED
     end
     push!(cmd.run_results, result)
-    return result
+    result
 end
 
-function is_cancelled(cmd::ShellBlockTool)
+function ToolCallFormat.is_cancelled(cmd::ShellBlockTool)
     !isempty(cmd.run_results) && cmd.run_results[end] == EXECUTION_CANCELLED
 end
 
@@ -64,7 +62,7 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     out_pipe, err_pipe = Pipe(), Pipe()
     process = run(pipeline(ignorestatus(cmd), stdout=out_pipe, stderr=err_pipe), wait=false)
     close(out_pipe.in); close(err_pipe.in)
-    
+
     @async_showerr for line in eachline(out_pipe)
         println(line); flush(stdout)
         write(output, line * "\n")
@@ -75,36 +73,28 @@ function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     end
 
     wait(process)
-    return format_cmd_output(output, error, process)
+    format_cmd_output(output, error, process)
 end
 
 function truncate_output(output)
-    if length(output) > 10000*4
-        return output[1:6000*4] * "\n...\n[Output truncated: exceeded token limit]\n...\n" * output[end-2000*4:end]
-    end
-    output
+    length(output) > 10000*4 ? output[1:6000*4] * "\n...\n[Output truncated]\n...\n" * output[end-2000*4:end] : output
 end
 
-function LLM_safetorun(cmd::ShellBlockTool)
-	LLM_safetorun(cmd.content)
-end
+LLM_safetorun(cmd::ShellBlockTool) = LLM_safetorun(cmd.content)
 
-function result2string(tool::ShellBlockTool)
-    tool_result = if isempty(tool.run_results) || isempty(tool.run_results[end]) 
-        "No results" 
+function ToolCallFormat.result2string(tool::ShellBlockTool)
+    tool_result = if isempty(tool.run_results) || isempty(tool.run_results[end])
+        "No results"
     else
         result = tool.run_results[end]
-        if length(result) > 20000
-            result[1:12000] * "\n...\n[Output truncated: exceeded token limit]\n...\n" * result[end-4000:end]
-        else
-            result
-        end
+        length(result) > 20000 ? result[1:12000] * "\n...\n[Output truncated]\n...\n" * result[end-4000:end] : result
     end
-    shortened_content = get_shortened_code(tool.content)
-    """$(SHELL_BLOCK_OPEN)
-    $shortened_content
-    $(CODEBLOCK_CLOSE)
-    $(SHELL_RUN_RESULT)
-    $(tool_result)
-    $(CODEBLOCK_CLOSE)"""
+    code = get_shortened_code(tool.content)
+"""
+$(SHELL_BLOCK_OPEN)
+$(code)
+$(CODEBLOCK_CLOSE)
+$(SHELL_RUN_RESULT)
+$(tool_result)
+$(CODEBLOCK_CLOSE)"""
 end
