@@ -17,8 +17,12 @@ include("utils.jl")
 include("CallFormat.jl")  # Must come before ToolInterface
 include("ToolInterface.jl")
 
+# Tools using @deftool (simple)
 include("ClickTool.jl")
 include("SendKeyTool.jl")
+include("NewTodoTool.jl")
+
+# Tools with custom logic (manual)
 include("ShellBlockTool.jl")
 include("CatFileTool.jl")
 include("ModifyFileTool.jl")
@@ -29,16 +33,17 @@ include("JuliaSearchTool.jl")
 
 include("ToolGenerators.jl")
 
-include("ToolMacros.jl")
-
 include("AbstractExtractor.jl")
-# ToolTagExtractor removed - use CallExtractor from agent or provide your own AbstractExtractor
 
-export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool
+# Export tool types
+export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool
+export WebSearchTool, WorkspaceSearchTool, JuliaSearchTool, NewTodoTool
+
+# Re-export from ToolCallFormat
+export AbstractTool, CodeBlock
 export toolname, get_description, get_tool_schema, description_from_schema
+export create_tool, execute, preprocess, result2string
+export @tool, @deftool
 
-# CallFormat utilities (uses ToolCallFormat internally)
+# CallFormat utilities
 export namedtuple_to_tool_schema, input_schema_to_tool_schema
-
-# Tool definition macro
-export @tool

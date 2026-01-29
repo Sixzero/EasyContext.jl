@@ -1,121 +1,15 @@
-# Tool interfaces.
+# ToolInterface.jl - Re-exports from ToolCallFormat
+#
+# All tool interface types and functions are now in ToolCallFormat.jl
+# This file re-exports them for backward compatibility.
 
-using ToolCallFormat: ParsedCall
-
-# Tool description format - CallFormat only (function-call style)
-# Format: "tool_name(param: value)" style
-const TOOL_DESCRIPTION_FORMAT = :call
-
-"""
-Tool execution flow and safety checks:
-
-┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐
-  ParsedCall              Parsed from LLM output by StreamProcessor
-└─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
-        │
---------▼----------- Tool Interface Implementation
-┌───────────────┐
-│ Tool(call)    │ Construct Tool instance from ParsedCall
-└───────┬───────┘
-        │
-        ▼
-┌─ ─ ─ ─┴─ ─ ─ ─┐
-  LLM_safetorun   Optional AI safety check before auto-execution
-└─ ─ ─ ─┬─ ─ ─ ─┘   (e.g. verify shell commands without user prompt)
-        │
-        ▼
-┌─ ─ ─ ─┴─ ─ ─ ─┐
-  preprocess()    Optional content preparation
-└─ ─ ─ ─┬─ ─ ─ ─┘   (e.g. LLM modifications, cursor-like instant apply)
-        │
-        ▼
-┌───────────────┐
-│ execute()     │ Performs the actual operation
-└───────┬───────┘
---------│----------- End of Interface
-        ▼
-┌─ ─ ─ ─┴─ ─ ─ ─┐
-  Results         Collected for LLM context
-└─ ─ ─ ─ ─ ─ ─ ─┘
-
-Interface methods:
-- `create_tool(::Type{T}, call::ParsedCall)` - Creates Tool instance from parsed call
-- `preprocess(cmd::AbstractTool)` - Optional data preparation (e.g. LLM modifications)
-- `execute(cmd::AbstractTool)` - Main operation implementation
-- `LLM_safetorun(cmd::AbstractTool)` - Optional AI safety verification
-- `toolname(::Type{<:AbstractTool})` - Tool's unique identifier
-- `get_description(::Type{<:AbstractTool})` - Tool's usage documentation
-- `get_cost(cmd::AbstractTool)` - Get the cost of tool execution (if applicable)
-
-Note: The LLM output generation and ParsedCall parsing are handled by the Agent.
-Each Tool implementation must provide create_tool that takes a ParsedCall.
-"""
-abstract type AbstractTool end
-
-create_tool(::Type{T}, call::ParsedCall) where T <: AbstractTool = @warn "Unimplemented \"create_tool\" for $(T) $(join(stacktrace(), "\n"))"; return nothing
-create_tool(tool::AbstractTool, call::ParsedCall) = @warn "Unimplemented \"create_tool\" for $(tool) $(join(stacktrace(), "\n"))"; return nothing
-preprocess(tool::AbstractTool) = tool
-get_id(tool::AbstractTool) = tool.id
-execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool))"
-get_cost(tool::AbstractTool) = nothing  # Default implementation returns nothing
-
-"""
-Check if tool execution was cancelled by user
-"""
-is_cancelled(tool::AbstractTool) = false
-
-"""
-Usually toolname is static for type
-"""
-toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\" for $(tool) $(join(stacktrace(), "\n"))"; return "")
-toolname(tool::AbstractTool)::String = toolname(typeof(tool))
-toolname(tool::Pair{String, T}) where T = first(tool)
-
-get_description(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(tool) $(join(stacktrace(), "\n"))"; return "unknown tool! $(tool)")
-get_description(tool::AbstractTool)::String = get_description(typeof(tool))
-
-get_extra_description(tool::Type{<:AbstractTool}) = nothing
-get_extra_description(tool::AbstractTool) = nothing
-
-"""
-Specifies if tool uses single-line or multi-line format
-Returns: :single_line or :multi_line
-"""
-tool_format(::Type{<:AbstractTool})::Symbol = :multi_line # Default to single line
-tool_format(tool::AbstractTool)::Symbol = tool_format(typeof(tool))
-
-
-result2string(tool::AbstractTool)::String = ""
-resultimg2base64(tool::AbstractTool)::String = ""
-resultaudio2base64(tool::AbstractTool)::String = ""
-
-"""
-Get tool schema for dynamic description generation.
-Returns nothing by default (use legacy get_description).
-Tools can override this to enable format-aware descriptions.
-
-Returns: NamedTuple with (name, description, params) or nothing
-  - params is a Vector of NamedTuple (name, type, description, required)
-"""
-get_tool_schema(::Type{<:AbstractTool}) = nothing
-get_tool_schema(tool::AbstractTool) = get_tool_schema(typeof(tool))
-
-"""
-Generate a tool description from a schema.
-Uses CallFormat's generate_tool_definition with the current default style.
-
-Tools with schemas can use this in their get_description():
-
-    get_description(::Type{MyTool}) = description_from_schema(get_tool_schema(MyTool))
-"""
-function description_from_schema(schema::NamedTuple)
-    tool_schema = namedtuple_to_tool_schema(schema)
-    generate_tool_definition(tool_schema)
-end
-
-description_from_schema(::Nothing) = "Unknown tool"
-
-# This is a fallback, in case a model would forget tool calling request after the end of conversation, we automatically execute tools that REQUIRE execution, like CATFILE and WEBSEARCH and WORKSPACE_SEARCH
-execute_required_tools(::Type{<:AbstractTool}) = false
-execute_required_tools(tool::AbstractTool) = execute_required_tools(typeof(tool))
-
+using ToolCallFormat: AbstractTool, CodeBlock
+using ToolCallFormat: create_tool, preprocess, execute, get_id, is_cancelled
+using ToolCallFormat: toolname, get_description, get_tool_schema, get_extra_description
+using ToolCallFormat: result2string, resultimg2base64, resultaudio2base64
+using ToolCallFormat: execute_required_tools, get_cost, tool_format
+using ToolCallFormat: description_from_schema
+using ToolCallFormat: ParsedCall, ToolSchema, ParamSchema
+using ToolCallFormat: CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
+using ToolCallFormat: get_default_call_style, generate_tool_definition
+using ToolCallFormat: @tool, @deftool
