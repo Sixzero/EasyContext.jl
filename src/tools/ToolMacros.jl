@@ -21,6 +21,18 @@ using UUIDs: UUID, uuid4
 # Valid schema types (from ToolCallFormat)
 const VALID_SCHEMA_TYPES = Set(["string", "codeblock", "number", "integer", "boolean", "array", "object"])
 
+# Reserved field names (used by base struct fields)
+# - id: unique tool instance identifier (UUID)
+# - result: stores execution output
+# - auto_run: permission flag for auto-execution
+const RESERVED_FIELD_NAMES = Set([:id, :result, :auto_run])
+
+const RESERVED_FIELD_DESCRIPTIONS = Dict(
+    :id => "unique tool instance identifier (UUID)",
+    :result => "stores execution output",
+    :auto_run => "permission flag for auto-execution"
+)
+
 #==============================================================================#
 # @tool - Unified tool definition macro
 #==============================================================================#
@@ -268,6 +280,17 @@ function _validate_param(param, index::Int)
     name, type_str, desc, req, default = param
 
     name isa Symbol || error("Param $index: name must be a Symbol, got $(typeof(name))")
+
+    # Check for reserved field names
+    if name in RESERVED_FIELD_NAMES
+        desc_str = RESERVED_FIELD_DESCRIPTIONS[name]
+        reserved_list = join(["  :$k - $(RESERVED_FIELD_DESCRIPTIONS[k])" for k in sort(collect(RESERVED_FIELD_NAMES))], "\n")
+        error("""Param $index: name :$name is reserved (used for: $desc_str).
+Choose a different name.
+
+Reserved field names:
+$reserved_list""")
+    end
 
     if !(type_str in VALID_SCHEMA_TYPES)
         error("Param $index (:$name): invalid type \"$type_str\". Valid: $(join(sort(collect(VALID_SCHEMA_TYPES)), ", "))")

@@ -41,5 +41,5 @@ export toolname, get_description, get_tool_schema, description_from_schema
 # CallFormat utilities (uses ToolCallFormat internally)
 export namedtuple_to_tool_schema, to_tool_tag, serialize_tool_tag, input_schema_to_tool_schema
 
-# Tool definition macros
-export @tool, @tool_passive
+# Tool definition macro
+export @tool

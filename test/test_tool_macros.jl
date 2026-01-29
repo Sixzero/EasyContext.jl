@@ -1,16 +1,16 @@
-# test_tool_macros.jl - Tests for @tool and @tool_passive macros
+# test_tool_macros.jl - Tests for @tool macro
 
 using Test
-using EasyContext: AbstractTool, @tool, @tool_passive
+using EasyContext: AbstractTool, @tool
 using EasyContext: get_description, toolname, get_tool_schema, execute, result2string
 using ToolCallFormat: CONCISE, PYTHON, MINIMAL, TYPESCRIPT
 using UUIDs: UUID, uuid4
 
 @testset "ToolMacros" begin
 
-    @testset "@tool_passive" begin
-        @tool_passive TestReasonTool "ReasonTool"
-        @tool_passive TestTextTool "TextTool"
+    @testset "Passive tools (no params)" begin
+        @tool TestReasonTool "ReasonTool" "Store reasoning"
+        @tool TestTextTool "TextTool" "Store text" []
 
         @test toolname(TestReasonTool) == "ReasonTool"
         @test toolname(TestTextTool) == "TextTool"
@@ -118,6 +118,21 @@ using UUIDs: UUID, uuid4
         @test schema.params[2].required == false
 
         @test schema.params[3].type == "boolean"
+    end
+
+    @testset "Reserved field name validation" begin
+        # Test that reserved names are rejected with helpful error messages
+        for reserved_name in [:id, :result, :auto_run]
+            @test_throws LoadError @eval @tool ReservedTest "test" "Test" [
+                ($(QuoteNode(reserved_name)), "string", "Should fail", true, nothing),
+            ]
+        end
+
+        # Verify 'content' is NOT reserved (can be used as param name)
+        @tool ContentParamTool "content_test" "Test content param" [
+            (:content, "codeblock", "Content is allowed as param", true, nothing),
+        ]
+        @test toolname(ContentParamTool) == "content_test"
     end
 
 end
