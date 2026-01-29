@@ -1,36 +1,8 @@
 # CallFormat - Tool description format system
-# Re-exports from ToolCallFormat.jl for consistent tool description generation
+# Uses ToolCallFormat.jl internally, but does NOT re-export.
+# Users who need ToolCallFormat should depend on it directly.
 
-# Import and re-export everything from ToolCallFormat
-using ToolCallFormat
-
-# Re-export types
-export CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
-export ToolFormatConfig, CallFormatConfig
-export ParamSchema, ToolSchema
-export ParsedValue, ParsedCall
-
-# Re-export functions
-export generate_tool_definition, generate_tool_definitions
-export generate_format_documentation, generate_system_prompt
-export get_default_call_style, set_default_call_style!
-export simple_tool_schema, code_tool_schema
-export short_type, python_type
-
-# Re-export streaming/parsing
-export StreamProcessor, StreamState
-export STREAMING_TEXT, BUFFERING_IDENTIFIER, IN_TOOL_CALL, AFTER_PAREN, IN_CONTENT_BLOCK
-export process_chunk!, finalize!, reset!
-export parse_tool_call
-
-# Re-export serialization
-export serialize_value, serialize_tool_call, serialize_parsed_call
-export serialize_tool_call_multiline, serialize_tool_call_with_content
-export serialize_tool_schema, get_kv_separator
-
-# ============================================================================
-# EasyContext-specific additions
-# ============================================================================
+using ToolCallFormat: ToolSchema, ParamSchema, generate_tool_definition
 
 """
 Convert a NamedTuple schema to ToolSchema.
