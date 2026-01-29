@@ -21,7 +21,7 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
 
     print_code(content)
 
-    result = if get(kw, :no_confirm, false) || get_user_confirmation()
+    raw_result = if get(kw, :no_confirm, false) || get_user_confirmation()
         print_output_header()
         if isnothing(root_path)
             cmd_all_info_stream(`zsh -c $content`)
@@ -33,8 +33,22 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
     else
         EXECUTION_CANCELLED
     end
-    push!(run_results, result)
-    result
+    push!(run_results, raw_result)
+
+    # Format result for LLM
+    tool_result = if isempty(raw_result)
+        "No results"
+    else
+        length(raw_result) > 20000 ? raw_result[1:12000] * "\n...\n[Output truncated]\n...\n" * raw_result[end-4000:end] : raw_result
+    end
+    code = get_shortened_code(content)
+    """
+$(SHELL_BLOCK_OPEN)
+$(code)
+$(CODEBLOCK_CLOSE)
+$(SHELL_RUN_RESULT)
+$(tool_result)
+$(CODEBLOCK_CLOSE)"""
 end
 
 # Backward compatibility alias
@@ -66,20 +80,3 @@ function truncate_output(output)
 end
 
 LLM_safetorun(cmd::BashTool) = LLM_safetorun(cmd.content)
-
-function ToolCallFormat.result2string(tool::BashTool)
-    tool_result = if isempty(tool.run_results) || isempty(tool.run_results[end])
-        "No results"
-    else
-        result = tool.run_results[end]
-        length(result) > 20000 ? result[1:12000] * "\n...\n[Output truncated]\n...\n" * result[end-4000:end] : result
-    end
-    code = get_shortened_code(tool.content)
-"""
-$(SHELL_BLOCK_OPEN)
-$(code)
-$(CODEBLOCK_CLOSE)
-$(SHELL_RUN_RESULT)
-$(tool_result)
-$(CODEBLOCK_CLOSE)"""
-end
