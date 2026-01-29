@@ -1,52 +1,19 @@
-import ToolCallFormat
-using ToolCallFormat: ParsedCall, AbstractTool, description_from_schema
+using ToolCallFormat: @deftool, CodeBlock
+using ToolCallFormat: Context as ToolContext
 
-@kwdef mutable struct CreateFileTool <: AbstractTool
-    id::UUID = uuid4()
-    language::String = "txt"
-    file_path::String
-    root_path::Union{String, AbstractPath, Nothing} = nothing
-    content::String
-end
-
-function ToolCallFormat.create_tool(::Type{CreateFileTool}, call::ParsedCall, root_path=nothing)
-    file_path_pv = get(call.kwargs, "file_path", nothing)
-    file_path = file_path_pv !== nothing ? file_path_pv.value : ""
+@deftool "Create a new file with content" function create_file(file_path::String, content::CodeBlock; ctx::ToolContext)
+    # Clean file_path (remove trailing >)
     file_path = endswith(file_path, ">") ? chop(file_path) : file_path
+    path = expand_path(file_path, ctx.root_path)
 
-    content_pv = get(call.kwargs, "content", nothing)
-    raw_content = content_pv !== nothing ? content_pv.value : call.content
-    language, content = parse_code_block(raw_content)
-
-    root_path_pv = get(call.kwargs, "root_path", nothing)
-    root_path = root_path === nothing ? (root_path_pv !== nothing ? root_path_pv.value : nothing) : root_path
-    CreateFileTool(; language, file_path, root_path, content)
-end
-
-ToolCallFormat.toolname(::Type{CreateFileTool}) = "create_file"
-
-const CREATEFILE_SCHEMA = (
-    name = "create_file",
-    description = "Create a new file with content",
-    params = [
-        (name = "file_path", type = "string", description = "Path for the new file", required = true),
-        (name = "content", type = "codeblock", description = "File content", required = true),
-    ]
-)
-
-ToolCallFormat.get_tool_schema(::Type{CreateFileTool}) = CREATEFILE_SCHEMA
-ToolCallFormat.get_description(::Type{CreateFileTool}) = description_from_schema(CREATEFILE_SCHEMA)
-
-function ToolCallFormat.execute(tool::CreateFileTool; no_confirm=false, kwargs...)
-    path = expand_path(tool.file_path, tool.root_path)
-
-    shell_cmd = process_create_command(path, tool.content)
+    shell_cmd = process_create_command(path, string(content))
     shortened_code = get_shortened_code(shell_cmd, 4, 2)
     print_code(shortened_code)
 
     dir = dirname(path)
     !isdir(dir) && mkpath(dir)
 
+    no_confirm = get(kw, :no_confirm, false)
     if no_confirm || get_user_confirmation()
         print_output_header()
         execute_with_output(`zsh -c $shell_cmd`)
@@ -54,6 +21,10 @@ function ToolCallFormat.execute(tool::CreateFileTool; no_confirm=false, kwargs..
         "\nOperation cancelled by user."
     end
 end
+
+#==============================================================================#
+# Helper functions
+#==============================================================================#
 
 function process_create_command(file_path::String, content::String)
     delimiter = get_unique_eof(content)
