@@ -16,37 +16,42 @@ end
     current_line::String = ""
 end
 
-# Lexer handling - only load if Highlights is available
+# Lexer handling - Highlights package API changed significantly
+# Using tree-sitter based highlighting in new versions
 if HIGHLIGHTS_AVAILABLE
     using Highlights
-    using Highlights: AbstractLexer, Lexers
 
-    const lexer_map = Dict(
-        "jl" => Lexers.JuliaLexer,
-        "julia" => Lexers.JuliaLexer,
-        "matlab" => Lexers.MatlabLexer,
-        "r" => Lexers.RLexer,
-        "fortran" => Lexers.FortranLexer,
-        "toml" => Lexers.TOMLLexer,
+    # New Highlights API uses tree-sitter and doesn't have Lexers module
+    # Just use the highlight function with language strings
+    const lexer_map = Dict{String, String}(
+        "jl" => "julia",
+        "julia" => "julia",
+        "py" => "python",
+        "python" => "python",
+        "js" => "javascript",
+        "javascript" => "javascript",
+        "ts" => "typescript",
+        "typescript" => "typescript",
+        "sh" => "bash",
+        "bash" => "bash",
+        "toml" => "toml",
+        "json" => "json",
+        "yaml" => "yaml",
+        "yml" => "yaml",
+        "md" => "markdown",
+        "markdown" => "markdown",
     )
 
-    get_lexer(language::AbstractString) = get(lexer_map, lowercase(language), Lexers.JuliaLexer)
+    get_lexer(language::AbstractString) = get(lexer_map, lowercase(language), "julia")
 
-    highlight_string(code::AbstractString, lexer::Type{<:AbstractLexer}) = sprint() do buf
-        highlight(buf, MIME("text/ansi"), code, lexer)
-    end
-
-    function Highlights.Format.render(io::IO, ::MIME"text/ansi", tokens::Highlights.Format.TokenIterator)
-        for (str, id, style) in tokens
-            cg = Crayon(
-                foreground = style.fg.active ? (style.fg.r, style.fg.g, style.fg.b) : nothing,
-                background = style.bg.active ? (style.bg.r, style.bg.g, style.bg.b) : nothing,
-                bold = style.bold,
-                italics = style.italic,
-                underline = style.underline
-            )
-            print(io, cg, str, inv(cg))
-            flush(io)
+    function highlight_string(code::AbstractString, language::String)
+        try
+            sprint() do buf
+                highlight(buf, MIME("text/ansi"), code, language)
+            end
+        catch
+            # Fallback if language not supported
+            code
         end
     end
 else

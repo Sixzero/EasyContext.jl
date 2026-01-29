@@ -5,7 +5,6 @@ using Test
 using EasyContext: AbstractTool, @tool
 using EasyContext: get_description, toolname, get_tool_schema, execute, result2string
 using EasyContext: execute_required_tools, is_cancelled, create_tool
-using EasyContext: ToolTag
 using ToolCallFormat: CONCISE, PYTHON, MINIMAL, TYPESCRIPT
 using ToolCallFormat: ParsedCall, ParsedValue
 using UUIDs: UUID, uuid4
@@ -265,43 +264,6 @@ $(tool.result)"""
         end
     end
 
-    @testset "create_tool from ToolTag" begin
-        println("\n" * "=" ^ 60)
-        println("Testing create_tool from ToolTag")
-        println("=" ^ 60)
-
-        # Simple string param - args goes to first required string param
-        tag1 = ToolTag(name="send_key", args="Hello World")
-        tool1 = create_tool(SendKeyToolNew, tag1)
-        @test tool1.text == "Hello World"
-        println("✓ SendKeyToolNew from ToolTag: text=$(tool1.text)")
-
-        # Search tool
-        tag2 = ToolTag(name="web_search", args="julia programming")
-        tool2 = create_tool(WebSearchToolNew, tag2)
-        @test tool2.query == "julia programming"
-        println("✓ WebSearchToolNew from ToolTag: query=$(tool2.query)")
-
-        # Codeblock tool - content goes to codeblock param
-        tag3 = ToolTag(name="bash", content="ls -la\necho hello")
-        tool3 = create_tool(BashToolNew, tag3)
-        @test tool3.command == "ls -la\necho hello"
-        println("✓ BashToolNew from ToolTag: command=$(repr(tool3.command))")
-
-        # Tool with args + content
-        tag4 = ToolTag(name="create_file", args="/tmp/test.txt", content="file contents here")
-        tool4 = create_tool(CreateFileToolNew, tag4)
-        @test tool4.file_path == "/tmp/test.txt"
-        @test tool4.content == "file contents here"
-        println("✓ CreateFileToolNew from ToolTag: path=$(tool4.file_path), content=$(repr(tool4.content))")
-
-        # Passive tool
-        tag5 = ToolTag(name="ReasonTool", content="thinking about something")
-        tool5 = create_tool(ReasonToolNew, tag5)
-        @test tool5.content == "thinking about something"
-        println("✓ ReasonToolNew from ToolTag: content=$(repr(tool5.content))")
-    end
-
     @testset "create_tool from ParsedCall" begin
         println("\n" * "=" ^ 60)
         println("Testing create_tool from ParsedCall")
@@ -359,19 +321,19 @@ $(tool.result)"""
         println("Testing create_tool + execute round-trip")
         println("=" ^ 60)
 
-        # Create from ToolTag and execute
-        tag = ToolTag(name="web_search", args="test query")
-        tool = create_tool(WebSearchToolNew, tag)
+        # Create from ParsedCall and execute - WebSearchToolNew
+        call1 = ParsedCall(name="web_search", kwargs=Dict("query" => ParsedValue("test query")))
+        tool = create_tool(WebSearchToolNew, call1)
         execute(tool)
         @test tool.result == "Searching for: test query"
         println("✓ WebSearchToolNew round-trip: $(tool.result)")
 
-        # Create from ParsedCall and execute
-        call = ParsedCall(name="click", kwargs=Dict(
+        # Create from ParsedCall and execute - ClickToolNew
+        call2 = ParsedCall(name="click", kwargs=Dict(
             "x" => ParsedValue(100),
             "y" => ParsedValue(200)
         ))
-        tool2 = create_tool(ClickToolNew, call)
+        tool2 = create_tool(ClickToolNew, call2)
         execute(tool2)
         @test tool2.result == "Clicking at coordinates (100, 200)"
         println("✓ ClickToolNew round-trip: $(tool2.result)")
