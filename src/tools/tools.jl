@@ -41,11 +41,18 @@ include("ToolTagExtractor.jl")
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool
 export toolname, get_description, get_tool_schema, description_from_schema, stop_sequence, has_stop_sequence
 
-# CallFormat exports
+# CallFormat exports (now from ToolCallFormat.jl)
 export CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
-export ToolSchema, ParamSchema
-export generate_tool_definition, generate_tool_definitions, generate_format_documentation
+export ToolSchema, ParamSchema, ToolFormatConfig, CallFormatConfig
+export ParsedValue, ParsedCall
+export generate_tool_definition, generate_tool_definitions, generate_format_documentation, generate_system_prompt
 export get_default_call_style, set_default_call_style!
+export simple_tool_schema, code_tool_schema
+export short_type, python_type
 export namedtuple_to_tool_schema
+# Streaming/parsing
+export StreamProcessor, StreamState, process_chunk!, finalize!, reset!, parse_tool_call
+# Serialization
+export serialize_value, serialize_tool_call, serialize_parsed_call
 
 export STOP_SEQUENCE
