@@ -45,9 +45,7 @@ const MODIFYFILE_SCHEMA = (
 
 ToolCallFormat.get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
 ToolCallFormat.get_description(::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
-ToolCallFormat.tool_format(::Type{ModifyFileTool}) = :multi_line
 
-ToolCallFormat.execute_required_tools(::ModifyFileTool) = false
 ToolCallFormat.execute(cmd::ModifyFileTool; no_confirm=false, kwargs...) = execute(cmd, CURRENT_EDITOR; no_confirm)
 ToolCallFormat.preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
 

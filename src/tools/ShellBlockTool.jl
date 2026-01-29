@@ -29,8 +29,6 @@ const SHELL_SCHEMA = (
 
 ToolCallFormat.get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
 ToolCallFormat.get_description(::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
-ToolCallFormat.execute_required_tools(::ShellBlockTool) = false
-ToolCallFormat.tool_format(::Type{ShellBlockTool}) = :multi_line
 
 const EXECUTION_CANCELLED = "Execution cancelled by user."
 

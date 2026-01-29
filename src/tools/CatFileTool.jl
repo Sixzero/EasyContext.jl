@@ -71,4 +71,3 @@ end
 
 LLM_safetorun(::CatFileTool) = true
 ToolCallFormat.result2string(tool::CatFileTool)::String = tool.result
-ToolCallFormat.execute_required_tools(::CatFileTool) = true

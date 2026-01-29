@@ -20,7 +20,6 @@ end
 
 ToolCallFormat.toolname(tg::ToolGenerator) = toolname(tg.tool_type)
 ToolCallFormat.get_description(tg::ToolGenerator) = get_description(tg.tool_type)
-ToolCallFormat.tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
 
 @kwdef mutable struct WorkspaceToolGenerator <: AbstractToolGenerator
     edge_id::String
@@ -34,11 +33,9 @@ end
 ToolCallFormat.toolname(::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)
 ToolCallFormat.get_description(::WorkspaceToolGenerator) = get_description(WorkspaceSearchTool)
 ToolCallFormat.get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description_raw(tg.workspace_context.workspace)
-ToolCallFormat.tool_format(::WorkspaceToolGenerator) = tool_format(WorkspaceSearchTool)
 
 ToolCallFormat.preprocess(::AbstractToolGenerator) = nothing
 ToolCallFormat.get_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? tool.tool.id : nothing
 ToolCallFormat.is_cancelled(::AbstractToolGenerator) = false
 ToolCallFormat.resultimg2base64(::AbstractToolGenerator) = nothing
 ToolCallFormat.resultaudio2base64(::AbstractToolGenerator) = nothing
-ToolCallFormat.execute_required_tools(::AbstractToolGenerator) = (@warn "Undecided execute_required for $(typeof(tg))"; false)

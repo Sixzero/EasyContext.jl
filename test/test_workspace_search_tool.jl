@@ -34,7 +34,6 @@ using UUIDs
     # Test tool metadata
     @testset "Tool Metadata" begin
         @test toolname(WorkspaceSearchTool) == "workspace_search"
-        @test tool_format(WorkspaceSearchTool) == :single_line
         @test !isempty(get_description(WorkspaceSearchTool))
     end
 end

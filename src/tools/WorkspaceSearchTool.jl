@@ -48,4 +48,3 @@ $(tool.result)"""
 end
 
 ToolCallFormat.get_cost(tool::WorkspaceSearchTool) = tool.cost
-ToolCallFormat.execute_required_tools(::WorkspaceSearchTool) = true

@@ -23,7 +23,6 @@ function ToolCallFormat.create_tool(::Type{CreateFileTool}, call::ParsedCall, ro
     CreateFileTool(; language, file_path, root_path, content)
 end
 
-ToolCallFormat.execute_required_tools(::CreateFileTool) = false
 ToolCallFormat.toolname(::Type{CreateFileTool}) = "create_file"
 
 const CREATEFILE_SCHEMA = (
