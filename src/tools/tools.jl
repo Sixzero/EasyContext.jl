@@ -14,7 +14,6 @@ include("../contexts/CTX_julia.jl")
 include("../contexts/CTX_workspace.jl")
 
 include("utils.jl")
-include("ToolTag.jl")
 include("CallFormat.jl")  # Must come before ToolInterface
 include("ToolInterface.jl")
 
