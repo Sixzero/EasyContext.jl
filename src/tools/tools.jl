@@ -39,11 +39,5 @@ include("AbstractExtractor.jl")
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool
 export WebSearchTool, WorkspaceSearchTool, JuliaSearchTool, NewTodoTool
 
-# Re-export from ToolCallFormat
-export AbstractTool, CodeBlock
-export toolname, get_description, get_tool_schema, description_from_schema
-export create_tool, execute, preprocess, result2string
-export @tool, @deftool
-
-# CallFormat utilities
-export namedtuple_to_tool_schema, input_schema_to_tool_schema
+# Note: Tool interface types and functions (AbstractTool, toolname, execute, etc.)
+# should be imported directly from ToolCallFormat
