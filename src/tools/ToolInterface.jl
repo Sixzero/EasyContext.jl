@@ -117,3 +117,26 @@ description_from_schema(::Nothing) = "Unknown tool"
 # This is a fallback, in case a model would forget tool calling request after the end of conversation, we automatically execute tools that REQUIRE execution, like CATFILE and WEBSEARCH and WORKSPACE_SEARCH
 execute_required_tools(::Type{<:AbstractTool}) = false
 execute_required_tools(tool::AbstractTool) = execute_required_tools(typeof(tool))
+
+"""
+    get_tool_map(tools) -> Dict{String, Any}
+
+Create a mapping from tool names to tool types/instances for fast lookup.
+
+Takes a vector of tool types or tool generator instances and returns
+a Dict mapping tool names to the corresponding type/instance.
+
+Example:
+    tools = [ShellBlockTool, CatFileTool, edge_tool_instance]
+    tool_map = get_tool_map(tools)
+    # tool_map["bash"] => ShellBlockTool
+    # tool_map["cat_file"] => CatFileTool
+"""
+function get_tool_map(tools::Vector)
+    tool_map = Dict{String, Any}()
+    for tool in tools
+        name = toolname(tool)
+        !isempty(name) && (tool_map[name] = tool)
+    end
+    tool_map
+end
