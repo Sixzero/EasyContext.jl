@@ -106,13 +106,13 @@ println(shell_context)
 ## Tool Interface Flow
 ```
 ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐
-  ToolTag                 Parsed from the LLM output, e.g. ToolTag(name="CALC", args="2 + 2") 
-└─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
+  ParsedCall              Parsed from LLM output via StreamProcessor
+└─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘   e.g. ParsedCall(name="calc", kwargs=Dict("expression" => ParsedValue("2 + 2")))
         │
---------▼----------- Tool Interface Implementation 
-┌────────────────────────┐
-│ instantiate(::ToolTag) │ Creates Tool instance from ToolTag
-└───────┬────────────────┘
+--------▼----------- Tool Interface Implementation
+┌─────────────────────────────┐
+│ create_tool(T, ::ParsedCall)│ Creates Tool instance from ParsedCall
+└───────┬─────────────────────┘
         │
         ▼
 ┌─ ─ ─ ─┴─ ─ ─ ─┐
@@ -137,46 +137,70 @@ println(shell_context)
 
 ### Example: Creating a Simple Tool
 
-Here's an example of implementing a basic calculator tool:
+Here's an example implementing a basic calculator tool using the `@tool` macro:
 
 ```julia
-# Define tool struct
+using EasyContext: @tool
+
+# Define tool using the macro
+@tool CalcTool "calc" "Calculate mathematical expressions" [
+    (:expression, "string", "Mathematical expression to evaluate", true, nothing),
+] (tool; kwargs...) -> begin
+    try
+        result = eval(Meta.parse(tool.expression))
+        tool.result = "Result: $result"
+    catch e
+        tool.result = "Error: Invalid expression"
+    end
+end
+```
+
+Or manually define a tool:
+
+```julia
+using EasyContext: AbstractTool, create_tool
+using ToolCallFormat: ParsedCall, ParsedValue
+using UUIDs: UUID, uuid4
+
 @kwdef struct CalcTool <: AbstractTool
     id::UUID = uuid4()
     expression::String
+    result::String = ""
 end
 
-# Create tool from tag
-CalcTool(cmd::ToolTag) = CalcTool(expression=cmd.args)
+# Create tool from ParsedCall
+function create_tool(::Type{CalcTool}, call::ParsedCall)
+    expr_pv = get(call.kwargs, "expression", nothing)
+    expression = expr_pv !== nothing ? expr_pv.value : ""
+    CalcTool(; id=uuid4(), expression)
+end
 
 # Define tool metadata
-toolname(::Type{CalcTool}) = "CALC"
-get_description(::Type{CalcTool}) = """
-Calculate mathematical expressions:
-CALC 2 + 2 [$STOP_SEQUENCE]
-"""
-stop_sequence(::Type{CalcTool}) = STOP_SEQUENCE
+toolname(::Type{CalcTool}) = "calc"
+get_description(::Type{CalcTool}) = "calc(expression: \"2 + 2\") - Calculate mathematical expressions"
 
 # Implement main operation
 function execute(tool::CalcTool)
     try
         result = eval(Meta.parse(tool.expression))
-        return "Result: $result"
+        tool.result = "Result: $result"
     catch e
-        return "Error: Invalid expression"
+        tool.result = "Error: Invalid expression"
     end
 end
 ```
 
 Usage example:
 ```julia
-# Parse tool tag
-tag = ToolTag(name="CALC", args="2 + 2")
+using ToolCallFormat: ParsedCall, ParsedValue
+
+# Create ParsedCall (normally done by StreamProcessor parsing LLM output)
+call = ParsedCall(name="calc", kwargs=Dict("expression" => ParsedValue("2 + 2")))
 
 # Create and execute tool
-calc = instantiate(Val(:CALC), tag) 
-result = execute(calc)
-# => "Result: 4"
+calc = create_tool(CalcTool, call)
+execute(calc)
+println(calc.result)  # => "Result: 4"
 ```
 
 ## Contributing
