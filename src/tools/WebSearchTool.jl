@@ -1,5 +1,4 @@
-"Search the web for information"
-@deftool :confirm :auto_execute web_search(query::String) = begin
+@deftool "Search the web for information" web_search(query::String) = begin
     print_query(query)
     search_and_stream_results(query)
 end

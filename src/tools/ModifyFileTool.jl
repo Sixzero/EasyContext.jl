@@ -1,8 +1,7 @@
 include("diffviews/DiffViews.jl")
 
-using ToolCallFormat: ParsedCall, AbstractTool
-using ToolCallFormat: toolname, get_tool_schema, get_description, description_from_schema
-using ToolCallFormat: tool_format, execute, execute_required_tools, create_tool, preprocess
+import ToolCallFormat
+using ToolCallFormat: ParsedCall, AbstractTool, description_from_schema
 
 @kwdef mutable struct ModifyFileTool <: AbstractTool
     id::UUID = uuid4()

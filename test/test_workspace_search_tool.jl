@@ -1,7 +1,7 @@
 using Test
 using EasyContext
-using EasyContext: WorkspaceSearchTool, execute, result2string, create_tool
-using ToolCallFormat: ParsedCall, ParsedValue
+using EasyContext: WorkspaceSearchTool
+using ToolCallFormat: ParsedCall, ParsedValue, execute, result2string, create_tool
 using UUIDs
 
 @testset "WorkspaceSearchTool" begin

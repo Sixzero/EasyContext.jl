@@ -2,12 +2,16 @@
 #
 # All tool interface types and functions are now in ToolCallFormat.jl
 # This file re-exports them for backward compatibility.
+#
+# Note: Use `import` not `using` for functions that tools need to extend.
+
+import ToolCallFormat
+import ToolCallFormat: create_tool, preprocess, execute, get_id, is_cancelled
+import ToolCallFormat: toolname, get_description, get_tool_schema, get_extra_description
+import ToolCallFormat: result2string, resultimg2base64, resultaudio2base64
+import ToolCallFormat: execute_required_tools, get_cost, tool_format
 
 using ToolCallFormat: AbstractTool, CodeBlock
-using ToolCallFormat: create_tool, preprocess, execute, get_id, is_cancelled
-using ToolCallFormat: toolname, get_description, get_tool_schema, get_extra_description
-using ToolCallFormat: result2string, resultimg2base64, resultaudio2base64
-using ToolCallFormat: execute_required_tools, get_cost, tool_format
 using ToolCallFormat: description_from_schema
 using ToolCallFormat: ParsedCall, ToolSchema, ParamSchema
 using ToolCallFormat: CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
