@@ -77,7 +77,7 @@ function update_changes_from_extractor!(changes_tracker, extractor)
         cb = fetch(task)
         !isa(cb, ModifyFileTool) && continue
         changes_tracker.changes[cb.file_path] = :UPDATED
-        changes_tracker.content[cb.file_path] = cb.postcontent
+        changes_tracker.chunks_dict[cb.file_path] = cb.postcontent
     end
 end
 

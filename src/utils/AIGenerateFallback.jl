@@ -82,7 +82,6 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
                 attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs..., kwargs...)
             catch e
                 e isa InterruptException && rethrow(e)
-                rethrow(e)
                 reason = handle_error!(state, e, model_name)
                 
                 if attempt == retries
