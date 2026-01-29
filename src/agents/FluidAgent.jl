@@ -211,9 +211,10 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             execute_tools(extractor; no_confirm, io, permissions)
 
-            are_there_simple_tools = filter(tool -> execute_required_tools(tool), fetch.(values(extractor.tool_tasks))) # TODO... we have eecute_tools and this too??? WTF???
+            # Check if there are any executable tools
+            executable_tools = filter(tool -> is_executable(tool), fetch.(values(extractor.tool_tasks)))
 
-            (!needs_execution && isempty(are_there_simple_tools)) && break
+            (!needs_execution && isempty(executable_tools)) && break
             are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
 
             # Add tool results to conversation for next iteration
