@@ -40,7 +40,7 @@ GitTracker!(ws, path::String, conv) = begin
 		push!(gits, WorkTree(LibGit2.GitRepo(worktreepath)))
 	end
 	ws.root_path, ws.rel_project_paths = resolve(ws.resolution_method, ws.project_paths)
-	conv_path = abs_conversaion_path(path, conv)
+	conv_path = abs_conversation_path(path, conv)
 
 	init_git(conv_path)
 	conv_repo = LibGit2.GitRepo(conv_path)

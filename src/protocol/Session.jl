@@ -39,9 +39,9 @@ function push_message!(conv::Session, msg::Message, stop_sequence::String="")
     conv
 end
 
-abs_conversaion_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv.id, "conversations")
-conversaion_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
-conversaion_file(path,conv::Session) = joinpath(conversaion_path(path, conv), "conversation.json")
+abs_conversation_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv.id, "conversations")
+conversation_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
+conversation_file(path,conv::Session) = joinpath(conversation_path(path, conv), "conversation.json")
 
 
 function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_messages_supported::Bool=false)
