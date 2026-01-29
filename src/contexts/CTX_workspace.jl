@@ -42,7 +42,7 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     )
 end
 
-function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, source_tracker=nothing, extractor=nothing, io::Union{IO, Nothing}=nothing, query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing, request_id=nothing)
+function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, source_tracker=nothing, io::Union{IO, Nothing}=nothing, query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing, request_id=nothing)
     !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing, nothing)
     
     start_time = time()
@@ -54,7 +54,6 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     file_chunks_reranked = search(workspace_context.rag_pipeline, file_chunks, embedder_query; rerank_query, cost_tracker, query_images, request_id)
     merged_file_chunks = merge!(workspace_context.tracker_context, file_chunks_reranked)
     
-    !isnothing(extractor) && update_changes_from_extractor!(workspace_context.changes_tracker, extractor)
     scr_content = update_changes!(workspace_context.changes_tracker, merged_file_chunks)
     !isnothing(source_tracker) && register_changes!(source_tracker, workspace_context.changes_tracker, workspace_context.tracker_context)
     
@@ -70,14 +69,5 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     !isnothing(io) && write(io, result)
     
     (result_str, file_chunks, file_chunks_reranked, result)
-end
-
-function update_changes_from_extractor!(changes_tracker, extractor)
-    for task in values(extractor.tool_tasks)
-        cb = fetch(task)
-        !isa(cb, ModifyFileTool) && continue
-        changes_tracker.changes[cb.file_path] = :UPDATED
-        changes_tracker.chunks_dict[cb.file_path] = cb.postcontent
-    end
 end
 
