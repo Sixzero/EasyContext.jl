@@ -48,7 +48,6 @@ const CATFILE_SCHEMA = (
 
 ToolCallFormat.get_tool_schema(::Type{CatFileTool}) = CATFILE_SCHEMA
 ToolCallFormat.get_description(::Type{CatFileTool}) = description_from_schema(CATFILE_SCHEMA)
-ToolCallFormat.tool_format(::Type{CatFileTool}) = :single_line
 
 function ToolCallFormat.execute(cmd::CatFileTool; no_confirm::Bool=false, kwargs...)
     path = expand_path(cmd.file_path, cmd.root_path)

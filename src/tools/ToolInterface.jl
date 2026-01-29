@@ -9,7 +9,7 @@ import ToolCallFormat
 import ToolCallFormat: create_tool, preprocess, execute, get_id, is_cancelled
 import ToolCallFormat: toolname, get_description, get_tool_schema, get_extra_description
 import ToolCallFormat: result2string, resultimg2base64, resultaudio2base64
-import ToolCallFormat: execute_required_tools, get_cost, tool_format
+import ToolCallFormat: execute_required_tools, get_cost
 
 using ToolCallFormat: AbstractTool, CodeBlock
 using ToolCallFormat: description_from_schema

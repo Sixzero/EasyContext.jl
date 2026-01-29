@@ -17,7 +17,6 @@ function ToolCallFormat.create_tool(::Type{WorkspaceSearchTool}, call::ParsedCal
 end
 
 ToolCallFormat.toolname(::Type{WorkspaceSearchTool}) = "workspace_search"
-ToolCallFormat.tool_format(::Type{WorkspaceSearchTool}) = :single_line
 
 const WORKSPACESEARCH_SCHEMA = (
     name = "workspace_search",

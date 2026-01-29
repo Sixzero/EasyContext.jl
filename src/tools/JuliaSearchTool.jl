@@ -18,7 +18,6 @@ function ToolCallFormat.create_tool(::Type{JuliaSearchTool}, call::ParsedCall)
 end
 
 ToolCallFormat.toolname(::Type{JuliaSearchTool}) = "julia_search"
-ToolCallFormat.tool_format(::Type{JuliaSearchTool}) = :single_line
 
 const JULIASEARCH_SCHEMA = (
     name = "julia_search",
