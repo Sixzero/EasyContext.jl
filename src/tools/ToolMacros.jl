@@ -39,9 +39,9 @@ macro tool_passive(struct_name, tool_name)
             id::UUID = uuid4()
             content::String = ""
         end
-        toolname(::Type{$sn}) = $tool_name
-        toolname(::$sn) = $tool_name
-        execute_required_tools(::$sn) = false
+        EasyContext.toolname(::Type{$sn}) = $tool_name
+        EasyContext.toolname(::$sn) = $tool_name
+        EasyContext.execute_required_tools(::$sn) = false
     end
 end
 
@@ -129,21 +129,21 @@ macro tool(struct_name, tool_name, description, params_expr, execute_expr=nothin
             $sn($(call_arg_exprs...))
         end
 
-        toolname(::Type{$sn}) = $tool_name
-        toolname(::$sn) = $tool_name
+        EasyContext.toolname(::Type{$sn}) = $tool_name
+        EasyContext.toolname(::$sn) = $tool_name
 
         # get_description with optional CallStyle
-        function get_description(::Type{$sn}, style::CallStyle=get_default_call_style())
+        function EasyContext.get_description(::Type{$sn}, style::CallStyle=get_default_call_style())
             generate_tool_definition(ToolSchema(
                 name=$tool_name,
                 description=$description,
                 params=ParamSchema[$(schema_exprs...)]
             ); style=style)
         end
-        get_description(t::$sn, style::CallStyle=get_default_call_style()) = get_description(typeof(t), style)
+        EasyContext.get_description(t::$sn, style::CallStyle=get_default_call_style()) = EasyContext.get_description(typeof(t), style)
 
         # get_tool_schema returns the schema for programmatic access
-        function get_tool_schema(::Type{$sn})
+        function EasyContext.get_tool_schema(::Type{$sn})
             (
                 name = $tool_name,
                 description = $description,
@@ -154,14 +154,14 @@ macro tool(struct_name, tool_name, description, params_expr, execute_expr=nothin
             )
         end
 
-        execute_required_tools(tool::$sn) = tool.auto_run
-        is_cancelled(::$sn) = false
+        EasyContext.execute_required_tools(tool::$sn) = tool.auto_run
+        EasyContext.is_cancelled(::$sn) = false
     end
 
     # Add execute if provided
     if execute_expr !== nothing
         push!(result.args, :(
-            execute(tool::$sn; no_confirm=false, kwargs...) =
+            EasyContext.execute(tool::$sn; no_confirm=false, kwargs...) =
                 $(esc(execute_expr))(tool; no_confirm, kwargs...)
         ))
     end
@@ -169,11 +169,11 @@ macro tool(struct_name, tool_name, description, params_expr, execute_expr=nothin
     # Add result2string
     if result_expr !== nothing
         push!(result.args, :(
-            result2string(tool::$sn)::String = $(esc(result_expr))(tool)
+            EasyContext.result2string(tool::$sn)::String = $(esc(result_expr))(tool)
         ))
     else
         push!(result.args, :(
-            result2string(tool::$sn)::String = tool.result
+            EasyContext.result2string(tool::$sn)::String = tool.result
         ))
     end
 
