@@ -1,4 +1,6 @@
-using ToolCallFormat: ParsedCall
+using ToolCallFormat: ParsedCall, AbstractTool
+using ToolCallFormat: toolname, get_tool_schema, get_description, description_from_schema
+using ToolCallFormat: tool_format, execute, execute_required_tools, create_tool
 
 @kwdef mutable struct CreateFileTool <: AbstractTool
     id::UUID = uuid4()
@@ -8,12 +10,11 @@ using ToolCallFormat: ParsedCall
     content::String
 end
 
-function create_tool(::Type{CreateFileTool}, call::ParsedCall, root_path=nothing)
+function ToolCallFormat.create_tool(::Type{CreateFileTool}, call::ParsedCall, root_path=nothing)
     file_path_pv = get(call.kwargs, "file_path", nothing)
     file_path = file_path_pv !== nothing ? file_path_pv.value : ""
     file_path = endswith(file_path, ">") ? chop(file_path) : file_path
 
-    # Content comes from call.content or kwargs
     content_pv = get(call.kwargs, "content", nothing)
     raw_content = content_pv !== nothing ? content_pv.value : call.content
     language, content = parse_code_block(raw_content)
@@ -23,10 +24,10 @@ function create_tool(::Type{CreateFileTool}, call::ParsedCall, root_path=nothing
     CreateFileTool(; language, file_path, root_path, content)
 end
 
-tool_format(::Type{CreateFileTool}) = :multi_line
-execute_required_tools(::CreateFileTool) = false
+ToolCallFormat.tool_format(::Type{CreateFileTool}) = :multi_line
+ToolCallFormat.execute_required_tools(::CreateFileTool) = false
+ToolCallFormat.toolname(::Type{CreateFileTool}) = "create_file"
 
-toolname(cmd::Type{CreateFileTool}) = "create_file"
 const CREATEFILE_SCHEMA = (
     name = "create_file",
     description = "Create a new file with content",
@@ -35,20 +36,20 @@ const CREATEFILE_SCHEMA = (
         (name = "content", type = "codeblock", description = "File content", required = true),
     ]
 )
-get_tool_schema(::Type{CreateFileTool}) = CREATEFILE_SCHEMA
-get_description(cmd::Type{CreateFileTool}) = description_from_schema(CREATEFILE_SCHEMA)
 
-function execute(tool::CreateFileTool; no_confirm=false)
-    # Use the utility function to handle path expansion
+ToolCallFormat.get_tool_schema(::Type{CreateFileTool}) = CREATEFILE_SCHEMA
+ToolCallFormat.get_description(::Type{CreateFileTool}) = description_from_schema(CREATEFILE_SCHEMA)
+
+function ToolCallFormat.execute(tool::CreateFileTool; no_confirm=false, kwargs...)
     path = expand_path(tool.file_path, tool.root_path)
-    
+
     shell_cmd = process_create_command(path, tool.content)
     shortened_code = get_shortened_code(shell_cmd, 4, 2)
     print_code(shortened_code)
-    
+
     dir = dirname(path)
     !isdir(dir) && mkpath(dir)
-    
+
     if no_confirm || get_user_confirmation()
         print_output_header()
         execute_with_output(`zsh -c $shell_cmd`)
@@ -59,7 +60,6 @@ end
 
 function process_create_command(file_path::String, content::String)
     delimiter = get_unique_eof(content)
-    # Escape square brackets and parentheses for shell
     escaped_path = replace(file_path, r"[\[\]()]" => s"\\\0")
     "cat > $(escaped_path) <<'$delimiter'\n$(content)\n$delimiter"
 end

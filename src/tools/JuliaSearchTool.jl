@@ -1,4 +1,6 @@
-using ToolCallFormat: ParsedCall
+using ToolCallFormat: ParsedCall, AbstractTool
+using ToolCallFormat: toolname, get_tool_schema, get_description, description_from_schema
+using ToolCallFormat: tool_format, execute, result2string, create_tool
 
 @kwdef mutable struct JuliaSearchTool <: AbstractTool
     id::UUID = uuid4()
@@ -7,7 +9,7 @@ using ToolCallFormat: ParsedCall
     result::String = ""
 end
 
-function create_tool(::Type{JuliaSearchTool}, call::ParsedCall)
+function ToolCallFormat.create_tool(::Type{JuliaSearchTool}, call::ParsedCall)
     query_pv = get(call.kwargs, "query", nothing)
     query = query_pv !== nothing ? query_pv.value : ""
     model_pv = get(call.kwargs, "model", nothing)
@@ -16,19 +18,21 @@ function create_tool(::Type{JuliaSearchTool}, call::ParsedCall)
     JuliaSearchTool(query=query, julia_ctx=julia_ctx)
 end
 
-toolname(::Type{JuliaSearchTool}) = "julia_search"
-tool_format(::Type{JuliaSearchTool}) = :single_line
+ToolCallFormat.toolname(::Type{JuliaSearchTool}) = "julia_search"
+ToolCallFormat.tool_format(::Type{JuliaSearchTool}) = :single_line
+
 const JULIASEARCH_SCHEMA = (
     name = "julia_search",
     description = "Search Julia packages and documentation",
     params = [(name = "query", type = "string", description = "Search query", required = true)]
 )
-get_tool_schema(::Type{JuliaSearchTool}) = JULIASEARCH_SCHEMA
-get_description(::Type{JuliaSearchTool}) = description_from_schema(JULIASEARCH_SCHEMA)
 
-function execute(tool::JuliaSearchTool; no_confirm=false)
+ToolCallFormat.get_tool_schema(::Type{JuliaSearchTool}) = JULIASEARCH_SCHEMA
+ToolCallFormat.get_description(::Type{JuliaSearchTool}) = description_from_schema(JULIASEARCH_SCHEMA)
+
+function ToolCallFormat.execute(tool::JuliaSearchTool; no_confirm=false, kwargs...)
     if isnothing(tool.julia_ctx)
-        @warn "julia_ctx is nothing, this should never happen!"
+        @warn "julia_ctx is nothing"
         return false
     end
     result, _ = process_julia_context(tool.julia_ctx, tool.query)
@@ -36,10 +40,10 @@ function execute(tool::JuliaSearchTool; no_confirm=false)
     true
 end
 
-function result2string(tool::JuliaSearchTool)
+function ToolCallFormat.result2string(tool::JuliaSearchTool)
     isempty(tool.result) && return "No relevant Julia code found for query: $(tool.query)"
     """
-    Julia search results for: $(tool.query)
-    
-    $(tool.result)"""
+Julia search results for: $(tool.query)
+
+$(tool.result)"""
 end
