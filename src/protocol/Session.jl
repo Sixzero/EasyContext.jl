@@ -12,9 +12,9 @@ end
 # Session(c::Conversation) = Session(uuid4(), now(), c.messages, :UNSTARTED)
 initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
 
-function push_message!(conv::Session, msg::AIMessage, stop_sequence::String="")
+function push_message!(conv::Session, msg::AIMessage)
     if !isempty(conv.messages) && conv.messages[end].role == :assistant
-        conv.messages[end].content *= "\n" * msg.content * stop_sequence
+        conv.messages[end].content *= "\n" * msg.content
     else
         push!(conv.messages, create_AI_message(String(msg.content)))
     end
@@ -30,9 +30,9 @@ function push_message!(conv::Session, msg::UserMessage)
     conv
 end
 
-function push_message!(conv::Session, msg::Message, stop_sequence::String="")
+function push_message!(conv::Session, msg::Message)
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
-        conv.messages[end].content *= "\n" * msg.content * stop_sequence
+        conv.messages[end].content *= "\n" * msg.content
     else
         push!(conv.messages, msg)
     end

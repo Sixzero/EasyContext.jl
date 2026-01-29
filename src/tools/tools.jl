@@ -1,8 +1,3 @@
-
-# STOP_SEQUENCE is deprecated - CallFormat doesn't use stop sequences
-# Kept as "#RUN" to detect if it's accidentally used somewhere
-const STOP_SEQUENCE = "#RUN"
-
 # Tool names for CallFormat (lowercase function-call style)
 const CATFILE_TAG 	    = "cat_file"
 const SENDKEY_TAG 	    = "send_key"
@@ -41,12 +36,10 @@ include("AbstractExtractor.jl")
 include("ToolTagExtractor.jl")
 
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool
-export toolname, get_description, get_tool_schema, description_from_schema, stop_sequence, has_stop_sequence
+export toolname, get_description, get_tool_schema, description_from_schema
 
-# EasyContext-specific (uses ToolCallFormat internally)
-export namedtuple_to_tool_schema
+# CallFormat utilities (uses ToolCallFormat internally)
+export namedtuple_to_tool_schema, to_tool_tag, serialize_tool_tag, input_schema_to_tool_schema
 
 # Tool definition macros
 export @tool, @tool_passive
-
-export STOP_SEQUENCE

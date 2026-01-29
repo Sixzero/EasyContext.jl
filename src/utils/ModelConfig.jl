@@ -27,39 +27,6 @@ is_claude_model(model_name::String) = _get_provider(model_name) == "anthropic"
 
 is_grok_model(model_name::String) = _get_provider(model_name) == "xai"
 
-# Gemini detection (used only for stop-sequence support)
-is_gemini_model(model_name::String) =
-    _get_provider(model_name) in ("google", "google-ai-studio")
-
-"""
-    apply_stop_sequences(model_name::String, api_kwargs::NamedTuple, stop_sequences::Vector{String})
-
-Apply stop sequences to API kwargs based on model type.
-"""
-function apply_stop_sequences(model_name::String, api_kwargs::NamedTuple, stop_sequences::Vector{String})
-    isempty(stop_sequences) && return api_kwargs
-    is_gemini_model(model_name) && return api_kwargs            # Gemini doesn't support stop sequences
-    is_openai_reasoning_model(model_name) && return api_kwargs  # Reasoning models don't support stop sequences
-    is_grok_model(model_name) && return api_kwargs              # Grok models don't support stop sequences
-    
-    # Different models use different parameter names for stop sequences
-    key = is_claude_model(model_name) ? :stop_sequences : :stop
-    merge(api_kwargs, (; key => stop_sequences))
-end
-
-"""
-    apply_stop_sequences(config::ModelConfig, api_kwargs::NamedTuple, stop_sequences::Vector{String})
-
-Apply stop sequences for ModelConfig.
-"""
-apply_stop_sequences(config::ModelConfig, api_kwargs::NamedTuple, stop_sequences::Vector{String}) = begin
-    if config.schema isa CerebrasOpenAISchema
-        # @info "CerebrasOpenAISchema does not support stop sequences with streaming"
-        return api_kwargs
-    end
-    apply_stop_sequences(config.slug, api_kwargs, stop_sequences)
-end
-
 """
     get_api_kwargs_for_model(model_name::String, base_api_kwargs)
 

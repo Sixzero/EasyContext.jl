@@ -115,15 +115,6 @@ function get_tool_results_agent(tool_tasks)
 end
 
 """
-Check if response content contains any stop sequences, indicating tool execution is needed.
-This is a fallback for models that don't properly support stop sequences.
-"""
-function content_has_stop_sequences(content::AbstractString, stop_sequences::Vector{String})
-    isempty(stop_sequences) && return false
-    any(seq -> occursin(seq, content), stop_sequences)
-end
-
-"""
 Save partial AI content on interrupt. Appends [interrupted] marker.
 If no AI content generated, appends [interrupted] to last user message.
 """
@@ -163,19 +154,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
 
-    # Collect unique stop sequences from tools
-    stop_sequences = unique(String[stop_sequence(tool) for tool in agent.tools if has_stop_sequence(tool)])
-    length(stop_sequences) > 1 && @warn "Untested: Multiple different stop sequences detected: $(join(stop_sequences, ", "))"
-
     model_name = get_model_name(agent.model)
 
     # Base API kwargs - now using centralized logic
     base_kwargs = (; top_p=0.7)
     api_kwargs = get_api_kwargs_for_model(agent.model, base_kwargs)
 
-    # Apply thinking and stop sequences using centralized functions
+    # Apply thinking kwargs
     api_kwargs = apply_thinking_kwargs(api_kwargs, model_name, thinking)
-    api_kwargs = apply_stop_sequences(agent.model, api_kwargs, stop_sequences)
 
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
@@ -215,8 +201,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             push_message!(session, create_AI_message(response.content))
 
-            # Check if tool execution is needed - either from callback or content contains stop sequences
-            needs_execution = needs_tool_execution(cb.run_info) || content_has_stop_sequences(response.content, stop_sequences)
+            # Check if tool execution is needed
+            needs_execution = needs_tool_execution(cb.run_info)
 
             # Create user message for tool results BEFORE execute_tools so attachments go to user msg
             if needs_execution

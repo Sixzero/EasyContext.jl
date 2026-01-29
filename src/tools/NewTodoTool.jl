@@ -13,7 +13,6 @@ function create_tool(::Type{NewTodoTool}, cmd::ToolTag)
     end
 end
 toolname(cmd::Type{NewTodoTool}) = "new_todo"
-stop_sequence(cmd::Type{NewTodoTool}) = ""
 const NEWTODO_SCHEMA = (
     name = "new_todo",
     description = "Create a new todo item",

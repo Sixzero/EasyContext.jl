@@ -7,13 +7,12 @@ end
 initConversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), Message[])
 initConversation(messages::Vector{M}; sys_msg::String) where M <: Message = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), messages)
 
-(conv::Conversation)(msg::Message, stop_sequence::String="") = begin
+(conv::Conversation)(msg::Message) = begin
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
-        conv.messages[end].content *= "\n" * msg.content * stop_sequence
+        conv.messages[end].content *= "\n" * msg.content
         conv
     else
         println("adding message to conversation : $(msg.content)")
-        msg.content *= stop_sequence
         push!(conv.messages, msg)
         conv
     end
