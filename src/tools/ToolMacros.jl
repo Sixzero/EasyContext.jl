@@ -106,10 +106,7 @@ macro tool(struct_name, tool_name, description, params_expr=:([]), execute_expr=
             EasyContext.execute_required_tools(::$sn) = false
             EasyContext.is_cancelled(::$sn) = false
 
-            # create_tool for ToolTag
-            EasyContext.create_tool(::Type{$sn}, tag::ToolTag) = $sn(content=tag.content)
-
-            # create_tool for ParsedCall
+            # create_tool for ParsedCall (primary method)
             EasyContext.create_tool(::Type{$sn}, call::ParsedCall) = $sn(content=call.content)
         end
     else
@@ -189,10 +186,7 @@ macro tool(struct_name, tool_name, description, params_expr=:([]), execute_expr=
             EasyContext.is_cancelled(::$sn) = false
         end
 
-        # Generate create_tool for ToolTag (legacy format)
-        _add_create_tool_tooltag!(result, sn, params)
-
-        # Generate create_tool for ParsedCall (CallFormat)
+        # Generate create_tool for ParsedCall (primary method)
         _add_create_tool_parsedcall!(result, sn, params)
 
         # Add execute if provided

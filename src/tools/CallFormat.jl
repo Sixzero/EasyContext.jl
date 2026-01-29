@@ -28,7 +28,9 @@ function namedtuple_to_tool_schema(schema::NamedTuple)::ToolSchema
 end
 
 """
-Convert ParsedCall to ToolTag for compatibility with existing tool system.
+DEPRECATED: Convert ParsedCall to ToolTag for compatibility.
+Use ParsedCall directly with create_tool(::Type{T}, call::ParsedCall) instead.
+This function is kept for backward compatibility with tests and legacy code.
 """
 function to_tool_tag(call::ParsedCall; kwargs::AbstractDict=Dict())::ToolTag
     # Convert ParsedValue dict to String dict (taking value field)
