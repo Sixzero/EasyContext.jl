@@ -1,7 +1,6 @@
 include("diffviews/DiffViews.jl")
 
-import ToolCallFormat
-using ToolCallFormat: ParsedCall, AbstractTool, description_from_schema
+# Types imported via ToolInterface.jl
 
 #==============================================================================#
 # ModifyFileTool - Manual definition (custom create_tool + preprocess)

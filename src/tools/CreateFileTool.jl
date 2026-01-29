@@ -1,5 +1,5 @@
-using ToolCallFormat: @deftool, CodeBlock
 using ToolCallFormat: Context as ToolContext
+# @deftool, CodeBlock imported via ToolInterface.jl
 
 @deftool "Create a new file with content" function create_file(file_path::String, content::CodeBlock; ctx::ToolContext)
     # Clean file_path (remove trailing >)

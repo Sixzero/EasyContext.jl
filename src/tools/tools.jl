@@ -14,8 +14,8 @@ include("../contexts/CTX_julia.jl")
 include("../contexts/CTX_workspace.jl")
 
 include("utils.jl")
-include("CallFormat.jl")  # Must come before ToolInterface
-include("ToolInterface.jl")
+include("ToolInterface.jl")  # Re-exports from ToolCallFormat, must come first
+include("CallFormat.jl")
 
 # Tools using @deftool (simple)
 include("ClickTool.jl")

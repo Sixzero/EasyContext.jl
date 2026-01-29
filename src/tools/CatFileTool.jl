@@ -1,5 +1,5 @@
-using ToolCallFormat: @deftool
 using ToolCallFormat: Context as ToolContext
+# @deftool imported via ToolInterface.jl
 
 @deftool "Read file content. Supports line ranges: file:10-20, file:10-, file:-20 (tail)" function cat_file(file_path::String; ctx::ToolContext)
     path_str, line_start, line_end = parse_file_range(file_path)

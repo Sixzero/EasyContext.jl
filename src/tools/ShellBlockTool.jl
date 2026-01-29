@@ -1,7 +1,6 @@
 export truncate_output
 
-import ToolCallFormat
-using ToolCallFormat: ParsedCall, AbstractTool, description_from_schema
+# Types imported via ToolInterface.jl
 
 @kwdef mutable struct ShellBlockTool <: AbstractTool
     id::UUID = uuid4()

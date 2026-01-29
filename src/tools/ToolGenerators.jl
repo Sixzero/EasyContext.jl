@@ -1,7 +1,6 @@
 export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator
 
-import ToolCallFormat
-using ToolCallFormat: ParsedCall, AbstractTool
+# Types imported via ToolInterface.jl
 
 abstract type AbstractToolGenerator end
 
