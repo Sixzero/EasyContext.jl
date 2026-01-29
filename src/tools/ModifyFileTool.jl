@@ -41,25 +41,22 @@ const MODIFYFILE_SCHEMA = (
         (name = "content", type = "codeblock", description = "Code changes", required = true),
     ]
 )
-get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
-get_description(cmd::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
-tool_format(::Type{ModifyFileTool}) = :multi_line
 
-execute_required_tools(::ModifyFileTool) = false
-execute(cmd::ModifyFileTool; no_confirm=false) = execute(cmd, CURRENT_EDITOR; no_confirm)
-preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
+ToolCallFormat.get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
+ToolCallFormat.get_description(::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
+ToolCallFormat.tool_format(::Type{ModifyFileTool}) = :multi_line
+
+ToolCallFormat.execute_required_tools(::ModifyFileTool) = false
+ToolCallFormat.execute(cmd::ModifyFileTool; no_confirm=false, kwargs...) = execute(cmd, CURRENT_EDITOR; no_confirm)
+ToolCallFormat.preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
 
 function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
     lines = split(code, '\n')
     total_lines = length(lines)
-
-    if total_lines <= head_lines + tail_lines
-        return code
-    else
-        head = join(lines[1:head_lines], '\n')
-        tail = join(lines[end-tail_lines+1:end], '\n')
-        return "$head\n...\n$tail"
-    end
+    total_lines <= head_lines + tail_lines && return code
+    head = join(lines[1:head_lines], '\n')
+    tail = join(lines[end-tail_lines+1:end], '\n')
+    "$head\n...\n$tail"
 end
 
 # Interface for AbstractDiffView
@@ -96,21 +93,17 @@ function set_editor(editor_name::AbstractString)
         editor_name, nothing
     end
 
-    # Validate and set editor
     editor = get_editor(editor_base)
     if isnothing(editor)
         available = join(get_available_editors(), ", ")
-        @warn "Unknown editor. Available editors: $available"
+        @warn "Unknown editor. Available: $available"
         return false
     end
 
-    # Set the editor and port
     CURRENT_EDITOR = editor
     !isnothing(port) && (ENV["MELD_PORT"] = port)
-
-    return true
+    true
 end
-
 
 function LLM_conditional_apply_changes(tool::ModifyFileTool)
     original_content, ai_generated_content = LLM_apply_changes_to_file(tool)
