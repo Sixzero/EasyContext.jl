@@ -56,19 +56,6 @@ function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false, 
 end
 
 """
-Get formatted tool results for LLM context
-"""
-function get_tool_context(agent::FluidAgent)
-    isempty(agent.tool_results) && return ""
-    
-    output = "Previous tool results:\n"
-    for (id, result) in agent.tool_results
-        output *= "- $result\n"
-    end
-    output
-end
-
-"""
 Generate system prompt for LLM
 """
 function get_system_prompt(agent::FluidAgent)
