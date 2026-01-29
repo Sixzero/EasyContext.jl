@@ -28,57 +28,6 @@ function namedtuple_to_tool_schema(schema::NamedTuple)::ToolSchema
 end
 
 """
-DEPRECATED: Convert ParsedCall to ToolTag for compatibility.
-Use ParsedCall directly with create_tool(::Type{T}, call::ParsedCall) instead.
-This function is kept for backward compatibility with tests and legacy code.
-"""
-function to_tool_tag(call::ParsedCall; kwargs::AbstractDict=Dict())::ToolTag
-    # Convert ParsedValue dict to String dict (taking value field)
-    converted_kwargs = Dict{String, Any}()
-    for (k, v) in call.kwargs
-        converted_kwargs[k] = v.value
-    end
-
-    # Merge with additional kwargs
-    merged_kwargs = merge(converted_kwargs, Dict(kwargs))
-
-    ToolTag(
-        name=call.name,
-        args="",  # Not used in new format
-        content=call.content,
-        kwargs=merged_kwargs
-    )
-end
-
-"""
-Serialize a ToolTag to function-call format.
-"""
-function serialize_tool_tag(tag::ToolTag; style::CallStyle=CONCISE)::String
-    if !isempty(tag.kwargs)
-        if isempty(tag.content)
-            return serialize_tool_call(tag.name, tag.kwargs; style)
-        else
-            return serialize_tool_call_with_content(tag.name, tag.kwargs, tag.content; style)
-        end
-    end
-
-    if !isempty(tag.args)
-        kwargs = Dict{String, Any}("args" => tag.args)
-        if isempty(tag.content)
-            return serialize_tool_call(tag.name, kwargs; style)
-        else
-            return serialize_tool_call_with_content(tag.name, kwargs, tag.content; style)
-        end
-    end
-
-    if isempty(tag.content)
-        return "$(tag.name)()"
-    else
-        return serialize_tool_call_with_content(tag.name, Dict{String, Any}(), tag.content; style)
-    end
-end
-
-"""
 Convert an MCP InputSchema to a ToolSchema for CallFormat generation.
 """
 function input_schema_to_tool_schema(name::String, description::String, input_schema)::ToolSchema
@@ -101,4 +50,4 @@ function input_schema_to_tool_schema(name::String, description::String, input_sc
     ToolSchema(name=name, params=params, description=description)
 end
 
-export namedtuple_to_tool_schema, to_tool_tag, serialize_tool_tag, input_schema_to_tool_schema
+export namedtuple_to_tool_schema, input_schema_to_tool_schema

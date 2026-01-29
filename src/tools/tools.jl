@@ -39,7 +39,7 @@ export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, Modi
 export toolname, get_description, get_tool_schema, description_from_schema
 
 # CallFormat utilities (uses ToolCallFormat internally)
-export namedtuple_to_tool_schema, to_tool_tag, serialize_tool_tag, input_schema_to_tool_schema
+export namedtuple_to_tool_schema, input_schema_to_tool_schema
 
 # Tool definition macro
 export @tool

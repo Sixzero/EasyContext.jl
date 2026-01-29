@@ -322,47 +322,6 @@ end
 #==============================================================================#
 
 """
-Generate create_tool(::Type{T}, tag::ToolTag) method.
-
-Strategy:
-- First required string param → tag.args
-- Codeblock param → tag.content
-- Other params → tag.kwargs with type conversion
-"""
-function _add_create_tool_tooltag!(result, sn, params)
-    # Find first required string param (will use tag.args)
-    first_string_idx = findfirst(p -> p[2] == "string" && p[4], params)
-
-    # Build keyword arguments for constructor
-    kwarg_assignments = Expr[]
-
-    for (i, (name, type_str, _, required, default)) in enumerate(params)
-        name_str = string(name)
-        name_sym = name
-
-        value_expr = if type_str == "codeblock"
-            # Codeblock always comes from tag.content
-            :(tag.content)
-        elseif i == first_string_idx
-            # First required string param comes from tag.args
-            :(tag.args)
-        else
-            # Other params come from tag.kwargs with conversion
-            default_val = default === nothing ? _default_value_for_type(type_str) : default
-            _kwargs_access_expr(name_str, type_str, default_val)
-        end
-
-        push!(kwarg_assignments, Expr(:kw, name_sym, value_expr))
-    end
-
-    push!(result.args, :(
-        function EasyContext.create_tool(::Type{$sn}, tag::ToolTag)
-            $sn(; $(kwarg_assignments...))
-        end
-    ))
-end
-
-"""
 Generate create_tool(::Type{T}, call::ParsedCall) method.
 
 Strategy:
@@ -396,24 +355,6 @@ function _add_create_tool_parsedcall!(result, sn, params)
             $sn(; $(kwarg_assignments...))
         end
     ))
-end
-
-"""Generate expression to access tag.kwargs with type conversion."""
-function _kwargs_access_expr(name::String, type_str::String, default)
-    base_expr = :(get(tag.kwargs, $name, nothing))
-
-    if type_str == "string"
-        :(let v = $base_expr; v === nothing ? $default : String(v) end)
-    elseif type_str == "integer"
-        :(let v = $base_expr; v === nothing ? $default : parse(Int, v) end)
-    elseif type_str == "number"
-        :(let v = $base_expr; v === nothing ? $default : parse(Float64, v) end)
-    elseif type_str == "boolean"
-        :(let v = $base_expr; v === nothing ? $default : lowercase(v) in ("true", "1", "yes") end)
-    else
-        # array, object - return as-is or default
-        :(let v = $base_expr; v === nothing ? $default : v end)
-    end
 end
 
 """Generate expression to access call.kwargs (ParsedValue) with type extraction."""
