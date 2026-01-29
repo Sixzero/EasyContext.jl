@@ -1,58 +1,47 @@
 export truncate_output
 
-# Types imported via ToolInterface.jl
-
-@kwdef mutable struct ShellBlockTool <: AbstractTool
-    id::UUID = uuid4()
-    language::String = "sh"
-    content::String
-    root_path::Union{Nothing, String} = nothing
-    run_results::Vector{String} = []
-end
-
-function ToolCallFormat.create_tool(::Type{ShellBlockTool}, call::ParsedCall)
-    content_pv = get(call.kwargs, "command", nothing)
-    raw_content = content_pv !== nothing ? content_pv.value : call.content
-    language, content = parse_code_block(raw_content)
-    root_path_pv = get(call.kwargs, "root_path", nothing)
-    ShellBlockTool(language=language, content=content, root_path=root_path_pv !== nothing ? root_path_pv.value : nothing)
-end
-
-ToolCallFormat.toolname(::Type{ShellBlockTool}) = "bash"
-
-const SHELL_SCHEMA = (
-    name = "bash",
-    description = "Execute shell commands. Propose concise sh scripts",
-    params = [(name = "command", type = "codeblock", description = "Shell commands to execute", required = true)]
-)
-
-ToolCallFormat.get_tool_schema(::Type{ShellBlockTool}) = SHELL_SCHEMA
-ToolCallFormat.get_description(::Type{ShellBlockTool}) = description_from_schema(SHELL_SCHEMA)
+using ToolCallFormat: @deftool, CodeBlock
 
 const EXECUTION_CANCELLED = "Execution cancelled by user."
 
-function ToolCallFormat.execute(cmd::ShellBlockTool; no_confirm=false, kwargs...)
-    print_code(cmd.content)
+#==============================================================================#
+# BashTool (ShellBlockTool) - Execute shell commands
+#==============================================================================#
 
-    result = if no_confirm || get_user_confirmation()
+@deftool "Execute shell commands. Propose concise sh scripts" (
+    content::String = "",           # Parsed command (set from codeblock)
+    language::String = "sh",        # Parsed language from codeblock
+    root_path::Union{Nothing,String} = nothing,
+    run_results::Vector{String} = String[]
+) function bash(command::CodeBlock => "Shell commands to execute")
+    # Parse language from codeblock
+    parsed_lang, parsed_content = parse_code_block(string(command))
+    content = parsed_content
+    !isempty(parsed_lang) && (language = parsed_lang)
+
+    print_code(content)
+
+    result = if get(kw, :no_confirm, false) || get_user_confirmation()
         print_output_header()
-        if isnothing(cmd.root_path)
-            cmd_all_info_stream(`zsh -c $(cmd.content)`)
+        if isnothing(root_path)
+            cmd_all_info_stream(`zsh -c $content`)
         else
-            cd(cmd.root_path) do
-                cmd_all_info_stream(`zsh -c $(cmd.content)`)
+            cd(root_path) do
+                cmd_all_info_stream(`zsh -c $content`)
             end
         end
     else
         EXECUTION_CANCELLED
     end
-    push!(cmd.run_results, result)
+    push!(run_results, result)
     result
 end
 
-function ToolCallFormat.is_cancelled(cmd::ShellBlockTool)
-    !isempty(cmd.run_results) && cmd.run_results[end] == EXECUTION_CANCELLED
-end
+# Backward compatibility alias
+const ShellBlockTool = BashTool
+
+# Custom overrides
+ToolCallFormat.is_cancelled(cmd::BashTool) = !isempty(cmd.run_results) && cmd.run_results[end] == EXECUTION_CANCELLED
 
 function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
     out_pipe, err_pipe = Pipe(), Pipe()
@@ -76,9 +65,9 @@ function truncate_output(output)
     length(output) > 10000*4 ? output[1:6000*4] * "\n...\n[Output truncated]\n...\n" * output[end-2000*4:end] : output
 end
 
-LLM_safetorun(cmd::ShellBlockTool) = LLM_safetorun(cmd.content)
+LLM_safetorun(cmd::BashTool) = LLM_safetorun(cmd.content)
 
-function ToolCallFormat.result2string(tool::ShellBlockTool)
+function ToolCallFormat.result2string(tool::BashTool)
     tool_result = if isempty(tool.run_results) || isempty(tool.run_results[end])
         "No results"
     else
