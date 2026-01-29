@@ -36,7 +36,7 @@ include("AbstractExtractor.jl")
 # ToolTagExtractor removed - use CallExtractor from agent or provide your own AbstractExtractor
 
 export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool
-export toolname, get_description, get_tool_schema, description_from_schema, get_tool_map
+export toolname, get_description, get_tool_schema, description_from_schema
 
 # CallFormat utilities (uses ToolCallFormat internally)
 export namedtuple_to_tool_schema, to_tool_tag, serialize_tool_tag, input_schema_to_tool_schema

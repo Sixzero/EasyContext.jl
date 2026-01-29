@@ -1,16 +1,17 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef struct NewTodoTool <: AbstractTool
     id::UUID = uuid4()
     title::String
     description::String
 end
-function create_tool(::Type{NewTodoTool}, cmd::ToolTag)
-    args = split(strip(cmd.args))
-    if length(args) == 3
-        NewTodoTool(title=args[1], description=args[2])
-    else
-        NewTodoTool(title=args[1], description=args[2])
-    end
+function create_tool(::Type{NewTodoTool}, call::ParsedCall)
+    title = get(call.kwargs, "title", nothing)
+    description = get(call.kwargs, "description", nothing)
+    NewTodoTool(
+        title=title !== nothing ? title.value : "",
+        description=description !== nothing ? description.value : ""
+    )
 end
 toolname(cmd::Type{NewTodoTool}) = "new_todo"
 const NEWTODO_SCHEMA = (

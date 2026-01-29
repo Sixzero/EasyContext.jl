@@ -1,5 +1,7 @@
 export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator, toolname
 
+using ToolCallFormat: ParsedCall
+
 abstract type AbstractToolGenerator end
 get_extra_description(tg::AbstractToolGenerator) = nothing
 
@@ -10,8 +12,8 @@ struct ToolGenerator <: AbstractToolGenerator
     tool_type::DataType
     args
 end
-function create_tool(tg::ToolGenerator, cmd::ToolTag)
-    tg.tool_type(cmd; tg.args...)
+function create_tool(tg::ToolGenerator, call::ParsedCall)
+    create_tool(tg.tool_type, call; tg.args...)
 end
 
 toolname(tg::ToolGenerator) = toolname(tg.tool_type)
@@ -23,8 +25,8 @@ tool_format(tg::ToolGenerator) = tool_format(tg.tool_type)
     edge_id::String
     workspace_context::WorkspaceCTX
 end
-function create_tool(wtg::WorkspaceToolGenerator, cmd::ToolTag)
-    create_tool(WorkspaceSearchTool, cmd, wtg.workspace_context)
+function create_tool(wtg::WorkspaceToolGenerator, call::ParsedCall)
+    create_tool(WorkspaceSearchTool, call, wtg.workspace_context)
 end
 
 toolname(tg::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)

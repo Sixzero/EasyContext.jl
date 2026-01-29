@@ -1,5 +1,7 @@
 # Tool interfaces.
 
+using ToolCallFormat: ParsedCall
+
 # Tool description format - CallFormat only (function-call style)
 # Format: "tool_name(param: value)" style
 const TOOL_DESCRIPTION_FORMAT = :call
@@ -8,12 +10,12 @@ const TOOL_DESCRIPTION_FORMAT = :call
 Tool execution flow and safety checks:
 
 ┌─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─┐
-  ToolTag                 Parsed from LLM output by Agent
+  ParsedCall              Parsed from LLM output by StreamProcessor
 └─ ─ ─ ─┬─ ─ ─ ─ ─ ─ ─ ─┘
         │
 --------▼----------- Tool Interface Implementation
 ┌───────────────┐
-│ Tool(tag)     │ Construct Tool instance from ToolTag
+│ Tool(call)    │ Construct Tool instance from ParsedCall
 └───────┬───────┘
         │
         ▼
@@ -37,8 +39,7 @@ Tool execution flow and safety checks:
 └─ ─ ─ ─ ─ ─ ─ ─┘
 
 Interface methods:
-- Constructor `Tool(tag::ToolTag)` - Creates Tool instance from parsed tag
-- `create_tool(::Type{T}, tag::ToolTag)` - Creates Tool instance from parsed tag
+- `create_tool(::Type{T}, call::ParsedCall)` - Creates Tool instance from parsed call
 - `preprocess(cmd::AbstractTool)` - Optional data preparation (e.g. LLM modifications)
 - `execute(cmd::AbstractTool)` - Main operation implementation
 - `LLM_safetorun(cmd::AbstractTool)` - Optional AI safety verification
@@ -46,13 +47,13 @@ Interface methods:
 - `get_description(::Type{<:AbstractTool})` - Tool's usage documentation
 - `get_cost(cmd::AbstractTool)` - Get the cost of tool execution (if applicable)
 
-Note: The LLM output generation and ToolTag parsing are handled by the Agent.
-Each Tool implementation must provide a constructor that takes a ToolTag.
+Note: The LLM output generation and ParsedCall parsing are handled by the Agent.
+Each Tool implementation must provide create_tool that takes a ParsedCall.
 """
 abstract type AbstractTool end
 
-create_tool(::Type{T}, tag::ToolTag) where T <: AbstractTool = @warn "Unimplemented \"create_tool\" for $(T) $(join(stacktrace(), "\n"))"; return nothing
-create_tool(tool::AbstractTool, tag::ToolTag) = @warn "Unimplemented \"create_tool\" for $(tool) $(join(stacktrace(), "\n"))"; return nothing
+create_tool(::Type{T}, call::ParsedCall) where T <: AbstractTool = @warn "Unimplemented \"create_tool\" for $(T) $(join(stacktrace(), "\n"))"; return nothing
+create_tool(tool::AbstractTool, call::ParsedCall) = @warn "Unimplemented \"create_tool\" for $(tool) $(join(stacktrace(), "\n"))"; return nothing
 preprocess(tool::AbstractTool) = tool
 get_id(tool::AbstractTool) = tool.id
 execute(tool::AbstractTool) = @warn "Unimplemented \"execute\" for $(typeof(tool))"
@@ -118,25 +119,3 @@ description_from_schema(::Nothing) = "Unknown tool"
 execute_required_tools(::Type{<:AbstractTool}) = false
 execute_required_tools(tool::AbstractTool) = execute_required_tools(typeof(tool))
 
-"""
-    get_tool_map(tools) -> Dict{String, Any}
-
-Create a mapping from tool names to tool types/instances for fast lookup.
-
-Takes a vector of tool types or tool generator instances and returns
-a Dict mapping tool names to the corresponding type/instance.
-
-Example:
-    tools = [ShellBlockTool, CatFileTool, edge_tool_instance]
-    tool_map = get_tool_map(tools)
-    # tool_map["bash"] => ShellBlockTool
-    # tool_map["cat_file"] => CatFileTool
-"""
-function get_tool_map(tools::Vector)
-    tool_map = Dict{String, Any}()
-    for tool in tools
-        name = toolname(tool)
-        !isempty(name) && (tool_map[name] = tool)
-    end
-    tool_map
-end

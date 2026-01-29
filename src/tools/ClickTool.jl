@@ -1,3 +1,4 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef struct ClickTool <: AbstractTool
     id::UUID = uuid4()
@@ -5,13 +6,15 @@
     x::Int
     y::Int
 end
-function create_tool(::Type{ClickTool}, tag::ToolTag)
-    args = split(strip(tag.args))
-    if length(args) == 3
-        ClickTool(button=Symbol(args[1]), x=parse(Int, args[2]), y=parse(Int, args[3]))
-    else
-        ClickTool(button=:left, x=parse(Int, args[1]), y=parse(Int, args[2]))
-    end
+function create_tool(::Type{ClickTool}, call::ParsedCall)
+    x_pv = get(call.kwargs, "x", nothing)
+    y_pv = get(call.kwargs, "y", nothing)
+    button_pv = get(call.kwargs, "button", nothing)
+    ClickTool(
+        button=button_pv !== nothing ? Symbol(button_pv.value) : :left,
+        x=x_pv !== nothing ? Int(x_pv.value) : 0,
+        y=y_pv !== nothing ? Int(y_pv.value) : 0
+    )
 end
 toolname(::Type{ClickTool}) = "click"
 const CLICK_SCHEMA = (

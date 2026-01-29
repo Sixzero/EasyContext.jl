@@ -1,3 +1,5 @@
+using ToolCallFormat: ParsedCall
+
 @kwdef mutable struct JuliaSearchTool <: AbstractTool
     id::UUID = uuid4()
     query::String
@@ -5,10 +7,13 @@
     result::String = ""
 end
 
-function create_tool(::Type{JuliaSearchTool}, cmd::ToolTag)
-    model = get(cmd.kwargs, "model", ["gem20f", "gem15f", "gpt4om"])
+function create_tool(::Type{JuliaSearchTool}, call::ParsedCall)
+    query_pv = get(call.kwargs, "query", nothing)
+    query = query_pv !== nothing ? query_pv.value : ""
+    model_pv = get(call.kwargs, "model", nothing)
+    model = model_pv !== nothing ? model_pv.value : ["gem20f", "gem15f", "gpt4om"]
     julia_ctx = init_julia_context(; model)
-    JuliaSearchTool(query=cmd.args, julia_ctx=julia_ctx)
+    JuliaSearchTool(query=query, julia_ctx=julia_ctx)
 end
 
 toolname(::Type{JuliaSearchTool}) = "julia_search"

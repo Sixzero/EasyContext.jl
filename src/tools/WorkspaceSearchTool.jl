@@ -1,3 +1,4 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef mutable struct WorkspaceSearchTool <: AbstractTool
     id::UUID = uuid4()
@@ -7,9 +8,10 @@
     workspace_ctx_result::Union{Nothing,WorkspaceCTXResult} = nothing
 end
 
-function create_tool(::Type{WorkspaceSearchTool}, cmd::ToolTag, workspace_ctx::WorkspaceCTX=nothing)
-    # Convert the root_path to a vector of strings as expected by WorkspaceCTX constructor
-    WorkspaceSearchTool(query=cmd.args, workspace_ctx=workspace_ctx)
+function create_tool(::Type{WorkspaceSearchTool}, call::ParsedCall, workspace_ctx::WorkspaceCTX=nothing)
+    query_pv = get(call.kwargs, "query", nothing)
+    query = query_pv !== nothing ? query_pv.value : ""
+    WorkspaceSearchTool(query=query, workspace_ctx=workspace_ctx)
 end
 
 

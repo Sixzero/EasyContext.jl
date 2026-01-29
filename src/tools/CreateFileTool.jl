@@ -1,3 +1,4 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef mutable struct CreateFileTool <: AbstractTool
     id::UUID = uuid4()
@@ -7,10 +8,18 @@
     content::String
 end
 
-function create_tool(::Type{CreateFileTool}, cmd::ToolTag, root_path=nothing)
-    file_path = endswith(cmd.args, ">") ? chop(cmd.args) : cmd.args
-    language, content = parse_code_block(cmd.content)
-    root_path = root_path === nothing ? get(cmd.kwargs, "root_path", nothing) : root_path
+function create_tool(::Type{CreateFileTool}, call::ParsedCall, root_path=nothing)
+    file_path_pv = get(call.kwargs, "file_path", nothing)
+    file_path = file_path_pv !== nothing ? file_path_pv.value : ""
+    file_path = endswith(file_path, ">") ? chop(file_path) : file_path
+
+    # Content comes from call.content or kwargs
+    content_pv = get(call.kwargs, "content", nothing)
+    raw_content = content_pv !== nothing ? content_pv.value : call.content
+    language, content = parse_code_block(raw_content)
+
+    root_path_pv = get(call.kwargs, "root_path", nothing)
+    root_path = root_path === nothing ? (root_path_pv !== nothing ? root_path_pv.value : nothing) : root_path
     CreateFileTool(; language, file_path, root_path, content)
 end
 

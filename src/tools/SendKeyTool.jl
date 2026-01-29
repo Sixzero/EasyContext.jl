@@ -1,9 +1,13 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef struct SendKeyTool <: AbstractTool
     id::UUID = uuid4()
     text::String
 end
-create_tool(::Type{SendKeyTool}, cmd::ToolTag) = SendKeyTool(text=cmd.args)
+function create_tool(::Type{SendKeyTool}, call::ParsedCall)
+    text = get(call.kwargs, "text", nothing)
+    SendKeyTool(text=text !== nothing ? text.value : "")
+end
 
 toolname(cmd::Type{SendKeyTool}) = "send_key"
 const SENDKEY_SCHEMA = (

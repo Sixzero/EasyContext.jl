@@ -1,10 +1,14 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef mutable struct WebSearchTool <: AbstractTool
     id::UUID = uuid4()
     query::String
     results::Vector{String} = []
 end
-create_tool(::Type{WebSearchTool}, tag::ToolTag) = WebSearchTool(query=strip(tag.args))
+function create_tool(::Type{WebSearchTool}, call::ParsedCall)
+    query = get(call.kwargs, "query", nothing)
+    WebSearchTool(query=query !== nothing ? strip(query.value) : "")
+end
 toolname(::Type{WebSearchTool}) = "web_search"
 const WEBSEARCH_SCHEMA = (
     name = "web_search",

@@ -1,5 +1,6 @@
 export truncate_output
 
+using ToolCallFormat: ParsedCall
 
 @kwdef mutable struct ShellBlockTool <: AbstractTool
     id::UUID = uuid4()
@@ -8,13 +9,17 @@ export truncate_output
     root_path::Union{Nothing, String} = nothing
     run_results::Vector{String} = []
 end
-function create_tool(::Type{ShellBlockTool}, cmd::ToolTag)
-    language, content = parse_code_block(cmd.content)
+function create_tool(::Type{ShellBlockTool}, call::ParsedCall)
+    # Content comes from call.content or kwargs
+    content_pv = get(call.kwargs, "command", nothing)
+    raw_content = content_pv !== nothing ? content_pv.value : call.content
+    language, content = parse_code_block(raw_content)
+    root_path_pv = get(call.kwargs, "root_path", nothing)
     ShellBlockTool(
-        language=language, 
+        language=language,
         content=content,
-        root_path=get(cmd.kwargs, "root_path", nothing)
-    ) 
+        root_path=root_path_pv !== nothing ? root_path_pv.value : nothing
+    )
 end
 toolname(cmd::Type{ShellBlockTool}) = "bash"
 const SHELL_SCHEMA = (

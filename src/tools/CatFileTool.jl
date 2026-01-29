@@ -1,3 +1,4 @@
+using ToolCallFormat: ParsedCall
 
 @kwdef mutable struct CatFileTool <: AbstractTool
     id::UUID = uuid4()
@@ -31,9 +32,12 @@ function parse_file_range(args::String)
     end
     return (args, nothing, nothing)
 end
-create_tool(::Type{CatFileTool}, cmd::ToolTag, root_path=nothing) = begin
-    file_path, line_start, line_end = parse_file_range(cmd.args)
-    root_path = root_path === nothing ? get(cmd.kwargs, "root_path", nothing) : root_path
+function create_tool(::Type{CatFileTool}, call::ParsedCall, root_path=nothing)
+    file_path_pv = get(call.kwargs, "file_path", nothing)
+    file_path_str = file_path_pv !== nothing ? file_path_pv.value : ""
+    file_path, line_start, line_end = parse_file_range(file_path_str)
+    root_path_pv = get(call.kwargs, "root_path", nothing)
+    root_path = root_path === nothing ? (root_path_pv !== nothing ? root_path_pv.value : nothing) : root_path
     CatFileTool(; id=uuid4(), file_path, root_path, line_start, line_end)
 end
 
