@@ -19,19 +19,19 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     tools::Vector
     model::Union{String,ModelConfig} = "claude"
     workspace::String = pwd()
-    extractor_type=ToolTagExtractor
+    extractor_type  # Required - provide CallExtractor or other AbstractExtractor implementation
     sys_msg::AbstractSysMessage=SysMessageV1()
-end 
+end
 
 # create_FluidAgent to prevent conflict with the constructor
-function create_FluidAgent(model::Union{String, ModelConfig}="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type=ToolTagExtractor, custom_system_message::Union{String, Nothing}=nothing)
+function create_FluidAgent(model::Union{String, ModelConfig}="claude"; sys_msg::String="You are a helpful assistant.", tools::Vector, extractor_type, custom_system_message::Union{String, Nothing}=nothing)
     sys_msg_v2 = SysMessageV2(; sys_msg, custom_system_message)
     agent = FluidAgent(; tools, model, extractor_type, sys_msg=sys_msg_v2)
     agent
 end
 
 # New function that directly accepts a system message object
-function create_FluidAgent_with_sysmsg(model::Union{String, ModelConfig}, sysmsg::AbstractSysMessage; tools::Vector, extractor_type=ToolTagExtractor)
+function create_FluidAgent_with_sysmsg(model::Union{String, ModelConfig}, sysmsg::AbstractSysMessage; tools::Vector, extractor_type)
     agent = FluidAgent(; tools, model, extractor_type, sys_msg=sysmsg)
     agent
 end
@@ -172,7 +172,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
         while i < MAX_NUMBER_OF_TOOL_CALLS || sum(length(msg.content) for msg in session.messages) < 40000
             i += 1
 
-            # Create new ToolTagExtractor for each run
+            # Create new extractor for each run
             extractor = agent.extractor_type(agent.tools)
             extractor_fn(text) = begin
                 extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
