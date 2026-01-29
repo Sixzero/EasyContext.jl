@@ -70,12 +70,6 @@ toolname(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"toolname\
 toolname(tool::AbstractTool)::String = toolname(typeof(tool))
 toolname(tool::Pair{String, T}) where T = first(tool)
 
-# Interface stubs for external packages that extend these
-stop_sequence(tool::Type{<:AbstractTool})::String = ""
-stop_sequence(tool::AbstractTool)::String = ""
-has_stop_sequence(tool::Type{<:AbstractTool})::Bool = false
-has_stop_sequence(tool::AbstractTool)::Bool = false
-
 get_description(tool::Type{<:AbstractTool})::String = (@warn "Unimplemented \"get_description\" for $(tool) $(join(stacktrace(), "\n"))"; return "unknown tool! $(tool)")
 get_description(tool::AbstractTool)::String = get_description(typeof(tool))
 
