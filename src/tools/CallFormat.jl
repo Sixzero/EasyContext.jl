@@ -2,7 +2,6 @@
 # Uses ToolCallFormat.jl internally for parsing/serialization types.
 
 using ToolCallFormat: ToolSchema, ParamSchema, ParsedCall, ParsedValue
-using ToolCallFormat: CallStyle, CONCISE
 using ToolCallFormat: generate_tool_definition
 using ToolCallFormat: serialize_tool_call, serialize_tool_call_with_content
 
