@@ -3,6 +3,10 @@ include("diffviews/DiffViews.jl")
 import ToolCallFormat
 using ToolCallFormat: ParsedCall, AbstractTool, description_from_schema
 
+#==============================================================================#
+# ModifyFileTool - Manual definition (custom create_tool + preprocess)
+#==============================================================================#
+
 @kwdef mutable struct ModifyFileTool <: AbstractTool
     id::UUID = uuid4()
     language::String = "sh"
@@ -10,7 +14,7 @@ using ToolCallFormat: ParsedCall, AbstractTool, description_from_schema
     root_path::String
     content::String
     postcontent::String
-    model=["gem20f", "orqwenplus", "gpt4o"]
+    model = ["gem20f", "orqwenplus", "gpt4o"]
 end
 
 function ToolCallFormat.create_tool(::Type{ModifyFileTool}, call::ParsedCall)
@@ -23,12 +27,12 @@ function ToolCallFormat.create_tool(::Type{ModifyFileTool}, call::ParsedCall)
     language, content = parse_code_block(raw_content)
 
     root_path_pv = get(call.kwargs, "root_path", nothing)
-    ModifyFileTool(
-        language=language,
-        file_path=file_path,
-        root_path=root_path_pv !== nothing ? root_path_pv.value : ".",
-        content=content,
-        postcontent=""
+    ModifyFileTool(;
+        language,
+        file_path,
+        root_path = root_path_pv !== nothing ? root_path_pv.value : ".",
+        content,
+        postcontent = ""
     )
 end
 
@@ -46,7 +50,7 @@ const MODIFYFILE_SCHEMA = (
 ToolCallFormat.get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
 ToolCallFormat.get_description(::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
 
-ToolCallFormat.execute(cmd::ModifyFileTool; no_confirm=false, kwargs...) = execute(cmd, CURRENT_EDITOR; no_confirm)
+ToolCallFormat.execute(cmd::ModifyFileTool; no_confirm=false, kwargs...) = execute_with_editor(cmd, CURRENT_EDITOR; no_confirm)
 ToolCallFormat.preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
 
 function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
@@ -59,8 +63,8 @@ function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
 end
 
 # Interface for AbstractDiffView
-execute(cmd::ModifyFileTool, editor::AbstractDiffView; no_confirm=false) =
-    @warn "Unimplemented execute(::ModifyFileTool, ::$(typeof(editor)))!"
+execute_with_editor(cmd::ModifyFileTool, editor::AbstractDiffView; no_confirm=false) =
+    @warn "Unimplemented execute_with_editor(::ModifyFileTool, ::$(typeof(editor)))!"
 
 include("diffviews/MeldDiff.jl")
 include("diffviews/VimDiff.jl")

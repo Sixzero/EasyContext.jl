@@ -4,7 +4,7 @@ keywords(::Type{MeldDiffView}) = ["meld"]
 
 register_diffview_subtype!(MeldDiffView)
 
-function execute(tool::ModifyFileTool, view::MeldDiffView; no_confirm=false)
+function execute_with_editor(tool::ModifyFileTool, view::MeldDiffView; no_confirm=false)
     cd(tool.root_path) do
         delimiter = get_unique_eof(tool.postcontent)
         shell_cmd = "meld $(tool.file_path) <(cat <<'$delimiter'\n$(tool.postcontent)\n$delimiter\n)"

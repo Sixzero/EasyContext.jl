@@ -6,9 +6,9 @@ end
 keywords(::Type{MonacoMeldDiffView}) = ["meld-pro", "meld_pro", "monacomeld", "monaco"]
 register_diffview_subtype!(MonacoMeldDiffView)
 
-function execute(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=false)
+function execute_with_editor(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=false)
     if is_diff_service_available(view.port)
-        file_path, line_range = parse_source(tool.file_path)        
+        file_path, line_range = parse_source(tool.file_path)
         expanded_path = expanduser(file_path)
 
         payload = Dict(
@@ -24,7 +24,7 @@ function execute(tool::ModifyFileTool, view::MonacoMeldDiffView; no_confirm=fals
     else
         @info "No monacomeld running on: http://localhost:$(view.port)"
         # Fallback to meld
-        execute(tool, MeldDiffView(); no_confirm)
+        execute_with_editor(tool, MeldDiffView(); no_confirm)
     end
 end
 
