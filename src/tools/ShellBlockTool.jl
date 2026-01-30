@@ -5,7 +5,7 @@ using ToolCallFormat: @deftool, CodeBlock
 const EXECUTION_CANCELLED = "Execution cancelled by user."
 
 #==============================================================================#
-# BashTool (ShellBlockTool) - Execute shell commands
+# BashTool - Execute shell commands
 #==============================================================================#
 
 @deftool "Execute shell commands. Propose concise sh scripts" (
@@ -50,9 +50,6 @@ $(SHELL_RUN_RESULT)
 $(tool_result)
 $(CODEBLOCK_CLOSE)"""
 end
-
-# Backward compatibility alias
-const ShellBlockTool = BashTool
 
 # Custom overrides
 ToolCallFormat.is_cancelled(cmd::BashTool) = !isempty(cmd.run_results) && cmd.run_results[end] == EXECUTION_CANCELLED

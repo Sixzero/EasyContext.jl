@@ -42,7 +42,7 @@ using UUIDs
         
         # Create agent with basic tools
         agent = FluidAgent(
-            tools=[CatFileTool, ShellBlockTool],
+            tools=[CatFileTool, BashTool],
             model="gem20f",
             workspace=pwd(),
             sys_msg="You are a helpful assistant."

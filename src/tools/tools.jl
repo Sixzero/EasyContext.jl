@@ -36,7 +36,7 @@ include("ToolGenerators.jl")
 include("AbstractExtractor.jl")
 
 # Export tool types
-export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, LocalCreateFileTool, LocalModifyFileTool
+export BashTool, SendKeyTool, CatFileTool, ClickTool, LocalCreateFileTool, LocalModifyFileTool
 export WebSearchTool, WorkspaceSearchTool, JuliaSearchTool, NewTodoTool
 
 # Note: Tool interface types and functions (AbstractTool, toolname, execute, etc.)

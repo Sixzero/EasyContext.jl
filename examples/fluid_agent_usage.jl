@@ -34,7 +34,7 @@ function demo_shell_commands(model="claude")
     println("\n=== Shell Commands Demo ===")
     
     agent = FluidAgent(
-        tools=[ShellBlockTool],
+        tools=[BashTool],
         model=model
     )
 
@@ -54,7 +54,7 @@ function demo_complex_task(model="claude")
     println("\n=== Complex Task Demo ===")
     
     agent = FluidAgent(
-        tools=[LocalCreateFileTool, LocalModifyFileTool, ShellBlockTool],
+        tools=[LocalCreateFileTool, LocalModifyFileTool, BashTool],
         model=model
     )
 
@@ -79,7 +79,7 @@ function demo_streaming(model="claude")
     println("\n=== Streaming Demo ===")
     
     agent = FluidAgent(
-        tools=[LocalCreateFileTool, LocalModifyFileTool, ShellBlockTool],
+        tools=[LocalCreateFileTool, LocalModifyFileTool, BashTool],
         model=model
     )
 
