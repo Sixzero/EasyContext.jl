@@ -1,7 +1,7 @@
 using ToolCallFormat: AbstractContext
 # @deftool, CodeBlock imported via ToolInterface.jl
 
-@deftool "Create a new file with content" function create_file(file_path::String, content::CodeBlock; ctx::AbstractContext)
+@deftool "Create a new file with content" function local_create_file(file_path::String, content::CodeBlock; ctx::AbstractContext)
     # Clean file_path (remove trailing >)
     file_path = endswith(file_path, ">") ? chop(file_path) : file_path
     path = expand_path(file_path, ctx.root_path)

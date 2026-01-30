@@ -92,7 +92,7 @@ using UUIDs
         mktempdir() do dir
             # Create agent with basic tools
             agent = FluidAgent(
-                tools=[CreateFileTool, CatFileTool, ShellBlockTool],
+                tools=[LocalCreateFileTool, CatFileTool, ShellBlockTool],
                 model="gem20f",  # or any available model
                 workspace=dir,
                 sys_msg="You are a helpful assistant."  # Add a simple system message
@@ -145,7 +145,7 @@ using UUIDs
         mktempdir() do dir
             # Create agent with tools that need preprocessing
             agent = FluidAgent(
-                tools=[ModifyFileTool, CreateFileTool],
+                tools=[LocalModifyFileTool, LocalCreateFileTool],
                 model="gem20f",
                 workspace=dir,
                 sys_msg="You are a helpful assistant."  # Add a simple system message

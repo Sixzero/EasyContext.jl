@@ -9,7 +9,7 @@ function demo_file_operations(model="claude")
     println("\n=== File Operations Demo ===")
     
     agent = FluidAgent(
-        tools=[CreateFileTool, ModifyFileTool, CatFileTool],
+        tools=[LocalCreateFileTool, LocalModifyFileTool, CatFileTool],
         model=model,
         sys_msg=SysMessageV1(; sys_msg="You are a helpful assistant.")
     )
@@ -54,7 +54,7 @@ function demo_complex_task(model="claude")
     println("\n=== Complex Task Demo ===")
     
     agent = FluidAgent(
-        tools=[CreateFileTool, ModifyFileTool, ShellBlockTool],
+        tools=[LocalCreateFileTool, LocalModifyFileTool, ShellBlockTool],
         model=model
     )
 
@@ -79,7 +79,7 @@ function demo_streaming(model="claude")
     println("\n=== Streaming Demo ===")
     
     agent = FluidAgent(
-        tools=[CreateFileTool, ModifyFileTool, ShellBlockTool],
+        tools=[LocalCreateFileTool, LocalModifyFileTool, ShellBlockTool],
         model=model
     )
 

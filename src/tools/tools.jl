@@ -3,8 +3,8 @@ const CATFILE_TAG 	    = "cat_file"
 const SENDKEY_TAG 	    = "send_key"
 const CLICK_TAG  		    = "click"
 const SHELL_BLOCK_TAG   = "bash"
-const CREATE_FILE_TAG   = "create_file"
-const MODIFY_FILE_TAG   = "modify_file"
+const CREATE_FILE_TAG   = "local_create_file"
+const MODIFY_FILE_TAG   = "local_modify_file"
 const EMAIL_TAG         = "email"
 const WEB_SEARCH_TAG    = "web_search"
 const END_OF_BLOCK_TAG  = "END_OF_BLOCK"  # Internal marker, not a tool name
@@ -36,7 +36,7 @@ include("ToolGenerators.jl")
 include("AbstractExtractor.jl")
 
 # Export tool types
-export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, CreateFileTool, ModifyFileTool
+export ShellBlockTool, SendKeyTool, CatFileTool, ClickTool, LocalCreateFileTool, LocalModifyFileTool
 export WebSearchTool, WorkspaceSearchTool, JuliaSearchTool, NewTodoTool
 
 # Note: Tool interface types and functions (AbstractTool, toolname, execute, etc.)

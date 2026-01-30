@@ -3,10 +3,10 @@ include("diffviews/DiffViews.jl")
 # Types imported via ToolInterface.jl
 
 #==============================================================================#
-# ModifyFileTool - Manual definition (custom create_tool + preprocess)
+# LocalModifyFileTool - Manual definition (custom create_tool + preprocess)
 #==============================================================================#
 
-@kwdef mutable struct ModifyFileTool <: AbstractTool
+@kwdef mutable struct LocalModifyFileTool <: AbstractTool
     id::UUID = uuid4()
     language::String = "sh"
     file_path::String
@@ -16,7 +16,7 @@ include("diffviews/DiffViews.jl")
     model = ["gem20f", "orqwenplus", "gpt4o"]
 end
 
-function ToolCallFormat.create_tool(::Type{ModifyFileTool}, call::ParsedCall)
+function ToolCallFormat.create_tool(::Type{LocalModifyFileTool}, call::ParsedCall)
     file_path_pv = get(call.kwargs, "file_path", nothing)
     file_path = file_path_pv !== nothing ? file_path_pv.value : ""
     file_path = endswith(file_path, ">") ? chop(file_path) : file_path
@@ -26,7 +26,7 @@ function ToolCallFormat.create_tool(::Type{ModifyFileTool}, call::ParsedCall)
     language, content = parse_code_block(raw_content)
 
     root_path_pv = get(call.kwargs, "root_path", nothing)
-    ModifyFileTool(;
+    LocalModifyFileTool(;
         language,
         file_path,
         root_path = root_path_pv !== nothing ? root_path_pv.value : ".",
@@ -35,10 +35,10 @@ function ToolCallFormat.create_tool(::Type{ModifyFileTool}, call::ParsedCall)
     )
 end
 
-ToolCallFormat.toolname(::Type{ModifyFileTool}) = "modify_file"
+ToolCallFormat.toolname(::Type{LocalModifyFileTool}) = "local_modify_file"
 
 const MODIFYFILE_SCHEMA = (
-    name = "modify_file",
+    name = "local_modify_file",
     description = "Modify an existing file with code changes. Use '... existing code ...' comments to skip unchanged parts",
     params = [
         (name = "file_path", type = "string", description = "Path to file to modify", required = true),
@@ -46,11 +46,11 @@ const MODIFYFILE_SCHEMA = (
     ]
 )
 
-ToolCallFormat.get_tool_schema(::Type{ModifyFileTool}) = MODIFYFILE_SCHEMA
-ToolCallFormat.get_description(::Type{ModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
+ToolCallFormat.get_tool_schema(::Type{LocalModifyFileTool}) = MODIFYFILE_SCHEMA
+ToolCallFormat.get_description(::Type{LocalModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
 
-ToolCallFormat.execute(cmd::ModifyFileTool; no_confirm=false, kwargs...) = execute_with_editor(cmd, CURRENT_EDITOR; no_confirm)
-ToolCallFormat.preprocess(cmd::ModifyFileTool) = LLM_conditional_apply_changes(cmd)
+ToolCallFormat.execute(cmd::LocalModifyFileTool; no_confirm=false, kwargs...) = execute_with_editor(cmd, CURRENT_EDITOR; no_confirm)
+ToolCallFormat.preprocess(cmd::LocalModifyFileTool) = LLM_conditional_apply_changes(cmd)
 
 function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
     lines = split(code, '\n')
@@ -62,8 +62,8 @@ function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
 end
 
 # Interface for AbstractDiffView
-execute_with_editor(cmd::ModifyFileTool, editor::AbstractDiffView; no_confirm=false) =
-    @warn "Unimplemented execute_with_editor(::ModifyFileTool, ::$(typeof(editor)))!"
+execute_with_editor(cmd::LocalModifyFileTool, editor::AbstractDiffView; no_confirm=false) =
+    @warn "Unimplemented execute_with_editor(::LocalModifyFileTool, ::$(typeof(editor)))!"
 
 include("diffviews/MeldDiff.jl")
 include("diffviews/VimDiff.jl")
@@ -106,13 +106,13 @@ function set_editor(editor_name::AbstractString)
     true
 end
 
-function LLM_conditional_apply_changes(tool::ModifyFileTool)
+function LLM_conditional_apply_changes(tool::LocalModifyFileTool)
     original_content, ai_generated_content = LLM_apply_changes_to_file(tool)
     tool.postcontent = ai_generated_content
     tool
 end
 
-LLM_apply_changes_to_file(tool::ModifyFileTool) = LLM_apply_changes_to_file(tool.root_path, tool.file_path, tool.content, tool.language, tool.model)
+LLM_apply_changes_to_file(tool::LocalModifyFileTool) = LLM_apply_changes_to_file(tool.root_path, tool.file_path, tool.content, tool.language, tool.model)
 
 function LLM_apply_changes_to_file(root_path::String, file_path::String, content::String, language::String, models::Vector{String})
     original_content = ""

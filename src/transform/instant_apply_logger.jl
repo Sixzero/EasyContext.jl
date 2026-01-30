@@ -24,7 +24,7 @@ function log_instant_apply(extractor::AbstractExtractor, question::String)
     end
 end
 log_instant_apply(cb, question) = nothing
-function log_instant_apply(cb::ModifyFileTool, question::String)
+function log_instant_apply(cb::LocalModifyFileTool, question::String)
     original_content = cd(cb.root_path) do
         reparse_chunk(SourcePath(path=cb.file_path)).content
     end

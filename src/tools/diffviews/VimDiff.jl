@@ -4,7 +4,7 @@ keywords(::Type{VimDiffView}) = ["vimdiff", "vim"]
 
 register_diffview_subtype!(VimDiffView)
 
-function execute_with_editor(tool::ModifyFileTool, view::VimDiffView; no_confirm=false)
+function execute_with_editor(tool::LocalModifyFileTool, view::VimDiffView; no_confirm=false)
     cd(tool.root_path) do
         content_esced = replace(tool.postcontent, "'" => "\\'")
         shell_cmd = "vimdiff $(tool.file_path) <(echo -e '$content_esced')"
