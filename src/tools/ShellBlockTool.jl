@@ -13,7 +13,7 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
     language::String = "sh",        # Parsed language from codeblock
     root_path::Union{Nothing,String} = nothing,
     run_results::Vector{String} = String[]
-) function bash(command::CodeBlock => "Shell commands to execute")
+) function bash("Shell commands to execute" => command::CodeBlock)
     # Parse language from codeblock
     parsed_lang, parsed_content = parse_code_block(string(command))
     content = parsed_content

@@ -110,7 +110,7 @@ end
 function initialize!(sys::SysMessageV2, agent, force=false)
     if isempty(sys.content) || force
         base_content = build_base_system_content(sys.sys_msg, agent.tools)
-        custom_part = isnothing(sys.custom_system_message) || isempty(sys.custom_system_message) ? 
+        custom_part = isnothing(sys.custom_system_message) || isempty(sys.custom_system_message) ?
             "" : "\n\n$(sys.custom_system_message)"
         sys.content = base_content * custom_part
         @info "SYSTEM_PROMPT" length=length(sys.content) content=sys.content
