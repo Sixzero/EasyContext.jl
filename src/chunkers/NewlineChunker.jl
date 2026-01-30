@@ -2,7 +2,6 @@ using FilePathsBase
 import PromptingTools: recursive_splitter
 using RAGTools
 using RAGTools: AbstractChunker
-using PyCall
 using LLMRateLimiters: EncodingStatePBE, partial_encode!, GreedyBPETokenizer, load_bpe_tokenizer
 
 
