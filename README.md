@@ -137,20 +137,20 @@ println(shell_context)
 
 ### Example: Creating a Simple Tool
 
-Here's an example implementing a basic calculator tool using the `@tool` macro:
+Here's an example implementing a basic calculator tool using the `@deftool` macro:
 
 ```julia
-using EasyContext: @tool
+using EasyContext: @deftool
 
 # Define tool using the macro
-@tool CalcTool "calc" "Calculate mathematical expressions" [
-    (:expression, "string", "Mathematical expression to evaluate", true, nothing),
-] (tool; kwargs...) -> begin
+@deftool "Calculate mathematical expressions" function calc(
+    "Mathematical expression to evaluate" => expression::String
+)
     try
-        result = eval(Meta.parse(tool.expression))
-        tool.result = "Result: $result"
+        result = eval(Meta.parse(expression))
+        "Result: $result"
     catch e
-        tool.result = "Error: Invalid expression"
+        "Error: Invalid expression"
     end
 end
 ```

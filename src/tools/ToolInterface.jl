@@ -16,4 +16,4 @@ using ToolCallFormat: description_from_schema
 using ToolCallFormat: ParsedCall, ToolSchema, ParamSchema
 using ToolCallFormat: CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
 using ToolCallFormat: get_default_call_style, generate_tool_definition
-using ToolCallFormat: @tool, @deftool
+using ToolCallFormat: @deftool
