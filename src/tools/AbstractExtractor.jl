@@ -1,3 +1,4 @@
+export AbstractExtractor, are_tools_cancelled, get_tool_results
 
 abstract type AbstractExtractor end
 
