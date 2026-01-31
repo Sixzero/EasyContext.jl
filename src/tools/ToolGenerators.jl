@@ -34,7 +34,7 @@ ToolCallFormat.get_description(::WorkspaceToolGenerator) = get_description(Works
 ToolCallFormat.get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description_raw(tg.workspace_context.workspace)
 
 ToolCallFormat.preprocess(::AbstractToolGenerator) = nothing
-ToolCallFormat.get_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? tool.tool.id : nothing
+ToolCallFormat.get_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? tool.tool._id : nothing
 ToolCallFormat.is_cancelled(::AbstractToolGenerator) = false
 ToolCallFormat.resultimg2base64(::AbstractToolGenerator) = nothing
 ToolCallFormat.resultaudio2base64(::AbstractToolGenerator) = nothing
