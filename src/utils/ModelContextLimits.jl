@@ -19,9 +19,11 @@ function get_model_context_limit(model::String)
         cached = get_model(model; fetch_endpoints=false)
         if cached !== nothing && cached.model.context_length !== nothing
             return cached.model.context_length
+        else
+            @warn "Model not found in OpenRouter cache" model
         end
     catch e
-        @debug "Failed to get model context limit from OpenRouter" model exception=e
+        @warn "Failed to get model context limit from OpenRouter" model exception=e
     end
 
     return DEFAULT_CONTEXT_LIMIT
