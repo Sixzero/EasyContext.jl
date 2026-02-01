@@ -71,7 +71,10 @@ include("contexts/Contexts.jl")
 
 include("compatibility.jl")
 
-
+# Transcribe functions - implemented in EasyContextTranscribeExt when PythonCall is loaded
+function init_assemblyai end
+function transcribe_audio end
+function stream_audio end
 
 include("precompile_scripts.jl")
 

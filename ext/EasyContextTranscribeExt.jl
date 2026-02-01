@@ -1,3 +1,6 @@
+module EasyContextTranscribeExt
+
+using EasyContext
 using PythonCall
 
 # Lazy load Python modules
@@ -18,14 +21,14 @@ function ensure_pyaudio()
     _pyaudio[]
 end
 
-function init_assemblyai()
+function EasyContext.init_assemblyai()
     api_key = get(ENV, "ASSEMBLYAI_API_KEY", "")
     isempty(api_key) && error("ASSEMBLYAI_API_KEY environment variable is not set")
     aai = ensure_assemblyai()
     aai.settings.api_key = api_key
 end
 
-function transcribe_audio(file_url::String)
+function EasyContext.transcribe_audio(file_url::String)
     aai = ensure_assemblyai()
     transcriber = aai.Transcriber()
     transcript = transcriber.transcribe(file_url)
@@ -37,7 +40,7 @@ function transcribe_audio(file_url::String)
     return pyconvert(String, transcript.text)
 end
 
-function stream_audio(callback)
+function EasyContext.stream_audio(callback)
     aai = ensure_assemblyai()
     pyaudio = ensure_pyaudio()
 
@@ -81,3 +84,5 @@ function stream_audio(callback)
         audio.terminate()
     end
 end
+
+end # module
