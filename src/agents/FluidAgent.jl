@@ -1,6 +1,5 @@
 using UUIDs
 import PromptingTools: aigenerate
-using OpenRouter: needs_tool_execution
 using HTTP: RequestError
 
 export FluidAgent, execute_tools, work, create_FluidAgent
@@ -201,20 +200,17 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             push_message!(session, create_AI_message(response.content))
 
-            # Check if tool execution is needed
-            needs_execution = needs_tool_execution(cb.run_info)
-
-            # Create user message for tool results BEFORE execute_tools so attachments go to user msg
-            if needs_execution
-                write(io, create_user_message(""))  # Creates user message, updates io.message_id
-            end
-
-            execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
-
             # Check if there are any executable tools
             executable_tools = filter(tool -> is_executable(tool), fetch.(values(extractor.tool_tasks)))
+            has_executable_tools = !isempty(executable_tools)
 
-            (!needs_execution && isempty(executable_tools)) && break
+            # No executable tools = conversation complete, break the loop
+            !has_executable_tools && break
+
+            # Create user message for tool results BEFORE execute_tools so attachments go to user msg
+            write(io, create_user_message(""))  # Creates user message, updates io.message_id
+
+            execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
             are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
 
             # Add tool results to conversation for next iteration
