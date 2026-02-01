@@ -209,7 +209,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 write(io, create_user_message(""))  # Creates user message, updates io.message_id
             end
 
-            execute_tools(extractor; no_confirm, io, permissions)
+            execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
 
             # Check if there are any executable tools
             executable_tools = filter(tool -> is_executable(tool), fetch.(values(extractor.tool_tasks)))
