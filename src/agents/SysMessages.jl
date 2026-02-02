@@ -7,8 +7,8 @@ Call tools using this exact format:
 tool_name(param1: "value1", param2: "value2")
 
 Examples:
-read(path: "/src/main.jl")
-search(pattern: "function foo", path: "/src")
+web_content(url: "https://example.com/docs")
+api_get_current_context()
 
 IMPORTANT: Do NOT use XML-style formats like <function_calls>, <invoke>, or any XML tags for tool calls.
 """
@@ -62,11 +62,11 @@ function build_base_system_content(sys_msg::String, tools)
     $(dont_act_chaotic)
     $(refactor_all)
     $(simplicity_guide)
-    
+
     $(ambiguity_guide)
-    
+
     $(test_it)
-    
+
     $(no_loggers)
     $(system_information)
 
@@ -112,7 +112,7 @@ function initialize!(sys::SysMessageV2, agent, force=false)
         custom_part = isnothing(sys.custom_system_message) || isempty(sys.custom_system_message) ?
             "" : "\n\n$(sys.custom_system_message)"
         sys.content = base_content * custom_part
-        @info "SYSTEM_PROMPT" length=length(sys.content) content=sys.content
+        println("=" ^ 80, "\nSYSTEM PROMPT:\n", "=" ^ 80, "\n", sys.content, "\n", "=" ^ 80)
     end
     return sys.content
 end
