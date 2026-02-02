@@ -195,7 +195,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 on_status("WORKING")
             end
 
-            response = aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
+            pt_messages = to_PT_messages(session, sys_msg_content)
+            response = aigenerate_with_config(agent.model, pt_messages;
                 cache, api_kwargs, streamcallback=cb, verbose=false)
 
             push_message!(session, create_AI_message(response.content))
