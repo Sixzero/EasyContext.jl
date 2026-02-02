@@ -4,6 +4,13 @@ using OpenRouter: get_model
 
 const DEFAULT_CONTEXT_LIMIT = 200000
 
+# Mapping for legacy/shorthand model names to proper OpenRouter identifiers
+# NOTE: Update these mappings when better models become available
+const LEGACY_MODEL_MAPPING = Dict{String, String}(
+    "claude" => "anthropic/claude-opus-4.5",
+    "gemini-pro" => "google/gemini-2.5-pro",
+)
+
 """
     parse_provider_model_slug(model::String) -> (provider::Union{String,Nothing}, model_id::String)
 
@@ -36,6 +43,9 @@ Handles model slugs in "provider:author/model" format:
 """
 function get_model_context_limit(model::String)
     isempty(model) && return DEFAULT_CONTEXT_LIMIT
+
+    # Map legacy/shorthand model names to proper OpenRouter identifiers
+    model = get(LEGACY_MODEL_MAPPING, model, model)
 
     # Parse provider and model_id from slug
     provider, model_id = parse_provider_model_slug(model)

@@ -7,9 +7,8 @@ Call tools using this exact format:
 tool_name(param1: "value1", param2: "value2")
 
 Examples:
-cat_file(file_path: "/src/main.jl")
-web_search(query: "Julia async programming")
-modify_file(file_path: "/src/app.jl", content: "new content here")
+read(path: "/src/main.jl")
+search(pattern: "function foo", path: "/src")
 
 IMPORTANT: Do NOT use XML-style formats like <function_calls>, <invoke>, or any XML tags for tool calls.
 """
