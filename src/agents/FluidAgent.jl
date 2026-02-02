@@ -42,8 +42,8 @@ Get tool descriptions for system prompt.
 function get_tool_descriptions(tools::AbstractVector)
     descriptions = get_description.(tools)
     """
-    # Available tools:
-    $(join(descriptions, "\n\n"))"""
+# Available tools:
+$(join(descriptions, "\n"))"""
 end
 
 """
