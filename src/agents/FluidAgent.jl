@@ -219,11 +219,15 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 break
             end
 
-            # All tools allowed - create user message FIRST so postexecute! can attach results
-            write(io, create_user_message(""))  # Creates user message, updates io.message_id
+            # Create user message for attachments (sets io.user_message_id)
+            write(io, create_user_message(""))
 
+            # Execute tools - io.message_id is still the current assistant message (where blocks live)
             execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
             are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
+
+            # Generate new message_id for next iteration's assistant message
+            io.message_id = string(uuid4())
 
             # Add tool results to conversation for next iteration
             result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
