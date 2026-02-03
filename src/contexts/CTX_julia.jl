@@ -36,7 +36,7 @@ function init_julia_context(;
     )
 end
 
-function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, rerank_query=ctx_question, source_tracker=nothing, io::Union{IO, Nothing}=stdout)
+function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, rerank_query=ctx_question, source_tracker=nothing, io=stdout)
     !enabled && return ("", nothing)
     rag_pipeline      = julia_context.rag_pipeline
     tracker_context   = julia_context.tracker_context
