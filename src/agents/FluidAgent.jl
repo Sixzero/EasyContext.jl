@@ -208,7 +208,18 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # No executable tools = conversation complete, break the loop
             !has_executable_tools && break
 
-            # Create user message for tool results BEFORE execute_tools so attachments go to user msg
+            # Check if any tools need approval - if so, we cannot continue immediately
+            # has_pending_approvals is set during extraction (emit_tool_callback), so we know it before execute_tools
+            cannot_continue_immediately = hasproperty(extractor, :has_pending_approvals) && extractor.has_pending_approvals
+            if cannot_continue_immediately
+                # Execute allowed tools (to save results via postexecute!), but DON'T create user message
+                # Backend's sendToolContinuationWithAttachments will create it when all blocks resolve
+                @info "Tools awaiting approval - executing allowed tools and exiting work loop"
+                execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
+                break
+            end
+
+            # All tools allowed - create user message FIRST so postexecute! can attach results
             write(io, create_user_message(""))  # Creates user message, updates io.message_id
 
             execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
