@@ -2,7 +2,7 @@ using UUIDs
 import PromptingTools: aigenerate
 using HTTP: RequestError
 
-export FluidAgent, execute_tools, work, create_FluidAgent
+export FluidAgent, execute_tools, work, create_FluidAgent, collect_execution_results
 
 # Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
 is_interrupt(e::InterruptException) = true
@@ -114,6 +114,25 @@ function get_tool_results_agent(tool_tasks)
 end
 
 """
+Collect results from execution tasks that return (str, imgs, audios) tuples or nothing.
+Returns (joined_str, all_imgs, all_audios).
+"""
+function collect_execution_results(execution_tasks)
+    result_strs = String[]
+    result_imgs = String[]
+    result_audios = String[]
+    for task in execution_tasks
+        result = fetch(task)
+        isnothing(result) && continue
+        str, imgs, audios = result
+        push!(result_strs, str)
+        !isnothing(imgs) && append!(result_imgs, imgs)
+        !isnothing(audios) && append!(result_audios, audios)
+    end
+    (join(result_strs, "\n"), result_imgs, result_audios)
+end
+
+"""
 Save partial AI content on interrupt. Appends [interrupted] marker.
 If no AI content generated, appends [interrupted] to last user message.
 """
@@ -201,38 +220,19 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             push_message!(session, create_AI_message(response.content))
 
-            # Check if there are any executable tools
-            executable_tools = filter(tool -> is_executable(tool), fetch.(values(extractor.tool_tasks)))
-            has_executable_tools = !isempty(executable_tools)
 
-            # No executable tools = conversation complete, break the loop
-            !has_executable_tools && break
+            
+            io.user_message_id = string(uuid4()) # Generate user message ID (message created lazily on first attachment IF THERE WILL BE ANY! So this is SAFE!)
 
-            # Check if any tools need approval - if so, we cannot continue immediately
-            # has_pending_approvals is set during extraction (emit_tool_callback), so we know it before execute_tools
-            cannot_continue_immediately = hasproperty(extractor, :has_pending_approvals) && extractor.has_pending_approvals
-            if cannot_continue_immediately
-                # Execute allowed tools (to save results via postexecute!), but DON'T create user message
-                # Backend's sendToolContinuationWithAttachments will create it when all blocks resolve
-                @info "Tools awaiting approval - executing allowed tools and exiting work loop"
-                execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
-                break
-            end
+            # Execute tools in parallel, get results
+            execution_tasks = execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
+            are_tools_cancelled(extractor) && break
 
-            # Create user message for attachments (sets io.user_message_id)
-            write(io, create_user_message(""))
+            result_str, result_img, result_audio = collect_execution_results(execution_tasks)
+            push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
 
-            # Execute tools - io.message_id is still the current assistant message (where blocks live)
-            execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
-            are_tools_cancelled(extractor) && (@info "All tools were cancelled by user, stopping further processing"; break)
-
-            # Generate new message_id for next iteration's assistant message
+            # Next iteration's assistant message ID
             io.message_id = string(uuid4())
-
-            # Add tool results to conversation for next iteration
-            result_str, result_img, result_audio = get_tool_results_agent(extractor.tool_tasks)
-            tool_results_usr_msg = create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio)
-            push_message!(session, tool_results_usr_msg)
         end
     catch e
         if is_interrupt(e)
