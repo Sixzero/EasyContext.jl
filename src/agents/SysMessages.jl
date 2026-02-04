@@ -112,7 +112,7 @@ function initialize!(sys::SysMessageV2, agent, force=false)
         custom_part = isnothing(sys.custom_system_message) || isempty(sys.custom_system_message) ?
             "" : "\n\n$(sys.custom_system_message)"
         sys.content = base_content * custom_part
-        println("=" ^ 80, "\nSYSTEM PROMPT:\n", "=" ^ 80, "\n", sys.content, "\n", "=" ^ 80)
+        # println("=" ^ 80, "\nSYSTEM PROMPT:\n", "=" ^ 80, "\n", sys.content, "\n", "=" ^ 80)
     end
     return sys.content
 end
