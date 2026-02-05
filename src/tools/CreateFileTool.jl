@@ -6,7 +6,7 @@ using ToolCallFormat: AbstractContext
     file_path = endswith(file_path, ">") ? chop(file_path) : file_path
     path = expand_path(file_path, ctx.root_path)
 
-    shell_cmd = process_create_command(path, string(content))
+    shell_cmd = process_create_command(path, content)
     shortened_code = get_shortened_code(shell_cmd, 4, 2)
     print_code(shortened_code)
 
