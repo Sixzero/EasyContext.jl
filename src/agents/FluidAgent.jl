@@ -221,7 +221,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             push_message!(session, create_AI_message(response.content))
 
 
-            
+
             io.user_message_id = string(uuid4()) # Generate user message ID (message created lazily on first attachment IF THERE WILL BE ANY! So this is SAFE!)
 
             # Execute tools in parallel, get results
@@ -229,6 +229,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             are_tools_cancelled(extractor) && break
 
             result_str, result_img, result_audio = collect_execution_results(execution_tasks)
+            if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
+                result_str = "(tools finished execution)"
+            end
             push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
 
             # Next iteration's assistant message ID
