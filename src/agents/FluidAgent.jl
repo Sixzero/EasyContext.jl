@@ -164,7 +164,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
-    MAX_NUMBER_OF_TOOL_CALLS=8,
+    MAX_ITERATIONS=500,
     permissions::Dict=Dict(),  # Tool permission allowlist
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
@@ -187,7 +187,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     i = 0
 
     try
-        while i < MAX_NUMBER_OF_TOOL_CALLS || sum(length(msg.content) for msg in session.messages) < 40000
+        while i < MAX_ITERATIONS
             i += 1
 
             # Create new extractor for each run
@@ -236,6 +236,10 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # Next iteration's assistant message ID
             io.message_id = string(uuid4())
+        end
+        if i >= MAX_ITERATIONS
+            @warn "Agent reached maximum unsupervised iteration limit ($MAX_ITERATIONS). Contact dev@todofor.ai to increase."
+            push_message!(session, create_user_message_with_vectors("[SYSTEM] Agent reached the maximum number of unsupervised iterations ($MAX_ITERATIONS). Send a new message to continue the conversation. If you need a higher autonomous limit, please contact dev@todofor.ai"))
         end
     catch e
         if is_interrupt(e)
