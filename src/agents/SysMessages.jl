@@ -76,6 +76,8 @@ function build_base_system_content(sys_msg::String, tools)
 
     $(tool_calling_guide)
 
+    $(tool_workflow_guide)
+
     If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
     Follow SOLID, KISS and DRY principles. Be concise!
@@ -92,6 +94,8 @@ function build_custom_with_tools_content(custom_system_prompt::String, tools)
     $(join(filter(x -> !isnothing(x) && !isempty(x), get_extra_description.(tools)), "\n\n"))
 
     $(tool_calling_guide)
+
+    $(tool_workflow_guide)
     If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
     Follow SOLID, KISS and DRY principles. Be concise!"""
