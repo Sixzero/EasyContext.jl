@@ -5,6 +5,7 @@ authors = ["SixZero <havliktomi@hotmail.com>"]
 
 [deps]
 Arrow = "69666777-d1a9-59fb-9406-91d4454c9d45"
+Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 BoilerplateCvikli = "9c9f911a-9395-49bd-b3fc-139ceb24aa85"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
@@ -50,6 +51,7 @@ BoilerplateCvikli = "≥1.1"
 Crayons = "≥4.1"
 DataFrames = "≥1.7"
 DataStructures = "≥0.18"
+Base64 = "≥1.11"
 Dates = "≥1.11"
 DingDingDing = "1.0.0"
 ExpressionExplorer = "≥1.1"
