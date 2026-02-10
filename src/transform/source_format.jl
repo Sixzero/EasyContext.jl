@@ -1,3 +1,5 @@
+using Base64
+
 export format_source_text, collect_execution_results
 
 """
@@ -12,9 +14,11 @@ format_source_text(name::String, content::String; uri::String="")::String =
     isempty(uri) ? "# Source: $name\n$content" : "# Source: $name\n# URI: $uri\n$content"
 
 """
-Collect results from execution tasks that return (str, imgs, audios, name, uri) tuples or nothing.
-Text results are wrapped with `format_source_text` (matching file attachment format).
-Images and audio are kept separate for provider-specific typed inputs.
+Collect results from execution tasks that return Vector{AttachmentWireCreate} or nothing.
+Each attachment is categorized by mimeType:
+- text/* → decode base64, wrap with `format_source_text` (with URI)
+- image/* → keep base64 for provider-specific typed input
+- audio/* → keep base64 for provider-specific typed input
 Returns (joined_str, all_imgs, all_audios).
 """
 function collect_execution_results(execution_tasks)
@@ -22,12 +26,19 @@ function collect_execution_results(execution_tasks)
     result_imgs = String[]
     result_audios = String[]
     for task in execution_tasks
-        result = fetch(task)
-        isnothing(result) && continue
-        str, imgs, audios, name, uri = result
-        !isempty(str) && push!(result_strs, format_source_text(name, str; uri))
-        !isnothing(imgs) && append!(result_imgs, imgs)
-        !isnothing(audios) && append!(result_audios, audios)
+        attachments = fetch(task)
+        isnothing(attachments) && continue
+        for att in attachments
+            uri = isnothing(att.id) ? "" : "todoforai://attachment/$(att.id)"
+            if startswith(att.mimeType, "image/")
+                push!(result_imgs, att.contentBase64)
+            elseif startswith(att.mimeType, "audio/")
+                push!(result_audios, att.contentBase64)
+            else
+                text = String(base64decode(att.contentBase64))
+                !isempty(text) && push!(result_strs, format_source_text(att.originalName, text; uri))
+            end
+        end
     end
     (join(result_strs, "\n"), result_imgs, result_audios)
 end
