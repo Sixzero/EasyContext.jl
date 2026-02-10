@@ -21,12 +21,25 @@ Each attachment is categorized by mimeType:
 - audio/* → keep base64 for provider-specific typed input
 Returns (joined_str, all_imgs, all_audios).
 """
-function collect_execution_results(execution_tasks)
+function collect_execution_results(execution_tasks; timeout::Float64=300.0)
+    # Async map: wait for all tasks concurrently with timeout (worst case = timeout, not N*timeout)
+    timed_tasks = [@async begin
+        result = timedwait(timeout; pollint=0.5) do
+            istaskdone(task)
+        end
+        if result == :timed_out
+            @warn "Tool execution timed out after $(timeout)s, interrupting..."
+            schedule(task, InterruptException(); error=true)
+            return nothing
+        end
+        fetch(task)
+    end for task in execution_tasks]
+
     result_strs = String[]
     result_imgs = String[]
     result_audios = String[]
-    for task in execution_tasks
-        attachments = fetch(task)
+    for tt in timed_tasks
+        attachments = fetch(tt)
         isnothing(attachments) && continue
         for att in attachments
             uri = isnothing(att.id) ? "" : "todoforai://attachment/$(att.id)"
