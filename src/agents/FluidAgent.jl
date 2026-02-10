@@ -2,7 +2,7 @@ using UUIDs
 import PromptingTools: aigenerate
 using HTTP: RequestError
 
-export FluidAgent, execute_tools, work, create_FluidAgent, collect_execution_results
+export FluidAgent, execute_tools, work, create_FluidAgent
 
 # Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
 is_interrupt(e::InterruptException) = true
@@ -113,24 +113,7 @@ function get_tool_results_agent(tool_tasks)
     (str_results, img_results, audio_results)
 end
 
-"""
-Collect results from execution tasks that return (str, imgs, audios) tuples or nothing.
-Returns (joined_str, all_imgs, all_audios).
-"""
-function collect_execution_results(execution_tasks)
-    result_strs = String[]
-    result_imgs = String[]
-    result_audios = String[]
-    for task in execution_tasks
-        result = fetch(task)
-        isnothing(result) && continue
-        str, imgs, audios = result
-        push!(result_strs, str)
-        !isnothing(imgs) && append!(result_imgs, imgs)
-        !isnothing(audios) && append!(result_audios, audios)
-    end
-    (join(result_strs, "\n"), result_imgs, result_audios)
-end
+# collect_execution_results is defined in transform/source_format.jl
 
 """
 Save partial AI content on interrupt. Appends [interrupted] marker.

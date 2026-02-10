@@ -1,5 +1,6 @@
 
 include("context_combiner.jl")
+include("source_format.jl")
 include("classifier.jl")
 # include("code_runner.jl")
 
