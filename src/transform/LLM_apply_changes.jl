@@ -139,6 +139,7 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
             verbose && println("\e[38;5;240mGenerating replacement patterns with AI ($model)...\e[0m")
             aigenerated = aigenerate_with_config(model, prompt; api_kwargs=(; temperature), verbose=false)
             replacements = extract_tagged_content(aigenerated.content, "REPLACEMENTS")
+            isnothing(replacements) && continue
             matches = extract_all_tagged_pairs(replacements)
 
             result, missing_patterns = apply_replacements(original_content, matches)
