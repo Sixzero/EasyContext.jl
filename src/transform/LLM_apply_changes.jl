@@ -194,10 +194,11 @@ function extract_all_tagged_pairs(content::AbstractString)
         isnothing(match_start) && break
 
         match_end = findnext("</MATCH>", content, match_start.stop)
+        isnothing(match_end) && break
         replace_start = findnext("<REPLACE>", content, match_end.stop)
+        isnothing(replace_start) && break
         replace_end = findnext("</REPLACE>", content, replace_start.stop)
-
-        (isnothing(match_end) || isnothing(replace_start) || isnothing(replace_end)) && break
+        isnothing(replace_end) && break
 
 
         # Get content between tags and trim only leading/trailing whitespace
