@@ -383,15 +383,9 @@ end
 format_file_size(size_chars) = size_chars < 1000 ? "$(size_chars) chars" : "$(round(size_chars / 1000, digits=2))k chars"
 
 workspace_format_description_raw(ws::AbstractWorkspace)  = """
-The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags, 
-with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags. 
+The codebase you are working on will be wrapped in <$(WORKSPACE_TAG)> and </$(WORKSPACE_TAG)> tags,
+with individual files chunks wrapped in <$(WORKSPACE_ELEMENT)> and </$(WORKSPACE_ELEMENT)> tags.
 Our workspace has a root path: $(ws.root_path)
-The projects and their folders:
-""" * join(print_project_tree(ws, show_files=true, summary_callback=default_summary_callback,  do_print=false), "\n") * """
-Our shell cwd is also: $(ws.root_path)
-
-The system is:
-$(get_system())
-The used SHELL is:
-$(get_shell())
+The system is: $(get_system())
+The used SHELL is: $(get_shell())
 """
