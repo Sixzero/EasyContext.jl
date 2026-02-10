@@ -160,12 +160,13 @@ function apply_modify_by_replace(original_content::AbstractString, changes_conte
             println("MISSING:\n$miss")
         end
     end
-    
-    # If no meaningful changes were made, return the changes_content
+
+    # If no meaningful changes were made, the patterns weren't found
     if !has_meaningful_changes(original_content, best_result)
-        return changes_content
+        missing_info = join(["  - $(first(split(p, '\n')))" for p in best_missing_patterns], "\n")
+        error("Pattern not found in file. The following search patterns did not match any content:\n$missing_info")
     end
-    
+
     return best_result
 end
 
@@ -195,7 +196,7 @@ function extract_all_tagged_pairs(content::AbstractString)
         replace_start = findnext("<REPLACE>", content, match_end.stop)
         replace_end = findnext("</REPLACE>", content, replace_start.stop)
 
-        isnothing(match_end) || isnothing(replace_start) || isnothing(replace_end) && break
+        (isnothing(match_end) || isnothing(replace_start) || isnothing(replace_end)) && break
 
 
         # Get content between tags and trim only leading/trailing whitespace
