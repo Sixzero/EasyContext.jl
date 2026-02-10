@@ -2,7 +2,7 @@ using UUIDs
 import PromptingTools: aigenerate
 using HTTP: RequestError
 
-export FluidAgent, execute_tools, work, create_FluidAgent
+export FluidAgent, work, create_FluidAgent
 
 # Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
 is_interrupt(e::InterruptException) = true
@@ -44,14 +44,6 @@ function get_tool_descriptions(tools::AbstractVector)
     """
 # Available tools:
 $(join(descriptions, "\n"))"""
-end
-
-"""
-Execute a single tool
-"""
-function execute_tool!(agent::FluidAgent, tool::AbstractTool; no_confirm=false, kwargs...)
-    result = execute(tool; no_confirm, kwargs...)
-    result
 end
 
 """
@@ -99,21 +91,8 @@ function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::
         max_tokens = max_tokens
     ))
 end
-function get_tool_results_agent(tool_tasks)
-    tasks = filter!(!isnothing, fetch.(values(tool_tasks)))
-    str_results = join(result2string.(tasks), "\n")
-    img_results = String[]
-    for img_vec in resultimg2base64.(tasks)
-        !isnothing(img_vec) && append!(img_results, img_vec)
-    end
-    audio_results = String[]
-    for audio_vec in resultaudio2base64.(tasks)
-        !isnothing(audio_vec) && append!(audio_results, audio_vec)
-    end
-    (str_results, img_results, audio_results)
-end
-
-# collect_execution_results is defined in transform/source_format.jl
+# collect_execution_results(tasks) is defined in transform/source_format.jl
+# collect_execution_results(extractor) is overloaded per extractor type (e.g. CallExtractor)
 
 """
 Save partial AI content on interrupt. Appends [interrupted] marker.
@@ -136,7 +115,6 @@ end
 Run an LLM interaction with tool execution.
 """
 function work(agent::FluidAgent, session::Session; cache=nothing,
-    no_confirm=false,
     highlight_enabled::Bool=true,
     process_enabled::Bool=true,
     on_error=noop,
@@ -148,7 +126,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
     MAX_ITERATIONS=500,
-    permissions::Dict=Dict(),  # Tool permission allowlist
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
     )
@@ -205,13 +182,13 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
 
 
-            io.user_message_id = string(uuid4()) # Generate user message ID (message created lazily on first attachment IF THERE WILL BE ANY! So this is SAFE!)
-
-            # Execute tools in parallel, get results
-            execution_tasks = execute_tools(extractor; no_confirm, io, permissions, tool_kwargs...)
+            
+            # Tools already executed during streaming (emit_tool_callback). Check if we should continue.
             are_tools_cancelled(extractor) && break
-
-            result_str, result_img, result_audio = collect_execution_results(execution_tasks)
+            
+            io.user_message_id = string(uuid4()) # Generate user message ID (message created lazily on first attachment IF THERE WILL BE ANY! So this is SAFE!)
+            # Wait for running tool tasks and collect results
+            result_str, result_img, result_audio = collect_execution_results(extractor)
             if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
                 result_str = "(tools finished execution)"
             end

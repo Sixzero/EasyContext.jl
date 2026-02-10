@@ -120,13 +120,8 @@ println(shell_context)
 └─ ─ ─ ─┬─ ─ ─ ─┘   (e.g. verify shell commands without user prompt)
         │
         ▼
-┌─ ─ ─ ─┴─ ─ ─ ─┐
-  preprocess()    Optional content preparation
-└─ ─ ─ ─┬─ ─ ─ ─┘   (e.g. LLM modifications, cursor-like instant apply)
-        │
-        ▼
 ┌───────────────┐
-│ execute()     │ Performs the actual operation
+│ execute()     │ Performs the actual operation (read, transform, write, return result)
 └───────┬───────┘
 --------│----------- End of Interface
         ▼

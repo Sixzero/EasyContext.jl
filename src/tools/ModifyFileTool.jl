@@ -3,7 +3,7 @@ include("diffviews/DiffViews.jl")
 # Types imported via ToolInterface.jl
 
 #==============================================================================#
-# LocalModifyFileTool - Manual definition (custom create_tool + preprocess)
+# LocalModifyFileTool - Manual definition (custom create_tool)
 #==============================================================================#
 
 @kwdef mutable struct LocalModifyFileTool <: AbstractTool
@@ -49,8 +49,10 @@ const MODIFYFILE_SCHEMA = (
 ToolCallFormat.get_tool_schema(::Type{LocalModifyFileTool}) = MODIFYFILE_SCHEMA
 ToolCallFormat.get_description(::Type{LocalModifyFileTool}) = description_from_schema(MODIFYFILE_SCHEMA)
 
-ToolCallFormat.execute(cmd::LocalModifyFileTool; no_confirm=false, kwargs...) = execute_with_editor(cmd, CURRENT_EDITOR; no_confirm)
-ToolCallFormat.preprocess(cmd::LocalModifyFileTool) = LLM_conditional_apply_changes(cmd)
+function ToolCallFormat.execute(cmd::LocalModifyFileTool; no_confirm=false, kwargs...)
+    LLM_conditional_apply_changes(cmd)
+    execute_with_editor(cmd, CURRENT_EDITOR; no_confirm)
+end
 
 function get_shortened_code(code::String, head_lines::Int=4, tail_lines::Int=3)
     lines = split(code, '\n')

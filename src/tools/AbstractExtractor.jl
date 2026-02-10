@@ -6,10 +6,6 @@ function extract_tool_calls(new_content::String, extractor::E, io; kwargs...) wh
 	@assert false "extract_tool_calls is not implemented for $(E)"
 end
 
-function execute_tools(stream_parser::E; no_confirm=false, kwargs...) where E <: AbstractExtractor
-	@assert false "execute_tools is not implemented for $(E)"
-end
-
 function are_tools_cancelled(extractor::E) where E <: AbstractExtractor
 	@assert false "are_tools_cancelled is not implemented for $(E)"
 end

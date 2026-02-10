@@ -2,7 +2,7 @@ using Test
 using EasyContext
 using PromptingTools
 using EasyContext: Session, UserMessage, AIMessage, push_message!
-using EasyContext: get_tool_results_agent, extract_tool_calls, pickStreamCallbackforIO
+using EasyContext: extract_tool_calls, pickStreamCallbackforIO
 using OpenRouter: HttpStreamHooks
 using UUIDs
 
@@ -76,7 +76,7 @@ using UUIDs
             end
             
             # Call work function with our cost tracking IO
-            work(agent, session; cache=false, no_confirm=true, io=cost_tracking_io)
+            work(agent, session; cache=false, io=cost_tracking_io)
             
             # Test that cost is tracked
             @test cost_tracking_io.costs[] > 0
@@ -129,7 +129,7 @@ using UUIDs
                 extract = agent.extractor_type(agent.tools)
                 # Extract and execute tools directly
                 extract_tool_calls(mock_content, extract, devnull; is_flush=true)
-                execute_tools(extract; no_confirm=true)
+                collect_execution_results(extract)
                 
                 # Verify file was created
                 @test isfile("test.txt")
@@ -183,7 +183,7 @@ using UUIDs
                 extractor = agent.extractor_type(agent.tools)
                 # Extract and execute tools directly
                 extract_tool_calls(mock_content, extractor, devnull; is_flush=true)
-                execute_tools(extractor; no_confirm=true)
+                collect_execution_results(extractor)
                 
                 # Verify execution order
                 @test isfile("file1.txt")
@@ -219,7 +219,7 @@ using UUIDs
                 extractor = agent.extractor_type(agent.tools)
                 # Extract and execute tools directly
                 extract_tool_calls(mock_content, extractor, devnull; is_flush=true)
-                execute_tools(extractor; no_confirm=true)
+                collect_execution_results(extractor)
                 
                 # Check error handling
                 @test !isempty(get_tool_results_agent(extractor.tool_tasks))
