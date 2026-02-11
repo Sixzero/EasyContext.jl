@@ -122,6 +122,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_finish=noop,
     on_start=noop,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
+    on_tool_results=noop,  # Called with (result_str, result_img, result_audio) after tool execution
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
@@ -192,6 +193,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 result_str = "(tools finished execution)"
             end
             push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
+            on_tool_results(result_str, result_img, result_audio)
 
             # Next iteration's assistant message ID
             io.message_id = string(uuid4())

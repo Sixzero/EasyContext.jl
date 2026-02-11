@@ -5,6 +5,7 @@ export write_event!
 noop() = nothing
 noop(_) = nothing
 noop(_,_) = nothing
+noop(_,_,_) = nothing
 
 is_really_empty(user_question) = isempty(strip(user_question))
 
