@@ -186,7 +186,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Tools already executed during streaming (emit_tool_callback). Check if we should continue.
             are_tools_cancelled(extractor) && break
             
-            io.user_message_id = string(uuid4()) # Generate user message ID (message created lazily on first attachment IF THERE WILL BE ANY! So this is SAFE!)
             # Wait for running tool tasks and collect results
             result_str, result_img, result_audio = collect_execution_results(extractor)
             if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
