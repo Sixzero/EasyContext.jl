@@ -27,16 +27,58 @@ function email_format(to::String, subject::String, content::String)
 	"""
 end
 
+const VALID_LANGUAGES = Set([
+	"sh", "bash", "zsh", "fish",
+	"python", "py", "python3",
+	"julia", "jl",
+	"javascript", "js", "typescript", "ts", "tsx", "jsx",
+	"ruby", "rb",
+	"rust", "rs",
+	"go", "golang",
+	"c", "cpp", "c++", "cxx", "h", "hpp",
+	"java", "kotlin", "kt", "scala",
+	"swift", "objc", "objective-c",
+	"php", "perl", "pl",
+	"r", "R",
+	"lua", "elixir", "ex", "exs", "erlang", "erl",
+	"haskell", "hs", "ocaml", "ml", "clojure", "clj",
+	"sql", "mysql", "postgresql", "sqlite",
+	"html", "css", "scss", "sass", "less",
+	"xml", "yaml", "yml", "json", "jsonc", "toml", "ini", "conf",
+	"markdown", "md",
+	"dockerfile", "docker",
+	"makefile", "make", "cmake",
+	"shell", "powershell", "ps1", "bat", "cmd",
+	"vim", "awk", "sed",
+	"graphql", "gql",
+	"proto", "protobuf",
+	"tex", "latex",
+	"diff", "patch",
+	"csv", "tsv",
+	"plaintext", "text", "txt",
+	"nix", "zig", "nim", "dart", "groovy",
+	"terraform", "tf", "hcl",
+	"svelte", "vue",
+	"csharp", "cs", "fsharp", "fs",
+])
+
 function parse_code_block(content::String)
 	lines = split(strip(content), '\n')
 	first_line = first(lines)
-	
+
 	if startswith(first_line, "```")
-			language = length(first_line) > 3 ? first_line[4:end] : "sh"
-			content = join(lines[2:end-1], '\n')
-			return language, content
+			lang_candidate = strip(first_line[4:end])
+			if !isempty(lang_candidate) && lowercase(lang_candidate) in VALID_LANGUAGES
+				return lang_candidate, join(lines[2:end-1], '\n')
+			elseif isempty(lang_candidate)
+				return "sh", join(lines[2:end-1], '\n')
+			else
+				# Not a valid language - treat the candidate as part of content
+				body = join(lines[2:end-1], '\n')
+				return "sh", isempty(body) ? lang_candidate : lang_candidate * "\n" * body
+			end
 	end
-	
+
 	return "sh", content
 end
 
