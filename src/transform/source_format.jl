@@ -44,9 +44,12 @@ function collect_execution_results(execution_tasks; timeout::Float64=300.0)
         for att in attachments
             uri = isnothing(att.id) ? "" : "todoforai://attachment/$(att.id)"
             if startswith(att.mimeType, "image/")
-                push!(result_imgs, att.contentBase64)
+                # Ensure data URL format for LLM API (contentBase64 is raw base64, stripped by normalize_base64)
+                img_data = startswith(att.contentBase64, "data:") ? att.contentBase64 : "data:$(att.mimeType);base64,$(att.contentBase64)"
+                push!(result_imgs, img_data)
             elseif startswith(att.mimeType, "audio/")
-                push!(result_audios, att.contentBase64)
+                audio_data = startswith(att.contentBase64, "data:") ? att.contentBase64 : "data:$(att.mimeType);base64,$(att.contentBase64)"
+                push!(result_audios, audio_data)
             else
                 text = String(base64decode(att.contentBase64))
                 !isempty(text) && push!(result_strs, format_source_text(att.originalName, text; uri))
