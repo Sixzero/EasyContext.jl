@@ -80,7 +80,7 @@ function build_base_system_content(sys_msg::String, tools)
 
     If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
-    Follow SOLID, KISS and DRY principles. Be concise!
+    Follow SOLID, KISS and DRY principles.
 
     $(conversaton_starts_here)"""
 end
@@ -98,7 +98,7 @@ function build_custom_with_tools_content(custom_system_prompt::String, tools)
     $(tool_workflow_guide)
     If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
 
-    Follow SOLID, KISS and DRY principles. Be concise!"""
+    Follow SOLID, KISS and DRY principles."""
 end
 
 # Initialize SysMessageV1 using the shared base content
