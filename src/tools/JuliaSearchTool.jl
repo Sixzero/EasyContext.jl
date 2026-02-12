@@ -1,7 +1,7 @@
 # Types imported via ToolInterface.jl
 
 @kwdef mutable struct JuliaSearchTool <: AbstractTool
-    id::UUID = uuid4()
+    _id::UUID = uuid4()
     query::String
     julia_ctx::Union{Nothing,JuliaCTX} = nothing
     result::String = ""

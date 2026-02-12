@@ -7,7 +7,7 @@ include("diffviews/DiffViews.jl")
 #==============================================================================#
 
 @kwdef mutable struct LocalModifyFileTool <: AbstractTool
-    id::UUID = uuid4()
+    _id::UUID = uuid4()
     language::String = "sh"
     file_path::String
     root_path::String
