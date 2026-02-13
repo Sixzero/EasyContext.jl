@@ -1,6 +1,6 @@
 export truncate_output
 
-using ToolCallFormat: @deftool, CodeBlock
+using ToolCallFormat: @deftool, TextBlock
 
 const EXECUTION_CANCELLED = "Execution cancelled by user."
 
@@ -13,7 +13,7 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
     language::String = "sh",        # Parsed language from codeblock
     root_path::Union{Nothing,String} = nothing,
     run_results::Vector{String} = String[]
-) function bash("Shell commands to execute" => command::CodeBlock)
+) function bash("Shell commands to execute" => command::TextBlock)
     # Parse language from codeblock
     parsed_lang, parsed_content = parse_code_block(command)
     content = parsed_content
