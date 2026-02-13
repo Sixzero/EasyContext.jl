@@ -33,6 +33,7 @@ include("JuliaSearchTool.jl")
 
 include("ToolGenerators.jl")
 
+include("NativeToolBridge.jl")
 include("AbstractExtractor.jl")
 
 # Export tool types

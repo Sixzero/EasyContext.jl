@@ -13,6 +13,8 @@
 	price::Float32=0
 	elapsed::Float32=0
 	stop_sequence::String=""
+	tool_call_id::String=""
+	tool_calls::Union{Nothing, Vector{Dict{String,Any}}} = nothing
 end
 
 UndefMessage() = Message(timestamp=now(UTC), role=:UNKNOWN, content="")
@@ -21,8 +23,8 @@ function create_AI_message(ai_message::AbstractString, meta::Dict, context::Dict
     Message(timestamp=now(UTC), role=:assistant, content=ai_message, context=context, itok=meta["input_tokens"], otok=meta["output_tokens"], cached=meta["cache_creation_input_tokens"], cache_read=meta["cache_read_input_tokens"], price=meta["price"], elapsed=meta["elapsed"], stop_sequence=get(meta, "stop_sequence", ""))
 end
 
-function create_AI_message(ai_message::AbstractString)
-	Message(timestamp=now(UTC), role=:assistant, content=ai_message)
+function create_AI_message(ai_message::AbstractString; tool_calls::Union{Nothing, Vector{Dict{String,Any}}}=nothing)
+	Message(timestamp=now(UTC), role=:assistant, content=ai_message, tool_calls=tool_calls)
 end
 
 function create_user_message(user_query, context::Dict{String,String}=Dict{String,String}())
@@ -40,6 +42,10 @@ function create_user_message_with_vectors(user_query; images_base64::Vector{Stri
 	Message(timestamp=now(UTC), role=:user, content=user_query, context=context)
 end
 
+function create_tool_message(content::String, tool_call_id::String)
+	Message(timestamp=now(UTC), role=:tool, content=content, tool_call_id=tool_call_id)
+end
+
 update_message(msg::M, itok, otok, cached, cache_read, price, elapsed) where {M <: MSG} = begin
 	msg.itok       = itok
 	msg.otok       = otok
@@ -52,4 +58,4 @@ end
 
 Base.write(io::IO, msg::Message) = println(io, "[$(msg.role)] $(msg.content)")
 
-export create_user_message, create_AI_message
+export create_user_message, create_AI_message, create_tool_message

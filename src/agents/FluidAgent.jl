@@ -1,8 +1,9 @@
 using UUIDs
 import PromptingTools: aigenerate
 using HTTP: RequestError
+using OpenRouter: Tool
 
-export FluidAgent, work, create_FluidAgent
+export FluidAgent, work, create_FluidAgent, to_native_tools
 
 # Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
 is_interrupt(e::InterruptException) = true
@@ -20,6 +21,7 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     workspace::String = pwd()
     extractor_type  # Required - provide CallExtractor or other AbstractExtractor implementation
     sys_msg::AbstractSysMessage=SysMessageV1()
+    tool_mode::Symbol = :fluid  # :fluid (stream-parsed) or :native (API tool_calls)
 end
 
 # create_FluidAgent to prevent conflict with the constructor
@@ -36,6 +38,22 @@ function create_FluidAgent_with_sysmsg(model::Union{String, ModelConfig}, sysmsg
 end
 
 get_tool_descriptions(agent::FluidAgent) = get_tool_descriptions(agent.tools)
+
+"""Convert a single tool entry to OpenRouter.Tool(s). Returns vector (tool groups yield multiple).
+Override in downstream packages for tool groups, MCP tools, etc."""
+to_native_tools(tool) = to_native_tools_from_schema(get_tool_schema(tool))
+to_native_tools_from_schema(::Nothing) = Tool[]
+to_native_tools_from_schema(schema::ToolSchema) = [to_openrouter_tool(schema)]
+to_native_tools_from_schema(nt::NamedTuple) = [to_openrouter_tool(nt)]
+
+"""Convert agent's tools to OpenRouter.Tool vector for native API tool calling."""
+function get_native_tools(agent::FluidAgent)
+    tools = Tool[]
+    for tool in agent.tools
+        append!(tools, to_native_tools(tool))
+    end
+    tools
+end
 """
 Get tool descriptions for system prompt.
 """
@@ -99,7 +117,7 @@ Save partial AI content on interrupt. Appends [interrupted] marker.
 If no AI content generated, appends [interrupted] to last user message.
 """
 function save_interrupted_content!(session::Session, extractor::Union{AbstractExtractor, Nothing})
-    partial_content = isnothing(extractor) ? "" : extractor.full_content
+    partial_content = isnothing(extractor) || !hasproperty(extractor, :full_content) ? "" : extractor.full_content
     if !isempty(strip(partial_content))
         push_message!(session, create_AI_message(partial_content * "\n[interrupted]"))
     elseif !isempty(session.messages) && session.messages[end].role == :user
@@ -147,26 +165,12 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     extractor = nothing  # Declare here so it's accessible in catch block
     i = 0
 
+    # Native mode: precompute OpenRouter.Tool list
+    native_tools = agent.tool_mode == :native ? get_native_tools(agent) : nothing
+
     try
         while i < MAX_ITERATIONS
             i += 1
-
-            # Create new extractor for each run
-            extractor = agent.extractor_type(agent.tools)
-            extractor_fn(text) = begin
-                extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
-            end
-
-            cb = create(StreamCallbackTYPE(;
-                io, on_start, on_error, highlight_enabled, process_enabled,
-                on_done = () -> begin
-                    process_enabled && extract_tool_calls("\n", extractor, io; kwargs=tool_kwargs, is_flush=true)
-                    on_done()
-                end,
-                on_content = process_enabled ? extractor_fn : noop,
-            ))
-            model = agent.model
-            # @save "conv.jld2" conv sys_msg_content model api_kwargs cache
 
             # Check if compaction is needed before LLM call
             if cutter !== nothing && source_tracker !== nothing && should_cut(cutter, session, source_tracker)
@@ -176,24 +180,48 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             end
 
             pt_messages = to_PT_messages(session, sys_msg_content)
+
+            # ── Shared: extractor, streaming callback, LLM call ──
+            extractor = agent.extractor_type(agent.tools)
+            extractor_fn(text) = extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
+
+            cb = create(StreamCallbackTYPE(;
+                io, on_start, on_error, highlight_enabled, process_enabled,
+                on_done = () -> begin
+                    process_enabled && extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)
+                    on_done()
+                end,
+                on_content = process_enabled ? extractor_fn : noop,
+            ))
             response = aigenerate_with_config(agent.model, pt_messages;
-                cache, api_kwargs, streamcallback=cb, verbose=false)
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools)
 
-            push_message!(session, create_AI_message(response.content))
+            # ── Mode-specific post-response handling ──
+            if agent.tool_mode == :native
+                push_message!(session, AIMessage(content=response.content, tool_calls=response.tool_calls))
 
+                # No tool calls → done
+                (response.tool_calls === nothing || isempty(response.tool_calls)) && break
 
+                process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
+                are_tools_cancelled(extractor) && break
 
-            
-            # Tools already executed during streaming (emit_tool_callback). Check if we should continue.
-            are_tools_cancelled(extractor) && break
-            
-            # Wait for running tool tasks and collect results
-            result_str, result_img, result_audio = collect_execution_results(extractor)
-            if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
-                result_str = "(tools finished execution)"
+                tool_msgs = collect_tool_messages(extractor)
+                for tm in tool_msgs
+                    push_message!(session, tm)
+                end
+                on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
+            else
+                push_message!(session, create_AI_message(response.content))
+                are_tools_cancelled(extractor) && break
+
+                result_str, result_img, result_audio = collect_execution_results(extractor)
+                if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
+                    result_str = "(tools finished execution)"
+                end
+                push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
+                on_tool_results(result_str, result_img, result_audio)
             end
-            push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
-            on_tool_results(result_str, result_img, result_audio)
 
             # Next iteration's assistant message ID
             io.message_id = string(uuid4())

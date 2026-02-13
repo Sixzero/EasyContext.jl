@@ -1,4 +1,4 @@
-using OpenRouter: AbstractMessage, SystemMessage, UserMessage, AIMessage
+using OpenRouter: AbstractMessage, SystemMessage, UserMessage, AIMessage, ToolMessage
 export Session, initSession
 
 include("SessionImageSupport.jl")
@@ -13,11 +13,16 @@ end
 initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
 
 function push_message!(conv::Session, msg::AIMessage)
-    if !isempty(conv.messages) && conv.messages[end].role == :assistant
+    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.tool_calls === nothing
         conv.messages[end].content *= "\n" * msg.content
     else
-        push!(conv.messages, create_AI_message(String(msg.content)))
+        push!(conv.messages, create_AI_message(String(msg.content); tool_calls=msg.tool_calls))
     end
+    conv
+end
+
+function push_message!(conv::Session, msg::ToolMessage)
+    push!(conv.messages, create_tool_message(String(msg.content), msg.tool_call_id))
     conv
 end
 
@@ -48,7 +53,7 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
     
     messages = Vector{AbstractMessage}(undef, length(session.messages) + 1)
     messages[1] = SystemMessage(content=sys_msg)
-    
+
     for (i, msg) in enumerate(session.messages)
         messages[i + 1] = if msg.role == :user
             # Extract file paths from content
@@ -77,9 +82,11 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             else
                 UserMessage(content=full_content)
             end
+        elseif msg.role == :tool
+            ToolMessage(content=msg.content, tool_call_id=msg.tool_call_id)
         elseif msg.role == :assistant
             full_content = context_combiner!(msg.content, msg.context)
-            AIMessage(content=full_content)
+            AIMessage(content=full_content, tool_calls=msg.tool_calls)
         else
             full_content = context_combiner!(msg.content, msg.context)
             UserMessage(content=full_content)
