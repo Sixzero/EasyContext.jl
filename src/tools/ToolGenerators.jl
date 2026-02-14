@@ -32,7 +32,7 @@ end
 
 ToolCallFormat.toolname(::WorkspaceToolGenerator) = toolname(WorkspaceSearchTool)
 ToolCallFormat.get_description(::WorkspaceToolGenerator) = get_description(WorkspaceSearchTool)
-ToolCallFormat.get_extra_description(tg::WorkspaceToolGenerator) = workspace_format_description_raw(tg.workspace_context.workspace)
+ToolCallFormat.get_extra_description(::WorkspaceToolGenerator) = nothing
 
 ToolCallFormat.get_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? tool.tool._id : nothing
 ToolCallFormat.is_cancelled(::AbstractToolGenerator) = false
