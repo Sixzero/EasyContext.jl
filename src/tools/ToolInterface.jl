@@ -12,7 +12,7 @@ import ToolCallFormat: result2string, resultimg2base64, resultaudio2base64
 import ToolCallFormat: is_executable, get_cost
 
 using ToolCallFormat: AbstractTool, TextBlock
-using ToolCallFormat: description_from_schema
+using ToolCallFormat: description_from_schema, get_tool_type
 using ToolCallFormat: ParsedCall, ToolSchema, ParamSchema
 using ToolCallFormat: CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT
 using ToolCallFormat: get_default_call_style, generate_tool_definition

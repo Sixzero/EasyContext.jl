@@ -22,6 +22,7 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     extractor_type  # Required - provide CallExtractor or other AbstractExtractor implementation
     sys_msg::AbstractSysMessage=SysMessageV1()
     tool_mode::Symbol = :fluid  # :fluid (stream-parsed) or :native (API tool_calls)
+    block_to_call_id::Dict{UUID,String} = Dict{UUID,String}()  # tool._id → API tool_call_id (for native approval matching)
 end
 
 # create_FluidAgent to prevent conflict with the constructor
@@ -204,7 +205,16 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 (response.tool_calls === nothing || isempty(response.tool_calls)) && break
 
                 process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
-                are_tools_cancelled(extractor) && break
+                # Persist block_id → call_id mapping for approval result matching
+                merge!(agent.block_to_call_id, extractor.block_to_call_id)
+                if are_tools_cancelled(extractor)
+                    # Push placeholder ToolMessages so session stays API-valid
+                    # (Anthropic requires tool_result after every tool_use)
+                    for tc in response.tool_calls
+                        push_message!(session, ToolMessage(content="[awaiting approval]", tool_call_id=tc["id"]))
+                    end
+                    break
+                end
 
                 tool_msgs = collect_tool_messages(extractor)
                 for tm in tool_msgs
