@@ -199,7 +199,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # ── Mode-specific post-response handling ──
             if agent.tool_mode == :native
-                push_message!(session, AIMessage(content=response.content, tool_calls=response.tool_calls))
+                push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))
 
                 # No tool calls → done
                 (response.tool_calls === nothing || isempty(response.tool_calls)) && break
