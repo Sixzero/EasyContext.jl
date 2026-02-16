@@ -25,7 +25,12 @@ using PrecompileTools
         workspace_context = init_workspace_context(project_paths, verbose=false)
         
         # Use RandomEmbedder for precompilation to avoid API calls
-        random_embedder = create_random_embedder(dimensions=1536, seed=42, cache_prefix="random_precompile")
+        random_embedder = CachedBatchEmbedder(;
+            embedder=RandomEmbedder(dimensions=1536, rng=Random.MersenneTwister(42), verbose=false),
+            cache_dir=mktempdir(),
+            cache_prefix="random_precompile",
+            verbose=false
+        )
         
         # Test the filtering functionality with dummy data
         tmp_score = get_score(random_embedder, dummy_chunks, "hello")
