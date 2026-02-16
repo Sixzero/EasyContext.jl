@@ -208,7 +208,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
                 # Persist block_id → call_id mapping for approval result matching
                 merge!(agent.block_to_call_id, extractor.block_to_call_id)
-                are_tools_cancelled(extractor) && break
+                any_tool_needs_approval(extractor) && break
 
                 tool_msgs = collect_tool_messages(extractor)
                 for tm in tool_msgs
@@ -217,7 +217,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
             else
                 push_message!(session, create_AI_message(response.content))
-                are_tools_cancelled(extractor) && break
+                any_tool_needs_approval(extractor) && break
 
                 result_str, result_img, result_audio = collect_execution_results(extractor)
                 if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
