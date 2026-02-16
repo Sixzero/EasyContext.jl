@@ -42,8 +42,12 @@ function create_user_message_with_vectors(user_query; images_base64::Vector{Stri
 	Message(timestamp=now(UTC), role=:user, content=user_query, context=context)
 end
 
-function create_tool_message(content::String, tool_call_id::String)
-	Message(timestamp=now(UTC), role=:tool, content=content, tool_call_id=tool_call_id)
+function create_tool_message(content::String, tool_call_id::String; images_base64::Vector{String}=String[])
+	context = Dict{String,String}()
+	for (i, img) in enumerate(images_base64)
+		context["base64img_$i"] = img
+	end
+	Message(timestamp=now(UTC), role=:tool, content=content, tool_call_id=tool_call_id, context=context)
 end
 
 update_message(msg::M, itok, otok, cached, cache_read, price, elapsed) where {M <: MSG} = begin

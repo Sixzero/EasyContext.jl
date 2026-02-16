@@ -181,6 +181,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             end
 
             pt_messages = to_PT_messages(session, sys_msg_content)
+            @info "work() pt_messages" n=length(pt_messages) roles=[typeof(m).name.name for m in pt_messages] contents=[length(m.content) for m in pt_messages]
 
             # ── Shared: extractor, streaming callback, LLM call ──
             extractor = agent.extractor_type(agent.tools)
@@ -207,14 +208,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
                 # Persist block_id → call_id mapping for approval result matching
                 merge!(agent.block_to_call_id, extractor.block_to_call_id)
-                if are_tools_cancelled(extractor)
-                    # Push placeholder ToolMessages so session stays API-valid
-                    # (Anthropic requires tool_result after every tool_use)
-                    for tc in response.tool_calls
-                        push_message!(session, ToolMessage(content="[awaiting approval]", tool_call_id=tc["id"]))
-                    end
-                    break
-                end
+                are_tools_cancelled(extractor) && break
 
                 tool_msgs = collect_tool_messages(extractor)
                 for tm in tool_msgs
