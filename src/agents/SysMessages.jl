@@ -70,28 +70,16 @@ function build_base_system_content(sys_msg::String, tools; native_tools::Bool=fa
 
     """$(sys_msg)
 
-    $(highlight_code_guide)
-    $(highlight_changes_guide_v2)
-    $(organize_file_guide)
-
     $(dont_act_chaotic)
-    $(refactor_all)
     $(simplicity_guide)
 
-    $(ambiguity_guide)
-
-    $(test_it)
-
-    $(no_loggers)
-    $(system_information)
+    Follow SOLID, KISS and DRY principles.
+    Reference files as `path/to/file.ext:line` so they're clickable.
+    Keep going until the task is fully resolved before yielding back. Prefer action over asking — only ask when there's genuine ambiguity with multiple valid approaches. After changes, verify they work.
 
     $(tool_section)
 
-    If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
-
-    Follow SOLID, KISS and DRY principles.
-
-    $(conversaton_starts_here)"""
+    If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool."""
 end
 
 # Helper function to build custom system message with tools
@@ -100,9 +88,7 @@ function build_custom_with_tools_content(custom_system_prompt::String, tools; na
     tool_section = build_tool_section(tools; native_tools)
 
     """$(base_content)$(tool_section)
-    If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool.
-
-    Follow SOLID, KISS and DRY principles."""
+    If a tool doesn't return results, don't rerun it - just note that you didn't receive results from that tool."""
 end
 
 # Helper to check if agent uses native tool mode
