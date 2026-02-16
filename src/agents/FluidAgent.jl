@@ -214,6 +214,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 for tm in tool_msgs
                     push_message!(session, tm)
                 end
+                mark_tools_handled!(extractor, io)
                 on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
             else
                 push_message!(session, create_AI_message(response.content))
@@ -224,6 +225,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     result_str = "(tools finished execution)"
                 end
                 push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
+                mark_tools_handled!(extractor, io)
                 on_tool_results(result_str, result_img, result_audio)
             end
 

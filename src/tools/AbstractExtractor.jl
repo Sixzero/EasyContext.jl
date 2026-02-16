@@ -1,4 +1,4 @@
-export AbstractExtractor, any_tool_needs_approval, get_tool_results, process_native_tool_calls!, collect_tool_messages
+export AbstractExtractor, any_tool_needs_approval, get_tool_results, process_native_tool_calls!, collect_tool_messages, mark_tools_handled!
 
 abstract type AbstractExtractor end
 
@@ -23,3 +23,7 @@ end
 function collect_tool_messages(extractor::E; kwargs...) where E <: AbstractExtractor
 	@assert false "collect_tool_messages is not implemented for $(E)"
 end
+
+"""Mark executed tools as agent-handled. Called after collection when no approvals are pending.
+Default no-op; override in agent package to send agentHandled BLOCK_UPDATEs."""
+mark_tools_handled!(extractor::AbstractExtractor, io) = nothing
