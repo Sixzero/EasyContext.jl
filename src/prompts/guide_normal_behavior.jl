@@ -1,6 +1,5 @@
 const dont_act_chaotic = """
-You MUST not change part of the code that isn't necessary to fulfill the request.
-Don't change variable names and string literals, unless necessary or directed.
-Don't change the formatting! So if two spaces are used then use two spaces if four then use four if tabs then use tabs! Format the file if it is directed!
-Also don't delete and add new lines just focus on the request!
+Stay focused but thorough: do what's needed to fully complete the task, including necessary follow-up steps.
+Don't make unrelated changes — stay on task but see it through to completion.
+When working with code, preserve the file's existing formatting style.
 """
