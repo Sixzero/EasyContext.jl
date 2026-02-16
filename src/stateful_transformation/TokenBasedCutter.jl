@@ -124,10 +124,11 @@ function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTr
     # Ensure minimum and adjust for assistant start
     keep_count = max(keep_count, cutter.min_keep_messages)
 
-    if keep_count > 0 && keep_count <= n
+    if keep_count > 0 && keep_count < n
         cut_start = n - keep_count + 1
-        if messages[cut_start].role === :assistant && keep_count > 1
-            keep_count -= 1
+        if messages[cut_start].role !== :user
+            # Expand keep to include the preceding :user message
+            keep_count += 1
         end
     end
 

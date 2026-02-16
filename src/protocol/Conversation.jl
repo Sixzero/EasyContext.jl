@@ -23,9 +23,12 @@ end
 function cut_history!(conv::CONV; keep=8) # always going to cut after an :assitant but before a :user message.
 	length(conv.messages) <= keep && return conv.messages
 	start_index = max(1, length(conv.messages) - keep + 1)
+	# Adjust forward to the nearest :user message boundary
+	while start_index < length(conv.messages) && conv.messages[start_index].role != :user
+		start_index += 1
+	end
     kept = length(conv.messages) - start_index + 1
-	@assert (conv.messages[start_index].role == :user) "how could we cut like this? This function should be only called after :assistant message was attached to the end of the message list"
-	
+
 	conv.messages = conv.messages[start_index:end]
 	kept
 end
