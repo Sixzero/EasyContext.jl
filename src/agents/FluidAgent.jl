@@ -173,7 +173,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 on_content = process_enabled ? extractor_fn : noop,
             ))
             response = aigenerate_with_config(agent.model, pt_messages;
-                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools)
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice="auto")
 
             # ── Post-response handling (native API tool calling) ──
             push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))
