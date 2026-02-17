@@ -7,7 +7,7 @@ Call tools using this exact format:
 tool_name(param1: "value1", param2: "value2")
 
 Examples:
-web_content(url: "https://example.com/docs")
+web_fetch(url: "https://example.com/docs", prompt: "Extract the API docs")
 api_get_current_context()
 
 IMPORTANT: Do NOT use XML-style formats like <function_calls>, <invoke>, or any XML tags for tool calls.
