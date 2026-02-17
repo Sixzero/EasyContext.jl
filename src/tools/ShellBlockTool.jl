@@ -12,6 +12,8 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
     content::String = "",           # Parsed command (set from codeblock)
     language::String = "sh",        # Parsed language from codeblock
     root_path::Union{Nothing,String} = nothing,
+    no_confirm::Bool = false,
+    io::IO = stdout,
     run_results::Vector{String} = String[]
 ) function bash("Shell commands to execute" => command::TextBlock)
     # Parse language from codeblock
@@ -19,15 +21,16 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
     content = parsed_content
     !isempty(parsed_lang) && (language = parsed_lang)
 
-    print_code(content)
+    print_code(content; io)
 
-    raw_result = if get(kw, :no_confirm, false) || get_user_confirmation()
-        print_output_header()
+    raw_result = if no_confirm || get_user_confirmation()
+        print_output_header(; io)
+        cmd = Cmd(["zsh", "-c", content])
         if isnothing(root_path)
-            cmd_all_info_stream(`zsh -c $content`)
+            cmd_all_info_stream(cmd; io)
         else
             cd(root_path) do
-                cmd_all_info_stream(`zsh -c $content`)
+                cmd_all_info_stream(cmd; io)
             end
         end
     else
@@ -54,21 +57,22 @@ end
 # Custom overrides
 ToolCallFormat.is_cancelled(cmd::BashTool) = !isempty(cmd.run_results) && cmd.run_results[end] == EXECUTION_CANCELLED
 
-function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
+function cmd_all_info_stream(cmd::Cmd, output=IOBuffer(), error=IOBuffer(); io::IO=stdout)
     out_pipe, err_pipe = Pipe(), Pipe()
     process = run(pipeline(ignorestatus(cmd), stdout=out_pipe, stderr=err_pipe), wait=false)
     close(out_pipe.in); close(err_pipe.in)
 
-    @async_showerr for line in eachline(out_pipe)
-        println(line); flush(stdout)
+    t_out = @async_showerr for line in eachline(out_pipe)
+        println(io, line); flush(io)
         write(output, line * "\n")
     end
-    @async_showerr for line in eachline(err_pipe)
+    t_err = @async_showerr for line in eachline(err_pipe)
         println(stderr, line); flush(stderr)
         write(error, line * "\n")
     end
 
     wait(process)
+    wait(t_out); wait(t_err)
     format_cmd_output(output, error, process)
 end
 

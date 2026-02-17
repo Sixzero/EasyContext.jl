@@ -7,12 +7,12 @@ print_tool_result(result) = begin
     print(result, "\e[0m")
 end
 
-function print_code(code::AbstractString)
-    println("\e[32m$code\e[0m")
+function print_code(code::AbstractString; io::IO=stdout)
+    println(io, "\e[32m$code\e[0m")
 end
 
-function print_output_header()
-    println("\n\e[36mOutput:\e[0m")
+function print_output_header(; io::IO=stdout)
+    println(io, "\n\e[36mOutput:\e[0m")
 end
 
 function execute_with_output(cmd::Cmd, output=IOBuffer(), error=IOBuffer())
