@@ -19,9 +19,8 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     tools::Vector
     model::Union{String,ModelConfig} = "claude"
     workspace::String = pwd()
-    extractor_type  # Required - provide CallExtractor or other AbstractExtractor implementation
+    extractor_type  # Required - provide NativeCallExtractor or other AbstractExtractor implementation
     sys_msg::AbstractSysMessage=SysMessageV1()
-    tool_mode::Symbol = :fluid  # :fluid (stream-parsed) or :native (API tool_calls)
     block_to_call_id::Dict{UUID,String} = Dict{UUID,String}()  # tool._id → API tool_call_id (for native approval matching)
 end
 
@@ -38,8 +37,6 @@ function create_FluidAgent_with_sysmsg(model::Union{String, ModelConfig}, sysmsg
     agent
 end
 
-get_tool_descriptions(agent::FluidAgent) = get_tool_descriptions(agent.tools)
-
 """Convert a single tool entry to OpenRouter.Tool(s). Returns vector (tool groups yield multiple).
 Override in downstream packages for tool groups, MCP tools, etc."""
 to_native_tools(tool) = to_native_tools_from_schema(get_tool_schema(tool))
@@ -55,30 +52,6 @@ function get_native_tools(agent::FluidAgent)
     end
     tools
 end
-"""
-Get tool descriptions for system prompt.
-"""
-function get_tool_descriptions(tools::AbstractVector)
-    descriptions = get_description.(tools)
-    """
-# Available tools:
-$(join(descriptions, "\n"))"""
-end
-
-"""
-Generate system prompt for LLM
-"""
-function get_system_prompt(agent::FluidAgent)
-    """
-    You are an AI assistant that can use tools to help accomplish tasks.
-    
-    $(get_tool_descriptions(agent))
-    
-    Always format tool calls exactly as shown in the examples.
-    Wait for tool results before proceeding with dependent steps.
-    """
-end
-
 """
 Apply thinking API parameters for Claude models
 """
@@ -168,8 +141,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     extractor = nothing  # Declare here so it's accessible in catch block
     i = 0
 
-    # Native mode: precompute OpenRouter.Tool list
-    native_tools = agent.tool_mode == :native ? get_native_tools(agent) : nothing
+    # Precompute OpenRouter.Tool list for native API tool calling
+    native_tools = get_native_tools(agent)
 
     try
         while i < MAX_ITERATIONS
@@ -202,36 +175,23 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             response = aigenerate_with_config(agent.model, pt_messages;
                 cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools)
 
-            # ── Mode-specific post-response handling ──
-            if agent.tool_mode == :native
-                push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))
+            # ── Post-response handling (native API tool calling) ──
+            push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))
 
-                # No tool calls → done
-                (response.tool_calls === nothing || isempty(response.tool_calls)) && break
+            # No tool calls → done
+            (response.tool_calls === nothing || isempty(response.tool_calls)) && break
 
-                process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
-                # Persist block_id → call_id mapping for approval result matching
-                merge!(agent.block_to_call_id, extractor.block_to_call_id)
-                any_tool_needs_approval(extractor) && break
+            process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
+            # Persist block_id → call_id mapping for approval result matching
+            merge!(agent.block_to_call_id, extractor.block_to_call_id)
+            any_tool_needs_approval(extractor) && break
 
-                tool_msgs = collect_tool_messages(extractor)
-                for tm in tool_msgs
-                    push_message!(session, tm)
-                end
-                mark_tools_handled!(extractor, io)
-                on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
-            else
-                push_message!(session, create_AI_message(response.content))
-                any_tool_needs_approval(extractor) && break
-
-                result_str, result_img, result_audio = collect_execution_results(extractor)
-                if isempty(strip(result_str)) && isempty(result_img) && isempty(result_audio)
-                    result_str = "(tools finished execution)"
-                end
-                push_message!(session, create_user_message_with_vectors(result_str; images_base64=result_img, audio_base64=result_audio))
-                mark_tools_handled!(extractor, io)
-                on_tool_results(result_str, result_img, result_audio)
+            tool_msgs = collect_tool_messages(extractor)
+            for tm in tool_msgs
+                push_message!(session, tm)
             end
+            mark_tools_handled!(extractor, io)
+            on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
 
             # Next iteration's assistant message ID
             hasproperty(io, :message_id) && (io.message_id = string(uuid4()))

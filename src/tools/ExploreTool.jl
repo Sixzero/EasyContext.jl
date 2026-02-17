@@ -35,8 +35,6 @@ function ToolCallFormat.execute(cmd::ExploreToolCall, ctx::ToolCallFormat.Abstra
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = EXPLORE_SYS_PROMPT,
     )
-    agent.tool_mode = :native
-
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     _explore_results[cmd._id] = content

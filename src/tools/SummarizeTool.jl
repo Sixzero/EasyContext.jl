@@ -44,8 +44,6 @@ $content
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = SUMMARIZE_SYS_PROMPT,
     )
-    agent.tool_mode = :native
-
     response = work(agent, user_msg; io=devnull, quiet=true)
     result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     _summarize_results[cmd._id] = result

@@ -36,8 +36,6 @@ function ToolCallFormat.execute(cmd::PlanToolCall, ctx::ToolCallFormat.AbstractC
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = PLAN_SYS_PROMPT,
     )
-    agent.tool_mode = :native
-
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     _plan_results[cmd._id] = content

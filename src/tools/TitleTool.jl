@@ -26,8 +26,6 @@ function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.Abstract
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = opencode_title_prompt,
     )
-    agent.tool_mode = :native
-
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? strip(something(response.content, "Untitled")) : "Untitled"
     _title_results[cmd._id] = content
