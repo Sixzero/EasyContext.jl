@@ -24,6 +24,7 @@ Otherwise, it joins with root_path (if provided) and normalizes the path.
 
 Returns the normalized expanded path.  
 """
+expand_path(path::AbstractString, ::Nothing) = expand_path(path)
 function expand_path(path::AbstractString, root_path::AbstractString="")
     if startswith(path, "~")
         # If path starts with tilde, expand it directly without using root_path

@@ -35,10 +35,12 @@ include("ToolGenerators.jl")
 
 include("NativeToolBridge.jl")
 include("AbstractExtractor.jl")
+include("NativeExtractor.jl")
 
 # Export tool types
 export BashTool, SendKeyTool, CatFileTool, ClickTool, LocalCreateFileTool, LocalModifyFileTool
 export WebSearchTool, WorkspaceSearchTool, JuliaSearchTool, NewTodoTool
+export NativeExtractor
 
 # Note: Tool interface types and functions (AbstractTool, toolname, execute, etc.)
 # should be imported directly from ToolCallFormat

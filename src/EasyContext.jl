@@ -54,6 +54,10 @@ include("tools/tools.jl")
 include("agents/SysMessages.jl")
 include("agents/FluidAgent.jl")
 include("prompts/guides.jl")
+include("tools/ExploreTool.jl")
+include("tools/PlanTool.jl")
+include("tools/TitleTool.jl")
+include("tools/SummarizeTool.jl")
 include("Rephrase.v1.jl")
 
 include("action/loading_spinner.jl")
@@ -77,6 +81,13 @@ function stream_audio end
 
 
 include("precompile_scripts.jl")
+
+function __init__()
+    for T in [BashTool, CatFileTool, LocalCreateFileTool, LocalModifyFileTool,
+              SendKeyTool, ClickTool, NewTodoTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool]
+        ToolCallFormat.register_tool_type!(ToolCallFormat.toolname(T), T)
+    end
+end
 
 end # module EasyContext
 

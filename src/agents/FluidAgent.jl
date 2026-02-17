@@ -134,6 +134,7 @@ end
 Run an LLM interaction with tool execution.
 """
 function work(agent::FluidAgent, session::Session; cache=nothing,
+    quiet::Bool=false,
     highlight_enabled::Bool=true,
     process_enabled::Bool=true,
     on_error=noop,
@@ -181,14 +182,13 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             end
 
             pt_messages = to_PT_messages(session, sys_msg_content)
-            @info "work() pt_messages" n=length(pt_messages) roles=[typeof(m).name.name for m in pt_messages] contents=[length(m.content) for m in pt_messages]
 
             # ── Shared: extractor, streaming callback, LLM call ──
             extractor = agent.extractor_type(agent.tools)
             extractor_fn(text) = extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
 
             cb = create(StreamCallbackTYPE(;
-                io, on_start, on_error, highlight_enabled, process_enabled,
+                io, on_start, on_error, highlight_enabled, process_enabled, quiet,
                 on_done = () -> begin
                     process_enabled && extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)
                     on_done()
@@ -230,7 +230,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             end
 
             # Next iteration's assistant message ID
-            io.message_id = string(uuid4())
+            hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
         end
         if i >= MAX_ITERATIONS
             @warn "Agent reached maximum unsupervised iteration limit ($MAX_ITERATIONS). Contact dev@todofor.ai to increase."

@@ -13,6 +13,7 @@ include("syntax_highlight.jl")
     on_content::Function = noop
     highlight_enabled::Bool = true
     process_enabled::Bool = true
+    quiet::Bool = false
     mode::String = "normal"
 end
 
@@ -33,8 +34,8 @@ create(config::StreamCallbackConfig) = begin
         # callback = 
     HttpStreamHooks(
             content_formatter = content_handler,
-            on_meta_usr       = (tokens, cost, elapsed) -> (flush_state(state); format_user_meta(tokens, cost, elapsed)),
-            on_meta_ai        = (tokens, cost, elapsed) -> (flush_state(state); format_ai_meta(tokens, cost, elapsed)), 
+            on_meta_usr       = config.quiet ? (tokens, cost, elapsed) -> nothing : (tokens, cost, elapsed) -> (flush_state(state); format_user_meta(tokens, cost, elapsed)),
+            on_meta_ai        = config.quiet ? (tokens, cost, elapsed) -> nothing : (tokens, cost, elapsed) -> (flush_state(state); format_ai_meta(tokens, cost, elapsed)),
             on_start          = config.on_start,
             on_done           = () -> (flush_state(state); config.on_done()),
             on_error          = e -> ((e isa InterruptException ? rethrow(e) : (println(config.io, e); config.on_error(e)))),
