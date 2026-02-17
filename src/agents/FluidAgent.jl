@@ -143,6 +143,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_start=noop,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
     on_tool_results=noop,  # Called with (result_str, result_img, result_audio) after tool execution
+    on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
@@ -173,6 +174,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     try
         while i < MAX_ITERATIONS
             i += 1
+
+            # Drain any queued user messages before LLM call
+            on_drain_user_queue()
 
             # Check if compaction is needed before LLM call
             if cutter !== nothing && source_tracker !== nothing && should_cut(cutter, session, source_tracker)
