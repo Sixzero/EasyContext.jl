@@ -141,15 +141,15 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     extractor = nothing  # Declare here so it's accessible in catch block
     i = 0
 
-    # Precompute OpenRouter.Tool list for native API tool calling
-    native_tools = get_native_tools(agent)
-
     try
         while i < MAX_ITERATIONS
             i += 1
 
             # Drain any queued user messages before LLM call
             on_drain_user_queue()
+
+            # Recompute native tools after drain (tools may be populated/updated by drain)
+            native_tools = get_native_tools(agent)
 
             # Check if compaction is needed before LLM call
             if cutter !== nothing && source_tracker !== nothing && should_cut(cutter, session, source_tracker)
