@@ -1,10 +1,12 @@
-using ToolCallFormat: AbstractContext
 # @deftool, TextBlock imported via ToolInterface.jl
 
-@deftool "Create a new file with content" function local_create_file(file_path::String, content::TextBlock; ctx::AbstractContext)
-    # Clean file_path (remove trailing >)
-    file_path = endswith(file_path, ">") ? chop(file_path) : file_path
-    path = expand_path(file_path, ctx.root_path)
+@deftool "Create a new file with content" (
+    root_path::Union{Nothing,String} = nothing,
+    no_confirm::Bool = false,
+) function local_create_file(path::String, content::TextBlock)
+    # Clean path (remove trailing >)
+    path = endswith(path, ">") ? chop(path) : path
+    path = expand_path(path, root_path)
 
     shell_cmd = process_create_command(path, content)
     shortened_code = get_shortened_code(shell_cmd, 4, 2)
@@ -13,7 +15,6 @@ using ToolCallFormat: AbstractContext
     dir = dirname(path)
     !isdir(dir) && mkpath(dir)
 
-    no_confirm = get(kw, :no_confirm, false)
     if no_confirm || get_user_confirmation()
         print_output_header()
         execute_with_output(`zsh -c $shell_cmd`)

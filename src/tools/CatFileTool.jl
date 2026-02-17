@@ -1,9 +1,10 @@
-using ToolCallFormat: AbstractContext
 # @deftool imported via ToolInterface.jl
 
-@deftool "Read file content. Supports line ranges: file:10-20, file:10-, file:-20 (tail)" function cat_file(file_path::String; ctx::AbstractContext)
-    path_str, line_start, line_end = parse_file_range(file_path)
-    path = expand_path(path_str, ctx.root_path)
+@deftool "Read file content. Supports line ranges: file:10-20, file:10-, file:-20 (tail)" (
+    root_path::Union{Nothing,String} = nothing,
+) function cat_file(path::String)
+    path_str, line_start, line_end = parse_file_range(path)
+    path = expand_path(path_str, root_path)
     !isfile(path) && return "cat: $(path): No such file or directory"
     file_format(format_path_str(path_str, line_start, line_end),
                 extract_lines(read(path, String), line_start, line_end))

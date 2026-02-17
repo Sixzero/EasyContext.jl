@@ -8,8 +8,8 @@ register_diffview_subtype!(MonacoMeldDiffView)
 
 function execute_with_editor(tool::LocalModifyFileTool, view::MonacoMeldDiffView; no_confirm=false)
     if is_diff_service_available(view.port)
-        file_path, line_range = parse_source(tool.file_path)
-        expanded_path = expanduser(file_path)
+        parsed_path, line_range = parse_source(tool.path)
+        expanded_path = expanduser(parsed_path)
 
         payload = Dict(
             "leftPath" => string(expanded_path),

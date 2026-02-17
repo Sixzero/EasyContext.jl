@@ -9,7 +9,7 @@ include("diffviews/DiffViews.jl")
 @kwdef mutable struct LocalModifyFileTool <: AbstractTool
     _id::UUID = uuid4()
     language::String = "sh"
-    file_path::String
+    path::String
     root_path::String
     content::String
     postcontent::String
@@ -17,9 +17,9 @@ include("diffviews/DiffViews.jl")
 end
 
 function ToolCallFormat.create_tool(::Type{LocalModifyFileTool}, call::ParsedCall)
-    file_path_pv = get(call.kwargs, "file_path", nothing)
-    file_path = file_path_pv !== nothing ? file_path_pv.value : ""
-    file_path = endswith(file_path, ">") ? chop(file_path) : file_path
+    path_pv = get(call.kwargs, "path", nothing)
+    path = path_pv !== nothing ? path_pv.value : ""
+    path = endswith(path, ">") ? chop(path) : path
 
     content_pv = get(call.kwargs, "content", nothing)
     raw_content = content_pv !== nothing ? content_pv.value : call.content
@@ -28,7 +28,7 @@ function ToolCallFormat.create_tool(::Type{LocalModifyFileTool}, call::ParsedCal
     root_path_pv = get(call.kwargs, "root_path", nothing)
     LocalModifyFileTool(;
         language,
-        file_path,
+        path,
         root_path = root_path_pv !== nothing ? root_path_pv.value : ".",
         content,
         postcontent = ""
@@ -41,7 +41,7 @@ const MODIFYFILE_SCHEMA = (
     name = "local_modify_file",
     description = "Modify an existing file with code changes. Use '... existing code ...' comments to skip unchanged parts",
     params = [
-        (name = "file_path", type = "string", description = "Path to file to modify", required = true),
+        (name = "path", type = "string", description = "Path to file to modify", required = true),
         (name = "content", type = "codeblock", description = "Code changes", required = true),
     ]
 )
@@ -114,18 +114,18 @@ function LLM_conditional_apply_changes(tool::LocalModifyFileTool)
     tool
 end
 
-LLM_apply_changes_to_file(tool::LocalModifyFileTool) = LLM_apply_changes_to_file(tool.root_path, tool.file_path, tool.content, tool.language, tool.model)
+LLM_apply_changes_to_file(tool::LocalModifyFileTool) = LLM_apply_changes_to_file(tool.root_path, tool.path, tool.content, tool.language, tool.model)
 
-function LLM_apply_changes_to_file(root_path::String, file_path::String, content::String, language::String, models::Vector{String})
+function LLM_apply_changes_to_file(root_path::String, path::String, content::String, language::String, models::Vector{String})
     original_content = ""
     cd(root_path) do
-        file_path, line_range = parse_source(file_path)
-        path = expand_path(file_path)
+        path, line_range = parse_source(path)
+        path = expand_path(path)
 
         if isfile(path)
             original_content = read(path, String)
         else
-            @warn "File not found: $file_path (expanded: $path)"
+            @warn "File not found: $path (expanded: $path)"
             content
         end
     end
