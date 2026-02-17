@@ -10,8 +10,7 @@ into LLM message content. This is the single source of truth for the format.
 
 Images and audio are NOT included here — they use provider-specific typed inputs.
 """
-format_source_text(name::String, content::String; uri::String="")::String =
-    isempty(uri) ? "# Source: $name\n$content" : "# Source: $name\n# URI: $uri\n$content"
+format_source_text(name, content; uri="") = "# Source: $name\n" * (isempty(uri) ? "" : "# URI: $uri\n") * content
 
 """
 Collect results from execution tasks that return Vector{AttachmentWireCreate} or nothing.
