@@ -13,12 +13,11 @@ const PLAN_TAG = "plan"
     query::String
     tools::Vector
     model::Union{String, Nothing}
+    result::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::PlanToolCall) = t._id
 LLM_safetorun(::PlanToolCall) = true
-
-const _plan_results = Dict{UUID, String}()
 
 const PLAN_SYS_PROMPT = """You are a planning agent. Design detailed implementation plans by exploring the codebase first, then proposing a decision-complete plan.
 
@@ -38,11 +37,11 @@ function ToolCallFormat.execute(cmd::PlanToolCall, ctx::ToolCallFormat.AbstractC
     )
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? something(response.content, "(no response)") : "(no response)"
-    _plan_results[cmd._id] = content
+    cmd.result = content
     cmd
 end
 
-ToolCallFormat.result2string(cmd::PlanToolCall) = pop!(_plan_results, cmd._id, "(no result)")
+ToolCallFormat.result2string(cmd::PlanToolCall) = something(cmd.result, "(no result)")
 
 # --- The generator (holds config, handed to agent at setup) ---
 @kwdef struct PlanTool <: AbstractToolGenerator

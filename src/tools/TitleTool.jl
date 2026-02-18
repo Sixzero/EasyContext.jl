@@ -11,12 +11,11 @@ const TITLE_TAG = "title"
     _id::UUID = uuid4()
     query::String
     model::Union{String, Nothing}
+    result::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::TitleToolCall) = t._id
 LLM_safetorun(::TitleToolCall) = true
-
-const _title_results = Dict{UUID, String}()
 
 function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.AbstractContext)
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
@@ -28,11 +27,11 @@ function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.Abstract
     )
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? strip(something(response.content, "Untitled")) : "Untitled"
-    _title_results[cmd._id] = content
+    cmd.result = content
     cmd
 end
 
-ToolCallFormat.result2string(cmd::TitleToolCall) = pop!(_title_results, cmd._id, "Untitled")
+ToolCallFormat.result2string(cmd::TitleToolCall) = something(cmd.result, "Untitled")
 
 # --- The generator ---
 @kwdef struct TitleTool <: AbstractToolGenerator

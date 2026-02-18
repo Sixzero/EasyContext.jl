@@ -13,12 +13,11 @@ const EXPLORE_TAG = "explore"
     query::String
     tools::Vector
     model::Union{String, Nothing}
+    result::Union{String, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::ExploreToolCall) = t._id
 LLM_safetorun(::ExploreToolCall) = true
-
-const _explore_results = Dict{UUID, String}()
 
 const EXPLORE_SYS_PROMPT = """You are a codebase exploration agent. Read files, run non-destructive shell commands (ls, grep, find, tree), and report findings.
 
@@ -37,11 +36,11 @@ function ToolCallFormat.execute(cmd::ExploreToolCall, ctx::ToolCallFormat.Abstra
     )
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? something(response.content, "(no response)") : "(no response)"
-    _explore_results[cmd._id] = content
+    cmd.result = content
     cmd
 end
 
-ToolCallFormat.result2string(cmd::ExploreToolCall) = pop!(_explore_results, cmd._id, "(no result)")
+ToolCallFormat.result2string(cmd::ExploreToolCall) = something(cmd.result, "(no result)")
 
 # --- The generator (holds config, handed to agent at setup) ---
 @kwdef struct ExploreTool <: AbstractToolGenerator
