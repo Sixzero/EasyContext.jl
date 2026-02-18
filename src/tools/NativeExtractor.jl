@@ -69,18 +69,18 @@ function EasyContext.process_native_tool_calls!(extractor::NativeExtractor, tool
 
         tool_entry = extractor.tool_map[call.name]
         tool = ToolCallFormat.create_tool(tool_entry, call)
-        tool_id = ToolCallFormat.get_id(tool)
-        extractor.block_to_call_id[tool_id] = api_call_id
+        block_id = ToolCallFormat.get_id(tool)
+        extractor.block_to_call_id[block_id] = api_call_id
 
         # Check safety: no_confirm bypasses, otherwise use LLM_safetorun
         safe = no_confirm || LLM_safetorun(tool)
         if !safe
             extractor.has_pending_approvals = true
-            extractor.tool_tasks[tool_id] = @async nothing
+            extractor.tool_tasks[block_id] = @async nothing
             continue
         end
 
-        extractor.tool_tasks[tool_id] = @async begin
+        extractor.tool_tasks[block_id] = @async begin
             is_executable(tool) || return nothing
             ToolCallFormat.execute(tool, ctx)
             tool
@@ -96,7 +96,11 @@ function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::
     tool_entries = collect(extractor.tool_tasks)
 
     async_results = [@async begin
-        call_id = get(extractor.block_to_call_id, tool_id, string(tool_id))
+        call_id = get(extractor.block_to_call_id, block_id, nothing)
+        if isnothing(call_id)
+            @error "No tool_call_id mapping for block_id — ToolMessage will have wrong call_id" block_id
+            call_id = string(block_id)
+        end
         result = timedwait(timeout; pollint=0.5) do; istaskdone(task) end
         if result == :timed_out
             @warn "Tool timed out after $(timeout)s"
@@ -117,7 +121,7 @@ function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::
         img = resultimg2base64(tool)
         image_data = (isnothing(img) || isempty(img)) ? nothing : [img]
         ToolMessage(; content, tool_call_id=call_id, image_data)
-    end for (tool_id, task) in tool_entries]
+    end for (block_id, task) in tool_entries]
 
     [fetch(t) for t in async_results]
 end
