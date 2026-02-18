@@ -190,6 +190,11 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             for tm in tool_msgs
                 push_message!(session, tm)
             end
+            # Clean up consumed tool_call_ids to prevent stale entries from matching
+            # late-arriving binary frames and creating duplicate tool_results
+            for block_id in keys(extractor.block_to_call_id)
+                delete!(agent.block_to_call_id, block_id)
+            end
             on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
 
             # Next iteration's assistant message ID
