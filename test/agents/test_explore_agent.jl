@@ -23,7 +23,7 @@ agent = create_FluidAgent(model;
     extractor_type=NativeExtractor,
     sys_msg=explore_prompt,
 )
-agent.tool_mode = :native
+
 
 # --- Run exploration task ---
 task = "Explore this codebase ($(pwd())). Answer: How is the system prompt built? What functions does the `work()` call chain invoke? Read the key files and summarize."
