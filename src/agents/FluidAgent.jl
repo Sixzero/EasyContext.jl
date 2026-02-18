@@ -190,7 +190,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             for tm in tool_msgs
                 push_message!(session, tm)
             end
-            mark_tools_handled!(extractor, io)
             on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
 
             # Next iteration's assistant message ID
