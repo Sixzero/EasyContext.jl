@@ -117,6 +117,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
     on_tool_results=noop,  # Called with (result_str, result_img, result_audio) after tool execution
     on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session
+    on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
@@ -166,6 +167,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             cb = create(StreamCallbackTYPE(;
                 io, on_start, on_error, highlight_enabled, process_enabled, quiet,
+                on_meta_ai,
                 on_done = () -> begin
                     process_enabled && extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)
                     on_done()

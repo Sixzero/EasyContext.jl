@@ -13,6 +13,7 @@ const PLAN_TAG = "plan"
     query::String
     tools::Vector
     model::Union{String, Nothing}
+    stats::SubAgentStats = SubAgentStats()
     result::Union{String, Nothing} = nothing
 end
 
@@ -35,9 +36,8 @@ function ToolCallFormat.execute(cmd::PlanToolCall, ctx::ToolCallFormat.AbstractC
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = PLAN_SYS_PROMPT,
     )
-    response = work(agent, cmd.query; io=devnull, quiet=true)
-    content = response !== nothing ? something(response.content, "(no response)") : "(no response)"
-    cmd.result = content
+    response = work(agent, cmd.query; io=devnull, quiet=true, on_meta_ai=on_meta_ai(cmd.stats))
+    cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     cmd
 end
 
