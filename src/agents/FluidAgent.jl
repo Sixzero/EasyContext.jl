@@ -21,7 +21,6 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     workspace::String = pwd()
     extractor_type  # Required - provide NativeCallExtractor or other AbstractExtractor implementation
     sys_msg::AbstractSysMessage=SysMessageV1()
-    block_to_call_id::Dict{UUID,String} = Dict{UUID,String}()  # tool._id → API tool_call_id (for native approval matching)
 end
 
 # create_FluidAgent to prevent conflict with the constructor
@@ -115,7 +114,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_finish=noop,
     on_start=noop,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
-    on_tool_results=noop,  # Called with (result_str, result_img, result_audio) after tool execution
     on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session
     on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
     io=stdout,
@@ -184,21 +182,12 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             (response.tool_calls === nothing || isempty(response.tool_calls)) && break
 
             process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
-            # Persist block_id → call_id mapping for approval result matching
-            merge!(agent.block_to_call_id, extractor.block_to_call_id)
             any_tool_needs_approval(extractor) && break
 
             tool_msgs = collect_tool_messages(extractor)
             for tm in tool_msgs
                 push_message!(session, tm)
             end
-            # Clean up consumed tool_call_ids to prevent stale entries from matching
-            # late-arriving binary frames and creating duplicate tool_results
-            for block_id in keys(extractor.block_to_call_id)
-                delete!(agent.block_to_call_id, block_id)
-            end
-            on_tool_results(join([tm.content for tm in tool_msgs], "\n"), String[], String[])
-
             # Next iteration's assistant message ID
             hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
         end
