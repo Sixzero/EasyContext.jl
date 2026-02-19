@@ -52,7 +52,7 @@ function EasyContext.process_native_tool_calls!(extractor::NativeExtractor, tool
     ctx = get(kwargs, :ctx, SimpleContext())
 
     for tc in tool_calls
-        call = to_parsed_call(tc)
+        call = tool_call_to_parsed_call(tc)
         api_call_id = tc["id"]
 
         # Inject kwargs into ParsedCall for struct field population (root_path, no_confirm, etc.)
