@@ -2,7 +2,7 @@
 using OpenRouter: Tool, get_arguments
 using ToolCallFormat: ParsedCall, ParsedValue, ToolSchema, ParamSchema
 
-export to_openrouter_tool, tool_call_to_parsed_call
+export to_openrouter_tool, to_parsed_call
 
 const PARAM_TYPE_TO_JSON = Dict(
     "string"   => "string",
@@ -38,8 +38,8 @@ function _schema_to_tool(name::String, description::String, params)::Tool
         "type" => "object", "properties" => properties, "required" => required))
 end
 
-"""Convert an API tool_call dict to a ToolCallFormat.ParsedCall, using OpenRouter.get_arguments for JSON parsing."""
-function tool_call_to_parsed_call(tc::Dict)::ParsedCall
+"""Convert an API tool_call dict to a ParsedCall, using OpenRouter.get_arguments for JSON parsing."""
+function to_parsed_call(tc::Dict)::ParsedCall
     fn = tc["function"]
     args = get_arguments(tc)
     kwargs = Dict{String,ParsedValue}(
