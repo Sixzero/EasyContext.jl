@@ -114,7 +114,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_finish=noop,
     on_start=noop,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
-    on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session
+    on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session. Returns true if messages were drained.
     on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
     io=stdout,
     tool_kwargs=Dict(),
@@ -178,8 +178,12 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # ── Post-response handling (native API tool calling) ──
             push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))
 
-            # No tool calls → done
-            (response.tool_calls === nothing || isempty(response.tool_calls)) && break
+            # No tool calls → check for queued user messages before exiting
+            if response.tool_calls === nothing || isempty(response.tool_calls)
+                # Drain again — new user messages may have arrived during LLM call
+                had_messages = on_drain_user_queue()
+                had_messages === true ? continue : break
+            end
 
             process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
             any_tool_needs_approval(extractor) && break
