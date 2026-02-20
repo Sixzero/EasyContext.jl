@@ -115,6 +115,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_start=noop,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
     on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session. Returns true if messages were drained.
+    on_queue_empty=Returns(true),  # Called after no-tool-call response; returns true if queue is empty (break), false if messages pending (continue loop).
     on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
     io=stdout,
     tool_kwargs=Dict(),
@@ -180,18 +181,22 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # No tool calls → check for queued user messages before exiting
             if response.tool_calls === nothing || isempty(response.tool_calls)
-                # Drain again — new user messages may have arrived during LLM call
-                had_messages = on_drain_user_queue()
-                had_messages === true ? continue : break
+                if on_queue_empty()
+                    break
+                else
+                    # new assistant message is needed so we don't break
+                end
+            else
+
+                process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
+                any_tool_needs_approval(extractor) && break
+    
+                tool_msgs = collect_tool_messages(extractor)
+                for tm in tool_msgs
+                    push_message!(session, tm)
+                end
             end
 
-            process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
-            any_tool_needs_approval(extractor) && break
-
-            tool_msgs = collect_tool_messages(extractor)
-            for tm in tool_msgs
-                push_message!(session, tm)
-            end
             # Next iteration's assistant message ID
             hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
         end
