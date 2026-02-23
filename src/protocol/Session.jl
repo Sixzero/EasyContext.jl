@@ -111,63 +111,29 @@ Scan messages for assistant tool_calls without matching ToolMessages and inject
 placeholder tool_results so the LLM API doesn't reject the request.
 """
 function ensure_tool_results!(messages::Vector{AbstractMessage})
-    # The API requires that every tool_use in an AIMessage has a matching tool_result
-    # in the IMMEDIATELY FOLLOWING message(s). This function ensures that by:
-    # 1. Moving misplaced tool_results (found later in conversation) to the correct position
-    # 2. Injecting placeholders for completely missing tool_results
+    # Collect all tool_call ids from assistant messages and their positions
+    pending_tool_calls = Vector{Tuple{Int, String}}()  # (insert_after_index, tool_call_id)
+    tool_result_ids = Set{String}()
 
-    modified = true
-    while modified
-        modified = false
-        for i in 1:length(messages)
-            msg = messages[i]
-            msg isa AIMessage || continue
-            msg.tool_calls === nothing && continue
-
-            needed_ids = Set(tc["id"] for tc in msg.tool_calls)
-            isempty(needed_ids) && continue
-
-            # Check which tool_results are already correctly placed (immediately after this AIMessage)
-            j = i + 1
-            while j <= length(messages) && messages[j] isa ToolMessage
-                delete!(needed_ids, messages[j].tool_call_id)
-                j += 1
+    for (i, msg) in enumerate(messages)
+        if msg isa AIMessage && msg.tool_calls !== nothing
+            for tc in msg.tool_calls
+                push!(pending_tool_calls, (i, tc["id"]))
             end
-
-            isempty(needed_ids) && continue
-
-            # For each missing id: look for a misplaced ToolMessage later, or create placeholder
-            insert_at = j  # insert right after the last correctly-placed ToolMessage (or after AIMessage)
-            offset = 0
-            for id in collect(needed_ids)
-                # Search for this tool_result later in the conversation
-                found_idx = nothing
-                for k in j:length(messages)
-                    if messages[k] isa ToolMessage && messages[k].tool_call_id == id
-                        found_idx = k
-                        break
-                    end
-                end
-
-                if found_idx !== nothing
-                    # Move misplaced tool_result to correct position
-                    tool_msg = messages[found_idx]
-                    deleteat!(messages, found_idx)
-                    insert!(messages, insert_at + offset, tool_msg)
-                    @warn "Relocated misplaced tool_result to correct position" tool_call_id=id from=found_idx to=insert_at+offset
-                else
-                    # No tool_result anywhere — inject placeholder
-                    insert!(messages, insert_at + offset, ToolMessage(
-                        content="[This tool call did not produce a result before the conversation continued.]",
-                        tool_call_id=id
-                    ))
-                    @warn "Injected placeholder tool_result" tool_call_id=id at=insert_at+offset
-                end
-                offset += 1
-            end
-            modified = true
-            break  # restart scan since indices shifted
+        elseif msg isa ToolMessage
+            push!(tool_result_ids, msg.tool_call_id)
         end
+    end
+
+    # Find orphaned tool_calls (no matching tool_result)
+    orphaned = [(idx, id) for (idx, id) in pending_tool_calls if id ∉ tool_result_ids]
+    isempty(orphaned) && return
+
+    @warn "Injecting placeholder tool_results for orphaned tool_use ids" ids=[id for (_, id) in orphaned]
+
+    # Insert after the assistant message, in reverse order to preserve indices
+    for (idx, id) in reverse(orphaned)
+        insert!(messages, idx + 1, ToolMessage(content="[This tool call did not produce a result before the conversation continued.]", tool_call_id=id))
     end
 end
 
