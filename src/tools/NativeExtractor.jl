@@ -101,7 +101,7 @@ function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::
             @error "No tool_call_id mapping for block_id — ToolMessage will have wrong call_id" block_id
             call_id = string(block_id)
         end
-        result = timedwait(timeout; pollint=0.5) do; istaskdone(task) end
+        result = timedwait(timeout; pollint=0.001) do; istaskdone(task) end
         if result == :timed_out
             @warn "Tool timed out after $(timeout)s"
             schedule(task, InterruptException(); error=true)

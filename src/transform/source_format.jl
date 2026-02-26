@@ -23,7 +23,7 @@ Returns (joined_str, all_imgs, all_audios).
 function collect_execution_results(execution_tasks; timeout::Float64=300.0)
     # Async map: wait for all tasks concurrently with timeout (worst case = timeout, not N*timeout)
     timed_tasks = [@async begin
-        result = timedwait(timeout; pollint=0.5) do
+        result = timedwait(timeout; pollint=0.001) do
             istaskdone(task)
         end
         if result == :timed_out
