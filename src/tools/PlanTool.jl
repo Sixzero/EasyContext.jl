@@ -36,7 +36,7 @@ function ToolCallFormat.execute(cmd::PlanToolCall, ctx::ToolCallFormat.AbstractC
         extractor_type = tools -> NativeExtractor(tools; no_confirm=true),
         sys_msg = PLAN_SYS_PROMPT,
     )
-    response = work(agent, cmd.query; io=devnull, quiet=true, on_meta_ai=on_meta_ai(cmd.stats))
+    response = work(agent, cmd.query; io=devnull, quiet=true, on_meta_ai=on_meta_ai(cmd.stats), tool_kwargs=Dict(:ctx => ctx))
     cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     cmd
 end
