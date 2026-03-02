@@ -9,6 +9,7 @@ const SUMMARIZE_TAG = "summarize"
 # --- The actual tool instance created per LLM call ---
 @kwdef mutable struct SummarizeToolCall <: ToolCallFormat.AbstractTool
     _id::UUID = uuid4()
+    _tool_call_id::Union{String, Nothing} = nothing
     path::String
     prompt::String
     root_path::Union{Nothing, String}

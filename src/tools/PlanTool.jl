@@ -10,6 +10,7 @@ const PLAN_TAG = "plan"
 # --- The actual tool instance created per LLM call ---
 @kwdef mutable struct PlanToolCall <: ToolCallFormat.AbstractTool
     _id::UUID = uuid4()
+    _tool_call_id::Union{String, Nothing} = nothing
     query::String
     tools::Vector
     model::Union{String, Nothing}
@@ -18,6 +19,7 @@ const PLAN_TAG = "plan"
 end
 
 ToolCallFormat.get_id(t::PlanToolCall) = t._id
+ToolCallFormat.toolname(::Type{PlanToolCall}) = PLAN_TAG
 LLM_safetorun(::PlanToolCall) = true
 
 const PLAN_SYS_PROMPT = """You are a planning agent. Design detailed implementation plans by exploring the codebase first, then proposing a decision-complete plan.

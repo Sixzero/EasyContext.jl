@@ -9,6 +9,7 @@ const TITLE_TAG = "title"
 # --- The actual tool instance created per LLM call ---
 @kwdef mutable struct TitleToolCall <: ToolCallFormat.AbstractTool
     _id::UUID = uuid4()
+    _tool_call_id::Union{String, Nothing} = nothing
     query::String
     model::Union{String, Nothing}
     result::Union{String, Nothing} = nothing

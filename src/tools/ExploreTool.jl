@@ -10,6 +10,7 @@ const EXPLORE_TAG = "explore"
 # --- The actual tool instance created per LLM call ---
 @kwdef mutable struct ExploreToolCall <: ToolCallFormat.AbstractTool
     _id::UUID = uuid4()
+    _tool_call_id::Union{String, Nothing} = nothing
     query::String
     tools::Vector
     model::Union{String, Nothing}
@@ -18,6 +19,7 @@ const EXPLORE_TAG = "explore"
 end
 
 ToolCallFormat.get_id(t::ExploreToolCall) = t._id
+ToolCallFormat.toolname(::Type{ExploreToolCall}) = EXPLORE_TAG
 LLM_safetorun(::ExploreToolCall) = true
 
 const EXPLORE_SYS_PROMPT = """You are a codebase exploration agent. Read files, run non-destructive shell commands (ls, grep, find, tree), and report findings.
