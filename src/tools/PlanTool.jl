@@ -35,14 +35,15 @@ function ToolCallFormat.execute(cmd::PlanToolCall, ctx::ToolCallFormat.AbstractC
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
 
     ext_type = something(cmd.extractor_type, tools -> NativeExtractor(tools; no_confirm=true))
-    io = cmd.extractor_type !== nothing ? ctx : devnull
+    raw_io = cmd.extractor_type !== nothing ? ctx : devnull
+    io = subagent_io(raw_io, string(cmd._id))
     agent = create_FluidAgent(model;
         tools = cmd.tools,
         extractor_type = ext_type,
         sys_msg = PLAN_SYS_PROMPT,
     )
     response = work(agent, cmd.prompt; io=io, quiet=true, on_meta_ai=on_meta_ai(cmd.stats),
-        tool_kwargs=Dict(:ctx => ctx, :parent_block_id => string(cmd._id)))
+        tool_kwargs=Dict(:ctx => ctx))
     cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
     cmd
 end

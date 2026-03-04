@@ -55,6 +55,16 @@ include("agents/SysMessages.jl")
 include("agents/FluidAgent.jl")
 include("prompts/guides.jl")
 include("tools/SubAgentStats.jl")
+
+"""
+    subagent_io(io, block_id::String) -> io
+
+Create a separate control IO for a sub-agent so it doesn't share message_id with the parent agent.
+Default: returns io unchanged. Override to provide isolation (e.g. own message_id, parent block tracking).
+"""
+subagent_io(io, block_id::String) = io
+export subagent_io
+
 include("tools/ExploreTool.jl")
 include("tools/PlanTool.jl")
 include("tools/TitleTool.jl")
