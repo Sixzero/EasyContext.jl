@@ -67,6 +67,7 @@ export subagent_io
 
 include("tools/ExploreTool.jl")
 include("tools/PlanTool.jl")
+include("tools/ReviewTool.jl")
 include("tools/TitleTool.jl")
 include("tools/SummarizeTool.jl")
 include("Rephrase.v1.jl")
