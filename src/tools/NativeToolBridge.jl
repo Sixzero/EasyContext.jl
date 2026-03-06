@@ -29,7 +29,11 @@ function _schema_to_tool(name::String, description::String, params)::Tool
     required = String[]
     for p in params
         prop = Dict{String,Any}("type" => get(PARAM_TYPE_TO_JSON, p.type, "string"))
-        !isempty(p.description) && (prop["description"] = p.description)
+        desc_parts = String[]
+        !isempty(p.description) && push!(desc_parts, p.description)
+        default_val = hasproperty(p, :default) ? p.default : nothing
+        default_val !== nothing && push!(desc_parts, "(default: $(default_val))")
+        !isempty(desc_parts) && (prop["description"] = join(desc_parts, " "))
         p.type == "string[]" && (prop["items"] = Dict("type" => "string"))
         properties[p.name] = prop
         p.required && push!(required, p.name)

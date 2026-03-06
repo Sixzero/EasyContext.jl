@@ -37,6 +37,7 @@ ToolCallFormat.get_extra_description(::WorkspaceToolGenerator) = nothing
 ToolCallFormat.get_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? tool.tool._id : nothing
 ToolCallFormat.get_tool_call_id(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? get_tool_call_id(tool.tool) : nothing
 ToolCallFormat.set_tool_call_id!(tool::AbstractToolGenerator, id) = hasproperty(tool, :tool) ? set_tool_call_id!(tool.tool, id) : false
+ToolCallFormat.get_timeout(tool::AbstractToolGenerator) = hasproperty(tool, :tool) ? get_timeout(tool.tool) : DEFAULT_TOOL_TIMEOUT
 ToolCallFormat.is_cancelled(::AbstractToolGenerator) = false
 ToolCallFormat.resultimg2base64(::AbstractToolGenerator) = nothing
 ToolCallFormat.resultaudio2base64(::AbstractToolGenerator) = nothing
