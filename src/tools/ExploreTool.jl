@@ -15,6 +15,7 @@ const EXPLORE_TAG = "explore"
     tools::Vector
     model::Union{String, Nothing}
     extractor_type::Union{Function, Nothing} = nothing
+    timeout::Union{Int, Nothing} = 300
     stats::SubAgentStats = SubAgentStats()
     result::Union{String, Nothing} = nothing
 end
@@ -63,6 +64,7 @@ const EXPLORE_SCHEMA = (
     description = "Launch a read-only sub-agent to explore the codebase. Returns the agent's final summary. Use for searching files, understanding code structure, reading implementations.",
     params = [
         (name = "prompt", type = "string", description = "The exploration task or question for the sub-agent", required = true),
+        (name = "timeout", type = "integer", description = "Timeout in seconds for the sub-agent (default: 300)", required = false, default = 300),
     ]
 )
 
@@ -73,5 +75,7 @@ ToolCallFormat.get_description(::ExploreTool) = description_from_schema(EXPLORE_
 function ToolCallFormat.create_tool(et::ExploreTool, call::ParsedCall)
     prompt_pv = get(call.kwargs, "prompt", nothing)
     prompt = prompt_pv !== nothing ? prompt_pv.value : ""
-    ExploreToolCall(; prompt, tools=et.tools, model=et.model, extractor_type=et.extractor_type)
+    timeout_pv = get(call.kwargs, "timeout", nothing)
+    timeout = timeout_pv !== nothing ? Int(timeout_pv.value) : 300
+    ExploreToolCall(; prompt, timeout, tools=et.tools, model=et.model, extractor_type=et.extractor_type)
 end

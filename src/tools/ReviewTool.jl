@@ -15,6 +15,7 @@ const REVIEW_TAG = "review"
     tools::Vector
     model::Union{String, Nothing}
     extractor_type::Union{Function, Nothing} = nothing
+    timeout::Union{Int, Nothing} = 300
     stats::SubAgentStats = SubAgentStats()
     result::Union{String, Nothing} = nothing
 end
@@ -70,6 +71,7 @@ const REVIEW_SCHEMA = (
     description = "Launch a read-only sub-agent to evaluate whether a goal was accomplished optimally. Reviews changes, suggests simplifications, proposes alternative approaches, and identifies issues.",
     params = [
         (name = "prompt", type = "string", description = "The review task: include the original goal, context, and what to review", required = true),
+        (name = "timeout", type = "integer", description = "Timeout in seconds for the sub-agent (default: 300)", required = false, default = 300),
     ]
 )
 
@@ -80,5 +82,7 @@ ToolCallFormat.get_description(::ReviewTool) = description_from_schema(REVIEW_SC
 function ToolCallFormat.create_tool(rt::ReviewTool, call::ParsedCall)
     prompt_pv = get(call.kwargs, "prompt", nothing)
     prompt = prompt_pv !== nothing ? prompt_pv.value : ""
-    ReviewToolCall(; prompt, tools=rt.tools, model=rt.model, extractor_type=rt.extractor_type)
+    timeout_pv = get(call.kwargs, "timeout", nothing)
+    timeout = timeout_pv !== nothing ? Int(timeout_pv.value) : 300
+    ReviewToolCall(; prompt, timeout, tools=rt.tools, model=rt.model, extractor_type=rt.extractor_type)
 end
