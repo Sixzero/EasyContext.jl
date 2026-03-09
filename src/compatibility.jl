@@ -14,8 +14,14 @@ function Base.convert(::Type{FluidAgent}, x::JLD2.ReconstructedMutable{Symbol("E
     )
 end
 
-# Add more legacy compatibility converters here as they come up
-# Example pattern:
-# function Base.convert(::Type{ModernType}, x::JLD2.ReconstructedMutable{Symbol("EasyContext.LegacyType")})
-#     ModernType(field1 = x.field1, field2 = get(x, :field2, default_value))
-# end
+# Closures/anonymous functions can't survive JLD2 roundtrips across code changes.
+# Tools containing Function fields are rebuilt from agent_settings on restore via
+# refresh_agent_from_settings!, so a placeholder is safe here.
+function Base.convert(::Type{Function}, x::JLD2.ReconstructedSingleton)
+    @warn "JLD2 deserialized a stale closure, substituting identity" type=typeof(x)
+    identity
+end
+function Base.convert(::Type{Union{Function, Nothing}}, x::JLD2.ReconstructedSingleton)
+    @warn "JLD2 deserialized a stale closure, substituting nothing" type=typeof(x)
+    nothing
+end
