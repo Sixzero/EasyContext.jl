@@ -71,10 +71,15 @@ Optionally uses APIKeyManager for key selection.
 # Transient errors worth retrying (provider hiccups, not client errors)
 _is_transient_error(e) = _is_transient_error(sprint(showerror, e))
 function _is_transient_error(msg::AbstractString)
-    any(p -> occursin(p, msg), (
-        "empty_stream", "upstream stream closed",
-        "stream ended unexpectedly", "502", "503", "529",
-        "overloaded", "rate_limit", "ECONNRESET", "EOFError",
+    m = lowercase(msg)
+    any(p -> occursin(p, m), (
+        "empty_stream", "upstream stream closed", "stream ended unexpectedly",
+        "bad gateway", "service unavailable", "overloaded",
+        "status 502", "status 503", "status 429", "status 529",
+        "(502)", "(503)", "(429)", "(529)",
+        "rate_limit", "rate limit", "too many requests",
+        "econnreset", "eoferror", "broken pipe",
+        "timeout", "timed out",
     ))
 end
 
