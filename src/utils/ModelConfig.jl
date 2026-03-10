@@ -68,6 +68,37 @@ end
 Generate AI response using a ModelConfig with merged defaults, or a model name string.
 Optionally uses APIKeyManager for key selection.
 """
+# Transient errors worth retrying (provider hiccups, not client errors)
+_is_transient_error(e) = _is_transient_error(sprint(showerror, e))
+function _is_transient_error(msg::AbstractString)
+    any(p -> occursin(p, msg), (
+        "empty_stream", "upstream stream closed",
+        "stream ended unexpectedly", "502", "503", "529",
+        "overloaded", "rate_limit", "ECONNRESET", "EOFError",
+    ))
+end
+
+const AIGEN_MAX_RETRIES = 3
+
+function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES)
+    for attempt in 1:max_retries
+        try
+            return f()
+        catch e
+            e isa InterruptException && rethrow(e)
+            # HTTP.RequestError wrapping InterruptException
+            hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
+            if attempt < max_retries && _is_transient_error(e)
+                sleep_time = 2^attempt
+                @warn "Transient LLM error (attempt $attempt/$max_retries), retrying in $(sleep_time)s" exception=(e, catch_backtrace())
+                sleep(sleep_time)
+            else
+                rethrow(e)
+            end
+        end
+    end
+end
+
 function aigenerate_with_config(config::ModelConfig, prompt; 
                                request_id::Union{String, Nothing} = nothing,
                                kwargs...)
@@ -78,7 +109,9 @@ function aigenerate_with_config(config::ModelConfig, prompt;
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
 
-    aigen(prompt, config; kwargs...)
+    _aigen_with_retry() do
+        aigen(prompt, config; kwargs...)
+    end
 end
 
 function aigenerate_with_config(model::String, prompt; 
@@ -91,5 +124,7 @@ function aigenerate_with_config(model::String, prompt;
     end
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     filtered_kwargs = NamedTuple(k => v for (k, v) in pairs(kwargs) if k != :api_kwargs)
-    aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
+    _aigen_with_retry() do
+        aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
+    end
 end
