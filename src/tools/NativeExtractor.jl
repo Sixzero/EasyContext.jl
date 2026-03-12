@@ -118,8 +118,8 @@ function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::
 
         content = result2string(tool)
         content = isnothing(content) || isempty(content) ? "(completed)" : content
-        img = resultimg2base64(tool)
-        image_data = (isnothing(img) || isempty(img)) ? nothing : [img]
+        imgs = resultimg2base64(tool)
+        image_data = isempty(imgs) ? nothing : imgs
         ToolMessage(; content, tool_call_id=call_id, image_data)
     end for (block_id, task) in tool_entries]
 
