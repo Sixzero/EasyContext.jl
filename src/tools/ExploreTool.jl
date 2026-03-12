@@ -17,7 +17,7 @@ const EXPLORE_TAG = "explore"
     extractor_type::Union{Function, Nothing} = nothing
     timeout::Union{Int, Nothing} = 300
     stats::SubAgentStats = SubAgentStats()
-    result::Union{String, Nothing} = nothing
+    process_result::Union{ProcessResult, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::ExploreToolCall) = t._id
@@ -44,11 +44,10 @@ function ToolCallFormat.execute(cmd::ExploreToolCall, ctx::ToolCallFormat.Abstra
     )
     response = work(agent, cmd.prompt; io=io, quiet=true, on_meta_ai=on_meta_ai(cmd.stats),
         tool_kwargs=Dict(:ctx => ctx))
-    cmd.result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
+    cmd.process_result = ProcessResult(response !== nothing ? something(response.content, "(no response)") : "(no response)")
     cmd
 end
 
-ToolCallFormat.result2string(cmd::ExploreToolCall) = something(cmd.result, "(no result)")
 
 # --- The generator (holds config, handed to agent at setup) ---
 @kwdef struct ExploreTool <: AbstractToolGenerator

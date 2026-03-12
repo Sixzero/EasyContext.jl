@@ -14,7 +14,7 @@ using UUIDs
         tool = create_tool(WorkspaceSearchTool, call)
 
         @test tool.query == "how does the search work"
-        @test tool.result == ""
+        @test isnothing(tool.process_result)
     end
 
     # Test execution

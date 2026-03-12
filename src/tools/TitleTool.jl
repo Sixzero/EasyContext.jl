@@ -12,7 +12,7 @@ const TITLE_TAG = "title"
     _tool_call_id::Union{String, Nothing} = nothing
     query::String
     model::Union{String, Nothing}
-    result::Union{String, Nothing} = nothing
+    process_result::Union{ProcessResult, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::TitleToolCall) = t._id
@@ -28,11 +28,9 @@ function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.Abstract
     )
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? strip(something(response.content, "Untitled")) : "Untitled"
-    cmd.result = content
+    cmd.process_result = ProcessResult(content)
     cmd
 end
-
-ToolCallFormat.result2string(cmd::TitleToolCall) = something(cmd.result, "Untitled")
 
 # --- The generator ---
 @kwdef struct TitleTool <: AbstractToolGenerator

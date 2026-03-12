@@ -14,7 +14,7 @@ const SUMMARIZE_TAG = "summarize"
     prompt::String
     root_path::Union{Nothing, String}
     model::Union{String, Nothing}
-    result::Union{String, Nothing} = nothing
+    process_result::Union{ProcessResult, Nothing} = nothing
 end
 
 ToolCallFormat.get_id(t::SummarizeToolCall) = t._id
@@ -27,7 +27,7 @@ function ToolCallFormat.execute(cmd::SummarizeToolCall, ctx::ToolCallFormat.Abst
     path = expand_path(cmd.path, cmd.root_path)
 
     if !isfile(path)
-        cmd.result = "Error: file not found: $path"
+        cmd.process_result = ProcessResult("Error: file not found: $path")
         return cmd
     end
 
@@ -46,11 +46,9 @@ $content
     )
     response = work(agent, user_msg; io=devnull, quiet=true)
     result = response !== nothing ? something(response.content, "(no response)") : "(no response)"
-    cmd.result = result
+    cmd.process_result = ProcessResult(result)
     cmd
 end
-
-ToolCallFormat.result2string(cmd::SummarizeToolCall) = something(cmd.result, "(no result)")
 
 # --- The generator ---
 @kwdef struct SummarizeTool <: AbstractToolGenerator

@@ -11,7 +11,7 @@ import ToolCallFormat: toolname, get_description, get_tool_schema, get_extra_des
 import ToolCallFormat: result2string, resultimg2base64, resultaudio2base64
 import ToolCallFormat: is_executable, get_cost
 
-using ToolCallFormat: AbstractTool, TextBlock
+using ToolCallFormat: AbstractTool, TextBlock, ProcessResult, result_text
 using ToolCallFormat: description_from_schema, get_tool_type
 using ToolCallFormat: ParsedCall, ToolSchema, ParamSchema
 using ToolCallFormat: CallStyle, CONCISE, PYTHON, MINIMAL, TYPESCRIPT

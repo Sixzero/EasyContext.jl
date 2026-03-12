@@ -4,7 +4,7 @@
     _id::UUID = uuid4()
     query::String
     julia_ctx::Union{Nothing,JuliaCTX} = nothing
-    result::String = ""
+    process_result::Union{ProcessResult, Nothing} = nothing
 end
 
 function ToolCallFormat.create_tool(::Type{JuliaSearchTool}, call::ParsedCall)
@@ -33,14 +33,7 @@ function ToolCallFormat.execute(tool::JuliaSearchTool; no_confirm=false, kwargs.
         return false
     end
     result, _ = process_julia_context(tool.julia_ctx, tool.query)
-    tool.result = result
+    text = isempty(result) ? "No relevant Julia code found for query: $(tool.query)" : "Julia search results for: $(tool.query)\n\n$result"
+    tool.process_result = ProcessResult(text)
     true
-end
-
-function ToolCallFormat.result2string(tool::JuliaSearchTool)
-    isempty(tool.result) && return "No relevant Julia code found for query: $(tool.query)"
-    """
-Julia search results for: $(tool.query)
-
-$(tool.result)"""
 end

@@ -4,7 +4,7 @@
     _id::UUID = uuid4()
     query::String
     workspace_ctx::Union{Nothing,WorkspaceCTX} = nothing
-    result::String = ""
+    process_result::Union{ProcessResult, Nothing} = nothing
     workspace_ctx_result::Union{Nothing,WorkspaceCTXResult} = nothing
     cost::Union{Nothing,Float64} = nothing
 end
@@ -33,17 +33,10 @@ function ToolCallFormat.execute(tool::WorkspaceSearchTool; no_confirm=false, kwa
     end
 
     result, _, _, full_result = process_workspace_context(tool.workspace_ctx, tool.query)
-    tool.result = result
+    text = isempty(result) ? "No relevant code found for query: $(tool.query)" : "Search results for: $(tool.query)\n\n$result"
+    tool.process_result = ProcessResult(text)
     tool.workspace_ctx_result = full_result
     true
-end
-
-function ToolCallFormat.result2string(tool::WorkspaceSearchTool)
-    isempty(tool.result) && return "No relevant code found for query: $(tool.query)"
-    """
-Search results for: $(tool.query)
-
-$(tool.result)"""
 end
 
 ToolCallFormat.get_cost(tool::WorkspaceSearchTool) = tool.cost
