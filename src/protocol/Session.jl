@@ -129,8 +129,7 @@ function ensure_tool_results!(messages::Vector{AbstractMessage})
     end
 
     # Case 3: Remove orphaned tool_results (ToolMessages with no matching tool_use).
-    # This happens when compaction removes an AIMessage but its ToolMessages survive
-    # (e.g. approval results arriving after the AIMessage was compacted away).
+    # This happens when compaction removes an AIMessage but its ToolMessages survive.
     orphaned_tool_ids = [id for id in keys(tc_to_tool) if !haskey(tc_to_ai, id)]
     if !isempty(orphaned_tool_ids)
         @warn "Removing orphaned tool_results (no matching tool_use)" ids=orphaned_tool_ids
