@@ -107,33 +107,112 @@ end
 """
     ensure_tool_results!(messages)
 
-Scan messages for assistant tool_calls without matching ToolMessages and inject
-placeholder tool_results so the LLM API doesn't reject the request.
+Ensure tool_use/tool_result consistency:
+1. Missing tool_results → inject placeholder
+2. Misplaced tool_results (separated from their tool_use by other messages) → relocate them
+3. Orphaned tool_results (no matching tool_use, e.g. after compaction) → remove them
 """
 function ensure_tool_results!(messages::Vector{AbstractMessage})
-    # Collect all tool_call ids from assistant messages and their positions
-    pending_tool_calls = Vector{Tuple{Int, String}}()  # (insert_after_index, tool_call_id)
-    tool_result_ids = Set{String}()
+    # Build map: tool_call_id → AIMessage index
+    tc_to_ai = Dict{String, Int}()
+    # Build map: tool_call_id → ToolMessage index (if exists)
+    tc_to_tool = Dict{String, Int}()
 
     for (i, msg) in enumerate(messages)
         if msg isa AIMessage && msg.tool_calls !== nothing
             for tc in msg.tool_calls
-                push!(pending_tool_calls, (i, tc["id"]))
+                tc_to_ai[tc["id"]] = i
             end
         elseif msg isa ToolMessage
-            push!(tool_result_ids, msg.tool_call_id)
+            tc_to_tool[msg.tool_call_id] = i
         end
     end
 
-    # Find orphaned tool_calls (no matching tool_result)
-    orphaned = [(idx, id) for (idx, id) in pending_tool_calls if id ∉ tool_result_ids]
-    isempty(orphaned) && return
+    # Case 3: Remove orphaned tool_results (ToolMessages with no matching tool_use).
+    # This happens when compaction removes an AIMessage but its ToolMessages survive
+    # (e.g. approval results arriving after the AIMessage was compacted away).
+    orphaned_tool_ids = [id for id in keys(tc_to_tool) if !haskey(tc_to_ai, id)]
+    if !isempty(orphaned_tool_ids)
+        @warn "Removing orphaned tool_results (no matching tool_use)" ids=orphaned_tool_ids
+        orphaned_set = Set(orphaned_tool_ids)
+        filter!(m -> !(m isa ToolMessage && m.tool_call_id in orphaned_set), messages)
+        # Rebuild tc_to_tool after removal
+        empty!(tc_to_tool)
+        for (i, msg) in enumerate(messages)
+            msg isa ToolMessage && (tc_to_tool[msg.tool_call_id] = i)
+        end
+    end
 
-    @warn "Injecting placeholder tool_results for orphaned tool_use ids" ids=[id for (_, id) in orphaned]
+    # Find tool_calls whose tool_result is missing or misplaced.
+    # "Correctly placed" = the ToolMessage appears in the contiguous block of
+    # ToolMessages right after the AIMessage (before any non-ToolMessage).
+    misplaced_ids = String[]
+    orphaned_ids  = String[]
 
-    # Insert after the assistant message, in reverse order to preserve indices
-    for (idx, id) in reverse(orphaned)
-        insert!(messages, idx + 1, ToolMessage(content="[This tool call did not produce a result before the conversation continued.]", tool_call_id=id))
+    for (id, ai_idx) in tc_to_ai
+        if !haskey(tc_to_tool, id)
+            push!(orphaned_ids, id)
+        else
+            tool_idx = tc_to_tool[id]
+            # Check if tool_idx is in the contiguous ToolMessage block after ai_idx
+            # Valid range: ai_idx+1 .. first non-ToolMessage after ai_idx
+            is_placed = false
+            for j in (ai_idx + 1):length(messages)
+                messages[j] isa ToolMessage || break
+                j == tool_idx && (is_placed = true; break)
+            end
+            is_placed || push!(misplaced_ids, id)
+        end
+    end
+
+    if isempty(orphaned_ids) && isempty(misplaced_ids)
+        return
+    end
+
+    !isempty(orphaned_ids)  && @warn "Injecting placeholder tool_results for orphaned tool_use ids" ids=orphaned_ids
+    !isempty(misplaced_ids) && @warn "Relocating misplaced tool_results to follow their tool_use" ids=misplaced_ids
+
+    # Remove misplaced ToolMessages (iterate in reverse to preserve indices)
+    relocated = Dict{String, ToolMessage}()
+    for id in misplaced_ids
+        idx = tc_to_tool[id]
+        relocated[id] = messages[idx]
+    end
+    filter!(m -> !(m isa ToolMessage && m.tool_call_id in misplaced_ids), messages)
+
+    # Now rebuild tc_to_ai with current indices (after removals)
+    tc_to_ai_new = Dict{String, Int}()
+    for (i, msg) in enumerate(messages)
+        if msg isa AIMessage && msg.tool_calls !== nothing
+            for tc in msg.tool_calls
+                tc_to_ai_new[tc["id"]] = i
+            end
+        end
+    end
+
+    # Collect all ids that need insertion, grouped by AIMessage index
+    all_insert = Dict{Int, Vector{Tuple{String, ToolMessage}}}()
+    for id in orphaned_ids
+        ai_idx = tc_to_ai_new[id]
+        entry = get!(all_insert, ai_idx, Tuple{String, ToolMessage}[])
+        push!(entry, (id, ToolMessage(content="[This tool call did not produce a result before the conversation continued.]", tool_call_id=id)))
+    end
+    for id in misplaced_ids
+        ai_idx = tc_to_ai_new[id]
+        entry = get!(all_insert, ai_idx, Tuple{String, ToolMessage}[])
+        push!(entry, (id, relocated[id]))
+    end
+
+    # Insert after each AIMessage, in reverse index order to preserve positions
+    for ai_idx in sort(collect(keys(all_insert)), rev=true)
+        # Find insertion point: after the last consecutive ToolMessage following ai_idx
+        insert_at = ai_idx + 1
+        while insert_at <= length(messages) && messages[insert_at] isa ToolMessage
+            insert_at += 1
+        end
+        for (_, tool_msg) in reverse(all_insert[ai_idx])
+            insert!(messages, insert_at, tool_msg)
+        end
     end
 end
 
