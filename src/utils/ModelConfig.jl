@@ -74,9 +74,9 @@ function _is_transient_error(msg::AbstractString)
     m = lowercase(msg)
     any(p -> occursin(p, m), (
         "empty_stream", "upstream stream closed", "stream ended unexpectedly",
-        "bad gateway", "service unavailable", "overloaded",
-        "status 502", "status 503", "status 429", "status 529",
-        "(502)", "(503)", "(429)", "(529)",
+        "bad gateway", "service unavailable", "overloaded", "internal server error",
+        "status 500", "status 502", "status 503", "status 429", "status 529",
+        "(500)", "(502)", "(503)", "(429)", "(529)",
         "rate_limit", "rate limit", "too many requests",
         "econnreset", "eoferror", "broken pipe",
         "timeout", "timed out",
