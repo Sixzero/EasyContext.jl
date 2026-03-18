@@ -123,6 +123,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     MAX_ITERATIONS=500,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
+    on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -174,7 +175,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 on_content = process_enabled ? extractor_fn : noop,
             ))
             response = aigenerate_with_config(agent.model, pt_messages;
-                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice="auto")
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice="auto", on_retry)
 
             # ── Post-response handling (native API tool calling) ──
             push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))

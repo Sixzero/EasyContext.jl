@@ -85,7 +85,7 @@ end
 
 const AIGEN_MAX_RETRIES = 3
 
-function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES)
+function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing)
     for attempt in 1:max_retries
         try
             return f()
@@ -95,7 +95,13 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES)
             hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
             if attempt < max_retries && _is_transient_error(e)
                 sleep_time = 2^attempt
+                err_msg = _extract_error_message(e)
                 @warn "Transient LLM error (attempt $attempt/$max_retries), retrying in $(sleep_time)s" exception=(e, catch_backtrace())
+                if !isnothing(on_retry)
+                    try on_retry(attempt, max_retries, sleep_time, err_msg) catch ex
+                        @warn "on_retry callback failed" exception=(ex, catch_backtrace())
+                    end
+                end
                 sleep(sleep_time)
             else
                 rethrow(e)
@@ -104,8 +110,20 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES)
     end
 end
 
+"""Extract a short error message from an exception for notification display."""
+function _extract_error_message(e)
+    s = sprint(showerror, e)
+    # Look for "Message: ..." pattern (e.g. from streaming errors)
+    m = match(r"Message:\s*(.+?)(?:,|$)"m, s)
+    !isnothing(m) && return m.captures[1]
+    # Fallback: first line, truncated
+    first_line = first(split(s, '\n'))
+    length(first_line) > 120 ? first_line[1:120] * "…" : first_line
+end
+
 function aigenerate_with_config(config::ModelConfig, prompt; 
                                request_id::Union{String, Nothing} = nothing,
+                               on_retry=nothing,
                                kwargs...)
     # Get API key from global manager
     if !haskey(kwargs, :api_key)
@@ -114,13 +132,14 @@ function aigenerate_with_config(config::ModelConfig, prompt;
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
 
-    _aigen_with_retry() do
+    _aigen_with_retry(; on_retry) do
         aigen(prompt, config; kwargs...)
     end
 end
 
 function aigenerate_with_config(model::String, prompt; 
                                request_id::Union{String, Nothing} = nothing,
+                               on_retry=nothing,
                                kwargs...)
     if !haskey(kwargs, :api_key)
         # Get API key from global manager
@@ -129,7 +148,7 @@ function aigenerate_with_config(model::String, prompt;
     end
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     filtered_kwargs = NamedTuple(k => v for (k, v) in pairs(kwargs) if k != :api_kwargs)
-    _aigen_with_retry() do
+    _aigen_with_retry(; on_retry) do
         aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
     end
 end
