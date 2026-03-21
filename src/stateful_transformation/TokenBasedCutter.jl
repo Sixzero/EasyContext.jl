@@ -30,16 +30,24 @@ Uses SourceTracker for token-aware source cleanup.
     last_compaction_msg_count::Int = 0  # Message count after last compaction
 end
 
+# Beyond 200K, extended context trades quality/cost for length — cap compaction limit
+# TODO: Sync context limits from a single source of truth (e.g. model config shared between frontend & backend)
+#       so we don't need hardcoded caps duplicated across ContextIndicator.tsx and here.
+#       Ideally the backend returns the effective compaction limit per model and the frontend just displays it.
+const STANDARD_CONTEXT_CAP = 200_000
+
 """
     get_effective_limit(cutter::TokenBasedCutter) -> Int
 
 Get the effective context limit from explicit config or model lookup.
+Caps at STANDARD_CONTEXT_CAP to match frontend behavior — extended context
+beyond 200K degrades quality and increases cost, so we compact earlier.
 Returns 0 if not configured (disables token-based cutting).
 """
 function get_effective_limit(cutter::TokenBasedCutter)
     cutter.context_limit > 0 && return cutter.context_limit
     isempty(cutter.model) && return 0
-    return get_model_context_limit(cutter.model)
+    return min(get_model_context_limit(cutter.model), STANDARD_CONTEXT_CAP)
 end
 
 """
