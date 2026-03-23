@@ -41,7 +41,7 @@ function collect_execution_results(execution_tasks; timeout::Float64=300.0)
         attachments = fetch(tt)
         isnothing(attachments) && continue
         for att in attachments
-            uri = isnothing(att.id) ? "" : "todoforai://attachment/$(att.id)"
+            uri = isnothing(att.id) ? "" : "todoforai:attachment/$(att.id)"
             if startswith(att.mimeType, "image/")
                 # Ensure data URL format for LLM API (contentBase64 is raw base64, stripped by normalize_base64)
                 img_data = startswith(att.contentBase64, "data:") ? att.contentBase64 : "data:$(att.mimeType);base64,$(att.contentBase64)"
