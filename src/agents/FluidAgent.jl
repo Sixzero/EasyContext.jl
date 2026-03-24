@@ -124,6 +124,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
+    rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     )
     # Initialize the system message if it hasn't been initialized yet
     sys_msg_content = initialize!(agent.sys_msg, agent)
@@ -210,7 +211,12 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             @info "Interrupt caught in work()" exception_type=typeof(e) has_extractor=!isnothing(extractor)
             save_interrupted_content!(session, extractor)
             on_finish()
-            rethrow(e)
+            if rethrow_on_interrupt
+                rethrow(e)
+            else
+                partial = isnothing(extractor) || !hasproperty(extractor, :full_content) ? "" : extractor.full_content
+                return isempty(strip(partial)) ? response : (content=partial * "\n[interrupted]", tool_calls=nothing)
+            end
         else
             rethrow(e)
         end
