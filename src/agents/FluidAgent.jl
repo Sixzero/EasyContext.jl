@@ -192,7 +192,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
                 any_tool_needs_approval(extractor) && break
     
-                tool_msgs = collect_tool_messages(extractor)
+                tool_msgs = collect_tool_messages(extractor; io)
                 for tm in tool_msgs
                     push_message!(session, tm)
                 end

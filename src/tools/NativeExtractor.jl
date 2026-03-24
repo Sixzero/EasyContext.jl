@@ -92,7 +92,7 @@ function EasyContext.any_tool_needs_approval(extractor::NativeExtractor)
     extractor.has_pending_approvals
 end
 
-function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::Float64=300.0)::Vector{ToolMessage}
+function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::Float64=300.0, kwargs...)::Vector{ToolMessage}
     tool_entries = collect(extractor.tool_tasks)
 
     async_results = [@async begin

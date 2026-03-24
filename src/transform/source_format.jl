@@ -10,7 +10,11 @@ into LLM message content. This is the single source of truth for the format.
 
 Images and audio are NOT included here — they use provider-specific typed inputs.
 """
-format_source_text(name, content; uri="") = "# Source: $name\n" * (isempty(uri) ? "" : "# URI: $uri\n") * content
+function format_source_text(name, content; uri="")
+    header = "# Source: $name\n"
+    isempty(uri) || (header *= "# Remote: $uri\n")
+    header * content
+end
 
 """
 Collect results from execution tasks that return Vector{AttachmentWireCreate} or nothing.
@@ -41,7 +45,8 @@ function collect_execution_results(execution_tasks; timeout::Float64=300.0)
         attachments = fetch(tt)
         isnothing(attachments) && continue
         for att in attachments
-            uri = isnothing(att.id) ? "" : "todoforai:attachment/$(att.id)"
+            att_id = isnothing(att.id) ? "" : att.id
+            uri = isempty(att_id) ? "" : "todoforai:attachment/$att_id"
             if startswith(att.mimeType, "image/")
                 # Ensure data URL format for LLM API (contentBase64 is raw base64, stripped by normalize_base64)
                 img_data = startswith(att.contentBase64, "data:") ? att.contentBase64 : "data:$(att.mimeType);base64,$(att.contentBase64)"
