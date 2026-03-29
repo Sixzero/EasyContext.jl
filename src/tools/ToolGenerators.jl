@@ -5,6 +5,7 @@ export AbstractToolGenerator, ToolGenerator, WorkspaceToolGenerator
 abstract type AbstractToolGenerator end
 
 ToolCallFormat.get_extra_description(::AbstractToolGenerator) = nothing
+ToolCallFormat.get_extra_description(nt::NamedTuple) = hasproperty(nt, :tool) ? get_extra_description(nt.tool) : nothing
 ToolCallFormat.get_description(tool::AbstractToolGenerator) = get_description(typeof(tool))
 ToolCallFormat.get_tool_schema(tg::AbstractToolGenerator) = get_tool_schema(get_tool_type(toolname(tg)))
 ToolCallFormat.get_cost(::AbstractToolGenerator) = nothing
