@@ -113,10 +113,17 @@ end
 """Extract a short error message from an exception for notification display."""
 function _extract_error_message(e)
     s = sprint(showerror, e)
+    # HTTP.RequestError: actual message is in "Underlying error: ..."
+    m = match(r"Underlying error:\s*\"?(.+?)\"?\s*$"m, s)
+    !isnothing(m) && return strip(m.captures[1], '"')
     # Look for "Message: ..." pattern (e.g. from streaming errors)
     m = match(r"Message:\s*(.+?)(?:,|$)"m, s)
     !isnothing(m) && return m.captures[1]
-    # Fallback: first line, truncated
+    # Fallback: first non-empty line that isn't just a type name
+    for line in split(s, '\n')
+        stripped = strip(line)
+        !isempty(stripped) && !endswith(stripped, ':') && return length(stripped) > 120 ? stripped[1:120] * "…" : stripped
+    end
     first_line = first(split(s, '\n'))
     length(first_line) > 120 ? first_line[1:120] * "…" : first_line
 end

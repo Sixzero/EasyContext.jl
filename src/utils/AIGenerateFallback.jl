@@ -91,7 +91,7 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
                 
                 sleep_time = 2^attempt
                 @warn "Model attempt $attempt/$retries: $reason Sleeping for $sleep_time seconds"
-                e isa HTTP.Exceptions.StatusError && e.status == 429 && sleep(sleep_time)
+                e isa HTTP.Exceptions.StatusError && e.status in (429, 529) && sleep(sleep_time)
                 e isa TimeoutError && (manager.readtimeout *= 2)
                 continue
             end
