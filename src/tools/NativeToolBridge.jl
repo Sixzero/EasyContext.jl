@@ -35,6 +35,7 @@ function _schema_to_tool(name::String, description::String, params)::Tool
         default_val !== nothing && push!(desc_parts, "(default: $(default_val))")
         !isempty(desc_parts) && (prop["description"] = join(desc_parts, " "))
         p.type == "string[]" && (prop["items"] = Dict("type" => "string"))
+        p.type == "array" && !haskey(prop, "items") && (prop["items"] = Dict("type" => "string"))
         properties[p.name] = prop
         p.required && push!(required, p.name)
     end
