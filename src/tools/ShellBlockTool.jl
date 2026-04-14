@@ -25,12 +25,12 @@ const EXECUTION_CANCELLED = "Execution cancelled by user."
 
     raw_result = if no_confirm || get_user_confirmation()
         print_output_header(; io)
-        cmd = Cmd(["zsh", "-c", content])
+        shell_cmd = Cmd(["zsh", "-c", content])
         if isnothing(root_path)
-            cmd_all_info_stream(cmd; io)
+            cmd_all_info_stream(shell_cmd; io)
         else
             cd(root_path) do
-                cmd_all_info_stream(cmd; io)
+                cmd_all_info_stream(shell_cmd; io)
             end
         end
     else
@@ -81,3 +81,11 @@ function truncate_output(output)
 end
 
 LLM_safetorun(cmd::BashTool) = LLM_safetorun(cmd.content)
+
+# Detect data URL images in shell output for native API image support
+const DATA_URL_IMAGE_RE = r"^data:(image/[^;]+);base64,[A-Za-z0-9+/]+=*$"s
+function ToolCallFormat.resultimg2base64(tool::BashTool)::Vector{String}
+    isempty(tool.run_results) && return String[]
+    output = strip(tool.run_results[end])
+    isnothing(match(DATA_URL_IMAGE_RE, output)) ? String[] : [output]
+end
