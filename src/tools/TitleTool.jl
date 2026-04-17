@@ -18,7 +18,18 @@ end
 ToolCallFormat.get_id(t::TitleToolCall) = t._id
 LLM_safetorun(::TitleToolCall) = true
 
+# If the user message is already short enough to be a title, use it as-is.
+# Saves an LLM call and avoids the model "helpfully" rewording trivial inputs.
+const TITLE_SHORT_WORD_LIMIT = 7
+const TITLE_MAX_CHARS = 50
+
 function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.AbstractContext)
+    trimmed = strip(cmd.query)
+    if length(trimmed) <= TITLE_MAX_CHARS && length(split(trimmed)) <= TITLE_SHORT_WORD_LIMIT
+        cmd.process_result = ProcessResult(String(trimmed))
+        return cmd
+    end
+
     model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
 
     agent = create_FluidAgent(model;
