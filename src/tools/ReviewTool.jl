@@ -39,7 +39,7 @@ IMPORTANT: Do NOT modify any files. Only read, inspect, and report findings.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 
 function ToolCallFormat.execute(cmd::ReviewToolCall, ctx::ToolCallFormat.AbstractContext)
-    model = something(cmd.model, "openai:openai/gpt-5.4")
+    model = something(cmd.model, "openai:openai/gpt-5.5")
 
     ext_type = something(cmd.extractor_type, tools -> NativeExtractor(tools; no_confirm=true))
     raw_io = cmd.extractor_type !== nothing ? ctx : devnull
