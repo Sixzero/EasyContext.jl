@@ -156,17 +156,13 @@ Only terminate your turn when you are sure that the problem is solved and all it
 - Revisit your assumptions if unexpected behavior occurs.
 """
 
-# --- OpenCode: Gemini Understand Phase ---
-# Source: opencode/packages/opencode/src/session/prompt/gemini.txt (extracted)
-# Concise understand-first workflow with parallel search emphasis.
+# --- OpenCode: Gemini Understand Phase (read-only adaptation) ---
+# Adapted from opencode/packages/opencode/src/session/prompt/gemini.txt; Implement/Verify
+# steps removed since this prompt is used only by read-only sub-agents (Review/Explore/Plan).
 const opencode_gemini_understand_prompt = """
-## Software Engineering Tasks
-When requested to perform tasks like fixing bugs, adding features, refactoring, or explaining code, follow this sequence:
-1. **Understand:** Think about the user's request and the relevant codebase context. Use 'grep' and 'glob' search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. Use 'read' to understand context and validate any assumptions you may have.
-2. **Plan:** Build a coherent and grounded (based on the understanding in step 1) plan for how you intend to resolve the user's task. Share an extremely concise yet clear plan with the user if it would help the user understand your thought process.
-3. **Implement:** Use the available tools to act on the plan, strictly adhering to the project's established conventions.
-4. **Verify (Tests):** If applicable and feasible, verify the changes using the project's testing procedures.
-5. **Verify (Standards):** After making code changes, execute the project-specific build, linting and type-checking commands.
+## Investigation workflow
+1. **Understand:** Use 'grep' and 'glob' search tools extensively (in parallel if independent) to understand file structures, existing code patterns, and conventions. Use 'read' to validate any assumptions you may have.
+2. **Synthesize:** Form a coherent and grounded picture from the evidence; cite specific file paths and line numbers when reporting findings.
 """
 
 # --- Codex: Read-Only Sandbox ---
