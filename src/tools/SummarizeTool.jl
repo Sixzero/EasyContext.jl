@@ -27,7 +27,7 @@ function ToolCallFormat.execute(cmd::SummarizeToolCall, ctx::ToolCallFormat.Abst
     path = expand_path(cmd.path, cmd.root_path)
 
     if !isfile(path)
-        cmd.process_result = ProcessResult("Error: file not found: $path")
+        cmd.process_result = ProcessResult("Error: file not found: $path", 1)
         return cmd
     end
 
