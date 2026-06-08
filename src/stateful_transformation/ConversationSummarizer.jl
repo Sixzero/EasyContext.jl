@@ -59,7 +59,7 @@ Format messages into a simple string for summarization.
 function format_messages_for_summary(messages::Vector{<:MSG})
     parts = String[]
     for msg in messages
-        role = msg.role == :user ? "User" : "Assistant"
+        role = msg.role == :user ? "User" : msg.role == :tool ? "Tool" : "Assistant"
         # Truncate very long messages but keep more context for code preservation
         # Use first()/last() for safe UTF-8 character-based truncation (not byte-based)
         content = if length(msg.content) > 6000

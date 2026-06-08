@@ -1,5 +1,32 @@
 using Test
-using EasyContext: SourceChunk, ContextNode, add_or_update_source!, format_context_node, cut_history!, RAGContext
+using Dates: now, UTC
+using EasyContext: SourceChunk, ContextNode, add_or_update_source!, format_context_node, cut_history!, history_cut_start, RAGContext, Session, Message
+
+@testset "cut_history! tool boundary" begin
+    mkmsgs() = begin
+        c = Session()
+        add!(role, content) = push!(c.messages, Message(timestamp=now(UTC), role=role, content=content))
+        add!(:user, "u1"); add!(:assistant, "a1"); add!(:tool, "t1"); add!(:assistant, "a2")
+        add!(:user, "u2"); add!(:assistant, "a3"); add!(:tool, "t2"); add!(:assistant, "a4")
+        c.messages
+    end
+    msgs = mkmsgs()
+    for k in 2:8
+        cut_start = history_cut_start(msgs, k)
+        # Window must start on a real :user turn (never an orphaned :tool/:assistant).
+        @test msgs[cut_start].role == :user
+        # The removed prefix and the kept window partition the messages exactly —
+        # no overlap (duplicate summary) and no gap (silent loss).
+        @test cut_start >= 1 && cut_start <= length(msgs)
+        kept_n = length(msgs) - cut_start + 1
+        @test kept_n >= k
+        # cut_history! mutates to the same boundary history_cut_start reports.
+        c = Session(); append!(c.messages, deepcopy(msgs))
+        cut_history!(c; keep=k)
+        @test length(c.messages) == kept_n
+        @test c.messages[1].role == :user
+    end
+end
 
 @testset "ContextNode" begin
     @testset "Constructor" begin

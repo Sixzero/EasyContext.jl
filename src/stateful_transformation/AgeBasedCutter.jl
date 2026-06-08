@@ -39,9 +39,11 @@ function do_cut!(cutter::AgeBasedCutter, conv, source_tracker::SourceTracker, co
 
     n <= keep && return cutter.last_summary
 
-    # Optional: summarize before cutting
+    # Optional: summarize before cutting (same aligned boundary as cut_history! so the
+    # summarized set equals the removed set — no duplication, no silent loss).
+    cut_start = history_cut_start(conv.messages, keep)
     if cutter.summarize
-        messages_to_cut = conv.messages[1:end-keep]
+        messages_to_cut = conv.messages[1:cut_start-1]
         cutter.last_summary = summarize_conversation(
             messages_to_cut;
             model=cutter.summarizer_model,

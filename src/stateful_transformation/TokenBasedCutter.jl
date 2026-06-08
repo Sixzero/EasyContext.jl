@@ -152,8 +152,10 @@ function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, 
     # Calculate tokens being freed (for source cleanup)
     tokens_before = estimate_conversation_tokens(cutter, conv)
 
-    # Summarize messages to be cut
-    messages_to_cut = conv.messages[1:end-keep]
+    # Summarize exactly the prefix that cut_history! will remove (same aligned boundary,
+    # so the summarized set and the removed set always agree — no duplication, no silent loss).
+    cut_start = history_cut_start(conv.messages, keep)
+    messages_to_cut = conv.messages[1:cut_start-1]
     cutter.last_summary = summarize_conversation(
         messages_to_cut;
         model=cutter.summarizer_model,
