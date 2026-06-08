@@ -8,7 +8,8 @@ initConversation(;sys_msg::String) = Conversation(Message(timestamp=now(UTC), ro
 initConversation(messages::Vector{M}; sys_msg::String) where M <: Message = Conversation(Message(timestamp=now(UTC), role=:system, content=sys_msg), messages)
 
 (conv::Conversation)(msg::Message) = begin
-    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
+    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant &&
+       conv.messages[end].tool_calls === nothing && msg.tool_calls === nothing
         conv.messages[end].content *= "\n" * msg.content
         conv
     else

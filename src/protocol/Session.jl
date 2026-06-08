@@ -13,7 +13,11 @@ end
 initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
 
 function push_message!(conv::Session, msg::AIMessage)
-    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.tool_calls === nothing
+    # Only merge consecutive plain-text assistant turns. Never merge when either
+    # the previous or the incoming message carries tool_calls, otherwise a tool_use
+    # would be silently dropped and orphan its tool_result (API 400).
+    if !isempty(conv.messages) && conv.messages[end].role == :assistant &&
+       conv.messages[end].tool_calls === nothing && msg.tool_calls === nothing
         conv.messages[end].content *= "\n" * msg.content
     else
         push!(conv.messages, create_AI_message(String(msg.content); tool_calls=msg.tool_calls))
@@ -28,7 +32,9 @@ function push_message!(conv::Session, msg::ToolMessage)
 end
 
 function push_message!(conv::Session, msg::UserMessage)
-    if !isempty(conv.messages) && conv.messages[end].role != :assistant
+    # Only merge into a previous :user message. Never merge into a :tool message,
+    # otherwise the user text corrupts a tool_result block (breaks tool_use pairing).
+    if !isempty(conv.messages) && conv.messages[end].role == :user
         conv.messages[end].content *= "\n" * msg.content
     else
         push!(conv.messages, create_user_message(String(msg.content)))
@@ -37,7 +43,9 @@ function push_message!(conv::Session, msg::UserMessage)
 end
 
 function push_message!(conv::Session, msg::Message)
-    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant
+    # Never merge assistant messages that carry tool_calls (would drop a tool_use).
+    if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant &&
+       conv.messages[end].tool_calls === nothing && msg.tool_calls === nothing
         conv.messages[end].content *= "\n" * msg.content
     else
         push!(conv.messages, msg)

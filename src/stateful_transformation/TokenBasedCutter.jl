@@ -165,9 +165,14 @@ function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, 
     # Cut conversation
     cut_history!(conv; keep)
 
-    # Prepend summary to first user message
-    if !isempty(cutter.last_summary) && !isempty(conv.messages) && conv.messages[1].role == :user
-        conv.messages[1].content = "<prior_context>\n$(cutter.last_summary)\n</prior_context>\n\n" * conv.messages[1].content
+    # Attach summary as prior context. cut_history! guarantees the head is :user (or empty).
+    if !isempty(cutter.last_summary)
+        prior = "<prior_context>\n$(cutter.last_summary)\n</prior_context>"
+        if !isempty(conv.messages) && conv.messages[1].role == :user
+            conv.messages[1].content = prior * "\n\n" * conv.messages[1].content
+        else
+            pushfirst!(conv.messages, create_user_message(prior))
+        end
     end
 
     # Calculate tokens freed and clean up sources proportionally
