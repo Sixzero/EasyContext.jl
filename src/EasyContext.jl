@@ -91,9 +91,6 @@ function init_assemblyai end
 function transcribe_audio end
 function stream_audio end
 
-
-include("precompile_scripts.jl")
-
 function __init__()
     for T in [BashTool, CatFileTool, LocalCreateFileTool, LocalModifyFileTool,
               SendKeyTool, ClickTool, NewTodoTool, WebSearchTool, WorkspaceSearchTool, JuliaSearchTool]
