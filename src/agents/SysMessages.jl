@@ -55,6 +55,7 @@ function build_base_system_content(sys_msg::String, tools)
     $(simplicity_guide)
 
     Follow SOLID, KISS and DRY principles.
+    Avoid stashing (e.g. `git stash`) — multiple agents can work on one project simultaneously, so stashing can hide or lose another agent's changes.
     Reference files as `path/to/file.ext:line` so they're clickable.
     Keep going until the task is fully resolved before yielding back. Prefer action over asking — only ask when there's genuine ambiguity with multiple valid approaches. After changes, verify they work.
 
