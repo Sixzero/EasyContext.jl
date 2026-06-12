@@ -35,6 +35,8 @@ Use git diff, git status, read files, and search to understand what was done. Th
 
 $(opencode_gemini_understand_prompt)
 
+Default tools (read, grep, bash) target the primary device, where the workspace lives — usually the user's machine or a server device, rarely the cloud. Prefer them. To inspect a different machine, call its suffixed alias (read_<device>, grep_<device>, bash_<device>, e.g. read_pc_6).
+
 IMPORTANT: Do NOT modify any files. Only read, inspect, and report findings.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 

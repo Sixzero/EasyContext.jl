@@ -28,6 +28,8 @@ const EXPLORE_SYS_PROMPT = """You are a codebase exploration agent. Read files, 
 
 $(opencode_gemini_understand_prompt)
 
+Default tools (read, grep, list) target the primary device, where the workspace lives — usually the user's machine or a server device, rarely the cloud. Prefer them. To inspect a different machine, call its suffixed alias (read_<device>, grep_<device>, list_<device>, e.g. read_pc_6).
+
 IMPORTANT: Do NOT modify any files. Only read and inspect.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 
