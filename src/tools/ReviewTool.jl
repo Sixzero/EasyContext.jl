@@ -69,7 +69,7 @@ ToolCallFormat.toolname(::ReviewTool) = REVIEW_TAG
 
 const REVIEW_SCHEMA = (
     name = REVIEW_TAG,
-    description = "Launch a read-only sub-agent to evaluate whether a goal was accomplished optimally. Reviews changes, suggests simplifications, proposes alternative approaches, and identifies issues.",
+    description = "Launch a read-only sub-agent to evaluate whether a goal was accomplished optimally. It works in its OWN context window (inspects git diff/status, reads files) and returns just its findings, so the check costs little of your own context. Run it after a non-trivial change. Reviews changes, suggests simplifications, proposes alternative approaches, and identifies issues.",
     params = [
         (name = "prompt", type = "string", description = "The review task: include the original goal, context, and what to review", required = true),
         (name = "timeout", type = "integer", description = "Timeout in seconds for the sub-agent (default: 300)", required = false, default = 300),
