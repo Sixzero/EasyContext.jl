@@ -62,7 +62,7 @@ ToolCallFormat.toolname(::ExploreTool) = EXPLORE_TAG
 
 const EXPLORE_SCHEMA = (
     name = EXPLORE_TAG,
-    description = "Launch a read-only sub-agent to explore the codebase. It works in its OWN context window and returns just a distilled summary — so you get the right answer fast without spending your own context on dozens of file reads/greps. PREFER this over manually reading/searching many files for any non-trivial \"where/how/what is\" question. Use for searching files, understanding code structure, reading implementations.",
+    description = "Launch a read-only sub-agent to explore the codebase. It works in its OWN context window (its many file reads/greps never touch yours) and returns only its final report — a distilled summary of what it found. So you get the right answer fast without spending your own context. PREFER this over manually reading/searching many files for any non-trivial \"where/how/what is\" question. Use for searching files, understanding code structure, reading implementations.",
     params = [
         (name = "prompt", type = "string", description = "The exploration task or question for the sub-agent", required = true),
         (name = "timeout", type = "integer", description = "Timeout in seconds for the sub-agent (default: 300)", required = false, default = 300),
