@@ -2,7 +2,7 @@
 using OpenRouter: Tool, get_arguments
 using ToolCallFormat: ParsedCall, ParsedValue, ToolSchema, ParamSchema
 
-export to_openrouter_tool, to_parsed_call
+export to_openrouter_tool, to_parsed_call, try_to_parsed_call
 
 const PARAM_TYPE_TO_JSON = Dict(
     "string"   => "string",
@@ -53,4 +53,21 @@ function to_parsed_call(tc::Dict)::ParsedCall
         k => ParsedValue(value=v, raw=string(v)) for (k, v) in args
     )
     ParsedCall(name=fn["name"], kwargs=kwargs)
+end
+
+"""
+Like `to_parsed_call`, but returns `nothing` when the tool-call `arguments` JSON cannot be
+parsed. Tool-call arguments stream as a JSON string; a dropped delta or an early stream close
+yields truncated JSON, so `JSON3.read` throws `ArgumentError`. Returning `nothing` lets callers
+keep the native round-trip valid (emit an error result for this call) instead of aborting the
+whole batch. Any other error is a real bug and is rethrown.
+"""
+function try_to_parsed_call(tc::Dict)::Union{ParsedCall, Nothing}
+    try
+        to_parsed_call(tc)
+    catch e
+        e isa ArgumentError || rethrow()
+        @warn "Failed to parse native tool_call arguments (truncated stream?)" tool_name=get(get(tc, "function", Dict()), "name", "?") exception=e
+        nothing
+    end
 end

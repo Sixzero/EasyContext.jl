@@ -52,8 +52,18 @@ function EasyContext.process_native_tool_calls!(extractor::NativeExtractor, tool
     ctx = get(kwargs, :ctx, SimpleContext())
 
     for tc in tool_calls
-        call = to_parsed_call(tc)
         api_call_id = tc["id"]
+
+        call = try_to_parsed_call(tc)
+        if call === nothing
+            # Truncated/unparseable arguments: emit an error result for this call_id so the
+            # native round-trip stays valid, then continue with the rest of the batch.
+            # The task throws so collect_tool_messages turns it into an error ToolMessage.
+            bid = uuid4()
+            extractor.block_to_call_id[bid] = api_call_id
+            extractor.tool_tasks[bid] = @async error("could not parse arguments (the model's streamed JSON was truncated). Please call the tool again.")
+            continue
+        end
 
         # Inject kwargs into ParsedCall for struct field population (root_path, no_confirm, etc.)
         no_confirm && !haskey(call.kwargs, "no_confirm") && (call.kwargs["no_confirm"] = ToolCallFormat.ParsedValue(value=no_confirm, raw="true"))
