@@ -16,6 +16,10 @@ include("syntax_highlight.jl")
     process_enabled::Bool = true
     quiet::Bool = false
     mode::String = "normal"
+    # Idle timeout (s) for the LLM stream: abort if the provider sends no bytes
+    # for this long, so a stalled stream can't wedge the agent task forever.
+    # Generous enough to not interrupt a reasoning model thinking silently.
+    stream_idle_timeout::Float64 = 300.0
 end
 
 create(config::StreamCallbackConfig) = begin
@@ -38,6 +42,7 @@ create(config::StreamCallbackConfig) = begin
     end
 
     HttpStreamHooks(
+            kwargs            = (; stream_idle_timeout = config.stream_idle_timeout),
             content_formatter = content_handler,
             on_meta_usr       = config.quiet ? (tokens, cost, elapsed) -> nothing : (tokens, cost, elapsed) -> (flush_state(state); format_user_meta(tokens, cost, elapsed)),
             on_meta_ai        = on_meta_ai_cb,
