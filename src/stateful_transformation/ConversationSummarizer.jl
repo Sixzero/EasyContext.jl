@@ -102,6 +102,10 @@ Merge this earlier summary with the new conversation below. The merged summary s
         result = PromptingTools.aigenerate(prompt; model, verbose=false)
         return strip(String(result.content))
     catch e
+        # Never swallow an interrupt: it must propagate out of do_cut! BEFORE cut_history!
+        # mutates the conversation, otherwise a stop-during-compaction trims messages with a
+        # stale/empty summary (context loss) and silently drops the stop.
+        is_interrupt(e) && rethrow(e)
         @warn "Conversation summarization failed" exception=e
         # Return previous summary if we had one, at least preserve that
         return previous_summary
