@@ -4,7 +4,8 @@ using PromptingTools
 using RAGTools
 using OpenRouter: ModelConfig
 using EasyContext: get_model_name, is_openai_reasoning_model, is_mistral_model, is_claude_model, 
-                   get_api_kwargs_for_model, apply_stop_sequences, aigenerate_with_config
+                   get_api_kwargs_for_model, apply_stop_sequences, aigenerate_with_config,
+                   _is_transient_error
 using PromptingTools: AnthropicSchema
 
 @testset "ModelConfig Tests" begin
@@ -188,6 +189,20 @@ using PromptingTools: AnthropicSchema
         @test result == NamedTuple()  # Should ignore everything for GPT-5 models
     end
     
+    @testset "Transient Error Classification" begin
+        # Streaming connection reset (Go/TCP human-readable form) must be retryable
+        @test _is_transient_error(
+            "Error detected in the streaming response: Type: api_error, Message: read tcp [2a01:4f9:6a:470e::2]:55874->[2607:6bc0::10]:443: read: connection reset by peer")
+        @test _is_transient_error("ECONNRESET")
+        @test _is_transient_error("connection refused")
+        @test _is_transient_error("connection closed")
+        @test _is_transient_error("HTTP status 503 Service Unavailable")
+        @test _is_transient_error("rate limit exceeded, too many requests")
+        # Client/permanent errors must NOT be retried
+        @test !_is_transient_error("status 400 bad request")
+        @test !_is_transient_error("invalid api key")
+    end
+
     @testset "Model Name Extraction" begin
         # Test that get_model_name works correctly for both types
         @test get_model_name("gpt-4") == "gpt-4"

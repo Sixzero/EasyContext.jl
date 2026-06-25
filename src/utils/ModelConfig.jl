@@ -78,7 +78,8 @@ function _is_transient_error(msg::AbstractString)
         "status 500", "status 502", "status 503", "status 429", "status 529",
         "(500)", "(502)", "(503)", "(429)", "(529)",
         "rate_limit", "rate limit", "too many requests",
-        "econnreset", "eoferror", "broken pipe",
+        "econnreset", "connection reset",
+        "eoferror", "broken pipe", "connection refused", "connection closed",
         "timeout", "timed out",
     ))
 end
