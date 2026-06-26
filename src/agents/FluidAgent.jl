@@ -179,7 +179,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice="auto", on_retry)
 
             # ── Post-response handling (native API tool calling) ──
-            push_message!(session, create_AI_message(response.content; tool_calls=response.tool_calls))
+            ai_msg = create_AI_message(response.content; tool_calls=response.tool_calls)
+            hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
+            push_message!(session, ai_msg)
 
             # No tool calls → check for queued user messages before exiting
             if response.tool_calls === nothing || isempty(response.tool_calls)

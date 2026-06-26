@@ -57,11 +57,7 @@ function do_cut!(cutter::AgeBasedCutter, conv, source_tracker::SourceTracker, co
     # Attach summary as prior context. cut_history! guarantees the head is :user (or empty).
     if cutter.summarize && !isempty(cutter.last_summary)
         prior = "<prior_context>\n$(cutter.last_summary)\n</prior_context>"
-        if !isempty(conv.messages) && conv.messages[1].role == :user
-            conv.messages[1].content = prior * "\n\n" * conv.messages[1].content
-        else
-            pushfirst!(conv.messages, create_user_message(prior))
-        end
+        pushfirst!(conv.messages, create_user_message(prior))
     end
 
     # Clean up old sources
