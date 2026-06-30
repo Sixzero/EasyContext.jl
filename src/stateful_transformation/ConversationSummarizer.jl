@@ -1,6 +1,11 @@
-export summarize_conversation, format_messages_for_summary
+export summarize_conversation, format_messages_for_summary, is_prior_context
 
 using PromptingTools
+
+# The running compaction summary is carried inside the conversation as a single leading
+# user message wrapped in this sentinel, so the persistence layer can reload it from a
+# message attachment across restarts. Detect it to avoid re-summarizing it as content.
+is_prior_context(msg) = msg.role == :user && startswith(strip(msg.content), "<prior_context>")
 
 const CONVERSATION_SUMMARY_PROMPT = """This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
 
@@ -78,6 +83,12 @@ end
 Generate a summary of conversation messages that preserves direction and key context.
 """
 function summarize_conversation(messages::Vector{<:MSG}; model="claudeh", previous_summary="")
+    # Drop any prior_context message left over from an earlier compaction: its content is
+    # the previous summary, already supplied via `previous_summary`. Feeding it back as
+    # "conversation" both duplicates it and — when it's the ONLY message in the cut prefix —
+    # leaves the model with nothing real to summarize, so it emits a confused "no actual
+    # conversation provided" refusal that then overwrites the real summary (context loss).
+    messages = filter(!is_prior_context, messages)
     isempty(messages) && return previous_summary
 
     prompt = CONVERSATION_SUMMARY_PROMPT * format_messages_for_summary(messages)

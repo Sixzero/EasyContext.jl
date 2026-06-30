@@ -25,9 +25,6 @@ Uses SourceTracker for token-aware source cleanup.
     # Summarization
     summarizer_model::String = "claudeh"
     last_summary::String = ""
-
-    # Track compaction to avoid double-summarization
-    last_compaction_msg_count::Int = 0  # Message count after last compaction
 end
 
 # Beyond 200K, extended context trades quality/cost for length — cap compaction limit
@@ -94,17 +91,13 @@ function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracke
 
     current_tokens = estimate_conversation_tokens(cutter, conv)
     threshold = limit * cutter.compact_threshold
+    current_tokens < threshold && return false
 
-    # Skip if we recently compacted and haven't added many messages
-    # (prevents double-summarization in same turn)
-    if cutter.last_compaction_msg_count > 0
-        msgs_added = length(conv.messages) - cutter.last_compaction_msg_count
-        if msgs_added <= 2  # Just AI response + tool results
-            return false
-        end
-    end
-
-    return current_tokens >= threshold
+    # Only compact if a cut would actually drop a real message. Right after a
+    # compaction the kept window (or a single oversized message) can still exceed
+    # the threshold; re-cutting then frees nothing and just re-summarizes the same
+    # prefix forever. would_free_messages is the principled stop for that churn.
+    return would_free_messages(conv, calculate_keep(cutter, conv, source_tracker))
 end
 
 function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
@@ -152,24 +145,7 @@ function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, 
     # Calculate tokens being freed (for source cleanup)
     tokens_before = estimate_conversation_tokens(cutter, conv)
 
-    # Summarize exactly the prefix that cut_history! will remove (same aligned boundary,
-    # so the summarized set and the removed set always agree — no duplication, no silent loss).
-    cut_start = history_cut_start(conv.messages, keep)
-    messages_to_cut = conv.messages[1:cut_start-1]
-    cutter.last_summary = summarize_conversation(
-        messages_to_cut;
-        model=cutter.summarizer_model,
-        previous_summary=cutter.last_summary
-    )
-
-    # Cut conversation
-    cut_history!(conv; keep)
-
-    # Attach summary as prior context. cut_history! guarantees the head is :user (or empty).
-    if !isempty(cutter.last_summary)
-        prior = "<prior_context>\n$(cutter.last_summary)\n</prior_context>"
-        pushfirst!(conv.messages, create_user_message(prior))
-    end
+    summarize_and_cut!(cutter, conv; keep)
 
     # Calculate tokens freed and clean up sources proportionally
     tokens_after = estimate_conversation_tokens(cutter, conv)
@@ -180,9 +156,6 @@ function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, 
     source_tokens_to_free = round(Int, tokens_freed * 0.5)  # Conservative: free half as much from sources
     sources_to_cut = get_sources_to_cut(source_tracker, source_tokens_to_free)
     remove_sources!(source_tracker, sources_to_cut, contexts...)
-
-    # Track message count to prevent double-summarization
-    cutter.last_compaction_msg_count = length(conv.messages)
 
     @info "TokenBasedCutter: cut conversation" kept=length(conv.messages) tokens_freed sources_removed=length(sources_to_cut)
 
@@ -196,7 +169,11 @@ function get_cache_setting(cutter::TokenBasedCutter, conv, source_tracker::Sourc
     current_tokens = estimate_conversation_tokens(cutter, conv)
     near_threshold = limit * (cutter.compact_threshold - 0.05)
 
-    if current_tokens >= near_threshold
+    # Only skip caching the last block if a compaction is actually imminent — i.e. it
+    # would free a real message. Otherwise we'd disable caching forever whenever the
+    # kept window alone sits near the threshold (nothing left to compact).
+    if current_tokens >= near_threshold &&
+       would_free_messages(conv, calculate_keep(cutter, conv, source_tracker))
         @info "Not caching - near compacting threshold" current_tokens near_threshold
         return :all_but_last
     end
@@ -225,7 +202,7 @@ function token_usage_stats(cutter::TokenBasedCutter, conv, source_tracker::Sourc
         percentage_used = context_limit > 0 ? round(100 * current_tokens / context_limit; digits=1) : 0.0,
         messages_count = length(conv.messages),
         sources_count = length(source_tracker.sources),
-        will_cut = context_limit > 0 && current_tokens >= threshold_tokens,
+        will_cut = should_cut(cutter, conv, source_tracker),
         would_keep = calculate_keep(cutter, conv, source_tracker),
     )
 end

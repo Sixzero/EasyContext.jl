@@ -39,25 +39,10 @@ function do_cut!(cutter::AgeBasedCutter, conv, source_tracker::SourceTracker, co
 
     n <= keep && return cutter.last_summary
 
-    # Optional: summarize before cutting (same aligned boundary as cut_history! so the
-    # summarized set equals the removed set — no duplication, no silent loss).
-    cut_start = history_cut_start(conv.messages, keep)
     if cutter.summarize
-        messages_to_cut = conv.messages[1:cut_start-1]
-        cutter.last_summary = summarize_conversation(
-            messages_to_cut;
-            model=cutter.summarizer_model,
-            previous_summary=cutter.last_summary
-        )
-    end
-
-    # Cut conversation
-    cut_history!(conv; keep)
-
-    # Attach summary as prior context. cut_history! guarantees the head is :user (or empty).
-    if cutter.summarize && !isempty(cutter.last_summary)
-        prior = "<prior_context>\n$(cutter.last_summary)\n</prior_context>"
-        pushfirst!(conv.messages, create_user_message(prior))
+        summarize_and_cut!(cutter, conv; keep)
+    else
+        cut_history!(conv; keep)
     end
 
     # Clean up old sources
