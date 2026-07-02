@@ -44,6 +44,9 @@ Handles model slugs in "provider:author/model" format:
 function get_model_context_limit(model::String)
     isempty(model) && return DEFAULT_CONTEXT_LIMIT
 
+    # Strip reasoning-effort suffix like "(xhigh)"/"(high)" appended by the proxy
+    model = replace(model, r"\([^)]+\)$" => "")
+
     # Map legacy/shorthand model names to proper OpenRouter identifiers
     model = get(LEGACY_MODEL_MAPPING, model, model)
 
