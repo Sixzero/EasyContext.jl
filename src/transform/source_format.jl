@@ -11,9 +11,8 @@ into LLM message content. This is the single source of truth for the format.
 Images and audio are NOT included here — they use provider-specific typed inputs.
 """
 function format_source_text(name, content; uri="")
-    header = "# Source: $name\n"
-    isempty(uri) || (header *= "# Remote: $uri\n")
-    header * content
+    src = isempty(uri) ? name : "[$name]($uri)"
+    "# Source: $src\n" * content
 end
 
 """
