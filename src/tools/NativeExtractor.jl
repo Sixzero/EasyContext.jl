@@ -74,6 +74,10 @@ function EasyContext.process_native_tool_calls!(extractor::NativeExtractor, tool
 
         if !haskey(extractor.tool_map, call.name)
             @warn "Native tool_call not found" tool_name=call.name
+            bid = uuid4()
+            extractor.block_to_call_id[bid] = api_call_id
+            tname = call.name
+            extractor.tool_tasks[bid] = @async error("tool '$(tname)' not found")
             continue
         end
 
