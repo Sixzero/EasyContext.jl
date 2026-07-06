@@ -39,11 +39,14 @@ ToolCallFormat = "ae3acb55-b8cb-46d1-89eb-5b4f98bcbe10"
 ULID = "28ea79d9-6354-52a7-8af1-38e01db141d4"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
-[weakdeps]
-PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
-
-[extensions]
-EasyContextTranscribeExt = "PythonCall"
+# Disabled: EasyContextTranscribeExt (mic→AssemblyAI transcription) hangs the
+# Julia 1.12.4 compiler during precompilation (LLVM GVN wedge). The agent never
+# uses transcription, so the extension is disabled to let the agent start.
+# [weakdeps]
+# PythonCall = "6099a3de-0909-46bc-b1f4-468b9a2dfc0d"
+#
+# [extensions]
+# EasyContextTranscribeExt = "PythonCall"
 
 [compat]
 Arrow = "≥2.8"
@@ -70,7 +73,7 @@ Pkg = "≥1.11"
 PrecompileTools = "≥1.2"
 ProgressMeter = "≥1.10"
 PromptingTools = "≥0.76"
-PythonCall = "≥0.9"
+# PythonCall = "≥0.9"  # disabled with EasyContextTranscribeExt
 RAGTools = "≥0.5"
 REPL = "≥1.11"
 Random = "≥1.11"
