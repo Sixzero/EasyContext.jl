@@ -41,7 +41,7 @@ IMPORTANT — THIS IS A REVIEW PASS ONLY: You observe and note things; you NEVER
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 
 function ToolCallFormat.execute(cmd::ReviewToolCall, ctx::ToolCallFormat.AbstractContext)
-    model = something(cmd.model, "openai:openai/gpt-5.5")
+    model = something(cmd.model, "openai:openai/gpt-5.6-sol")
 
     ext_type = something(cmd.extractor_type, tools -> NativeExtractor(tools; no_confirm=true))
     raw_io = cmd.extractor_type !== nothing ? ctx : devnull
