@@ -75,12 +75,16 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             # Extract base64 images from context - check both key naming and data:image prefix
             base64_images = filter(p -> startswith(p.first, "base64img_") || startswith(p.second, "data:image"), collect(msg.context))
             base64_urls = isempty(base64_images) ? String[] : [image_data_url_sanitizer[](p.second)::String for p in base64_images]
-            
+
+            # Extract base64 documents (PDFs) from context
+            doc_keys = sort(filter(k -> startswith(k, "base64doc_"), collect(keys(msg.context))))
+            doc_urls = [msg.context[k] for k in doc_keys]
+
             # Combine content with context
             full_content = context_combiner!(msg.content, msg.context, false)
             
-            # Create OpenRouter UserMessage with image data
-            if !isempty(image_paths) || !isempty(base64_urls)
+            # Create OpenRouter UserMessage with image/document data
+            if !isempty(image_paths) || !isempty(base64_urls) || !isempty(doc_urls)
                 # Convert file paths to data URLs if needed
                 all_image_data = String[]
                 for path in image_paths
@@ -90,8 +94,10 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
                     end
                 end
                 append!(all_image_data, base64_urls)
-                
-                UserMessage(content=full_content, image_data=all_image_data)
+
+                UserMessage(content=full_content,
+                    image_data=isempty(all_image_data) ? nothing : all_image_data,
+                    document_data=isempty(doc_urls) ? nothing : doc_urls)
             else
                 UserMessage(content=full_content)
             end

@@ -58,7 +58,7 @@ function estimate_conversation_tokens(conv, method::TokenEstimationMethod=CharCo
         total += estimate_tokens(msg.content, method)
         if hasproperty(msg, :context)
             for (_, v) in msg.context
-                startswith(v, "data:image") && continue
+                startswith(v, "data:") && continue  # skip base64 media (images, PDFs)
                 total += estimate_tokens(v, method)
             end
         end
@@ -78,7 +78,7 @@ function estimate_message_tokens(msg, method::TokenEstimationMethod=CharCountDiv
     total = estimate_tokens(msg.content, method)
     if hasproperty(msg, :context)
         for (_, v) in msg.context
-            startswith(v, "data:image") && continue
+            startswith(v, "data:") && continue  # skip base64 media (images, PDFs)
             total += estimate_tokens(v, method)
         end
     end
