@@ -95,13 +95,17 @@ end
     current_context_tokens(cutter::TokenBasedCutter, conv) -> Int
 
 Current context size: the last real API measurement corrected by the estimated
-delta of the conversation since then. Falls back to the raw char estimate when
-no real usage has been recorded yet.
+delta of the conversation since then. The delta is scaled by `real/estimate` at
+the anchor (capped at 1): CharCountDivTwo overcounts real tokens ~2x, so an
+unscaled delta after a big compaction could exceed the real total and collapse
+the result to 0, erasing the system-prompt/tools overhead the anchor captured.
+Falls back to the raw char estimate when no real usage has been recorded yet.
 """
 function current_context_tokens(cutter::TokenBasedCutter, conv)
     est = estimate_conversation_tokens(cutter, conv)
     cutter.last_real_tokens <= 0 && return est
-    max(0, cutter.last_real_tokens + (est - cutter.last_real_estimate))
+    scale = min(1.0, cutter.last_real_tokens / max(1, cutter.last_real_estimate))
+    max(0, cutter.last_real_tokens + round(Int, scale * (est - cutter.last_real_estimate)))
 end
 
 """
