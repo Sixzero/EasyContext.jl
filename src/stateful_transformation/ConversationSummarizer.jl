@@ -110,7 +110,9 @@ Merge this earlier summary with the new conversation below. The merged summary s
     end
 
     try
-        result = PromptingTools.aigenerate(prompt; model, verbose=false)
+        # Explicit max_tokens: PromptingTools' Anthropic default is only 2048, which
+        # silently hard-truncates the summary mid-sentence (context loss on every compaction).
+        result = PromptingTools.aigenerate(prompt; model, verbose=false, api_kwargs=(; max_tokens=8192))
         return strip(String(result.content))
     catch e
         # Never swallow an interrupt: it must propagate out of do_cut! BEFORE cut_history!

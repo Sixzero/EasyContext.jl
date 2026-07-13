@@ -1,4 +1,4 @@
-export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats, cleanup_sources!
+export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats, cleanup_sources!, record_real_usage!, current_context_tokens
 
 """
 TokenBasedCutter triggers cutting based on token usage.
@@ -25,6 +25,14 @@ Uses SourceTracker for token-aware source cleanup.
     # Summarization
     summarizer_model::String = "claudeh"
     last_summary::String = ""
+
+    # Real-usage anchor: the provider's exact context size from the last API call,
+    # plus our char-estimate of the conversation at that same moment. Current size is
+    # then `real + (estimate_now - estimate_then)` - only the DELTA since the last
+    # real measurement is ever estimated, so the number stays accurate (including
+    # system prompt/tools/skills, which the char estimate alone is blind to).
+    last_real_tokens::Int = 0
+    last_real_estimate::Int = 0
 end
 
 # Beyond 200K, extended context trades quality/cost for length — cap compaction limit
@@ -70,6 +78,33 @@ estimate_conversation_tokens(cutter::TokenBasedCutter, conv) =
     estimate_conversation_tokens(conv, cutter.estimation_method)
 
 """
+    record_real_usage!(cutter::TokenBasedCutter, conv, real_tokens::Int)
+
+Anchor the cutter to an exact context size reported by the provider API
+(prompt + cache read/write). Call it when `conv` reflects EXACTLY the messages
+that were sent in that API call, so the paired estimate snapshot is aligned.
+"""
+function record_real_usage!(cutter::TokenBasedCutter, conv, real_tokens::Int)
+    real_tokens <= 0 && return
+    cutter.last_real_tokens = real_tokens
+    cutter.last_real_estimate = estimate_conversation_tokens(cutter, conv)
+    nothing
+end
+
+"""
+    current_context_tokens(cutter::TokenBasedCutter, conv) -> Int
+
+Current context size: the last real API measurement corrected by the estimated
+delta of the conversation since then. Falls back to the raw char estimate when
+no real usage has been recorded yet.
+"""
+function current_context_tokens(cutter::TokenBasedCutter, conv)
+    est = estimate_conversation_tokens(cutter, conv)
+    cutter.last_real_tokens <= 0 && return est
+    max(0, cutter.last_real_tokens + (est - cutter.last_real_estimate))
+end
+
+"""
     estimate_message_tokens(msg, method::TokenEstimationMethod) -> Int
 
 Estimate tokens for a single message.
@@ -89,7 +124,7 @@ function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracke
     limit = get_effective_limit(cutter)
     limit <= 0 && return false
 
-    current_tokens = estimate_conversation_tokens(cutter, conv)
+    current_tokens = current_context_tokens(cutter, conv)
     threshold = limit * cutter.compact_threshold
     current_tokens < threshold && return false
 
@@ -166,7 +201,7 @@ function get_cache_setting(cutter::TokenBasedCutter, conv, source_tracker::Sourc
     limit = get_effective_limit(cutter)
     limit <= 0 && return :all
 
-    current_tokens = estimate_conversation_tokens(cutter, conv)
+    current_tokens = current_context_tokens(cutter, conv)
     near_threshold = limit * (cutter.compact_threshold - 0.05)
 
     # Only skip caching the last block if a compaction is actually imminent — i.e. it
@@ -187,7 +222,7 @@ Get current token usage statistics for debugging/monitoring.
 """
 function token_usage_stats(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
     context_limit = get_effective_limit(cutter)
-    current_tokens = estimate_conversation_tokens(cutter, conv)
+    current_tokens = current_context_tokens(cutter, conv)
     source_tokens = get_total_tokens(source_tracker)
     threshold_tokens = context_limit > 0 ? context_limit * cutter.compact_threshold : 0
     target_tokens = context_limit > 0 ? context_limit * cutter.target_ratio : 0
