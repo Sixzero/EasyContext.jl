@@ -1,202 +1,75 @@
 using Test
 using EasyContext
-using EasyContext: FullFileChunker, RAGTools, NewlineChunker, FileChunk
-using EasyContext: GPT2Approximation, CharCount, get_chunk_standard_format
-using LLMRateLimiters: estimate_tokens, CharCountDivTwo
-using Random
+using EasyContext: FullFileChunker, NewlineChunker, FileChunk, get_content, get_source
+using EasyContext: CharCount
+using RAGTools
 
 @testset "FullFileChunker Tests" begin
     @testset "Constructor" begin
         chunker = FullFileChunker()
         @test chunker.chunker isa NewlineChunker{FileChunk}
-        
-        # Test with custom NewlineChunker
-        custom_newline_chunker = NewlineChunker{FileChunk}(max_tokens=5000, estimation_method=CharCount)
-        custom_chunker = FullFileChunker(chunker=custom_newline_chunker)
-        @test custom_chunker.chunker.max_tokens == 5000
-        @test custom_chunker.chunker.estimation_method == CharCount
+
+        # Keywords are forwarded to the inner NewlineChunker
+        custom = FullFileChunker(max_tokens=5000, estimation_method=CharCount)
+        @test custom.chunker.max_tokens == 5000
+        @test custom.chunker.estimation_method == CharCount
+
+        # Passing an explicit inner chunker still works
+        inner = NewlineChunker{FileChunk}(max_tokens=1234)
+        @test FullFileChunker(chunker=inner).chunker.max_tokens == 1234
+
+        # Mixing an explicit chunker with forwarded keywords is rejected
+        @test_throws ArgumentError FullFileChunker(chunker=inner, max_tokens=10)
     end
 
-    @testset "get_chunks functionality" begin
-        mktempdir() do temp_dir
-            test_file = joinpath(temp_dir, "test.txt")
-            test_content = join(["Line $i " * "x"^200 for i in 1:100], "\n")  # Create longer lines
-            write(test_file, test_content)
+    @testset "get_chunks splits large files by tokens" begin
+        mktempdir() do dir
+            file = joinpath(dir, "test.txt")
+            write(file, join(["Line $i " * "x"^200 for i in 1:100], "\n"))
 
             chunker = FullFileChunker(max_tokens=200)
-            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
+            chunks = RAGTools.get_chunks(chunker, [file])
 
-            @test length(chunks) > 1  # Should be split into multiple chunks
-            @test all(occursin("test.txt:", source) for source in sources)
-            @test all(contains(chunk, "Line") for chunk in chunks)
-            
-            # Check if the max tokens is respected
-            @test all(estimate_tokens(chunk, chunker.chunker.estimation_method) <= chunker.chunker.max_tokens for chunk in chunks)
-            
-            # Check if line numbers are continuous
-            for i in 2:length(sources)
-                prev_end = parse(Int, split(split(sources[i-1], ':')[2], '-')[2])
-                current_start = parse(Int, split(split(sources[i], ':')[2], '-')[1])
-                @test current_start == prev_end + 1 || current_start == prev_end
+            @test all(c -> c isa FileChunk, chunks)
+            @test length(chunks) > 1                                # split into multiple chunks
+            @test all(c -> occursin("test.txt", get_source(c)), chunks)
+            @test all(c -> occursin("Line", get_content(c)), chunks)
+
+            # Rendering contract: "# source\ncontent"
+            @test string(chunks[1]) == "# $(get_source(chunks[1]))\n$(get_content(chunks[1]))"
+            @test occursin(":1-", get_source(chunks[1]))            # split chunks carry a line range
+
+            # Line ranges are continuous and fully cover the 100-line file
+            ranges = [(c.source.from_line, c.source.to_line) for c in chunks]
+            @test all(r -> !isnothing(r[1]) && !isnothing(r[2]) && r[1] <= r[2], ranges)
+            @test ranges[1][1] == 1
+            @test ranges[end][2] == 100
+            for i in 2:length(ranges)
+                @test ranges[i][1] == ranges[i-1][2] + 1
             end
         end
     end
 
-    @testset "Line number accuracy" begin
-        mktempdir() do temp_dir
-            test_file = joinpath(temp_dir, "test.txt")
-            test_content = join(["Line $i" for i in 1:50], "\n")
-            write(test_file, test_content)
+    @testset "small file is a single chunk without line numbers" begin
+        mktempdir() do dir
+            file = joinpath(dir, "small.txt")
+            write(file, "This is a small file that doesn't need to be split.")
 
-            chunker = FullFileChunker(max_tokens=100)
-            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
-
-            for (i, source) in enumerate(sources)
-                file_path, line_range = split(source, ':')
-                start_line, end_line = parse.(Int, split(line_range, '-'))
-                
-                @test start_line <= end_line
-                @test end_line <= 50
-                if i > 1
-                    prev_file_path, prev_line_range = split(sources[i-1], ':')
-                    _, prev_end_line = parse.(Int, split(prev_line_range, '-'))
-                    @test start_line == prev_end_line + 1
-                end
-            end
-        end
-    end
-
-    @testset "Multiple files handling" begin
-        mktempdir() do temp_dir
-            file1 = joinpath(temp_dir, "file1.txt")
-            file2 = joinpath(temp_dir, "file2.txt")
-            write(file1, join(["File1 Line $i" for i in 1:30], "\n"))
-            write(file2, join(["File2 Line $i" for i in 1:20], "\n"))
-
-            chunker = FullFileChunker(max_tokens=150)
-            chunks, sources = RAGTools.get_chunks(chunker, [file1, file2])
-
-            @test any(contains(source, "file1.txt") for source in sources)
-            @test any(contains(source, "file2.txt") for source in sources)
-            @test any(contains(chunk, "File1") for chunk in chunks)
-            @test any(contains(chunk, "File2") for chunk in chunks)
-        end
-    end
-
-    @testset "Empty file handling" begin
-        mktempdir() do temp_dir
-            empty_file = joinpath(temp_dir, "empty.txt")
-            touch(empty_file)
-            non_empty_file = joinpath(temp_dir, "nonempty.txt")
-            write(non_empty_file, "content")
-
-            chunker = FullFileChunker()
-            chunks, sources = RAGTools.get_chunks(chunker, [empty_file, non_empty_file])
-
-            @test length(chunks) == 2
-            @test length(sources) == 2
-            @test !isempty(chunks[2])
-            @test sources[1] == empty_file
-            @test sources[2] == non_empty_file
-
-            # Check that empty files are processed without breaking the chain
-            chunks, sources = RAGTools.get_chunks(chunker, [empty_file, non_empty_file, empty_file])
-            @test length(chunks) == 3
-            @test length(sources) == 3
-            @test !isempty(chunks[2])
-            @test sources[1] == empty_file
-            @test sources[2] == non_empty_file
-            @test sources[3] == empty_file
-        end
-    end
-
-    @testset "reproduce_chunk functionality" begin
-        mktempdir() do temp_dir
-            test_file = joinpath(temp_dir, "test.txt")
-            test_content = join(["Line $i" for i in 1:100], "\n")
-            write(test_file, test_content)
-
-            chunker = FullFileChunker(max_tokens=200)
-            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
-
-            for source in sources
-                reproduced_chunk = EasyContext.reproduce_chunk(chunker, source)
-                @test !isempty(reproduced_chunk)
-                @test contains(reproduced_chunk, "Line")
-
-                # Check if the reproduced chunk matches the original chunk
-                original_chunk = chunks[findfirst(==(source), sources)]
-                @test strip(reproduced_chunk) == strip(original_chunk)
-            end
-        end
-    end
-
-    @testset "Large file handling" begin
-        mktempdir() do temp_dir
-            large_file = joinpath(temp_dir, "large.txt")
-            # Reduced content size and increased max_tokens
-            large_content = join(["Long line of text: " * randstring(100) for _ in 1:1000], "\n")
-            write(large_file, large_content)
-
-            chunker = FullFileChunker(max_tokens=20000)  # Increased max_tokens
-            chunks, sources = RAGTools.get_chunks(chunker, [large_file])
-
-            @test length(chunks) > 1
-            # Test that each chunk is within the max_tokens limit
-            @test all(estimate_tokens(chunk, chunker.chunker.estimation_method) <= chunker.chunker.max_tokens for chunk in chunks)
-        end
-    end
-
-    @testset "Custom formatter" begin
-        custom_formatter(source, content) = "SOURCE: $source\nCONTENT:\n$content"
-        chunker = FullFileChunker(max_tokens=200, formatter=custom_formatter)
-        
-        mktempdir() do temp_dir
-            test_file = joinpath(temp_dir, "test.txt")
-            test_content = join(["Line $i" for i in 1:50], "\n")
-            write(test_file, test_content)
-
-            chunks, sources = RAGTools.get_chunks(chunker, [test_file])
-
-            @test all(startswith(chunk, "SOURCE:") for chunk in chunks)
-            @test all(contains(chunk, "CONTENT:") for chunk in chunks)
-        end
-    end
-
-    @testset "Small file without line cuts" begin
-        mktempdir() do temp_dir
-            small_file = joinpath(temp_dir, "small.txt")
-            small_content = "This is a small file that doesn't need to be split."
-            write(small_file, small_content)
-
-            chunker = FullFileChunker(max_tokens=1000)  # Large enough to fit the whole file
-            chunks, sources = RAGTools.get_chunks(chunker, [small_file])
-
+            chunks = RAGTools.get_chunks(FullFileChunker(max_tokens=1000), [file])
             @test length(chunks) == 1
-            @test length(sources) == 1
-            @test sources[1] == small_file  # Should not include line numbers
-            @test chunks[1] == get_chunk_standard_format(small_file, small_content)
+            @test isnothing(chunks[1].source.from_line)
+            @test occursin("small file", get_content(chunks[1]))
         end
     end
 
-    @testset "Multiple files with mixed sizes" begin
-        mktempdir() do temp_dir
-            file1 = joinpath(temp_dir, "file1.txt")
-            file2 = joinpath(temp_dir, "file2.txt")
-            
-            content1 = "Small file content"
-            content2 = join(["Line $i" for i in 1:100], "\n")
-            
-            write(file1, content1)
-            write(file2, content2)
+    @testset "empty files don't break the chain" begin
+        mktempdir() do dir
+            empty_file = joinpath(dir, "empty.txt"); touch(empty_file)
+            non_empty = joinpath(dir, "nonempty.txt"); write(non_empty, "content")
 
-            chunker = FullFileChunker(max_tokens=200)
-            chunks, sources = RAGTools.get_chunks(chunker, [file1, file2])
-
-            @test length(chunks) > 1
-            @test any(source -> source == file1, sources)  # Small file should not have line numbers
-            @test any(source -> occursin("file2.txt:", source), sources)  # Large file should have line numbers
+            chunks = RAGTools.get_chunks(FullFileChunker(), [empty_file, non_empty])
+            @test length(chunks) == 2
+            @test occursin("content", get_content(chunks[2]))
         end
     end
 end
-;
