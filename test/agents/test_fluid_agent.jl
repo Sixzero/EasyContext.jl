@@ -1,12 +1,35 @@
 using Test
 using EasyContext
 using PromptingTools
-using EasyContext: Session, UserMessage, AIMessage, push_message!
-using EasyContext: extract_tool_calls, pickStreamCallbackforIO
-using OpenRouter: HttpStreamHooks
+using EasyContext: Session, UserMessage, AIMessage, push_message!, create_AI_message
+using EasyContext: extract_tool_calls, pickStreamCallbackforIO, commit_native_tool_turn!
+using OpenRouter: HttpStreamHooks, ToolMessage
 using UUIDs
 
 @testset failfast=true "FluidAgent Tests" begin
+    @testset "Native tool turns are committed atomically" begin
+        tc = [Dict{String,Any}("id" => "call-1", "name" => "test", "args" => Dict{String,Any}())]
+        ai_msg = create_AI_message("calling tool"; tool_calls=tc)
+        ai_msg.id = "message-1"
+
+        failed = Session()
+        push_message!(failed, UserMessage(content="run it"))
+        @test_throws ErrorException commit_native_tool_turn!(failed, ai_msg) do
+            error("collection failed")
+        end
+        @test length(failed.messages) == 1
+        @test failed.messages[end].role == :user
+
+        succeeded = Session()
+        push_message!(succeeded, UserMessage(content="run it"))
+        commit_native_tool_turn!(succeeded, ai_msg) do
+            [ToolMessage(content="done", tool_call_id="call-1")]
+        end
+        @test [m.role for m in succeeded.messages] == [:user, :assistant, :tool]
+        @test succeeded.messages[2].id == "message-1"
+        @test succeeded.messages[end].tool_call_id == "call-1"
+    end
+
     @testset "Agent Work Costs" begin
         # Create a custom IO type to track costs
         mutable struct CostTrackingIO <: IO

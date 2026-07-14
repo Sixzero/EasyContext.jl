@@ -98,6 +98,16 @@ function save_interrupted_content!(session::Session, extractor::Union{AbstractEx
     end
 end
 
+"""Persist a native tool turn only after every tool result was collected."""
+function commit_native_tool_turn!(collect_results::Function, session::Session, ai_msg::Message)
+    tool_msgs = collect_results()
+    push_message!(session, ai_msg)
+    for tm in tool_msgs
+        push_message!(session, tm)
+    end
+    tool_msgs
+end
+
 function work(agent::FluidAgent, session::AbstractString; kwargs...)
     conv_ctx = Session(; messages=[create_user_message(session)])
     work(agent, conv_ctx; kwargs...)
@@ -181,23 +191,28 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # ── Post-response handling (native API tool calling) ──
             ai_msg = create_AI_message(response.content; tool_calls=response.tool_calls)
             hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
-            push_message!(session, ai_msg)
 
-            # No tool calls → check for queued user messages before exiting
+            # No tool calls → persist the assistant response immediately.
             if response.tool_calls === nothing || isempty(response.tool_calls)
+                push_message!(session, ai_msg)
                 if on_queue_empty()
                     break
                 else
                     # new assistant message is needed so we don't break
                 end
             else
-
                 process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
-                any_tool_needs_approval(extractor) && break
-    
-                tool_msgs = collect_tool_messages(extractor; io)
-                for tm in tool_msgs
-                    push_message!(session, tm)
+
+                # Approval continuations need the tool_use persisted before pausing.
+                if any_tool_needs_approval(extractor)
+                    push_message!(session, ai_msg)
+                    break
+                end
+
+                # Commit a native tool turn atomically. If collection is interrupted
+                # or fails, the session must not retain tool_use entries without results.
+                commit_native_tool_turn!(session, ai_msg) do
+                    collect_tool_messages(extractor; io)
                 end
             end
 
