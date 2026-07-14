@@ -91,21 +91,34 @@ function record_real_usage!(cutter::TokenBasedCutter, conv, real_tokens::Int)
     nothing
 end
 
+# CharCountDivTwo (chars/2) overcounts real tokens ~2x for text (~4 chars/token),
+# so estimate deltas are converted to real-token space with this factor.
+const EST_TO_REAL_RATIO = 0.5
+
+"""
+    context_overhead(cutter::TokenBasedCutter) -> Int
+
+Fixed non-conversation overhead (system prompt, tools, skills, sources) inferred
+from the anchor: the part of the real measurement our conversation estimate
+cannot see. 0 until a real measurement is recorded.
+"""
+context_overhead(cutter::TokenBasedCutter) =
+    max(0, cutter.last_real_tokens - round(Int, EST_TO_REAL_RATIO * cutter.last_real_estimate))
+
 """
     current_context_tokens(cutter::TokenBasedCutter, conv) -> Int
 
-Current context size: the last real API measurement corrected by the estimated
-delta of the conversation since then. The delta is scaled by `real/estimate` at
-the anchor (capped at 1): CharCountDivTwo overcounts real tokens ~2x, so an
-unscaled delta after a big compaction could exceed the real total and collapse
-the result to 0, erasing the system-prompt/tools overhead the anchor captured.
+Current context size: the last real API measurement plus the conversation delta
+since then (estimate delta converted to real-token space), floored at the
+inferred fixed overhead - a cut can remove conversation, never the system
+prompt/tools. Exact at the anchor; re-anchored on every real API usage.
 Falls back to the raw char estimate when no real usage has been recorded yet.
 """
 function current_context_tokens(cutter::TokenBasedCutter, conv)
     est = estimate_conversation_tokens(cutter, conv)
     cutter.last_real_tokens <= 0 && return est
-    scale = min(1.0, cutter.last_real_tokens / max(1, cutter.last_real_estimate))
-    max(0, cutter.last_real_tokens + round(Int, scale * (est - cutter.last_real_estimate)))
+    delta = round(Int, EST_TO_REAL_RATIO * (est - cutter.last_real_estimate))
+    max(context_overhead(cutter), cutter.last_real_tokens + delta)
 end
 
 """
@@ -142,6 +155,12 @@ end
 function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
     limit = get_effective_limit(cutter)
     target_tokens = limit > 0 ? round(Int, limit * cutter.target_ratio) : 60000
+    # The target is a FULL-context budget in real tokens, but messages below are
+    # counted in conversation-estimate units (chars/2 ~ 2x real). Subtract the fixed
+    # overhead (system prompt/tools/skills) and convert to estimate units, so the
+    # kept conversation + overhead actually lands near the target - otherwise
+    # post-cut context can still sit at the compact threshold.
+    target_tokens = round(Int, max(0, target_tokens - context_overhead(cutter)) / EST_TO_REAL_RATIO)
 
     messages = conv.messages
     n = length(messages)
