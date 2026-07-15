@@ -157,22 +157,6 @@ function current_context_tokens(cutter::TokenBasedCutter, conv)
     round(Int, overhead + slope * est)
 end
 
-"""
-    estimate_message_tokens(msg, method::TokenEstimationMethod) -> Int
-
-Estimate tokens for a single message.
-"""
-function estimate_message_tokens(msg, method::TokenEstimationMethod=CharCountDivTwo)
-    total = estimate_tokens(msg.content, method)
-    if hasproperty(msg, :context)
-        for (_, v) in msg.context
-            startswith(v, "data:") && continue  # skip base64 media (images, PDFs)
-            total += estimate_tokens(v, method)
-        end
-    end
-    return total
-end
-
 function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
     limit = get_effective_limit(cutter)
     limit <= 0 && return false
