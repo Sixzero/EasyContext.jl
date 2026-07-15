@@ -36,11 +36,20 @@ function maybe_recover_model!(state::ModelState, recovery_time::Int=300)
     end
 end
 
+# Rewrites an upstream provider rate-limit (429) into a clear TODOforAI-side
+# message, since the shared API key's per-minute budget is a TODOforAI capacity
+# limit, not something the user can fix by adding funds.
+is_rate_limit_error(e) = e isa HTTP.Exceptions.StatusError && e.status == 429
+
+const RATE_LIMIT_MESSAGE = "TODOforAI API key rate limit reached (too many requests per minute on the shared key). " *
+    "This is a capacity limit, not a balance issue — it clears on its own shortly. " *
+    "If it persists, please contact support@todofor.ai."
+
 function handle_error!(state::ModelState, e::Exception, model::String="X")
     state.failures += 1
     state.last_error_type = typeof(e)
     state.last_error_time = time()
-    state.reason = "$e"
+    state.reason = is_rate_limit_error(e) ? RATE_LIMIT_MESSAGE : "$e"
     
     return state.reason
 end
@@ -91,7 +100,7 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
                 
                 sleep_time = 2^attempt
                 @warn "Model attempt $attempt/$retries: $reason Sleeping for $sleep_time seconds"
-                e isa HTTP.Exceptions.StatusError && e.status in (429, 529) && sleep(sleep_time)
+                (is_rate_limit_error(e) || (e isa HTTP.Exceptions.StatusError && e.status == 529)) && sleep(sleep_time)
                 e isa TimeoutError && (manager.readtimeout *= 2)
                 continue
             end
