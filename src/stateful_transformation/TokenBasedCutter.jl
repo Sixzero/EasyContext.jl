@@ -27,13 +27,16 @@ Uses SourceTracker for token-aware source cleanup.
     summarizer_model::String = "claudeh"
     last_summary::String = ""
 
-    # Real-usage anchor: the provider's exact context size from the last API call,
-    # plus our char-estimate of the conversation at that same moment. Current size is
-    # then `real + (estimate_now - estimate_then)` - only the DELTA since the last
-    # real measurement is ever estimated, so the number stays accurate (including
-    # system prompt/tools/skills, which the char estimate alone is blind to).
+    # Real-usage anchors: the provider's exact context size from API calls, paired
+    # with our char-estimate of the conversation at that same moment. Two anchors let
+    # us fit an affine map `real ≈ overhead + slope·estimate`, where `overhead` is the
+    # fixed non-conversation context (system prompt, tools, skills — which the char
+    # estimate is blind to) and `slope` is the content's real-tokens-per-estimate ratio.
+    # `prev_*` holds the older anchor; both default to 0 (no anchor yet).
     last_real_tokens::Int = 0
     last_real_estimate::Int = 0
+    prev_real_tokens::Int = 0
+    prev_real_estimate::Int = 0
 end
 
 # Beyond 200K, extended context trades quality/cost for length — cap compaction limit
@@ -87,44 +90,68 @@ that were sent in that API call, so the paired estimate snapshot is aligned.
 """
 function record_real_usage!(cutter::TokenBasedCutter, conv, real_tokens::Int)
     real_tokens <= 0 && return
+    est = estimate_conversation_tokens(cutter, conv)
+    # Shift the current anchor into prev, but only when the estimate actually moved:
+    # two anchors at (near-)identical estimates give a meaningless slope. Keep the
+    # last distinct pair so the affine fit stays well-conditioned.
+    if cutter.last_real_estimate > 0 && abs(est - cutter.last_real_estimate) > 1
+        cutter.prev_real_tokens = cutter.last_real_tokens
+        cutter.prev_real_estimate = cutter.last_real_estimate
+    end
     cutter.last_real_tokens = real_tokens
-    cutter.last_real_estimate = estimate_conversation_tokens(cutter, conv)
+    cutter.last_real_estimate = est
     nothing
 end
 
 # CharCountDivTwo (chars/2) roughly tracks real tokens, but the ratio varies a lot
-# by content (plain text vs tool JSON vs skipped media). Rather than assume a fixed
-# factor, we derive it empirically from the anchor: real/estimate at the last API call.
+# by content (plain text vs tool JSON vs skipped media), so we never assume a fixed
+# factor. Used only as the slope for a single-anchor (through-overhead) estimate.
 const DEFAULT_EST_TO_REAL_RATIO = 0.5
 
 """
-    est_to_real_ratio(cutter::TokenBasedCutter) -> Float64
+    context_model(cutter::TokenBasedCutter) -> (overhead::Float64, slope::Float64)
 
-Real tokens per estimate-token, measured at the anchor (`real / estimate`). Falls
-back to a default until a usable anchor exists. This adapts to the actual content
-mix instead of assuming chars/2 ≈ 2× real, which can be off by several times.
+Affine map from conversation-estimate tokens to real context tokens:
+`real ≈ overhead + slope·estimate`. `overhead` is the fixed non-conversation
+context (system prompt, tools, skills — invisible to the char estimate); `slope`
+is the content's real-per-estimate ratio.
+
+With two distinct anchors we fit both from the line through them (clamping to keep
+overhead ≥ 0 and slope > 0). With one anchor we can't separate the two, so we
+attribute everything to the conversation (overhead 0, slope = real/estimate) —
+still content-adaptive, unlike the old fixed 0.5. With none, slope defaults and
+overhead is 0.
 """
-function est_to_real_ratio(cutter::TokenBasedCutter)
-    (cutter.last_real_tokens > 0 && cutter.last_real_estimate > 0) || return DEFAULT_EST_TO_REAL_RATIO
-    cutter.last_real_tokens / cutter.last_real_estimate
+function context_model(cutter::TokenBasedCutter)
+    r1, e1 = cutter.last_real_tokens, cutter.last_real_estimate
+    r0, e0 = cutter.prev_real_tokens, cutter.prev_real_estimate
+    have1 = r1 > 0 && e1 > 0
+    have0 = r0 > 0 && e0 > 0
+    if have1 && have0 && abs(e1 - e0) > 1
+        slope = (r1 - r0) / (e1 - e0)
+        # Reject noisy/degenerate fits (e.g. real up while estimate down): fall back to
+        # the single-anchor proportional slope. Real content runs ~0.25–8× the estimate.
+        if 0.25 <= slope <= 8.0
+            overhead = max(0.0, r1 - slope * e1)              # clamp: overhead can't be negative
+            return (overhead, slope)
+        end
+    end
+    have1 && return (0.0, r1 / e1)                            # single anchor → proportional
+    return (0.0, DEFAULT_EST_TO_REAL_RATIO)
 end
 
 """
     current_context_tokens(cutter::TokenBasedCutter, conv) -> Int
 
-Current context size, scaled from the last real API measurement by how much the
-conversation estimate has grown/shrunk since the anchor:
-`real * (estimate_now / estimate_anchor)`. Proportional scaling keeps the system
-prompt/tools/skills overhead baked into `real` and moving with conversation size,
-without trying to separate a fixed overhead term (which is unidentifiable from a
-single anchor and produced wildly wrong values when real/estimate diverged).
-Exact at the anchor; re-anchored on every real API usage. Falls back to the raw
-char estimate when no real usage has been recorded yet.
+Current context size from the affine model `overhead + slope·estimate_now`, so the
+fixed system prompt/tools/skills overhead stays put while only the conversation part
+scales with its estimate. Falls back to the raw char estimate before any anchor.
 """
 function current_context_tokens(cutter::TokenBasedCutter, conv)
     est = estimate_conversation_tokens(cutter, conv)
-    (cutter.last_real_tokens > 0 && cutter.last_real_estimate > 0) || return est
-    round(Int, cutter.last_real_tokens * (est / cutter.last_real_estimate))
+    cutter.last_real_tokens > 0 && cutter.last_real_estimate > 0 || return est
+    overhead, slope = context_model(cutter)
+    round(Int, overhead + slope * est)
 end
 
 """
@@ -161,13 +188,12 @@ end
 function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
     limit = get_effective_limit(cutter)
     target_real = limit > 0 ? round(Int, limit * cutter.target_ratio) : 60000
-    # Messages below are counted in conversation-estimate units; convert the target
-    # from real tokens to estimate units using the anchor's measured ratio. The
-    # overhead (system prompt/tools/skills) is already folded into the real anchor
-    # and scales with the conversation, so we don't subtract a separate term (which
-    # was unidentifiable and blew up when real/estimate diverged).
-    ratio = est_to_real_ratio(cutter)
-    target_tokens = round(Int, target_real / ratio)
+    # Messages below are counted in conversation-estimate units. Convert the real
+    # target into an estimate budget for the CONVERSATION only: subtract the fixed
+    # overhead (system prompt/tools/skills), then divide by the fitted content slope.
+    # This keeps the post-cut real size near target even when overhead is large.
+    overhead, slope = context_model(cutter)
+    target_tokens = round(Int, max(0, target_real - overhead) / slope)
 
     messages = conv.messages
     n = length(messages)
@@ -191,7 +217,9 @@ function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTr
     # token budget alone keeps only a few messages that still carry most of the
     # context (e.g. long tool outputs). Forcing them into the summary instead
     # keeps the retained tail small (~max_keep_ratio of the chat) and actually
-    # reaches the target token budget.
+    # reaches the target token budget. Approximate: history_cut_start later aligns
+    # the boundary back to a :user turn, so the final kept count can be slightly
+    # higher to avoid splitting a turn's tool_use/tool_result pair.
     keep_cap = max(cutter.min_keep_messages, floor(Int, n * cutter.max_keep_ratio))
     keep_count = min(keep_count, keep_cap)
 
