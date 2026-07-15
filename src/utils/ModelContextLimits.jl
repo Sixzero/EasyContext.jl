@@ -1,6 +1,6 @@
 export get_model_context_limit
 
-using OpenRouter: get_model
+using OpenRouter: get_model, resolve_model_alias
 
 const DEFAULT_CONTEXT_LIMIT = 200000
 
@@ -47,7 +47,8 @@ function get_model_context_limit(model::String)
     # Strip reasoning-effort suffix like "(xhigh)"/"(high)" appended by the proxy
     model = replace(model, r"\([^)]+\)$" => "")
 
-    # Map legacy/shorthand model names to proper OpenRouter identifiers
+    # Resolve current centralized aliases first, then old local compatibility names.
+    model = resolve_model_alias(model)
     model = get(LEGACY_MODEL_MAPPING, model, model)
 
     # Parse provider and model_id from slug

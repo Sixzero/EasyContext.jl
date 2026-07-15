@@ -16,5 +16,6 @@ using Test
     include("test_workspace_ctx.jl")
     include("test_rag_pipelines.jl")
     include("test_model_config.jl")
+    include("test_context_caps.jl")
     include("test_tool_pairing.jl")
 end

@@ -15,7 +15,8 @@ get_model_name(model::String) = model
 get_model_name(config::ModelConfig) = config.slug
 
 # Helper: provider slug from model name, with OpenRouter's fallback behaviour.
-_get_provider(model_name::String) = extract_provider_from_model(model_name)
+_get_provider(model_name::String) =
+    extract_provider_from_model(replace(model_name, r"\([^)]+\)$" => ""))
 
 # Model-specific logic centralized in ModelConfig (now purely provider-based)
 is_openai_reasoning_model(model_name::String) =
