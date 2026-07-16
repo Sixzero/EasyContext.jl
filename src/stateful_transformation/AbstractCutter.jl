@@ -97,8 +97,9 @@ function summarize_and_cut!(cutter::AbstractCutter, conv; keep::Int)
         model=cutter.summarizer_model, previous_summary=cutter.last_summary)
     cut_history!(conv; keep)
     if !isempty(cutter.last_summary)
+        # NOTE: the message MUST start with "<prior_context>" — is_prior_context keys on it.
         pushfirst!(conv.messages,
-            create_user_message("<prior_context>\n$(cutter.last_summary)\n</prior_context>"))
+            create_user_message("<prior_context>\nThis session is continued from an earlier portion of the conversation that was compacted to save context. The summary below is the only record of it — treat it as what actually happened.\n\n$(cutter.last_summary)\n</prior_context>"))
     end
     return cutter.last_summary
 end
