@@ -84,14 +84,38 @@ function _format_tool_calls(tool_calls)
     join(parts, "\n")
 end
 
+function _format_one(msg, call_names; head::Int, tail::Int)
+    if msg.role == :tool
+        tname = get(call_names, msg.tool_call_id, "")
+        header = isempty(tname) ? "[Tool result]" : "[Tool result: $tname]"
+        return "$header\n$(_truncate_middle(msg.content, head, tail))"
+    elseif msg.role == :user
+        return "[User]\n$(_truncate_middle(msg.content, head, tail))"
+    else
+        segs = String[]
+        !isempty(strip(msg.content)) && push!(segs, _truncate_middle(msg.content, head, tail))
+        msg.tool_calls !== nothing && !isempty(msg.tool_calls) && push!(segs, _format_tool_calls(msg.tool_calls))
+        return "[Assistant]\n" * (isempty(segs) ? "(no text)" : join(segs, "\n"))
+    end
+end
+
+# The summarizer model's context must be respected too: budget the serialized conversation
+# to ~160K tokens (chars/2 estimate → 320K chars), leaving headroom in claudeh's 200K window
+# for the instructions, the previous summary, and the 16K-token summary output.
+const SUMMARY_INPUT_CHAR_BUDGET = 320_000
+
 """
-    format_messages_for_summary(messages::Vector{<:MSG}) -> String
+    format_messages_for_summary(messages::Vector{<:MSG}; char_budget=SUMMARY_INPUT_CHAR_BUDGET) -> String
 
 Format messages into a simple string for summarization. Assistant tool_calls and the tool
 name behind each tool result are rendered explicitly — otherwise tool-driven turns collapse
 into empty "[Assistant]" / unlabeled "[Tool]" blocks and the summarizer loses all context.
+
+The total output is bounded by `char_budget`: first per-message head/tail caps shrink
+proportionally (floor 500+500), then — if still over — the OLDEST messages are dropped with
+an explicit omission marker (the previous compaction summary already covers earlier history).
 """
-function format_messages_for_summary(messages::Vector{<:MSG})
+function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=SUMMARY_INPUT_CHAR_BUDGET)
     # Map tool_call_id -> tool name so each tool RESULT can be labeled with what produced it.
     call_names = Dict{String,String}()
     for msg in messages
@@ -103,22 +127,30 @@ function format_messages_for_summary(messages::Vector{<:MSG})
         end
     end
 
-    parts = String[]
-    for msg in messages
-        if msg.role == :tool
-            tname = get(call_names, msg.tool_call_id, "")
-            header = isempty(tname) ? "[Tool result]" : "[Tool result: $tname]"
-            push!(parts, "$header\n$(_truncate_middle(msg.content, 3000, 3000))")
-        elseif msg.role == :user
-            push!(parts, "[User]\n$(_truncate_middle(msg.content, 3000, 3000))")
-        else
-            segs = String[]
-            !isempty(strip(msg.content)) && push!(segs, _truncate_middle(msg.content, 3000, 3000))
-            msg.tool_calls !== nothing && !isempty(msg.tool_calls) && push!(segs, _format_tool_calls(msg.tool_calls))
-            body = isempty(segs) ? "(no text)" : join(segs, "\n")
-            push!(parts, "[Assistant]\n$body")
-        end
+    render(head, tail) = [_format_one(msg, call_names; head, tail) for msg in messages]
+    parts = render(3000, 3000)
+    total = sum(length, parts; init=0)
+
+    if total > char_budget
+        # Stage 1: shrink per-message caps proportionally (floor 500+500).
+        scale = char_budget / total
+        head = max(500, round(Int, 3000 * scale))
+        tail = max(500, round(Int, 3000 * scale))
+        parts = render(head, tail)
     end
+
+    # Stage 2: still over (pathological message count) — drop oldest messages.
+    total = sum(length, parts; init=0)
+    dropped = 0
+    while total > char_budget && length(parts) - dropped > 1
+        dropped += 1
+        total -= length(parts[dropped])
+    end
+    if dropped > 0
+        parts = parts[dropped+1:end]
+        pushfirst!(parts, "[... $dropped earlier messages omitted to fit the summarizer's context ...]")
+    end
+
     join(parts, "\n\n---\n\n")
 end
 
