@@ -35,7 +35,10 @@ Use git diff, git status, read files, and search to understand what was done. Th
 
 $(opencode_gemini_understand_prompt)
 
-Default tools (read, grep, list, bash) target the primary device, where the workspace lives — usually the user's machine or a server device, rarely the cloud. Prefer them. To inspect a different machine, call its suffixed alias (read_<device>, grep_<device>, list_<device>, bash_<device>, e.g. read_pc_6). Use webfetch to pull in external docs or pages when relevant.
+MACHINE ROUTING:
+- Always prefer the user's PC/workspace (bare tools: read, grep, list, bash) — that is almost always where they work. Other user machines also beat cloud.
+- Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. Cloud repos can be stale: never modify without `git fetch && git status` first.
+- Other machines: suffixed aliases (read_<device>, bash_<device>, …). Use webfetch for external docs.
 
 IMPORTANT — THIS IS A REVIEW PASS ONLY: You observe and note things; you NEVER modify anything. You are not here to apply fixes — you find issues and report them, and a later agent will make the corrections based on your findings. You have a real shell, so honoring this is on you: run ONLY non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it. Do not modify, create, or delete any files — just note what should change.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
