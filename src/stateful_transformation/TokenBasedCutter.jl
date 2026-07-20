@@ -3,9 +3,10 @@ export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats, cleanu
 """
 TokenBasedCutter triggers cutting based on token usage.
 Triggers at `compact_threshold`% of the context limit, then keeps the most recent
-`max_keep_ratio` of messages (min `min_keep_messages`) and summarizes the rest.
-Keeping ~20% of recent messages lands post-cut context around ~25-30% of the limit,
-since recent messages carry most of the tokens - no separate token target needed.
+messages worth ~`target_ratio` of the limit in tokens (min `min_keep_messages`) and
+summarizes the rest. The kept window is chosen by walking back from the newest message
+and accumulating estimated tokens — not by a fixed message-count fraction, which frees
+far fewer tokens than expected when recent messages (tool dumps, file reads) are large.
 
 Always summarizes old messages before cutting.
 Uses SourceTracker for token-aware source cleanup.
@@ -17,11 +18,11 @@ Uses SourceTracker for token-aware source cleanup.
 
     # Trigger threshold (ratio of context_limit)
     compact_threshold::Float64 = 0.8    # Start compacting at 80% of limit
-    target_ratio::Float64 = 0.2         # Reporting only (token_usage_stats target)
+    target_ratio::Float64 = 0.2         # Post-cut token target: keep recent messages worth ~this fraction of limit
 
     # How much to keep
     min_keep_messages::Int = 4          # Always keep at least this many
-    max_keep_ratio::Float64 = 0.2       # Keep this fraction of recent messages
+    max_keep_ratio::Float64 = 0.2       # Fallback message-count fraction when no context limit is set
 
     # Token estimation
     estimation_method::TokenEstimationMethod = CharCountDivTwo
@@ -64,23 +65,24 @@ function get_effective_limit(cutter::TokenBasedCutter)
 end
 
 """
-    estimate_conversation_tokens(conv, method::TokenEstimationMethod) -> Int
+    estimate_message_tokens(msg, method) -> Int
 
-Estimate total tokens in a conversation (messages + context).
+Estimate tokens in a single message (content + context). The per-message building
+block for `estimate_conversation_tokens`, so both stay in sync.
 """
-function estimate_conversation_tokens(conv, method::TokenEstimationMethod=CharCountDivTwo)
-    total = 0
-    for msg in conv.messages
-        total += estimate_tokens(msg.content, method)
-        if hasproperty(msg, :context)
-            for (_, v) in msg.context
-                startswith(v, "data:") && continue  # skip base64 media (images, PDFs)
-                total += estimate_tokens(v, method)
-            end
+function estimate_message_tokens(msg, method::TokenEstimationMethod=CharCountDivTwo)
+    total = estimate_tokens(msg.content, method)
+    if hasproperty(msg, :context)
+        for (_, v) in msg.context
+            startswith(v, "data:") && continue  # skip base64 media (images, PDFs)
+            total += estimate_tokens(v, method)
         end
     end
     return total
 end
+
+estimate_conversation_tokens(conv, method::TokenEstimationMethod=CharCountDivTwo) =
+    sum(msg -> estimate_message_tokens(msg, method), conv.messages; init=0)
 
 estimate_conversation_tokens(cutter::TokenBasedCutter, conv) =
     estimate_conversation_tokens(conv, cutter.estimation_method)
@@ -175,14 +177,38 @@ end
 
 function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
     n = length(conv.messages)
-    # Keep a fixed fraction of recent messages (default 20%), never fewer than the
-    # minimum. Message-count is a robust proxy that avoids the token-budget trap
-    # where oversized recent messages (tool dumps, file reads) each blow the budget
-    # yet still get kept, so removing many tiny old ones frees almost nothing.
-    # history_cut_start later aligns the boundary back to a :user turn, so the final
-    # kept count can be slightly higher to keep a turn's tool_use/tool_result intact.
-    keep_count = max(cutter.min_keep_messages, floor(Int, n * cutter.max_keep_ratio))
-    return min(keep_count, n)
+    n <= cutter.min_keep_messages && return n
+
+    limit = get_effective_limit(cutter)
+    # No configured limit → token-based cutting is disabled; fall back to the old
+    # message-count fraction for manual callers (should_cut already bails at limit<=0).
+    limit <= 0 && return min(max(cutter.min_keep_messages, floor(Int, n * cutter.max_keep_ratio)), n)
+
+    # Keep recent messages by TOKEN budget, not message count. Tokens are distributed
+    # very unevenly (recent tool dumps / file reads dwarf old chat turns), so keeping a
+    # fixed fraction of *messages* frees far fewer tokens than expected — 80% of messages
+    # can be only ~40% of tokens, landing post-cut context near 50-60% of the limit.
+    #
+    # `target_ratio * limit` is the desired TOTAL post-cut context; the conversation's
+    # share is that minus the fixed overhead (system prompt/tools/skills), converted from
+    # real tokens into estimate space via the affine model's slope. Match should_cut's
+    # units: before any real anchor it reads the raw estimate as-is (overhead 0, slope 1).
+    anchored = cutter.last_real_tokens > 0 && cutter.last_real_estimate > 0
+    overhead, slope = anchored ? context_model(cutter) : (0.0, 1.0)
+    budget_est = max(0.0, (limit * cutter.target_ratio - overhead) / slope)
+
+    # Always keep the newest min_keep_messages, then extend backward while the next
+    # older message still fits the budget. history_cut_start later aligns the boundary
+    # back to a :user turn, keeping a turn's tool_use/tool_result intact.
+    first_kept = n - cutter.min_keep_messages + 1
+    acc = sum(i -> estimate_message_tokens(conv.messages[i], cutter.estimation_method), first_kept:n; init=0)
+    while first_kept > 1
+        next = estimate_message_tokens(conv.messages[first_kept-1], cutter.estimation_method)
+        acc + next > budget_est && break
+        first_kept -= 1
+        acc += next
+    end
+    return n - first_kept + 1
 end
 
 function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, contexts...; keep::Union{Int,Nothing}=nothing)
