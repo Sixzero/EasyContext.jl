@@ -15,7 +15,7 @@ import PromptingTools
     end_line_docs::Int = 0
     file_path::String
     is_function::Bool = false
-    chunk::Union{String,Nothing} = nothing
+    chunk::String
     module_stack::Vector{String} = String[]
 end
 
@@ -79,7 +79,7 @@ function process_source_directory(dir::AbstractString; verbose::Bool=true)
               continue
           end
           file_path = joinpath(dir, file)
-          defs = process_jl_file(file_path, verbose)
+          defs = process_jl_file(file_path, String[], verbose)
         #   @assert length(definitions)<30
           append!(definitions, defs)
       end
@@ -136,13 +136,13 @@ function get_last_line_number(expr::Expr)
     return nothing
 end
 get_last_line_number(expr::LineNumberNode) = expr.line
-function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
+function source_explorer(expr_tree, lines::Vector{SubString{String}};
     file_path::AbstractString, last_line::Int=length(lines), source_defs=JuliaSourceChunk[], module_stack=String[], verbose=false)
 
     expr_tree, last_line = handle_single_module_file(expr_tree, last_line, lines, verbose)
     expr_tree, last_line = handle_docstring_file(expr_tree, last_line, lines)
     
-    current_line = 1
+    current_line::Int = 1
     for i in eachindex(expr_tree.args)
         expr = expr_tree.args[i]
         if expr isa LineNumberNode
@@ -152,14 +152,14 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
         if isa(expr, Expr) && expr.head == :module
             new_module_name = string(expr.args[2])
             new_module_stack = [module_stack; new_module_name]
-            new_lastline = get_last_line_number(expr.args[3]) + 1
+            new_lastline = something(get_last_line_number(expr.args[3]), last_line - 1) + 1
             source_explorer(expr.args[3], lines; file_path, source_defs, last_line=new_lastline, module_stack=new_module_stack, verbose)
             continue
         end
         
         start_line_code = current_line
         next_expr_index = findnext(x -> x isa LineNumberNode, expr_tree.args, i + 1)
-        end_line_code = !isnothing(next_expr_index) ? expr_tree.args[next_expr_index].line - 1 : last_line
+        end_line_code::Int = !isnothing(next_expr_index) ? expr_tree.args[next_expr_index].line - 1 : last_line
         end_line_code = max(end_line_code, current_line)
         
         while empty_line(lines[end_line_code])
@@ -219,7 +219,7 @@ function source_explorer(expr_tree, lines::AbstractVector{<:AbstractString};
         end
         
         len = end_line_code - start_line_code
-        chunk = join(lines[start_line_code:start_line_code+len], '\n')
+        chunk::String = join(lines[start_line_code:start_line_code+len], '\n')
 
         if length(chunk) > 14000
             first_part = safe_substring(chunk, 1, 12000)

@@ -5,11 +5,15 @@ const colors = Dict{Symbol, Symbol}(
     :DELETED   => :red,
 )
 
-@kwdef mutable struct ChangeTracker{T}
-    changes::OrderedDict{String, Symbol} = OrderedDict{String, Symbol}()
-    chunks_dict::OrderedDict{String, T} = OrderedDict{String, T}()
-    verbose::Bool = true
+mutable struct ChangeTracker{T}
+    changes::OrderedDict{String, Symbol}
+    chunks_dict::OrderedDict{String, T}
+    verbose::Bool
 end
+ChangeTracker{T}(; changes=OrderedDict{String, Symbol}(), chunks_dict=OrderedDict{String, T}(), verbose::Bool=true) where {T} =
+    ChangeTracker{T}(changes, chunks_dict, verbose)
+# untyped constructor defaults to String content (kwdef would leave T free)
+ChangeTracker(; kwargs...) = ChangeTracker{String}(; kwargs...)
 
 
 function update_changes!(tracker::ChangeTracker, ctx::Context)

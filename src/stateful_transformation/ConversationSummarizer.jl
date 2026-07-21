@@ -94,7 +94,8 @@ function _format_one(msg, call_names; head::Int, tail::Int)
     else
         segs = String[]
         !isempty(strip(msg.content)) && push!(segs, _truncate_middle(msg.content, head, tail))
-        msg.tool_calls !== nothing && !isempty(msg.tool_calls) && push!(segs, _format_tool_calls(msg.tool_calls))
+        tcs = msg.tool_calls
+        tcs !== nothing && !isempty(tcs) && push!(segs, _format_tool_calls(tcs))
         return "[Assistant]\n" * (isempty(segs) ? "(no text)" : join(segs, "\n"))
     end
 end
@@ -119,8 +120,9 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
     # Map tool_call_id -> tool name so each tool RESULT can be labeled with what produced it.
     call_names = Dict{String,String}()
     for msg in messages
-        msg.tool_calls === nothing && continue
-        for tc in msg.tool_calls
+        tcs = msg.tool_calls
+        tcs === nothing && continue
+        for tc in tcs
             id = get(tc, "id", "")
             isempty(id) && continue
             call_names[id] = get(get(tc, "function", Dict()), "name", get(tc, "name", "tool"))

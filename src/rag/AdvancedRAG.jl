@@ -12,7 +12,7 @@ end
 
 # Convenience constructor for vector of embedders
 function TwoLayerRAG(embedders::Vector{<:RAGTools.AbstractEmbedder}, reranker::AbstractReranker; k::Int=50, method::Symbol=:max, verbose::Bool=false)
-    TwoLayerRAG(topK=TopK(embedders, method; topK=k), reranker=reranker)
+    TwoLayerRAG(topK=TopK(embedders; method, top_k=k), reranker=reranker)
 end
 
 

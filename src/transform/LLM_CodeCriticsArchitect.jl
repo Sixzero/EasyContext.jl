@@ -12,7 +12,6 @@ export CodeCriticsArchitectContext, LLM_CodeCriticsArchitect
     history_count::Int = 2
 end
 
-transform_position(::Type{CodeCriticsArchitectContext}) = AppendTransform()
 
 Base.display(ctx::CodeCriticsArchitectContext, content::AbstractString) = 
     display(Markdown.parse("# CODE_CRITICS\n" * content))
@@ -45,8 +44,8 @@ function transform(ctx::CodeCriticsArchitectContext, query, session::Session; io
         api_kwargs = (; )
     end
     response = aigen([
-        SystemMessage(CRITICS_SYSTEM_PROMPT),
-        UserMessage(prompt)
+        SystemMessage(content=CRITICS_SYSTEM_PROMPT),
+        UserMessage(content=prompt)
     ], ctx.model; streamcallback=cb, api_kwargs...)
     
     content = response.content

@@ -21,7 +21,7 @@ function get_package_infos(scope::Symbol, excluded_packages::Vector{String})
     elseif scope == :minimal
         [info for (uuid, info) in all_dependencies if info.name in ["Base64"]]
     else
-        warn("Invalid package scope: $scope")
+        @warn("Invalid package scope: $scope")
         []
     end
 

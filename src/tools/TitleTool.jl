@@ -39,7 +39,7 @@ function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.Abstract
     )
     response = work(agent, cmd.query; io=devnull, quiet=true)
     content = response !== nothing ? strip(something(response.content, "Untitled")) : "Untitled"
-    cmd.process_result = ProcessResult(content)
+    cmd.process_result = ProcessResult(String(content))
     cmd
 end
 

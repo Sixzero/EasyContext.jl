@@ -47,7 +47,7 @@ jobs:
     name: JET static analysis
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    continue-on-error: true # baseline of pre-existing reports; informative for now
+    # JET baseline is 0 — any new report fails the build
     permissions:
       actions: write
       contents: read

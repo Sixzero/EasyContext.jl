@@ -48,12 +48,18 @@ function remove_ultra_long_words(text::AbstractString)
     return has_content ? result : ""
 end
 
-@kwdef struct NewlineChunker{T<:AbstractChunk} <: AbstractChunker 
-    max_tokens::Int = 8000
-    overlap_tokens::Int = 200
-    estimation_method::TokenEstimationMethod = CharCountDivTwo
-    line_number_token_estimate::Int = 10
+struct NewlineChunker{T<:AbstractChunk} <: AbstractChunker
+    max_tokens::Int
+    overlap_tokens::Int
+    estimation_method::TokenEstimationMethod
+    line_number_token_estimate::Int
 end
+NewlineChunker{T}(; max_tokens::Int=8000, overlap_tokens::Int=200,
+    estimation_method::TokenEstimationMethod=CharCountDivTwo,
+    line_number_token_estimate::Int=10) where {T<:AbstractChunk} =
+    NewlineChunker{T}(max_tokens, overlap_tokens, estimation_method, line_number_token_estimate)
+# untyped constructor defaults to FileChunk (kwdef would leave T free)
+NewlineChunker(; kwargs...) = NewlineChunker{FileChunk}(; kwargs...)
 
 function get_chunks_w_root_path(chunker::NewlineChunker{T},
     file_paths::Vector{<:AbstractPath};

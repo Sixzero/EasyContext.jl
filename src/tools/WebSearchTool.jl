@@ -1,5 +1,4 @@
 @deftool "Search the web for information" web_search(query::String) = begin
-    print_query(query)
     search_and_stream_results(query)
 end
 

@@ -7,3 +7,4 @@ res = report_package(EasyContext; toplevel_logger=nothing, target_modules=(EasyC
 show(IOContext(stdout, :limit => false), res)
 n = length(JET.get_reports(res))
 println("\nJET found $n possible errors")
+exit(n == 0 ? 0 : 1)

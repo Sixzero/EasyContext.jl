@@ -24,8 +24,9 @@ function apply_modify_by_llm_with_response(original_content::AbstractString, cha
 
     function is_valid_result(result)
         is_complete_replacement(result.content) && return true
-        content = extract_tagged_content(result.content, end_tag)
-        isnothing(content) && return false
+        # distinct name: `content` is also assigned in the enclosing scope, sharing would box it
+        tagged = extract_tagged_content(result.content, end_tag)
+        isnothing(tagged) && return false
         return true
     end
 

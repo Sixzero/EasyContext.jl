@@ -55,7 +55,7 @@ function process_batch(batch, embedder::JinaEmbedder)
     response = embedder.http_post(embedder.api_url, headers, JSON3.write(payload))
 
     if response.status == 200
-        result = JSON3.read(String(response.body))
+        result = JSON3.read(String(response.body))::JSON3.Object
         return [e["embedding"] for e in result["data"]]
     else
         error("Failed to get embeddings for batch. Status code: $(response.status)")

@@ -28,11 +28,12 @@ ToolCallFormat.get_tool_schema(::Type{JuliaSearchTool}) = JULIASEARCH_SCHEMA
 ToolCallFormat.get_description(::Type{JuliaSearchTool}) = description_from_schema(JULIASEARCH_SCHEMA)
 
 function ToolCallFormat.execute(tool::JuliaSearchTool; no_confirm=false, kwargs...)
-    if isnothing(tool.julia_ctx)
+    julia_ctx = tool.julia_ctx
+    if isnothing(julia_ctx)
         @warn "julia_ctx is nothing"
         return false
     end
-    result, _ = process_julia_context(tool.julia_ctx, tool.query)
+    result, _ = process_julia_context(julia_ctx, tool.query)
     text = isempty(result) ? "No relevant Julia code found for query: $(tool.query)" : "Julia search results for: $(tool.query)\n\n$result"
     tool.process_result = ProcessResult(text)
     true

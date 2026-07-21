@@ -52,7 +52,7 @@ function fast_cache_key(keys::AbstractSet)
     end
     
     # Combine hashes of all keys
-    combined_hash = reduce(xor, Base.Generator(hash, items))
+    combined_hash = reduce(xor, Base.Generator(hash, keys))
     
     return string(combined_hash, base=16, pad=16)  # Convert to 16-digit hexadecimal string
 end

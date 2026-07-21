@@ -43,7 +43,6 @@ include("utils/APIKeyManager.jl")
 include("rerankers/ChunkBatchers.jl")
 include("rerankers/rerank_prompts.jl")
 include("rerankers/ReduceGPTReranker.jl")
-include("rerankers/CohereRerankerPro.jl")
 include("rag/AdvancedRAG.jl")
 
 include("loader/loaders.jl")
@@ -78,7 +77,6 @@ include("action/loading_spinner.jl")
 # include("ai_repl.jl")
 include("PkgLister.jl")
 
-include("MainUtils.jl")
 include("transform/transformations.jl")
 
 

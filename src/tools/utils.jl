@@ -26,7 +26,7 @@ function format_cmd_output(output, error, process; debug_msg=nothing)
     if startswith(stdout_str, "{")
         try
             response = JSON3.read(stdout_str)
-            if haskey(response, "error")
+            if response isa JSON3.Object && haskey(response, "error")
                 @info "Server returned error" response.error
                 println(error_str)
                 println("The debug msg:")

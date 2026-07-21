@@ -170,7 +170,8 @@ function get_embeddings(embedder::GoogleGeckoEmbedder, docs::AbstractVector{<:Ab
             result = JSON3.read(String(response.body))
             
             # Extract embeddings from the response
-            embeddings = []
+            # `local`: avoid boxing/sharing with `embeddings` in the enclosing function
+            local embeddings = []
             token_count = 0
             
             for prediction in result.predictions

@@ -9,7 +9,7 @@
     cost::Union{Nothing,Float64} = nothing
 end
 
-function ToolCallFormat.create_tool(::Type{WorkspaceSearchTool}, call::ParsedCall, workspace_ctx::WorkspaceCTX=nothing)
+function ToolCallFormat.create_tool(::Type{WorkspaceSearchTool}, call::ParsedCall, workspace_ctx::Union{Nothing,WorkspaceCTX}=nothing)
     query_pv = get(call.kwargs, "query", nothing)
     query = query_pv !== nothing ? query_pv.value : ""
     WorkspaceSearchTool(query=query, workspace_ctx=workspace_ctx)
@@ -27,12 +27,13 @@ ToolCallFormat.get_tool_schema(::Type{WorkspaceSearchTool}) = WORKSPACESEARCH_SC
 ToolCallFormat.get_description(::Type{WorkspaceSearchTool}) = description_from_schema(WORKSPACESEARCH_SCHEMA)
 
 function ToolCallFormat.execute(tool::WorkspaceSearchTool; no_confirm=false, kwargs...)
-    if isnothing(tool.workspace_ctx)
+    workspace_ctx = tool.workspace_ctx
+    if isnothing(workspace_ctx)
         @warn "workspace_ctx is nothing"
         return false
     end
 
-    result, _, _, full_result = process_workspace_context(tool.workspace_ctx, tool.query)
+    result, _, _, full_result = process_workspace_context(workspace_ctx, tool.query)
     text = isempty(result) ? "No relevant code found for query: $(tool.query)" : "Search results for: $(tool.query)\n\n$result"
     tool.process_result = ProcessResult(text)
     tool.workspace_ctx_result = full_result

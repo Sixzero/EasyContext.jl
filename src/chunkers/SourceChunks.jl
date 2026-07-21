@@ -85,10 +85,13 @@ function process_package(chunker::SourceChunker, pkg_info::Pkg.API.PackageInfo,
     end
 end
 
+# JuliaSyntax.children returns nothing for leaf nodes
+node_children(node) = something(JuliaSyntax.children(node), JuliaSyntax.SyntaxNode[])
+
 function process_node(node::JuliaSyntax.SyntaxNode, module_stack::Vector{String}, result::Dict{String, Vector{String}}, file_path::String)
-    for child in JuliaSyntax.children(node)
+    for child in node_children(node)
         if JuliaSyntax.kind(child) == K"call"
-            call_children = JuliaSyntax.children(child)
+            call_children = node_children(child)
             if length(call_children) >= 1
                 func = call_children[1]
                 if JuliaSyntax.kind(func) == K"Identifier" && (func.val == :include || func.val == :includet)
@@ -111,7 +114,7 @@ function process_node(node::JuliaSyntax.SyntaxNode, module_stack::Vector{String}
                 end
             end
         elseif JuliaSyntax.kind(child) == K"module"
-            module_children = JuliaSyntax.children(child)
+            module_children = node_children(child)
             if length(module_children) >= 1
                 module_name = module_children[1].val
                 if module_name == nothing
@@ -157,13 +160,13 @@ function safe_substring2(s, from, to)
     return s[from_index:to_index]
 end
 function is_include_call(node::JuliaSyntax.SyntaxNode)
-    children = JuliaSyntax.children(node)
+    children = node_children(node)
     return length(children) >= 1 && 
            children[1].val == :include
 end
 
 function get_include_file(node::JuliaSyntax.SyntaxNode)
-    children = JuliaSyntax.children(node)
+    children = node_children(node)
     if length(children) >= 2 && kind(children[2]) == K"string"
         string_content = string(children[2])
         # Use regex to extract the file name

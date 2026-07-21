@@ -22,15 +22,15 @@ Returns (file_path, line_start, line_end) - negative line_start means tail N lin
 """
 function parse_file_range(args::String)
     m = match(r"^(.+?):(-\d+)$", args)
-    m !== nothing && return (m[1], parse(Int, m[2]), nothing)
+    m !== nothing && return (something(m[1]), parse(Int, something(m[2])), nothing)
 
     m = match(r"^(.+?):(\d+)-(\d*)$", args)
-    m !== nothing && return (m[1], parse(Int, m[2]), m[3] != "" ? parse(Int, m[3]) : nothing)
+    m !== nothing && return (something(m[1]), parse(Int, something(m[2])), m[3] != "" ? parse(Int, something(m[3])) : nothing)
 
     m = match(r"^(.+?):(\d+)$", args)
     if m !== nothing
-        line = parse(Int, m[2])
-        return (m[1], line, line)
+        line = parse(Int, something(m[2]))
+        return (something(m[1]), line, line)
     end
     (args, nothing, nothing)
 end

@@ -10,7 +10,6 @@ Base.@kwdef mutable struct ExecutionPlannerContext <: AbstractPlanner
     history_count::Int = 3
 end
 
-transform_position(::Type{ExecutionPlannerContext}) = AppendTransform()
 
 Base.display(ctx::ExecutionPlannerContext, content::AbstractString) = 
     display(Markdown.parse("# EXECUTION_PLAN\n" * content))
@@ -39,8 +38,8 @@ function transform(ctx::ExecutionPlannerContext, query, session::Session; io=std
         api_kwargs = (; )
     end
     response = aigen([
-        SystemMessage(PLANNER_SYSTEM_PROMPT),
-        UserMessage(prompt)
+        SystemMessage(content=PLANNER_SYSTEM_PROMPT),
+        UserMessage(content=prompt)
     ], ctx.model; streamcallback=cb, api_kwargs...)
     
     content = response.content

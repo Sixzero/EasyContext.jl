@@ -122,7 +122,8 @@ function get_embeddings(embedder::CohereEmbedder, docs::AbstractVector{<:Abstrac
             result = JSON3.read(String(response.body))
             
             # Extract embeddings based on the requested type (default to float)
-            embeddings = if "float" in embedding_types
+            # `local`: avoid boxing/sharing with `embeddings` in the enclosing function
+            local embeddings = if "float" in embedding_types
                 result.embeddings.float
             elseif "int8" in embedding_types
                 result.embeddings.int8
