@@ -43,6 +43,28 @@ jobs:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+  jet:
+    name: JET static analysis
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true # baseline of pre-existing reports; informative for now
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+      - uses: julia-actions/cache@v2
+      - name: Run JET
+        shell: julia --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.activate(temp=true)
+          Pkg.develop(path=pwd())
+          Pkg.add("JET")
+          include(joinpath(pwd(), "scripts", "jet_check.jl"))
   docs:
     name: Documentation
     runs-on: ubuntu-latest

@@ -91,16 +91,6 @@ last_msg(conv::CONV) = conv.messages[end].content
 
 get_message_separator(conv_id) = "===AISH_MSG_$(conv_id)==="
 
-function parse_conversation_filename(filename)
-    m = match(CONVERSATION_FILE_REGEX, filename)
-    return isnothing(m) ? (timestamp=nothing, to_solve="", id="",) : (
-        timestamp=date_parse(m[1]),
-        to_solve=m[:sent],
-        id=m[:id],
-    )
-end
-
-
 @kwdef mutable struct TODO <: CONV
     overview::String         # max 20 token thing
 end

@@ -10,7 +10,7 @@ include("SessionImageSupport.jl")
     status::Symbol = :PENDING
 end
 # Session(c::Conversation) = Session(uuid4(), now(), c.messages, :UNSTARTED)
-initSession(messages::Vector{M};sys_msg::String="") where M <: Message = Session(initConversation(messages; sys_msg))
+initSession(messages::Vector{M}; kwargs...) where M <: Message = Session(; messages)
 
 function push_message!(conv::Session, msg::AIMessage)
     # Only merge consecutive plain-text assistant turns. Never merge when either
@@ -53,7 +53,7 @@ function push_message!(conv::Session, msg::Message)
     conv
 end
 
-abs_conversation_path(p,conv::Session) = joinpath(abspath(expanduser(path)), conv.id, "conversations")
+abs_conversation_path(path,conv::Session) = joinpath(abspath(expanduser(path)), conv.id, "conversations")
 conversation_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversation_file(path,conv::Session) = joinpath(conversation_path(path, conv), "conversation.json")
 

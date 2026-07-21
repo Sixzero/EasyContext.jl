@@ -163,8 +163,9 @@ function initialize_from_env!(manager::APIKeyManager)
 
     # Process all providers in the OpenRouter registry
     for (provider_name, provider_info) in PROVIDER_INFO
-        if provider_info.api_key_env_var !== nothing
-            keys = collect_env_keys(provider_info.api_key_env_var)
+        env_var = provider_info.api_key_env_var
+        if env_var !== nothing
+            keys = collect_env_keys(env_var)
             !isempty(keys) && add_api_keys!(manager, provider_name, keys)
         end
     end

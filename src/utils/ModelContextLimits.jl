@@ -66,8 +66,9 @@ function get_model_context_limit(model::String)
         # If provider specified, try to find that provider's endpoint context_length
         if provider !== nothing && cached.endpoints !== nothing
             for endpoint in cached.endpoints.endpoints
+                tag = endpoint.tag
                 if lowercase(endpoint.provider_name) == provider ||
-                   (endpoint.tag !== nothing && lowercase(endpoint.tag) == provider)
+                   (tag !== nothing && lowercase(tag) == provider)
                     if endpoint.context_length !== nothing
                         return endpoint.context_length
                     end
