@@ -136,9 +136,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     )
-    # Initialize the system message if it hasn't been initialized yet
-    sys_msg_content = initialize!(agent.sys_msg, agent)
-
     model_name = get_model_name(agent.model)
 
     # Base API kwargs - now using centralized logic
@@ -159,6 +156,11 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # Drain any queued user messages before LLM call
             on_drain_user_queue()
+
+            # Re-initialize the system message after drain: a drain may invalidate it
+            # (content = "") when settings/devices changed (e.g. rotated CDP token).
+            # No-op when content is already built.
+            sys_msg_content = initialize!(agent.sys_msg, agent)
 
             # Recompute native tools after drain (tools may be populated/updated by drain)
             native_tools = get_native_tools(agent)
