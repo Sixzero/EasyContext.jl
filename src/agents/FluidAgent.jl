@@ -125,6 +125,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_start=noop,
     on_status=noop,  # Called with status: "COMPACTING" during compaction, "WORKING" after
     on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session. Returns true if messages were drained.
+    on_admitted=noop,  # Called right before each LLM request dispatch, after all setup (sys-msg, tools, compaction, payload). Used to release a bounded-admission slot; must be idempotent.
     on_queue_empty=Returns(true),  # Called after no-tool-call response; returns true if queue is empty (break), false if messages pending (continue loop).
     on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
     io=stdout,
@@ -187,6 +188,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 end,
                 on_content = process_enabled ? extractor_fn : noop,
             ))
+            # Setup for this iteration is done — the request that follows is I/O-bound.
+            on_admitted()
+
             response = aigenerate_with_config(agent.model, pt_messages;
                 cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice="auto", on_retry)
 
