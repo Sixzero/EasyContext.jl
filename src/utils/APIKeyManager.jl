@@ -52,6 +52,7 @@ end
 
 # Global instance
 const GLOBAL_API_KEY_MANAGER = APIKeyManager()
+const API_KEY_MANAGER_LOCK = ReentrantLock()  # lifecycle tasks call get_api_key_for_model from multiple threads
 
 """
     save_stats_to_file!(api_key::StringApiKey)
@@ -59,17 +60,20 @@ const GLOBAL_API_KEY_MANAGER = APIKeyManager()
 Save API key statistics to JLD2 file asynchronously with partial updates.
 """
 function save_stats_to_file!(api_key::StringApiKey)
+    # Snapshot mutable state NOW (caller holds API_KEY_MANAGER_LOCK) — the async
+    # writer must not read api_key fields concurrently with other threads' updates.
+    key_hash = string(hash(api_key.key))  # Use hash for privacy
+    stats = Dict(
+        "provider_name" => api_key.provider_name,
+        "tokens_used_last_minute" => LLMRateLimiters.current_usage(api_key.rate_limiter),
+        "last_save_time" => api_key.last_save_time
+    )
     @async_showerr begin
         lock(STATS_LOCK) do
             !isdir(DATA_DIR) && mkpath(DATA_DIR)
-            key_hash = string(hash(api_key.key))  # Use hash for privacy
             jldopen(STATS_FILE, "a+") do file     # a+ is OK
                 haskey(file, key_hash) && delete!(file, key_hash)  # required to overwrite
-                file[key_hash] = Dict(
-                    "provider_name" => api_key.provider_name,
-                    "tokens_used_last_minute" => LLMRateLimiters.current_usage(api_key.rate_limiter),
-                    "last_save_time" => api_key.last_save_time
-                )
+                file[key_hash] = stats
             end
         end
     end
@@ -181,23 +185,25 @@ Get the appropriate API key for a model and request with proper rate limiting.
 function get_api_key_for_model(model::Union{String, ModelConfig},
                               request_id::Union{String, Nothing} = nothing, prompt::AbstractString = "";
                               manager::APIKeyManager = GLOBAL_API_KEY_MANAGER)
-    initialize_from_env!(manager)
-    
-    provider_name = if model isa ModelConfig
-        # For ModelConfig, we need to determine provider from the slug
-        extract_provider_from_model(model.slug)
-    else
-        extract_provider_from_model(model)
+    lock(API_KEY_MANAGER_LOCK) do
+        initialize_from_env!(manager)
+
+        provider_name = if model isa ModelConfig
+            # For ModelConfig, we need to determine provider from the slug
+            extract_provider_from_model(model.slug)
+        else
+            extract_provider_from_model(model)
+        end
+
+        est = LLMRateLimiters.estimate_tokens(prompt, CharCountDivTwo)
+        key_obj = find_api_key_for_request(manager, provider_name, request_id, est)
+
+        isnothing(key_obj) && return nothing
+
+        # Update usage and affinity
+        update_usage!(key_obj, est)
+        !isnothing(request_id) && (manager.request_affinity[request_id] = (key_obj.key, time()))
+
+        return key_obj.key
     end
-    
-    est = LLMRateLimiters.estimate_tokens(prompt, CharCountDivTwo)
-    key_obj = find_api_key_for_request(manager, provider_name, request_id, est)
-    
-    isnothing(key_obj) && return nothing
-    
-    # Update usage and affinity
-    update_usage!(key_obj, est)
-    !isnothing(request_id) && (manager.request_affinity[request_id] = (key_obj.key, time()))
-    
-    return key_obj.key
 end

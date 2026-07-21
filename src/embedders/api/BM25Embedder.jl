@@ -2,6 +2,7 @@ using RAGTools
 using SHA
 
 const DTM_CACHE = Dict{String, RAGTools.DocumentTermMatrix}()
+const DTM_CACHE_LOCK = ReentrantLock()  # searches run from multi-threaded lifecycle tasks
 
 @kwdef struct BM25Embedder <: RAGTools.AbstractEmbedder
     processor::RAGTools.AbstractProcessor = RAGTools.KeywordsProcessor()
@@ -15,8 +16,10 @@ end
 
 function get_score(builder::BM25Embedder, chunks::AbstractVector{<:AbstractString}, query::AbstractString; kwargs...)
     key = fast_cache_key(chunks)
-    dtm = get!(DTM_CACHE, key) do
-        get_dtm_easycontext(builder.processor, chunks)
+    dtm = lock(DTM_CACHE_LOCK) do
+        get!(DTM_CACHE, key) do
+            get_dtm_easycontext(builder.processor, chunks)
+        end
     end
     
     query_keywords = get_keywords_easycontext(builder.processor, query)

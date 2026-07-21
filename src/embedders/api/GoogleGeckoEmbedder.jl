@@ -8,6 +8,7 @@ using Dates
 
 # Module-level cache for authentication tokens
 const AUTH_TOKEN_CACHE = Dict{String, Tuple{String, DateTime}}()
+const AUTH_TOKEN_LOCK = ReentrantLock()  # embedders run from multi-threaded lifecycle tasks
 const PROJECT_ID_CACHE = Ref{String}("")
 
 """
@@ -40,6 +41,7 @@ end
 
 # Get project ID from environment or gcloud
 function get_project_id()
+    lock(AUTH_TOKEN_LOCK) do
     # Check if we already have a cached project ID
     if !isempty(PROJECT_ID_CACHE[])
         return PROJECT_ID_CACHE[]
@@ -64,6 +66,7 @@ function get_project_id()
     PROJECT_ID_CACHE[] = project_id
     
     return project_id
+    end
 end
 
 # Get authentication token from module-level cache or fetch a new one
@@ -73,12 +76,13 @@ function get_auth_token(embedder::GoogleGeckoEmbedder; force_refresh::Bool=false
     
     # Check if we have a valid cached token and not forcing refresh
     current_time = now()
-    if !force_refresh && haskey(AUTH_TOKEN_CACHE, cache_key)
-        token, expiry = AUTH_TOKEN_CACHE[cache_key]
-        if current_time < expiry
-            return token
+    cached = lock(AUTH_TOKEN_LOCK) do
+        if !force_refresh && haskey(AUTH_TOKEN_CACHE, cache_key)
+            token, expiry = AUTH_TOKEN_CACHE[cache_key]
+            current_time < expiry ? token : nothing
         end
     end
+    cached === nothing || return cached
     
     # Get a new token from gcloud
     token = try
@@ -95,7 +99,9 @@ function get_auth_token(embedder::GoogleGeckoEmbedder; force_refresh::Bool=false
     end
     
     # Cache the token with a 50-minute expiry (tokens typically last 60 minutes)
-    AUTH_TOKEN_CACHE[cache_key] = (token, current_time + Minute(50))
+    lock(AUTH_TOKEN_LOCK) do
+        AUTH_TOKEN_CACHE[cache_key] = (token, current_time + Minute(50))
+    end
     
     return token
 end
