@@ -121,7 +121,7 @@ function _extract_error_message(e)
     !isnothing(m) && return strip(something(m.captures[1]), '"')
     # Look for "Message: ..." pattern (e.g. from streaming errors)
     m = match(r"Message:\s*(.+?)(?:,|$)"m, s)
-    !isnothing(m) && return m.captures[1]
+    !isnothing(m) && return something(m.captures[1])
     # Fallback: first non-empty line that isn't just a type name
     for line in split(s, '\n')
         stripped = strip(line)
