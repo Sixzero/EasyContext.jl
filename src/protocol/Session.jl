@@ -27,7 +27,8 @@ end
 
 function push_message!(conv::Session, msg::ToolMessage)
     images = isnothing(msg.image_data) ? String[] : msg.image_data
-    push!(conv.messages, create_tool_message(String(msg.content), msg.tool_call_id; images_base64=images))
+    documents = isnothing(msg.document_data) ? String[] : msg.document_data
+    push!(conv.messages, create_tool_message(String(msg.content), msg.tool_call_id; images_base64=images, documents_base64=documents))
     conv
 end
 
@@ -104,7 +105,9 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
         elseif msg.role == :tool
             image_keys = sort(filter(k -> startswith(k, "base64img_"), collect(keys(msg.context))))
             image_data = isempty(image_keys) ? nothing : [image_data_url_sanitizer[](msg.context[k])::String for k in image_keys]
-            ToolMessage(content=msg.content, tool_call_id=msg.tool_call_id, image_data=image_data)
+            doc_keys = sort(filter(k -> startswith(k, "base64doc_"), collect(keys(msg.context))))
+            document_data = isempty(doc_keys) ? nothing : [msg.context[k] for k in doc_keys]
+            ToolMessage(content=msg.content, tool_call_id=msg.tool_call_id, image_data=image_data, document_data=document_data)
         elseif msg.role == :assistant
             full_content = context_combiner!(msg.content, msg.context)
             AIMessage(content=full_content, tool_calls=msg.tool_calls)
