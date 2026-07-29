@@ -97,12 +97,15 @@ that were sent in that API call, so the paired estimate snapshot is aligned.
 function record_real_usage!(cutter::TokenBasedCutter, conv, real_tokens::Int)
     real_tokens <= 0 && return
     est = estimate_conversation_tokens(cutter, conv)
-    # Shift the current anchor into prev only when the estimate moved by a meaningful
-    # baseline: two anchors a handful of estimate-tokens apart give a noise-dominated
-    # slope (e.g. an image adds ~1.5K real tokens but ~0 estimate — the old `> 1` guard
-    # happily fit slopes of 100+ from that). Keep the last well-separated pair so the
-    # affine fit stays conditioned; context_model re-checks the same baseline.
-    if cutter.last_real_estimate > 0 && abs(est - cutter.last_real_estimate) >= MIN_ANCHOR_EST_DELTA
+    # `last` must always be the NEWEST anchor (current_context_tokens estimates only the
+    # delta since it). Promote the outgoing `last` into the `prev` baseline when either:
+    # - there is no baseline yet (seed it; context_model won't fit until it's ≥200 away), or
+    # - the new measurement is ≥MIN_ANCHOR_EST_DELTA from `last` (fresh well-separated pair).
+    # Crucially, when growth is gradual (<200 per turn) the baseline is NOT overwritten, so
+    # separation accumulates across turns and a two-anchor fit still becomes possible —
+    # promoting on every turn would keep the pair forever too close to fit.
+    if cutter.last_real_estimate > 0 &&
+       (cutter.prev_real_estimate == 0 || abs(est - cutter.last_real_estimate) >= MIN_ANCHOR_EST_DELTA)
         cutter.prev_real_tokens = cutter.last_real_tokens
         cutter.prev_real_estimate = cutter.last_real_estimate
     end
@@ -129,11 +132,13 @@ Affine map from conversation-estimate tokens to real context tokens:
 context (system prompt, tools, skills — invisible to the char estimate); `slope`
 is the content's real-per-estimate ratio.
 
-With two well-separated anchors we fit both from the line through them (clamping to
-keep overhead ≥ 0 and the slope in a plausible content range). With one anchor (or a
-rejected fit) we can't separate the two, so we attribute the residual to the FIXED
-overhead at the default slope: `overhead = real − 0.5·estimate`. The model then stays
-exact at the anchor and only the delta since the last LLM call is estimated.
+With two well-separated anchors we fit both from the line through them, accepting the
+fit only when the slope is in a plausible content range AND the intercept is
+non-negative (a negative intercept means the fixed-overhead assumption broke —
+tools/system changed between anchors — so the line is not trustworthy). Otherwise we
+fall back to the single latest anchor: default slope capped so overhead stays ≥ 0
+(`slope = min(0.5, real/estimate)`, `overhead = real − slope·estimate`). The fallback
+is exact at the anchor, so only the delta since the last LLM call is estimated.
 
 The old single-anchor fallback did the opposite — proportional `slope = real/estimate`,
 overhead 0 — which folded the large fixed system-prompt/tools/skills overhead (often
@@ -149,16 +154,20 @@ function context_model(cutter::TokenBasedCutter)
     have1 || return (0.0, DEFAULT_EST_TO_REAL_RATIO)
     if have0 && abs(e1 - e0) >= MIN_ANCHOR_EST_DELTA
         slope = (r1 - r0) / (e1 - e0)
-        # Reject noisy/degenerate fits (real up while estimate down, or media-driven
-        # spikes). Plausible content slopes for chars/2 run ~0.25× (ASCII prose/base64)
-        # to ~2.5× (CJK / dense unicode); anything outside is noise, not content.
-        if 0.25 <= slope <= 2.5
-            overhead = max(0.0, r1 - slope * e1)              # clamp: overhead can't be negative
+        overhead = r1 - slope * e1
+        # Accept only sane fits: plausible content slopes for chars/2 run ~0.25×
+        # (ASCII prose/base64) to ~2.5× (CJK / dense unicode), and overhead must be
+        # non-negative — a negative intercept means the fixed-overhead assumption
+        # broke between the anchors, so the whole line is untrustworthy (clamping
+        # just its intercept would keep a line through NEITHER anchor).
+        if 0.25 <= slope <= 2.5 && overhead >= 0.0
             return (overhead, slope)
         end
     end
-    # Single anchor / rejected fit → default slope through the anchor: residual is overhead.
-    return (max(0.0, r1 - DEFAULT_EST_TO_REAL_RATIO * e1), DEFAULT_EST_TO_REAL_RATIO)
+    # Single anchor / rejected fit → default slope through the anchor, capped so the
+    # residual overhead stays ≥ 0. Exact at the anchor either way.
+    slope = min(DEFAULT_EST_TO_REAL_RATIO, r1 / e1)
+    return (r1 - slope * e1, slope)
 end
 
 """

@@ -17,5 +17,6 @@ using Test
     include("test_rag_pipelines.jl")
     include("test_model_config.jl")
     include("test_context_caps.jl")
+    include("test_token_cutter_context_model.jl")
     include("test_tool_pairing.jl")
 end
