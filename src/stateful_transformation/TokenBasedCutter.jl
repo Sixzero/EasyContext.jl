@@ -97,10 +97,12 @@ that were sent in that API call, so the paired estimate snapshot is aligned.
 function record_real_usage!(cutter::TokenBasedCutter, conv, real_tokens::Int)
     real_tokens <= 0 && return
     est = estimate_conversation_tokens(cutter, conv)
-    # Shift the current anchor into prev, but only when the estimate actually moved:
-    # two anchors at (near-)identical estimates give a meaningless slope. Keep the
-    # last distinct pair so the affine fit stays well-conditioned.
-    if cutter.last_real_estimate > 0 && abs(est - cutter.last_real_estimate) > 1
+    # Shift the current anchor into prev only when the estimate moved by a meaningful
+    # baseline: two anchors a handful of estimate-tokens apart give a noise-dominated
+    # slope (e.g. an image adds ~1.5K real tokens but ~0 estimate — the old `> 1` guard
+    # happily fit slopes of 100+ from that). Keep the last well-separated pair so the
+    # affine fit stays conditioned; context_model re-checks the same baseline.
+    if cutter.last_real_estimate > 0 && abs(est - cutter.last_real_estimate) >= MIN_ANCHOR_EST_DELTA
         cutter.prev_real_tokens = cutter.last_real_tokens
         cutter.prev_real_estimate = cutter.last_real_estimate
     end
@@ -111,8 +113,13 @@ end
 
 # CharCountDivTwo (chars/2) roughly tracks real tokens, but the ratio varies a lot
 # by content (plain text vs tool JSON vs skipped media), so we never assume a fixed
-# factor. Used only as the slope for a single-anchor (through-overhead) estimate.
+# factor. Used as the slope whenever no trustworthy two-anchor fit is available.
 const DEFAULT_EST_TO_REAL_RATIO = 0.5
+
+# Minimum estimate-token separation between anchors for a slope fit. Below this the
+# real-token delta is dominated by things the char estimate can't see (images, PDFs,
+# system-message rebuilds), producing wild slopes.
+const MIN_ANCHOR_EST_DELTA = 200
 
 """
     context_model(cutter::TokenBasedCutter) -> (overhead::Float64, slope::Float64)
@@ -122,28 +129,36 @@ Affine map from conversation-estimate tokens to real context tokens:
 context (system prompt, tools, skills — invisible to the char estimate); `slope`
 is the content's real-per-estimate ratio.
 
-With two distinct anchors we fit both from the line through them (clamping to keep
-overhead ≥ 0 and slope > 0). With one anchor we can't separate the two, so we
-attribute everything to the conversation (overhead 0, slope = real/estimate) —
-still content-adaptive, unlike the old fixed 0.5. With none, slope defaults and
-overhead is 0.
+With two well-separated anchors we fit both from the line through them (clamping to
+keep overhead ≥ 0 and the slope in a plausible content range). With one anchor (or a
+rejected fit) we can't separate the two, so we attribute the residual to the FIXED
+overhead at the default slope: `overhead = real − 0.5·estimate`. The model then stays
+exact at the anchor and only the delta since the last LLM call is estimated.
+
+The old single-anchor fallback did the opposite — proportional `slope = real/estimate`,
+overhead 0 — which folded the large fixed system-prompt/tools/skills overhead (often
+25K+ real tokens vs a ~2K conversation estimate) into the slope. Every conversation
+token was then extrapolated 5–20×, firing auto-compaction when the REAL context was
+only ~40–50K of a 200K limit.
 """
 function context_model(cutter::TokenBasedCutter)
     r1, e1 = cutter.last_real_tokens, cutter.last_real_estimate
     r0, e0 = cutter.prev_real_tokens, cutter.prev_real_estimate
     have1 = r1 > 0 && e1 > 0
     have0 = r0 > 0 && e0 > 0
-    if have1 && have0 && abs(e1 - e0) > 1
+    have1 || return (0.0, DEFAULT_EST_TO_REAL_RATIO)
+    if have0 && abs(e1 - e0) >= MIN_ANCHOR_EST_DELTA
         slope = (r1 - r0) / (e1 - e0)
-        # Reject noisy/degenerate fits (e.g. real up while estimate down): fall back to
-        # the single-anchor proportional slope. Real content runs ~0.25–8× the estimate.
-        if 0.25 <= slope <= 8.0
+        # Reject noisy/degenerate fits (real up while estimate down, or media-driven
+        # spikes). Plausible content slopes for chars/2 run ~0.25× (ASCII prose/base64)
+        # to ~2.5× (CJK / dense unicode); anything outside is noise, not content.
+        if 0.25 <= slope <= 2.5
             overhead = max(0.0, r1 - slope * e1)              # clamp: overhead can't be negative
             return (overhead, slope)
         end
     end
-    have1 && return (0.0, r1 / e1)                            # single anchor → proportional
-    return (0.0, DEFAULT_EST_TO_REAL_RATIO)
+    # Single anchor / rejected fit → default slope through the anchor: residual is overhead.
+    return (max(0.0, r1 - DEFAULT_EST_TO_REAL_RATIO * e1), DEFAULT_EST_TO_REAL_RATIO)
 end
 
 """
