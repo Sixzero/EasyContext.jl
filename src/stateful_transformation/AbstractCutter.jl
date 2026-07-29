@@ -3,11 +3,8 @@ export AbstractCutter, should_cut, do_cut!, maybe_cut!, get_cache_setting, calcu
 """
 AbstractCutter defines the interface for conversation cutters.
 
-Implementations:
-- AgeBasedCutter: triggers at message count threshold
-- TokenBasedCutter: triggers at token usage threshold
-
-All cutters work with SourceTracker for source cleanup.
+Implementation: TokenBasedCutter (triggers at token usage threshold).
+Works with SourceTracker for source cleanup.
 """
 abstract type AbstractCutter end
 
