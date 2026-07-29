@@ -54,6 +54,10 @@ function get_model_context_limit(model::String)
     # Parse provider and model_id from slug
     provider, model_id = parse_provider_model_slug(model)
 
+    # Echo providers (startup warmup / tests) are not real models — skip the DB
+    # lookup so warmup doesn't trigger update_db() + "Model not found" log noise.
+    provider !== nothing && startswith(provider, "echo") && return DEFAULT_CONTEXT_LIMIT
+
     try
         # Fetch with endpoints if we have a specific provider
         cached = get_model(model_id; fetch_endpoints=(provider !== nothing))
