@@ -88,9 +88,15 @@ end
 
 const AIGEN_MAX_RETRIES = 3
 
-function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing)
+function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing)
     for attempt in 1:max_retries
         try
+            # A stream callback accumulates chunks in-place across the whole
+            # request. On a retry the previous (failed/partial) attempt's chunks
+            # are still there and `build_response_body` would rebuild from ALL of
+            # them — duplicating or corrupting tool_calls (e.g. the same question
+            # asked twice). Reset it so each attempt starts from a clean slate.
+            attempt > 1 && streamcallback !== nothing && empty!(streamcallback)
             return f()
         catch e
             e isa InterruptException && rethrow(e)
@@ -142,7 +148,7 @@ function aigenerate_with_config(config::ModelConfig, prompt;
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
 
-    _aigen_with_retry(; on_retry) do
+    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing)) do
         aigen(prompt, config; kwargs...)
     end
 end
@@ -158,7 +164,7 @@ function aigenerate_with_config(model::String, prompt;
     end
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     filtered_kwargs = NamedTuple(k => v for (k, v) in pairs(kwargs) if k != :api_kwargs)
-    _aigen_with_retry(; on_retry) do
+    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing)) do
         aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
     end
 end
