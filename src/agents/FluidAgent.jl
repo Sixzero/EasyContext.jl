@@ -232,6 +232,16 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     catch e
         if is_interrupt(e)
             @info "Interrupt caught in work()" exception_type=typeof(e) has_extractor=!isnothing(extractor)
+            # Close any open streaming block: the aborted stream never fires on_done,
+            # so without this the frontend keeps a dangling "Thinking"/streaming block
+            # (generationCompleted stays false, persisted in the DB too).
+            if process_enabled && !isnothing(extractor)
+                try
+                    extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)
+                catch flush_err
+                    @warn "Failed to flush open block on interrupt" exception=flush_err
+                end
+            end
             save_interrupted_content!(session, extractor)
             on_finish()
             if rethrow_on_interrupt
