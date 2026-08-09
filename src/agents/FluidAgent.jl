@@ -136,6 +136,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
+    tool_choice::String="auto",  # "none" forbids tool calls while KEEPING the tool schema in the (cached) prefix — used for throwaway inferences like next-message prediction.
     )
     model_name = get_model_name(agent.model)
 
@@ -192,14 +193,19 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             on_admitted()
 
             response = aigenerate_with_config(agent.model, pt_messages;
-                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice="auto", on_retry)
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
 
             # ── Post-response handling (native API tool calling) ──
-            ai_msg = create_AI_message(response.content; tool_calls=response.tool_calls)
+            # tool_choice="none" is a hard read-only boundary: even if a provider returns tool_calls
+            # anyway (non-compliant/fallback), NEVER execute them. Drop them and treat the response
+            # as plain text. Used by throwaway inferences (e.g. next-message prediction) that must
+            # keep the tool schema in the cached prefix but must not run anything.
+            tool_calls = tool_choice == "none" ? nothing : response.tool_calls
+            ai_msg = create_AI_message(response.content; tool_calls)
             hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
 
             # No tool calls → persist the assistant response immediately.
-            if response.tool_calls === nothing || isempty(response.tool_calls)
+            if tool_calls === nothing || isempty(tool_calls)
                 push_message!(session, ai_msg)
                 if on_queue_empty()
                     break
@@ -207,7 +213,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     # new assistant message is needed so we don't break
                 end
             else
-                process_native_tool_calls!(extractor, response.tool_calls, io; kwargs=tool_kwargs)
+                process_native_tool_calls!(extractor, tool_calls, io; kwargs=tool_kwargs)
 
                 # Approval continuations need the tool_use persisted before pausing.
                 if any_tool_needs_approval(extractor)
