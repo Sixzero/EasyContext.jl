@@ -28,7 +28,7 @@ Uses SourceTracker for token-aware source cleanup.
     estimation_method::TokenEstimationMethod = CharCountDivTwo
 
     # Summarization
-    summarizer_model::String = "claudeh"
+    summarizer_model::String = SUMMARIZER_MODEL
     last_summary::String = ""
 
     # Real-usage anchors: the provider's exact context size from API calls, paired
@@ -43,25 +43,22 @@ Uses SourceTracker for token-aware source cleanup.
     prev_real_estimate::Int = 0
 end
 
-# OpenAI tokens carry more content on average, so retain the 200K quality/cost cap
-# there while allowing other providers a larger standard context window.
-const OPENAI_CONTEXT_CAP = 200_000
-const NON_OPENAI_CONTEXT_CAP = 250_000
-
-context_cap_for_model(model::String) = is_openai_reasoning_model(model) ? OPENAI_CONTEXT_CAP : NON_OPENAI_CONTEXT_CAP
+# Quality/cost cap regardless of the model's advertised window (1M-context models
+# degrade and get expensive well before their limit). Also keeps the compaction
+# threshold (80% → 160K) aligned with the frontend indicator, which renders the
+# ring against the same 200K standard cap.
+const CONTEXT_CAP = 200_000
 
 """
     get_effective_limit(cutter::TokenBasedCutter) -> Int
 
-Get the effective context limit from explicit config or model lookup.
-Caps OpenAI models at 200K and other providers at 250K.
+Get the effective context limit from explicit config or model lookup, capped at 200K.
 Returns 0 if not configured (disables token-based cutting).
 """
 function get_effective_limit(cutter::TokenBasedCutter)
     cutter.context_limit > 0 && return cutter.context_limit
     isempty(cutter.model) && return 0
-    cap = context_cap_for_model(cutter.model)
-    return min(get_model_context_limit(cutter.model), cap)
+    return min(get_model_context_limit(cutter.model), CONTEXT_CAP)
 end
 
 """
@@ -187,6 +184,13 @@ end
 function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
     limit = get_effective_limit(cutter)
     limit <= 0 && return false
+
+    # No real-usage anchor yet (fresh flow, or one deserialized from a pre-anchor
+    # blob): current_context_tokens falls back to the raw chars/2 estimate, which
+    # overruns real tokens ~1.5-2x for ASCII and would fire compaction way too
+    # early (e.g. at a real ~60K). The first LLM call always records an anchor
+    # (record_real_usage!), so just wait for it.
+    cutter.last_real_tokens > 0 || return false
 
     current_tokens = current_context_tokens(cutter, conv)
     threshold = limit * cutter.compact_threshold

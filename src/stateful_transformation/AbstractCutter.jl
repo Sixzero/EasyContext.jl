@@ -97,6 +97,12 @@ function summarize_and_cut!(cutter::AbstractCutter, conv; keep::Int)
         # NOTE: the message MUST start with "<prior_context>" — is_prior_context keys on it.
         pushfirst!(conv.messages,
             create_user_message("<prior_context>\nThis session is continued from an earlier portion of the conversation that was compacted to save context. The summary below is the only record of it — treat it as what actually happened.\n\n$(cutter.last_summary)\n</prior_context>"))
+    elseif !isempty(conv.messages) && conv.messages[1].role != :user
+        # Summarization failed with no previous summary, and the cut boundary landed on
+        # an :assistant turn — Anthropic requires the first message to be :user, so
+        # insert a minimal marker instead of the summary.
+        pushfirst!(conv.messages,
+            create_user_message("<prior_context>\nAn earlier portion of the conversation was removed to save context (its summary is unavailable).\n</prior_context>"))
     end
     return cutter.last_summary
 end

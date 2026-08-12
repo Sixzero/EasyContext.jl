@@ -13,8 +13,9 @@ using EasyContext: SourceChunk, ContextNode, add_or_update_source!, format_conte
     msgs = mkmsgs()
     for k in 2:8
         cut_start = history_cut_start(msgs, k)
-        # Window must start on a real :user turn (never an orphaned :tool/:assistant).
-        @test msgs[cut_start].role == :user
+        # Window must never start on a :tool result (its paired tool_use would be
+        # cut); :user and :assistant are both valid boundaries.
+        @test msgs[cut_start].role != :tool
         # The removed prefix and the kept window partition the messages exactly —
         # no overlap (duplicate summary) and no gap (silent loss).
         @test cut_start >= 1 && cut_start <= length(msgs)
@@ -24,8 +25,24 @@ using EasyContext: SourceChunk, ContextNode, add_or_update_source!, format_conte
         c = Session(); append!(c.messages, deepcopy(msgs))
         cut_history!(c; keep=k)
         @test length(c.messages) == kept_n
-        @test c.messages[1].role == :user
+        @test c.messages[1].role != :tool
     end
+
+    # Long autonomous run: ONE user message then assistant/tool turns only.
+    # The old :user-only alignment walked every boundary back to index 1,
+    # deadlocking auto-compaction (nothing to free) until the next user message.
+    autonomous = begin
+        c = Session()
+        push!(c.messages, Message(timestamp=now(UTC), role=:user, content="u1"))
+        for i in 1:20
+            push!(c.messages, Message(timestamp=now(UTC), role=:assistant, content="a$i"))
+            push!(c.messages, Message(timestamp=now(UTC), role=:tool, content="t$i"))
+        end
+        c.messages
+    end
+    cut_start = history_cut_start(autonomous, 4)
+    @test cut_start > 1                       # a cut is actually possible
+    @test autonomous[cut_start].role != :tool
 end
 
 @testset "ContextNode" begin

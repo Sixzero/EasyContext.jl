@@ -25,21 +25,25 @@ end
     history_cut_start(messages, keep) -> Int
 
 Index of the first message to KEEP when retaining ~`keep` recent messages.
-Aligns backward to the nearest `:user` so the kept window starts on a real user
-turn — never on an orphaned `:tool`/`:assistant` (whose paired tool_use would be
-cut). Pure: callers use the SAME boundary for summarizing the cut prefix and for
-mutating, so the summarized set and the removed set always agree.
+Aligns backward past `:tool` results only — a tool result's paired tool_use lives
+in the preceding assistant message, so starting the window on a `:tool` would
+orphan it. Any `:user` or `:assistant` message is a valid boundary: requiring a
+`:user` turn here used to deadlock auto-compaction on long autonomous runs (one
+user message followed by hundreds of assistant/tool turns walks back to index 1
+→ nothing to free), which then forced one giant lossy cut on the next user
+message. Pure: callers use the SAME boundary for summarizing the cut prefix and
+for mutating, so the summarized set and the removed set always agree.
 """
 function history_cut_start(messages, keep::Int)
 	length(messages) <= keep && return 1
 	start_index = max(1, length(messages) - keep + 1)
-	while start_index > 1 && messages[start_index].role != :user
+	while start_index > 1 && messages[start_index].role == :tool
 		start_index -= 1
 	end
 	start_index
 end
 
-function cut_history!(conv::CONV; keep=8) # always going to cut after an :assitant but before a :user message.
+function cut_history!(conv::CONV; keep=8) # never cuts between a tool_use and its tool_result
 	length(conv.messages) <= keep && return conv.messages
 	start_index = history_cut_start(conv.messages, keep)
 	kept = length(conv.messages) - start_index + 1

@@ -1,8 +1,11 @@
 export summarize_conversation, format_messages_for_summary, is_prior_context
 
-using PromptingTools
 using JSON3
 using OpenRouter: get_arguments
+
+# The summarizer produces the ONLY record of the compacted history — worth a
+# current model, not a legacy one. haiku-4.5: fast, cheap, 200K window.
+const SUMMARIZER_MODEL = "anthropic:anthropic/claude-haiku-4.5"
 
 # The running compaction summary is carried inside the conversation as a single leading
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
@@ -79,10 +82,16 @@ function _format_tool_calls(tool_calls)
         catch
             string(get(get(tc, "function", Dict()), "arguments", ""))
         end
-        push!(parts, isempty(args) ? "→ $name()" : "→ $name($(_truncate_middle(args, 1500, 500)))")
+        push!(parts, isempty(args) ? "→ $name()" : "→ $name($(_truncate_middle(args, 2500, 1000)))")
     end
     join(parts, "\n")
 end
+
+# Per-message head/tail caps for the serialized conversation. Generous by default —
+# with incremental cuts the total budget is rarely hit, and detail lost here is
+# unrecoverable (the summary replaces the messages).
+const SUMMARY_MSG_HEAD = 5000
+const SUMMARY_MSG_TAIL = 5000
 
 function _format_one(msg, call_names; head::Int, tail::Int)
     if msg.role == :tool
@@ -101,8 +110,8 @@ function _format_one(msg, call_names; head::Int, tail::Int)
 end
 
 # The summarizer model's context must be respected too: budget the serialized conversation
-# to ~160K tokens (chars/2 estimate → 320K chars), leaving headroom in claudeh's 200K window
-# for the instructions, the previous summary, and the 16K-token summary output.
+# to ~160K tokens (chars/2 estimate → 320K chars), leaving headroom in the summarizer's
+# 200K window for the instructions, the previous summary, and the 16K-token summary output.
 const SUMMARY_INPUT_CHAR_BUDGET = 320_000
 
 """
@@ -130,14 +139,14 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
     end
 
     render(head, tail) = [_format_one(msg, call_names; head, tail) for msg in messages]
-    parts = render(3000, 3000)
+    parts = render(SUMMARY_MSG_HEAD, SUMMARY_MSG_TAIL)
     total = sum(length, parts; init=0)
 
     if total > char_budget
         # Stage 1: shrink per-message caps proportionally (floor 500+500).
         scale = char_budget / total
-        head = max(500, round(Int, 3000 * scale))
-        tail = max(500, round(Int, 3000 * scale))
+        head = max(500, round(Int, SUMMARY_MSG_HEAD * scale))
+        tail = max(500, round(Int, SUMMARY_MSG_TAIL * scale))
         parts = render(head, tail)
     end
 
@@ -157,11 +166,11 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
 end
 
 """
-    summarize_conversation(messages::Vector{<:MSG}; model="claudeh", previous_summary="") -> String
+    summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL, previous_summary="") -> String
 
 Generate a summary of conversation messages that preserves direction and key context.
 """
-function summarize_conversation(messages::Vector{<:MSG}; model="claudeh", previous_summary="")
+function summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL, previous_summary="")
     # Drop any prior_context message left over from an earlier compaction: its content is
     # the previous summary, already supplied via `previous_summary`. Feeding it back as
     # "conversation" both duplicates it and — when it's the ONLY message in the cut prefix —
@@ -190,11 +199,12 @@ Merge this earlier summary with the new conversation below. The merged summary s
     end
 
     try
-        # Explicit max_tokens: PromptingTools' Anthropic default is only 2048, which
-        # silently hard-truncates the summary mid-sentence (context loss on every compaction).
+        # Explicit max_tokens: provider defaults can be as low as 2048, which silently
+        # hard-truncates the summary mid-sentence (context loss on every compaction).
         # 8192 is also reachable for long sessions (the summary spans 9 numbered sections),
         # so give real headroom to avoid the mid-sentence cutoff.
-        result = PromptingTools.aigenerate(prompt; model, verbose=false, api_kwargs=(; max_tokens=16384))
+        # aigenerate_with_config handles provider slugs, API-key selection and transient retries.
+        result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
         return strip(String(result.content))
     catch e
         # Never swallow an interrupt: it must propagate out of do_cut! BEFORE cut_history!
