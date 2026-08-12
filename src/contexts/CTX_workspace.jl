@@ -42,7 +42,7 @@ function init_workspace_context(project_paths::Vector{<:AbstractString};
     )
 end
 
-function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, source_tracker=nothing, io=nothing, query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing, request_id=nothing)
+function process_workspace_context(workspace_context::WorkspaceCTX, embedder_query; rerank_query=embedder_query, enabled=true, io=nothing, query_images::Union{AbstractVector{<:AbstractString}, Nothing}=nothing, request_id=nothing)
     !enabled || isempty(workspace_context.workspace) && return ("", nothing, nothing, nothing)
     
     start_time = time()
@@ -55,7 +55,6 @@ function process_workspace_context(workspace_context::WorkspaceCTX, embedder_que
     merged_file_chunks = merge!(workspace_context.tracker_context, file_chunks_reranked)
     
     scr_content = update_changes!(workspace_context.changes_tracker, merged_file_chunks)
-    !isnothing(source_tracker) && register_changes!(source_tracker, workspace_context.changes_tracker, workspace_context.tracker_context)
     
     # Update time tracker with total time
     elapsed = time() - start_time

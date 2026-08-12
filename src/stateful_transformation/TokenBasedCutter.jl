@@ -1,4 +1,4 @@
-export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats, cleanup_sources!, record_real_usage!, current_context_tokens
+export TokenBasedCutter, estimate_conversation_tokens, token_usage_stats, record_real_usage!, current_context_tokens
 
 """
 TokenBasedCutter triggers cutting based on token usage.
@@ -9,7 +9,6 @@ and accumulating estimated tokens — not by a fixed message-count fraction, whi
 far fewer tokens than expected when recent messages (tool dumps, file reads) are large.
 
 Always summarizes old messages before cutting.
-Uses SourceTracker for token-aware source cleanup.
 """
 @kwdef mutable struct TokenBasedCutter <: AbstractCutter
     # Context limit configuration
@@ -181,7 +180,7 @@ function current_context_tokens(cutter::TokenBasedCutter, conv)
     round(Int, overhead + slope * est)
 end
 
-function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
+function should_cut(cutter::TokenBasedCutter, conv)
     limit = get_effective_limit(cutter)
     limit <= 0 && return false
 
@@ -200,10 +199,10 @@ function should_cut(cutter::TokenBasedCutter, conv, source_tracker::SourceTracke
     # compaction the kept window (or a single oversized message) can still exceed
     # the threshold; re-cutting then frees nothing and just re-summarizes the same
     # prefix forever. would_free_messages is the principled stop for that churn.
-    return would_free_messages(conv, calculate_keep(cutter, conv, source_tracker))
+    return would_free_messages(conv, calculate_keep(cutter, conv))
 end
 
-function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
+function calculate_keep(cutter::TokenBasedCutter, conv)
     n = length(conv.messages)
     n <= cutter.min_keep_messages && return n
 
@@ -227,7 +226,7 @@ function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTr
 
     # Always keep the newest min_keep_messages, then extend backward while the next
     # older message still fits the budget. history_cut_start later aligns the boundary
-    # back to a :user turn, keeping a turn's tool_use/tool_result intact.
+    # off :tool results, keeping a turn's tool_use/tool_result intact.
     first_kept = n - cutter.min_keep_messages + 1
     acc = sum(i -> estimate_message_tokens(conv.messages[i], cutter.estimation_method), first_kept:n; init=0)
     while first_kept > 1
@@ -239,33 +238,22 @@ function calculate_keep(cutter::TokenBasedCutter, conv, source_tracker::SourceTr
     return n - first_kept + 1
 end
 
-function do_cut!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, contexts...; keep::Union{Int,Nothing}=nothing)
-    keep = something(keep, calculate_keep(cutter, conv, source_tracker))
+function do_cut!(cutter::TokenBasedCutter, conv; keep::Union{Int,Nothing}=nothing)
+    keep = something(keep, calculate_keep(cutter, conv))
     n = length(conv.messages)
 
     n <= keep && return cutter.last_summary
 
-    # Calculate tokens being freed (for source cleanup)
     tokens_before = estimate_conversation_tokens(cutter, conv)
-
     summarize_and_cut!(cutter, conv; keep)
+    tokens_freed = tokens_before - estimate_conversation_tokens(cutter, conv)
 
-    # Calculate tokens freed and clean up sources proportionally
-    tokens_after = estimate_conversation_tokens(cutter, conv)
-    tokens_freed = tokens_before - tokens_after
-
-    # Ask SourceTracker which sources to remove to free up similar token budget
-    # We free sources proportional to conversation tokens freed
-    source_tokens_to_free = round(Int, tokens_freed * 0.5)  # Conservative: free half as much from sources
-    sources_to_cut = get_sources_to_cut(source_tracker, source_tokens_to_free)
-    remove_sources!(source_tracker, sources_to_cut, contexts...)
-
-    @info "TokenBasedCutter: cut conversation" kept=length(conv.messages) tokens_freed sources_removed=length(sources_to_cut)
+    @info "TokenBasedCutter: cut conversation" kept=length(conv.messages) tokens_freed
 
     return cutter.last_summary
 end
 
-function get_cache_setting(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
+function get_cache_setting(cutter::TokenBasedCutter, conv)
     limit = get_effective_limit(cutter)
     limit <= 0 && return :all
 
@@ -276,7 +264,7 @@ function get_cache_setting(cutter::TokenBasedCutter, conv, source_tracker::Sourc
     # would free a real message. Otherwise we'd disable caching forever whenever the
     # kept window alone sits near the threshold (nothing left to compact).
     if current_tokens >= near_threshold &&
-       would_free_messages(conv, calculate_keep(cutter, conv, source_tracker))
+       would_free_messages(conv, calculate_keep(cutter, conv))
         @info "Not caching - near compacting threshold" current_tokens near_threshold
         return :all_but_last
     end
@@ -284,58 +272,24 @@ function get_cache_setting(cutter::TokenBasedCutter, conv, source_tracker::Sourc
 end
 
 """
-    token_usage_stats(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker) -> NamedTuple
+    token_usage_stats(cutter::TokenBasedCutter, conv) -> NamedTuple
 
 Get current token usage statistics for debugging/monitoring.
 """
-function token_usage_stats(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker)
+function token_usage_stats(cutter::TokenBasedCutter, conv)
     context_limit = get_effective_limit(cutter)
     current_tokens = current_context_tokens(cutter, conv)
-    source_tokens = get_total_tokens(source_tracker)
     threshold_tokens = context_limit > 0 ? context_limit * cutter.compact_threshold : 0
     target_tokens = context_limit > 0 ? context_limit * cutter.target_ratio : 0
 
     (
         current_tokens = current_tokens,
-        source_tokens = source_tokens,
-        total_tracked = current_tokens + source_tokens,
         context_limit = context_limit,
         threshold_tokens = round(Int, threshold_tokens),
         target_tokens = round(Int, target_tokens),
         percentage_used = context_limit > 0 ? round(100 * current_tokens / context_limit; digits=1) : 0.0,
         messages_count = length(conv.messages),
-        sources_count = length(source_tracker.sources),
-        will_cut = should_cut(cutter, conv, source_tracker),
-        would_keep = calculate_keep(cutter, conv, source_tracker),
+        will_cut = should_cut(cutter, conv),
+        would_keep = calculate_keep(cutter, conv),
     )
-end
-
-"""
-    cleanup_sources!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, contexts...)
-
-Clean up old sources without conversation compaction.
-Call this post-session to ensure source cleanup happens even if conversation compaction was skipped.
-"""
-function cleanup_sources!(cutter::TokenBasedCutter, conv, source_tracker::SourceTracker, contexts...)
-    isempty(contexts) && return String[]
-
-    limit = get_effective_limit(cutter)
-    limit <= 0 && return String[]
-
-    # Calculate how many source tokens we should keep
-    # Target: sources should be proportional to conversation tokens
-    conv_tokens = estimate_conversation_tokens(cutter, conv)
-    target_source_tokens = round(Int, conv_tokens * 0.5)  # Sources ~50% of conv tokens
-
-    current_source_tokens = get_total_tokens(source_tracker)
-    tokens_to_free = current_source_tokens - target_source_tokens
-
-    tokens_to_free <= 0 && return String[]
-
-    sources_to_cut = get_sources_to_cut(source_tracker, tokens_to_free)
-    remove_sources!(source_tracker, sources_to_cut, contexts...)
-
-    !isempty(sources_to_cut) && @info "Source cleanup" sources_removed=length(sources_to_cut) tokens_freed=tokens_to_free
-
-    return sources_to_cut
 end

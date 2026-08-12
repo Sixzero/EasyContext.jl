@@ -36,7 +36,7 @@ function init_julia_context(;
     )
 end
 
-function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, rerank_query=ctx_question, source_tracker=nothing, io=stdout)
+function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=true, rerank_query=ctx_question, io=stdout)
     !enabled && return ("", nothing)
     rag_pipeline      = julia_context.rag_pipeline
     tracker_context   = julia_context.tracker_context
@@ -49,8 +49,6 @@ function process_julia_context(julia_context::JuliaCTX, ctx_question; enabled=tr
 
     merged_file_chunks = merge!(tracker_context, file_chunks_reranked)
     scr_content = update_changes!(changes_tracker, merged_file_chunks)
-
-    !isnothing(source_tracker) && register_changes!(source_tracker, changes_tracker, tracker_context)
 
     result = julia_ctx_2_string(changes_tracker, scr_content)
 

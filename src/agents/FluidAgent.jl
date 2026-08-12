@@ -133,7 +133,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     thinking::Union{Nothing,Int}=nothing,
     MAX_ITERATIONS=500,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
-    source_tracker::Union{SourceTracker, Nothing}=nothing,  # Required if cutter is provided
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     tool_choice::String="auto",  # "none" forbids tool calls while KEEPING the tool schema in the (cached) prefix — used for throwaway inferences like next-message prediction.
@@ -168,9 +167,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             native_tools = get_native_tools(agent)
 
             # Check if compaction is needed before LLM call
-            if cutter !== nothing && source_tracker !== nothing && should_cut(cutter, session, source_tracker)
+            if cutter !== nothing && should_cut(cutter, session)
                 on_status("COMPACTING")
-                do_cut!(cutter, session, source_tracker)
+                do_cut!(cutter, session)
                 on_status("WORKING")
             end
 

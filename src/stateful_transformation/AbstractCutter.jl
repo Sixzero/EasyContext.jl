@@ -4,51 +4,47 @@ export AbstractCutter, should_cut, do_cut!, maybe_cut!, get_cache_setting, calcu
 AbstractCutter defines the interface for conversation cutters.
 
 Implementation: TokenBasedCutter (triggers at token usage threshold).
-Works with SourceTracker for source cleanup.
 """
 abstract type AbstractCutter end
 
 """
-    should_cut(cutter::AbstractCutter, conv, source_tracker::SourceTracker) -> Bool
+    should_cut(cutter::AbstractCutter, conv) -> Bool
 
 Check if cutting should be triggered.
 """
 function should_cut end
 
 """
-    calculate_keep(cutter::AbstractCutter, conv, source_tracker::SourceTracker) -> Int
+    calculate_keep(cutter::AbstractCutter, conv) -> Int
 
 Calculate how many messages to keep after cutting.
 """
 function calculate_keep end
 
 """
-    do_cut!(cutter::AbstractCutter, conv, source_tracker::SourceTracker, contexts...; keep=nothing) -> String
+    do_cut!(cutter::AbstractCutter, conv; keep=nothing) -> String
 
-Perform the cut. Returns summary (may be empty for non-summarizing cutters).
-If `keep` is provided, overrides the auto-calculated keep count.
-Handles:
-1. Summarization (if supported)
-2. Message cutting
-3. Source cleanup via SourceTracker
+Perform the cut (summarization + message cutting). Returns summary (may be empty
+for non-summarizing cutters). If `keep` is provided, overrides the auto-calculated
+keep count.
 """
 function do_cut! end
 
 """
-    maybe_cut!(cutter::AbstractCutter, conv, source_tracker::SourceTracker, contexts...) -> Bool
+    maybe_cut!(cutter::AbstractCutter, conv) -> Bool
 
 Check if cutting is needed and do it if so. Returns true if cut was performed.
 """
-function maybe_cut!(cutter::AbstractCutter, conv, source_tracker::SourceTracker, contexts...)
-    if should_cut(cutter, conv, source_tracker)
-        do_cut!(cutter, conv, source_tracker, contexts...)
+function maybe_cut!(cutter::AbstractCutter, conv)
+    if should_cut(cutter, conv)
+        do_cut!(cutter, conv)
         return true
     end
     return false
 end
 
 """
-    get_cache_setting(cutter::AbstractCutter, conv, source_tracker::SourceTracker) -> Symbol
+    get_cache_setting(cutter::AbstractCutter, conv) -> Symbol
 
 Get cache setting based on proximity to cutting threshold.
 Returns :all or :all_but_last.
