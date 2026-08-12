@@ -51,7 +51,8 @@ const CONTEXT_CAP = 200_000
 """
     get_effective_limit(cutter::TokenBasedCutter) -> Int
 
-Get the effective context limit from explicit config or model lookup, capped at 200K.
+Get the effective context limit: an explicit `context_limit` is respected as-is
+(deliberate override); model lookup is capped at `CONTEXT_CAP`.
 Returns 0 if not configured (disables token-based cutting).
 """
 function get_effective_limit(cutter::TokenBasedCutter)
