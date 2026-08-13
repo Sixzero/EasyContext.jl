@@ -135,7 +135,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
-    tool_choice::String="auto",  # "none" forbids tool calls while KEEPING the tool schema in the (cached) prefix — used for throwaway inferences like next-message prediction.
+    tool_choice::String="auto",  # "none" forbids tool calls but INVALIDATES the message-level prompt cache (Anthropic docs: "changes to tool_choice ... affect message blocks"). For cache-riding throwaway inferences keep "auto" and set drop_tool_calls=true instead.
+    drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     )
     model_name = get_model_name(agent.model)
 
@@ -150,6 +151,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     response = nothing
     extractor = nothing  # Declare here so it's accessible in catch block
     i = 0
+    completed = false  # Distinguish natural completion from iteration-limit exhaustion
 
     try
         while i < MAX_ITERATIONS
@@ -195,11 +197,10 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
 
             # ── Post-response handling (native API tool calling) ──
-            # tool_choice="none" is a hard read-only boundary: even if a provider returns tool_calls
-            # anyway (non-compliant/fallback), NEVER execute them. Drop them and treat the response
-            # as plain text. Used by throwaway inferences (e.g. next-message prediction) that must
-            # keep the tool schema in the cached prefix but must not run anything.
-            tool_calls = tool_choice == "none" ? nothing : response.tool_calls
+            # Hard read-only boundary: with tool_choice="none" (provider might still return
+            # tool_calls) or drop_tool_calls=true (cache-safe throwaway inference), NEVER
+            # execute them. Drop them and treat the response as plain text.
+            tool_calls = (tool_choice == "none" || drop_tool_calls) ? nothing : response.tool_calls
             ai_msg = create_AI_message(response.content; tool_calls)
             hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
 
@@ -207,6 +208,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             if tool_calls === nothing || isempty(tool_calls)
                 push_message!(session, ai_msg)
                 if on_queue_empty()
+                    completed = true
                     break
                 else
                     # new assistant message is needed so we don't break
@@ -217,6 +219,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 # Approval continuations need the tool_use persisted before pausing.
                 if any_tool_needs_approval(extractor)
                     push_message!(session, ai_msg)
+                    completed = true
                     break
                 end
 
@@ -230,7 +233,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Next iteration's assistant message ID
             hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
         end
-        if i >= MAX_ITERATIONS
+        if i >= MAX_ITERATIONS && !completed
             @warn "Agent reached maximum unsupervised iteration limit ($MAX_ITERATIONS). Contact dev@todofor.ai to increase."
             push_message!(session, create_user_message_with_vectors("[SYSTEM] Agent reached the maximum number of unsupervised iterations ($MAX_ITERATIONS). Send a new message to continue the conversation. If you need a higher autonomous limit, please contact dev@todofor.ai"))
         end
