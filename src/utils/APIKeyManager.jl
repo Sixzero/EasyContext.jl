@@ -2,12 +2,7 @@ export APIKeyManager, get_api_key_for_model, StringApiKey
 
 using OpenRouter: extract_provider_from_model, PROVIDER_INFO
 using JSON3
-using JLD2
 using LLMRateLimiters: CharCountDivTwo, RateLimiterTPM
-
-const DATA_DIR = joinpath(dirname(@__DIR__), "..", "data")
-const STATS_FILE = joinpath(DATA_DIR, "credentials_stats.jld2")
-const STATS_LOCK = ReentrantLock()
 
 SAFETY_TPM_FACTOR = 1.2
 
@@ -20,9 +15,6 @@ mutable struct StringApiKey
     key::String
     provider_name::String
     rate_limiter::RateLimiterTPM
-    last_save_time::Float64
-    save_threshold::Int
-    tokens_since_save::Int
 
     function StringApiKey(key::String, provider_name::String = "openai", max_tokens_per_minute::Int = 1_000_000 )
         rate_limiter = RateLimiterTPM(
@@ -30,7 +22,7 @@ mutable struct StringApiKey
             time_window = 60.0,
             estimation_method = CharCountDivTwo
         )
-        new(key, provider_name, rate_limiter, time(), 10, 0)
+        new(key, provider_name, rate_limiter)
     end
 end
 
@@ -55,45 +47,13 @@ const GLOBAL_API_KEY_MANAGER = APIKeyManager()
 const API_KEY_MANAGER_LOCK = ReentrantLock()  # lifecycle tasks call get_api_key_for_model from multiple threads
 
 """
-    save_stats_to_file!(api_key::StringApiKey)
-
-Save API key statistics to JLD2 file asynchronously with partial updates.
-"""
-function save_stats_to_file!(api_key::StringApiKey)
-    # Snapshot mutable state NOW (caller holds API_KEY_MANAGER_LOCK) — the async
-    # writer must not read api_key fields concurrently with other threads' updates.
-    key_hash = string(hash(api_key.key))  # Use hash for privacy
-    stats = Dict(
-        "provider_name" => api_key.provider_name,
-        "tokens_used_last_minute" => LLMRateLimiters.current_usage(api_key.rate_limiter),
-        "last_save_time" => api_key.last_save_time
-    )
-    @async_showerr begin
-        lock(STATS_LOCK) do
-            !isdir(DATA_DIR) && mkpath(DATA_DIR)
-            jldopen(STATS_FILE, "a+") do file     # a+ is OK
-                haskey(file, key_hash) && delete!(file, key_hash)  # required to overwrite
-                file[key_hash] = stats
-            end
-        end
-    end
-end
-
-"""
     update_usage!(api_key::StringApiKey, tokens::Int)
 
-Update token usage using proper rate limiter and save to file periodically.
+Update token usage using proper rate limiter. Usage is per-process, in-memory
+state: several agent generations run side by side during a rolling deploy, so
+there is no shared file to persist it to.
 """
-function update_usage!(api_key::StringApiKey, tokens::Int)
-    LLMRateLimiters.add_tokens!(api_key.rate_limiter, tokens)
-    api_key.tokens_since_save += tokens
-    
-    if api_key.tokens_since_save >= api_key.save_threshold
-        api_key.tokens_since_save = 0
-        api_key.last_save_time = time()
-        save_stats_to_file!(api_key)
-    end
-end
+update_usage!(api_key::StringApiKey, tokens::Int) = LLMRateLimiters.add_tokens!(api_key.rate_limiter, tokens)
 
 function add_api_keys!(manager::APIKeyManager, provider_name::String, keys::Vector{String}, max_tokens_per_minute::Int = 1_000_000)
     if !haskey(manager.provider_to_api_keys, provider_name)
