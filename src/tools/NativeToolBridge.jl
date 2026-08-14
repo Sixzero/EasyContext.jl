@@ -21,6 +21,28 @@ const PARAM_TYPE_TO_JSON = Dict(
     "codeblock"=> "string",
 )
 
+# CLIProxyAPI cloaks Claude OAuth requests as Claude Code, which never declares custom tool
+# names — so it rewrites every one of ours into an opaque `mcp__<hmac>__<hmac>_<name>` alias and
+# maps it back on the response. Weaker models (haiku, used by the subagents) don't reproduce the
+# opaque digests verbatim, the reverse lookup fails and the whole stream dies with
+# "cannot restore Claude OAuth MCP tool alias ...: no unique request-local match".
+# A name that ALREADY looks like an MCP tool is passed through untouched (its
+# `IsClaudeMCPToolName` check short-circuits the aliasing), so we do the renaming ourselves with
+# a fixed, reversible prefix: no per-request symbol table, nothing to fail to restore.
+# Reversed in `to_parsed_call` below. Harmless for every other provider (plain [A-Za-z0-9_] name).
+# The skip only holds within Anthropic's 64-char tool-name limit — a longer name fails
+# `IsClaudeMCPToolName` and would be aliased anyway. Machine aliases embed user-controlled
+# device names, so a name that doesn't fit is left bare (old behaviour) rather than
+# truncated: truncating would make the reverse lookup resolve to a nonexistent tool.
+const NATIVE_TOOL_PREFIX = "mcp__tfa__"
+const MAX_NATIVE_TOOL_NAME = 64
+
+_prefix_tool_name(name::AbstractString) =
+    (startswith(name, NATIVE_TOOL_PREFIX) ||
+     length(name) + length(NATIVE_TOOL_PREFIX) > MAX_NATIVE_TOOL_NAME) ? String(name) :
+    NATIVE_TOOL_PREFIX * name
+_unprefix_tool_name(name::AbstractString) = String(chopprefix(name, NATIVE_TOOL_PREFIX))
+
 """Convert a ToolSchema or NamedTuple schema to an OpenRouter.Tool (JSON Schema params)."""
 to_openrouter_tool(schema::ToolSchema) = _schema_to_tool(schema.name, schema.description, schema.params)
 to_openrouter_tool(schema::NamedTuple) = _schema_to_tool(schema.name, schema.description, schema.params)
@@ -41,7 +63,7 @@ function _schema_to_tool(name::String, description::String, params)::Tool
         properties[p.name] = prop
         p.required && push!(required, p.name)
     end
-    Tool(; name, description, parameters=Dict{String,Any}(
+    Tool(; name=_prefix_tool_name(name), description, parameters=Dict{String,Any}(
         "type" => "object", "properties" => properties, "required" => required))
 end
 
@@ -52,7 +74,7 @@ function to_parsed_call(tc::Dict)::ParsedCall
     kwargs = Dict{String,ParsedValue}(
         k => ParsedValue(value=v, raw=string(v)) for (k, v) in args
     )
-    ParsedCall(name=fn["name"], kwargs=kwargs)
+    ParsedCall(name=_unprefix_tool_name(fn["name"]), kwargs=kwargs)
 end
 
 """

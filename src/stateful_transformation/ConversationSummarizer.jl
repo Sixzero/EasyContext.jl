@@ -75,7 +75,7 @@ end
 function _format_tool_calls(tool_calls)
     parts = String[]
     for tc in tool_calls
-        name = get(get(tc, "function", Dict()), "name", get(tc, "name", "tool"))
+        name = _unprefix_tool_name(get(get(tc, "function", Dict()), "name", get(tc, "name", "tool")))
         args = try
             a = get_arguments(tc)
             isempty(a) ? "" : JSON3.write(a)
@@ -134,7 +134,7 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
         for tc in tcs
             id = get(tc, "id", "")
             isempty(id) && continue
-            call_names[id] = get(get(tc, "function", Dict()), "name", get(tc, "name", "tool"))
+            call_names[id] = _unprefix_tool_name(get(get(tc, "function", Dict()), "name", get(tc, "name", "tool")))
         end
     end
 
