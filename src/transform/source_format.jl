@@ -30,8 +30,9 @@ function collect_execution_results(execution_tasks; timeout::Float64=300.0)
             istaskdone(task)
         end
         if result == :timed_out
-            @warn "Tool execution timed out after $(timeout)s, interrupting..."
-            schedule(task, InterruptException(); error=true)
+            # No schedule(task, InterruptException()) — unsafe into stream I/O
+            # (orphaned lock → libuv deadlock). Leave the task detached.
+            @warn "Tool execution timed out after $(timeout)s — abandoning task (no interrupt)"
             return nothing
         end
         fetch(task)

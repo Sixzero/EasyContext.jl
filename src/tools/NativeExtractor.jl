@@ -117,8 +117,9 @@ function EasyContext.collect_tool_messages(extractor::NativeExtractor; timeout::
         end
         result = timedwait(timeout; pollint=0.001) do; istaskdone(task) end
         if result == :timed_out
-            @warn "Tool timed out after $(timeout)s"
-            schedule(task, InterruptException(); error=true)
+            # No schedule(task, InterruptException()) — unsafe into stream I/O
+            # (orphaned lock → libuv deadlock). Leave the task detached.
+            @warn "Tool timed out after $(timeout)s — abandoning task (no interrupt)"
             return ToolMessage(content="[timeout]", tool_call_id=call_id)
         end
 
