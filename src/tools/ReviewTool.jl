@@ -75,7 +75,6 @@ const REVIEW_SCHEMA = (
     description = "Launch a read-only sub-agent to evaluate whether a goal was accomplished optimally. It works in its OWN context window (inspects git diff/status, reads files — none of which touch yours) and returns only its final report: its findings on the change. So the check costs little of your own context. When a change is non-trivial enough to be worth a second look, run it before calling the work done. Reviews changes, suggests simplifications, proposes alternative approaches, and identifies issues.",
     params = [
         (name = "prompt", type = "string", description = "The review task: include the original goal, context, and what to review", required = true),
-        (name = "timeout", type = "integer", description = "Timeout in seconds for the sub-agent (default: 900)", required = false, default = 900),
     ]
 )
 
@@ -86,7 +85,5 @@ ToolCallFormat.get_description(::ReviewTool) = description_from_schema(REVIEW_SC
 function ToolCallFormat.create_tool(rt::ReviewTool, call::ParsedCall)
     prompt_pv = get(call.kwargs, "prompt", nothing)
     prompt = prompt_pv !== nothing ? prompt_pv.value : ""
-    timeout_pv = get(call.kwargs, "timeout", nothing)
-    timeout = timeout_pv !== nothing ? Int(timeout_pv.value) : 900
-    ReviewToolCall(; prompt, timeout, tools=rt.tools, model=rt.model, extractor_type=rt.extractor_type)
+    ReviewToolCall(; prompt, tools=rt.tools, model=rt.model, extractor_type=rt.extractor_type)
 end

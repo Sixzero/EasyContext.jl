@@ -15,7 +15,7 @@ const PLAN_TAG = "plan"
     tools::Vector
     model::Union{String, Nothing}
     extractor_type::Union{Function, Nothing} = nothing
-    timeout::Union{Int, Nothing} = 300
+    timeout::Union{Int, Nothing} = 900
     stats::SubAgentStats = SubAgentStats()
     process_result::Union{ProcessResult, Nothing} = nothing
 end
@@ -64,7 +64,6 @@ const PLAN_SCHEMA = (
     description = "Launch a planning sub-agent to design an implementation approach. The agent explores the codebase and returns a detailed, decision-complete plan.",
     params = [
         (name = "prompt", type = "string", description = "The planning task: what needs to be designed or implemented", required = true),
-        (name = "timeout", type = "integer", description = "Timeout in seconds for the sub-agent (default: 300)", required = false, default = 300),
     ]
 )
 
@@ -75,7 +74,5 @@ ToolCallFormat.get_description(::PlanTool) = description_from_schema(PLAN_SCHEMA
 function ToolCallFormat.create_tool(pt::PlanTool, call::ParsedCall)
     prompt_pv = get(call.kwargs, "prompt", nothing)
     prompt = prompt_pv !== nothing ? prompt_pv.value : ""
-    timeout_pv = get(call.kwargs, "timeout", nothing)
-    timeout = timeout_pv !== nothing ? Int(timeout_pv.value) : 300
-    PlanToolCall(; prompt, timeout, tools=pt.tools, model=pt.model, extractor_type=pt.extractor_type)
+    PlanToolCall(; prompt, tools=pt.tools, model=pt.model, extractor_type=pt.extractor_type)
 end
