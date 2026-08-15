@@ -37,9 +37,8 @@ function get_api_kwargs_for_model(model_name::String, base_api_kwargs::NamedTupl
     # Start with base kwargs or default reasoning model behavior
     api_kwargs = is_openai_reasoning_model(model_name) ? NamedTuple() : base_api_kwargs
     
-    # Apply Claude-specific settings
-    is_claude_model(model_name) && (api_kwargs = merge(api_kwargs, (; max_tokens = 16000)))
-    
+    # NOTE: no Claude max_tokens override here anymore — OpenRouter.jl defaults
+    # Anthropic max_tokens to the model's catalog max output when unset.
     # Remove top_p for mistral models
     if is_mistral_model(model_name) && haskey(api_kwargs, :top_p)
         api_kwargs = NamedTuple(k => v for (k, v) in pairs(api_kwargs) if k != :top_p)

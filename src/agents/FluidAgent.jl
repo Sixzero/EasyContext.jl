@@ -60,27 +60,19 @@ function apply_thinking_kwargs(api_kwargs::NamedTuple, model::String, thinking::
         return api_kwargs
     end
     
-    # Set max_tokens to 16000 + thinking budget
-    max_tokens = 16000 + thinking
-    
     # Add thinking configuration
     thinking_config = (; type = "enabled", budget_tokens = thinking)
     
-    # When thinking is enabled, we need to:
+    # When thinking is enabled:
     # 1. Add thinking configuration
-    # 2. Set max_tokens appropriately
-    # 3. Remove temperature and top_p as they're not allowed with thinking
-    
-    # Start with a clean kwargs without temperature and top_p
+    # 2. Remove temperature and top_p as they're not allowed with thinking
+    # max_tokens is left unset: OpenRouter.jl defaults it to the model's catalog
+    # max output (>= thinking budget for all current Claude models).
     filtered_kwargs = NamedTuple(
         k => v for (k, v) in pairs(api_kwargs) if k != :temperature && k != :top_p
     )
     
-    # Merge with thinking config and max_tokens
-    merge(filtered_kwargs, (; 
-        thinking = thinking_config, 
-        max_tokens = max_tokens
-    ))
+    merge(filtered_kwargs, (; thinking = thinking_config))
 end
 # collect_execution_results(tasks) is defined in transform/source_format.jl
 # collect_execution_results(extractor) is overloaded per extractor type (e.g. CallExtractor)

@@ -47,7 +47,7 @@ using PromptingTools: AnthropicSchema
         @test is_mistral_model("gpt-4") == false
         @test is_mistral_model("claude") == false
 
-        # Test Claude models - these should get max_tokens=16000
+        # Test Claude model detection
         @test is_claude_model("claude") == true
         @test is_claude_model("claude-3") == true
         @test is_claude_model("claude-3-sonnet") == true
@@ -64,11 +64,11 @@ using PromptingTools: AnthropicSchema
         @test get_api_kwargs_for_model("gpt-5", base_kwargs) == NamedTuple()
         @test get_api_kwargs_for_model("gpt-5-turbo", base_kwargs) == NamedTuple()
         
-        # Claude models should override max_tokens to 16000
+        # Claude models pass through unchanged (max_tokens default handled by OpenRouter.jl)
         result = get_api_kwargs_for_model("claude", base_kwargs)
         @test result.temperature == 0.7
         @test result.top_p == 0.9
-        @test result.max_tokens == 16000  # Should override original 1000
+        @test result.max_tokens == 1000
         
         # Mistral models should remove top_p but keep other params
         result = get_api_kwargs_for_model("mistral-large", base_kwargs)
@@ -95,7 +95,7 @@ using PromptingTools: AnthropicSchema
         @test result.temperature == 0.7  # from base_kwargs, not config's 0.5
         @test result.top_p == 0.9  # from base_kwargs
         @test result.top_k == 10  # from config (not in base_kwargs)
-        @test result.max_tokens == 16000  # Claude-specific override
+        @test result.max_tokens == 8000  # from config; no Claude override anymore
         
         # Test Mistral with config kwargs
         mistral_config = ModelConfig(
