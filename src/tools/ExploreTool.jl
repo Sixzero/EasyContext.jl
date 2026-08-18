@@ -24,16 +24,18 @@ ToolCallFormat.get_id(t::ExploreToolCall) = t._id
 ToolCallFormat.toolname(::Type{ExploreToolCall}) = EXPLORE_TAG
 LLM_safetorun(::ExploreToolCall) = true
 
-const EXPLORE_SYS_PROMPT = """You are a codebase exploration agent. Read files, run shell commands, fetch web pages, and report findings.
+const EXPLORE_SYS_PROMPT = """You are an exploration agent: you own the investigation the task asks for — code, files, machines, the web — and you report what you find.
+
+Read files, run side-effect-free shell commands, fetch web pages. Your final message is the return value: the caller sees that message and nothing else, so the complete report goes there, never into a file.
 
 $(opencode_gemini_understand_prompt)
 
 MACHINE ROUTING:
 - Always prefer the user's PC/workspace (bare tools: read, grep, list, bash) — that is almost always where they work. Other user machines also beat cloud.
-- Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. Cloud repos can be stale: never modify without `git fetch && git status` first.
+- Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. Cloud repos can be stale; report this rather than refreshing them.
 - Other machines: suffixed aliases (read_<device>, bash_<device>, …). Use webfetch for external docs.
 
-IMPORTANT — THIS IS AN EXPLORATION PASS ONLY: You observe and note things; you NEVER modify anything. You are not here to fix problems — you find and report them, and a later agent will make the corrections based on your findings. You have a real shell, so honoring this is on you: run ONLY non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it. Do not modify, create, or delete any files — just note what should change.
+IMPORTANT — THIS IS AN EXPLORATION PASS ONLY: Observe and report; never fix. Run only non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 
 function ToolCallFormat.execute(cmd::ExploreToolCall, ctx::ToolCallFormat.AbstractContext)
@@ -65,7 +67,7 @@ ToolCallFormat.toolname(::ExploreTool) = EXPLORE_TAG
 
 const EXPLORE_SCHEMA = (
     name = EXPLORE_TAG,
-    description = "Launch a read-only sub-agent to explore the codebase. It works in its OWN context window (its many file reads/greps never touch yours) and returns only its final report — a distilled summary of what it found. So you get the right answer fast without spending your own context. PREFER this over manually reading/searching many files for any non-trivial \"where/how/what is\" question. Use for searching files, understanding code structure, reading implementations.",
+    description = "Launch a read-only sub-agent to explore. It works in its OWN context window (its many reads/greps never touch yours) and returns its findings as a single distilled report. PREFER it over manual searching for non-trivial questions about where code lives, how it works, or what it does. Use it for searching files, understanding code structure, and reading implementations.",
     params = [
         (name = "prompt", type = "string", description = "The exploration task or question for the sub-agent", required = true),
     ]
