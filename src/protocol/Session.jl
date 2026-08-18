@@ -59,9 +59,12 @@ conversation_path(path,conv::Session) = joinpath(path, conv.id, "conversations")
 conversation_file(path,conv::Session) = joinpath(conversation_path(path, conv), "conversation.json")
 
 
-# Hook: sanitize image data-urls (e.g. downscale oversized images) right before they hit the LLM API.
-# Set by the host app; must accept and return a data-url String.
-const image_data_url_sanitizer = Ref{Function}(identity)
+# Hook: normalize request media right before it hits the LLM API — per-image downscale
+# (oversized dimensions/bytes) AND total-request budget (per-image limits can pass while
+# the SUM still exceeds the provider's max request size, e.g. Gemini 20MB inline,
+# Anthropic 32MB). Single pass at the end of message assembly, set by the host app.
+# Signature: (messages::Vector{AbstractMessage}, session_id::String) -> Vector{AbstractMessage}.
+const request_media_normalizer = Ref{Function}((msgs, _session_id) -> msgs)
 
 function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_messages_supported::Bool=false)
     
@@ -75,7 +78,7 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             
             # Extract base64 images from context - check both key naming and data:image prefix
             base64_images = filter(p -> startswith(p.first, "base64img_") || startswith(p.second, "data:image"), collect(msg.context))
-            base64_urls = isempty(base64_images) ? String[] : [image_data_url_sanitizer[](p.second)::String for p in base64_images]
+            base64_urls = isempty(base64_images) ? String[] : [String(p.second) for p in base64_images]
 
             # Extract base64 documents (PDFs) from context
             doc_keys = sort(filter(k -> startswith(k, "base64doc_"), collect(keys(msg.context))))
@@ -104,7 +107,7 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             end
         elseif msg.role == :tool
             image_keys = sort(filter(k -> startswith(k, "base64img_"), collect(keys(msg.context))))
-            image_data = isempty(image_keys) ? nothing : [image_data_url_sanitizer[](msg.context[k])::String for k in image_keys]
+            image_data = isempty(image_keys) ? nothing : [String(msg.context[k]) for k in image_keys]
             doc_keys = sort(filter(k -> startswith(k, "base64doc_"), collect(keys(msg.context))))
             document_data = isempty(doc_keys) ? nothing : [msg.context[k] for k in doc_keys]
             ToolMessage(content=msg.content, tool_call_id=msg.tool_call_id, image_data=image_data, document_data=document_data)
@@ -122,7 +125,7 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
     # will reject the request. Inject placeholder tool_results for any orphaned tool_use ids.
     ensure_tool_results!(messages)
 
-    return messages
+    return request_media_normalizer[](messages, session.id)::Vector{AbstractMessage}
 end
 
 """
