@@ -107,8 +107,8 @@ end
 # 2026-08-18, codex gpt-5.6-sol) the SAME request re-sent to the SAME provider
 # stalls again, so each same-model retry burns another full timeout window.
 # Stalls are therefore NON-retryable here: the model is put on a short cooldown
-# and the error rethrown so callers with a fallback (FluidAgent) fail over at
-# once instead of paying 3 silence windows.
+# (logs / user-facing ETA) and the error is rethrown instead of paying 3
+# silence windows on the same provider.
 _is_stall_error(e::StreamIdleTimeoutError) = true
 _is_stall_error(e) =
     (hasproperty(e, :error) && _is_stall_error(e.error)) ||  # HTTP.RequestError-style wrappers
@@ -150,13 +150,9 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
             # Stall fail-fast: retrying a stalled stream on the same model mostly
             # stalls again (another full timeout window of silence). Mark the
-            # model briefly unavailable and rethrow — FluidAgent fails over to
-            # the equivalent-model fallback, and requests in the cooldown window
-            # skip this model entirely via pick_model_with_fallback.
-            # Cooldown only for PRE-FIRST-CHUNK stalls (the observed prod shape:
-            # provider accepts, then byte-silence): a mid-stream stall on a
-            # long-running healthy stream is weaker evidence and its request
-            # isn't failed over anyway (see the isempty(cb) guard in FluidAgent).
+            # model briefly unavailable (for logs / user-facing messages) and
+            # rethrow. Cooldown only for PRE-FIRST-CHUNK stalls (the observed
+            # prod shape: provider accepts, then byte-silence).
             if _is_stall_error(e)
                 no_chunks = streamcallback === nothing || isempty(streamcallback)
                 !isempty(model_name) && no_chunks && maybe_mark_stalled!(model_name, e)
@@ -174,8 +170,8 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
                 sleep(sleep_time)
             else
                 # Pool exhaustion (hours-long provider cooldown) fails fast — record
-                # it globally so subsequent requests fall back to another provider
-                # instead of hitting the same wall (see AIGenerateFallback.jl).
+                # it globally so the user-facing error can include the recovery ETA
+                # instead of retrying into the same wall.
                 isempty(model_name) || maybe_mark_pool_exhausted!(model_name, e)
                 rethrow(e)
             end

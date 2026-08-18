@@ -1,8 +1,5 @@
-using OpenRouter: resolve_model_alias
-
 export AIGenerateFallback, ModelState, try_generate
 export mark_model_unavailable!, is_model_available, model_unavailable_reason
-export fallback_model_for, fallback_reasoning_kwargs, pick_model_with_fallback
 
 """
     ModelState
@@ -42,9 +39,9 @@ function maybe_recover_model!(state::ModelState, recovery_time::Int=state.recove
 end
 
 # ============ Global model availability (provider pool cooldowns) ============
-# Process-global registry keyed by model name (as passed to aigenerate_with_config),
-# so a pool cooldown discovered by one request benefits every subsequent one —
-# FluidAgent consults it via pick_model_with_fallback before each LLM call.
+# Process-global registry keyed by model name (as passed to aigenerate_with_config).
+# Records stall / pool-exhaustion cooldowns for logs and user-facing messages —
+# we do NOT silently switch the user onto another provider.
 const GLOBAL_MODEL_STATES = Dict{String,ModelState}()
 const GLOBAL_MODEL_STATES_LOCK = ReentrantLock()
 
@@ -99,55 +96,13 @@ const STALL_COOLDOWN = 180  # seconds
 
 """
 Mark `model_name` briefly unavailable when `e` is a stream stall
-(StreamIdleTimeoutError), so follow-up requests go straight to the fallback
-instead of each paying another full silence window. Returns true if marked.
+(StreamIdleTimeoutError). Returns true if marked.
 """
 function maybe_mark_stalled!(model_name::AbstractString, e)
     _is_stall_error(e) || return false
     mark_model_unavailable!(model_name, first(sprint(showerror, e), 300); recovery_time=STALL_COOLDOWN)
     @warn "Stream stalled — model marked unavailable briefly" model=model_name cooldown=STALL_COOLDOWN
     true
-end
-
-"""
-Equivalent-model fallback for when `model_name`'s provider pool is cooling down:
-the same author/model routed through the OpenRouter paid gateway (reasoning
-suffix like "(high)" stripped — the gateway doesn't accept it in the model id;
-`fallback_reasoning_kwargs` re-expresses it as the `reasoning` API param).
-Returns `nothing` when already on the gateway or the slug has no provider part.
-"""
-function fallback_model_for(model_name::AbstractString)
-    parts = split(resolve_model_alias(model_name), ":", limit=2)
-    length(parts) == 2 || return nothing
-    lowercase(parts[1]) == "openrouter" && return nothing
-    "openrouter:" * replace(parts[2], r"\([^()]*\)$" => "")
-end
-
-"""
-Reasoning-effort kwargs lost by the suffix strip in `fallback_model_for`:
-`"...(high)"` → `(; reasoning = Dict("effort" => "high"))`, which the OpenRouter
-gateway understands. Empty for models without a recognized effort suffix.
-"""
-function fallback_reasoning_kwargs(model_name::AbstractString)
-    m = match(r"\(([^()]+)\)$", resolve_model_alias(model_name))
-    m === nothing && return NamedTuple()
-    effort = lowercase(m.captures[1])
-    effort == "xhigh" && (effort = "high")  # OpenRouter caps at "high"
-    effort in ("low", "medium", "high") || return NamedTuple()
-    (; reasoning = Dict("effort" => effort))
-end
-
-"""
-Pick the model for a request: the configured one when available, else its
-gateway fallback. Returns `(model, fallback_from)` — `fallback_from` is the
-original model's name when the fallback was chosen, `nothing` otherwise.
-"""
-function pick_model_with_fallback(model)
-    name = get_model_name(model)
-    is_model_available(name) && return (model, nothing)
-    fb = fallback_model_for(name)
-    (fb === nothing || !is_model_available(fb)) && return (model, nothing)  # nothing better — let the error surface
-    (fb, name)
 end
 
 # Rewrites an upstream provider rate-limit (429) into a clear TODOforAI-side

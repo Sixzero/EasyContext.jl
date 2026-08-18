@@ -209,10 +209,9 @@ using PromptingTools: AnthropicSchema
         @test !_is_transient_error("auth_unavailable: no auth available (providers=claude, model=claude-opus-4-8)")
     end
 
-    @testset "Pool Exhaustion Fallback" begin
-        using EasyContext: parse_retry_after_seconds, format_duration, fallback_model_for,
-            maybe_mark_pool_exhausted!, is_model_available, pick_model_with_fallback,
-            GLOBAL_MODEL_STATES
+    @testset "Pool Exhaustion Cooldown" begin
+        using EasyContext: parse_retry_after_seconds, format_duration,
+            maybe_mark_pool_exhausted!, is_model_available, GLOBAL_MODEL_STATES
 
         # "retry in X" cooldown parsing
         @test parse_retry_after_seconds("(status 429); retry in 42h8m45s (providers=codex)") == 42*3600 + 8*60 + 45
@@ -222,40 +221,21 @@ using PromptingTools: AnthropicSchema
         @test format_duration(151725) == "42h8m"
         @test format_duration(250) == "4m10s"
 
-        # Equivalent-model fallback: same author/model via the OpenRouter gateway
-        @test fallback_model_for("anthropic:anthropic/claude-opus-4.8") == "openrouter:anthropic/claude-opus-4.8"
-        @test fallback_model_for("cli_proxy_api:openai/gpt-5.6-sol(high)") == "openrouter:openai/gpt-5.6-sol"
-        @test fallback_model_for("openrouter:openai/gpt-5.4") === nothing  # already on the gateway
-        @test fallback_model_for("noprovider-model") === nothing
-
-        # Reasoning suffix stripped from the id is re-expressed as API kwargs
-        using EasyContext: fallback_reasoning_kwargs
-        @test fallback_reasoning_kwargs("cli_proxy_api:openai/gpt-5.6-sol(high)") == (; reasoning = Dict("effort" => "high"))
-        @test fallback_reasoning_kwargs("cli_proxy_api:openai/gpt-5.6-sol(xhigh)") == (; reasoning = Dict("effort" => "high"))
-        @test fallback_reasoning_kwargs("cli_proxy_api:openai/gpt-5.6-sol") == NamedTuple()
-        @test fallback_reasoning_kwargs("anthropic:anthropic/claude-opus-4.8(32000)") == NamedTuple()  # token budget, not an effort level
-
-        # Marking + picking
         test_model = "anthropic:anthropic/test-pool-model"
         try
             err = ErrorException("""API Error (503): auth_unavailable: no auth available; (status 429); retry in 2h5m3s""")
             @test maybe_mark_pool_exhausted!(test_model, err)
             @test !is_model_available(test_model)
-            m, from = pick_model_with_fallback(test_model)
-            @test m == "openrouter:anthropic/test-pool-model"
-            @test from == test_model
             # Non-pool errors don't mark
             @test !maybe_mark_pool_exhausted!("other-model", ErrorException("timeout"))
-            m2, from2 = pick_model_with_fallback("openai:openai/gpt-5.4")
-            @test (m2, from2) == ("openai:openai/gpt-5.4", nothing)
         finally
             delete!(GLOBAL_MODEL_STATES, test_model)
         end
     end
 
-    @testset "Stream Stall Failover" begin
+    @testset "Stream Stall Cooldown" begin
         using EasyContext: _is_stall_error, maybe_mark_stalled!, is_model_available,
-            pick_model_with_fallback, GLOBAL_MODEL_STATES, STALL_COOLDOWN
+            GLOBAL_MODEL_STATES, STALL_COOLDOWN
         using OpenRouter: StreamIdleTimeoutError
 
         @test _is_stall_error(StreamIdleTimeoutError(60.0))
@@ -264,14 +244,9 @@ using PromptingTools: AnthropicSchema
 
         test_model = "openai:openai/test-stall-model"
         try
-            # Stall marks the model briefly unavailable → fallback picked
             @test maybe_mark_stalled!(test_model, StreamIdleTimeoutError(60.0))
             @test !is_model_available(test_model)
             @test GLOBAL_MODEL_STATES[test_model].recovery_time == STALL_COOLDOWN
-            m, from = pick_model_with_fallback(test_model)
-            @test m == "openrouter:openai/test-stall-model"
-            @test from == test_model
-            # Non-stall errors don't mark
             @test !maybe_mark_stalled!("other-stall-model", ErrorException("timeout"))
 
             # A short stall cooldown must not shorten a stronger cooldown
@@ -285,8 +260,7 @@ using PromptingTools: AnthropicSchema
         end
 
         # _aigen_with_retry: pre-first-chunk stall marks a cooldown; mid-stream
-        # stall (chunks already received) does NOT — weaker evidence, and that
-        # request isn't failed over anyway.
+        # stall (chunks already received) does NOT.
         using EasyContext: _aigen_with_retry
         using OpenRouter: HttpStreamHooks, StreamChunk
         pre_model, mid_model = "openai:openai/test-prestall", "openai:openai/test-midstall"

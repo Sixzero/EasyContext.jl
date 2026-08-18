@@ -126,27 +126,12 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     MAX_ITERATIONS=500,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
-    on_fallback=noop,  # Called with (from_model, to_model, reason) when the provider pool cooldown forces an equivalent-model fallback
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     tool_choice::String="auto",  # "none" forbids tool calls but INVALIDATES the message-level prompt cache (Anthropic docs: "changes to tool_choice ... affect message blocks"). For cache-riding throwaway inferences keep "auto" and set drop_tool_calls=true instead.
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     )
-    # api_kwargs depend on the concrete model, which may switch mid-session to a
-    # fallback (provider pool cooldown) — so build them per request. When running
-    # a fallback, `fallback_from` carries the original slug so its reasoning
-    # suffix (e.g. "(high)", stripped from the gateway model id) is re-expressed
-    # as the `reasoning` API param.
-    build_api_kwargs(model, fallback_from=nothing) = begin
-        kw = apply_thinking_kwargs(get_api_kwargs_for_model(model, (; top_p=0.7)), get_model_name(model), thinking)
-        fallback_from === nothing ? kw : merge(kw, fallback_reasoning_kwargs(fallback_from))
-    end
-
-    fallback_notified = false
-    notify_fallback(from, to) = begin
-        fallback_notified && return
-        fallback_notified = true
-        on_fallback(from, get_model_name(to), model_unavailable_reason(from))
-    end
+    model_name = get_model_name(agent.model)
+    api_kwargs = apply_thinking_kwargs(get_api_kwargs_for_model(agent.model, (; top_p=0.7)), model_name, thinking)
 
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
@@ -194,40 +179,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Setup for this iteration is done — the request that follows is I/O-bound.
             on_admitted()
 
-            # Provider pool cooldown (auth_unavailable/usage_limit_reached lasts
-            # hours): route to the equivalent model on the OpenRouter gateway
-            # instead of failing every message until the cooldown expires.
-            run_model, fallback_from = pick_model_with_fallback(agent.model)
-            fallback_from !== nothing && notify_fallback(fallback_from, run_model)
-
-            response = try
-                aigenerate_with_config(run_model, pt_messages;
-                    cache, api_kwargs=build_api_kwargs(run_model, fallback_from), streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
-            catch e
-                # Model just marked unavailable by _aigen_with_retry — either
-                # pool exhaustion (hours-long cooldown) or a stream stall (the
-                # provider goes byte-silent; re-sending the same request there
-                # mostly stalls again). Retry once on the fallback instead of
-                # surfacing an error for this message.
-                is_interrupt(e) && rethrow(e)
-                err_msg = lowercase(sprint(showerror, e))
-                (_is_pool_exhausted_error(err_msg) || _is_stall_error(err_msg)) || rethrow(e)
-                # Transparent failover is only safe when NOTHING was received
-                # yet: emitted chunks have already reached the frontend and the
-                # extractor, and `empty!(cb)` can't undo those side effects — a
-                # mid-stream re-generation would duplicate text. All observed
-                # prod stalls (2026-08-18) fired the first-chunk timeout, i.e.
-                # with zero chunks, so this covers the real failure shape;
-                # mid-stream stalls (rare) surface as errors like before.
-                isempty(cb) || rethrow(e)
-                fb = fallback_model_for(get_model_name(run_model))
-                (fb === nothing || !is_model_available(fb)) && rethrow(e)
-                notify_fallback(get_model_name(run_model), fb)
-                # A stalled fallback fails fast too (stalls are non-retryable in
-                # _aigen_with_retry) and gets its own cooldown — one attempt, no loop.
-                aigenerate_with_config(fb, pt_messages;
-                    cache, api_kwargs=build_api_kwargs(fb, get_model_name(run_model)), streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
-            end
+            response = aigenerate_with_config(agent.model, pt_messages;
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
 
             # ── Post-response handling (native API tool calling) ──
             # Hard read-only boundary: with tool_choice="none" (provider might still return
