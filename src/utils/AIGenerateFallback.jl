@@ -2,7 +2,7 @@ using OpenRouter: resolve_model_alias
 
 export AIGenerateFallback, ModelState, try_generate
 export mark_model_unavailable!, is_model_available, model_unavailable_reason
-export fallback_model_for, pick_model_with_fallback
+export fallback_model_for, fallback_reasoning_kwargs, pick_model_with_fallback
 
 """
     ModelState
@@ -109,22 +109,32 @@ function maybe_mark_stalled!(model_name::AbstractString, e)
     true
 end
 
-# Explicit fallback pairs for models with no OpenRouter twin (e.g. proxy-only ids).
-# Checked before the generic gateway rewrite below.
-const FALLBACK_OVERRIDES = Dict{String,String}()
-
 """
 Equivalent-model fallback for when `model_name`'s provider pool is cooling down:
 the same author/model routed through the OpenRouter paid gateway (reasoning
-suffix like "(high)" stripped — the gateway doesn't understand it).
+suffix like "(high)" stripped — the gateway doesn't accept it in the model id;
+`fallback_reasoning_kwargs` re-expresses it as the `reasoning` API param).
 Returns `nothing` when already on the gateway or the slug has no provider part.
 """
 function fallback_model_for(model_name::AbstractString)
-    haskey(FALLBACK_OVERRIDES, model_name) && return FALLBACK_OVERRIDES[model_name]
     parts = split(resolve_model_alias(model_name), ":", limit=2)
     length(parts) == 2 || return nothing
     lowercase(parts[1]) == "openrouter" && return nothing
     "openrouter:" * replace(parts[2], r"\([^()]*\)$" => "")
+end
+
+"""
+Reasoning-effort kwargs lost by the suffix strip in `fallback_model_for`:
+`"...(high)"` → `(; reasoning = Dict("effort" => "high"))`, which the OpenRouter
+gateway understands. Empty for models without a recognized effort suffix.
+"""
+function fallback_reasoning_kwargs(model_name::AbstractString)
+    m = match(r"\(([^()]+)\)$", resolve_model_alias(model_name))
+    m === nothing && return NamedTuple()
+    effort = lowercase(m.captures[1])
+    effort == "xhigh" && (effort = "high")  # OpenRouter caps at "high"
+    effort in ("low", "medium", "high") || return NamedTuple()
+    (; reasoning = Dict("effort" => effort))
 end
 
 """

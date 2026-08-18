@@ -132,9 +132,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     )
     # api_kwargs depend on the concrete model, which may switch mid-session to a
-    # fallback (provider pool cooldown) — so build them per request.
-    build_api_kwargs(model) =
-        apply_thinking_kwargs(get_api_kwargs_for_model(model, (; top_p=0.7)), get_model_name(model), thinking)
+    # fallback (provider pool cooldown) — so build them per request. When running
+    # a fallback, `fallback_from` carries the original slug so its reasoning
+    # suffix (e.g. "(high)", stripped from the gateway model id) is re-expressed
+    # as the `reasoning` API param.
+    build_api_kwargs(model, fallback_from=nothing) = begin
+        kw = apply_thinking_kwargs(get_api_kwargs_for_model(model, (; top_p=0.7)), get_model_name(model), thinking)
+        fallback_from === nothing ? kw : merge(kw, fallback_reasoning_kwargs(fallback_from))
+    end
 
     fallback_notified = false
     notify_fallback(from, to) = begin
@@ -197,7 +202,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             response = try
                 aigenerate_with_config(run_model, pt_messages;
-                    cache, api_kwargs=build_api_kwargs(run_model), streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+                    cache, api_kwargs=build_api_kwargs(run_model, fallback_from), streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
             catch e
                 # Model just marked unavailable by _aigen_with_retry — either
                 # pool exhaustion (hours-long cooldown) or a stream stall (the
@@ -221,7 +226,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 # A stalled fallback fails fast too (stalls are non-retryable in
                 # _aigen_with_retry) and gets its own cooldown — one attempt, no loop.
                 aigenerate_with_config(fb, pt_messages;
-                    cache, api_kwargs=build_api_kwargs(fb), streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+                    cache, api_kwargs=build_api_kwargs(fb, get_model_name(run_model)), streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
             end
 
             # ── Post-response handling (native API tool calling) ──

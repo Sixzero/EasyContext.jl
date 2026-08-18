@@ -153,8 +153,13 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             # model briefly unavailable and rethrow — FluidAgent fails over to
             # the equivalent-model fallback, and requests in the cooldown window
             # skip this model entirely via pick_model_with_fallback.
+            # Cooldown only for PRE-FIRST-CHUNK stalls (the observed prod shape:
+            # provider accepts, then byte-silence): a mid-stream stall on a
+            # long-running healthy stream is weaker evidence and its request
+            # isn't failed over anyway (see the isempty(cb) guard in FluidAgent).
             if _is_stall_error(e)
-                isempty(model_name) || maybe_mark_stalled!(model_name, e)
+                no_chunks = streamcallback === nothing || isempty(streamcallback)
+                !isempty(model_name) && no_chunks && maybe_mark_stalled!(model_name, e)
                 rethrow(e)
             end
             if attempt < max_retries && _is_transient_error(e)

@@ -228,6 +228,13 @@ using PromptingTools: AnthropicSchema
         @test fallback_model_for("openrouter:openai/gpt-5.4") === nothing  # already on the gateway
         @test fallback_model_for("noprovider-model") === nothing
 
+        # Reasoning suffix stripped from the id is re-expressed as API kwargs
+        using EasyContext: fallback_reasoning_kwargs
+        @test fallback_reasoning_kwargs("cli_proxy_api:openai/gpt-5.6-sol(high)") == (; reasoning = Dict("effort" => "high"))
+        @test fallback_reasoning_kwargs("cli_proxy_api:openai/gpt-5.6-sol(xhigh)") == (; reasoning = Dict("effort" => "high"))
+        @test fallback_reasoning_kwargs("cli_proxy_api:openai/gpt-5.6-sol") == NamedTuple()
+        @test fallback_reasoning_kwargs("anthropic:anthropic/claude-opus-4.8(32000)") == NamedTuple()  # token budget, not an effort level
+
         # Marking + picking
         test_model = "anthropic:anthropic/test-pool-model"
         try
@@ -275,6 +282,27 @@ using PromptingTools: AnthropicSchema
             @test GLOBAL_MODEL_STATES[test_model].recovery_time == 7200          # …but not weakened
         finally
             delete!(GLOBAL_MODEL_STATES, test_model)
+        end
+
+        # _aigen_with_retry: pre-first-chunk stall marks a cooldown; mid-stream
+        # stall (chunks already received) does NOT — weaker evidence, and that
+        # request isn't failed over anyway.
+        using EasyContext: _aigen_with_retry
+        using OpenRouter: HttpStreamHooks, StreamChunk
+        pre_model, mid_model = "openai:openai/test-prestall", "openai:openai/test-midstall"
+        try
+            @test_throws StreamIdleTimeoutError _aigen_with_retry(
+                () -> throw(StreamIdleTimeoutError(30.0)); model_name=pre_model)
+            @test !is_model_available(pre_model)
+
+            cb = HttpStreamHooks()
+            push!(cb, StreamChunk(data="data"))
+            @test_throws StreamIdleTimeoutError _aigen_with_retry(
+                () -> throw(StreamIdleTimeoutError(30.0)); model_name=mid_model, streamcallback=cb)
+            @test is_model_available(mid_model)
+        finally
+            delete!(GLOBAL_MODEL_STATES, pre_model)
+            delete!(GLOBAL_MODEL_STATES, mid_model)
         end
     end
 
