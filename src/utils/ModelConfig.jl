@@ -1,5 +1,5 @@
 export ModelConfig, aigenerate_with_config
-using OpenRouter: extract_provider_from_model, ModelConfig
+using OpenRouter: extract_provider_from_model, ModelConfig, StreamIdleTimeoutError
 import PromptingTools: AbstractPromptSchema, OpenAISchema, CerebrasOpenAISchema, MistralOpenAISchema,
     AnthropicSchema, GoogleSchema, GroqOpenAISchema
 
@@ -83,6 +83,38 @@ _is_pool_exhausted_error(m::AbstractString) =
     occursin("auth_unavailable", m) || occursin("no auth available", m) ||
     occursin("usage_limit_reached", m)
 
+"""
+Parse the "retry in 42h8m45s" cooldown from a pool-exhaustion error message.
+Returns whole seconds, or `nothing` when absent.
+"""
+function parse_retry_after_seconds(msg::AbstractString)::Union{Int,Nothing}
+    m = match(r"retry in\s+(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?"i, msg)
+    (m === nothing || all(isnothing, m.captures)) && return nothing
+    h, mi, s = (c -> c === nothing ? 0.0 : parse(Float64, c)).(m.captures)
+    ceil(Int, h * 3600 + mi * 60 + s)
+end
+
+"Format seconds as a compact `2h5m` / `4m10s` / `45s` duration."
+function format_duration(seconds::Int)
+    h, rem = divrem(seconds, 3600)
+    m, s = divrem(rem, 60)
+    h > 0 ? "$(h)h$(m > 0 ? "$(m)m" : "")" :
+    m > 0 ? "$(m)m$(s > 0 ? "$(s)s" : "")" : "$(s)s"
+end
+
+# Stream stall (StreamIdleTimeoutError): the upstream accepted the request, then
+# went byte-silent until the first-chunk/idle window expired. Empirically (prod
+# 2026-08-18, codex gpt-5.6-sol) the SAME request re-sent to the SAME provider
+# stalls again, so each same-model retry burns another full timeout window.
+# Stalls are therefore NON-retryable here: the model is put on a short cooldown
+# and the error rethrown so callers with a fallback (FluidAgent) fail over at
+# once instead of paying 3 silence windows.
+_is_stall_error(e::StreamIdleTimeoutError) = true
+_is_stall_error(e) =
+    (hasproperty(e, :error) && _is_stall_error(e.error)) ||  # HTTP.RequestError-style wrappers
+    _is_stall_error(sprint(showerror, e))
+_is_stall_error(msg::AbstractString) = occursin("stream stalled", lowercase(msg))
+
 _is_transient_error(e) = _is_transient_error(sprint(showerror, e))
 function _is_transient_error(msg::AbstractString)
     m = lowercase(msg)
@@ -102,7 +134,7 @@ end
 
 const AIGEN_MAX_RETRIES = 3
 
-function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing)
+function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing, model_name::String="")
     for attempt in 1:max_retries
         try
             # A stream callback accumulates chunks in-place across the whole
@@ -116,6 +148,15 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             e isa InterruptException && rethrow(e)
             # HTTP.RequestError wrapping InterruptException
             hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
+            # Stall fail-fast: retrying a stalled stream on the same model mostly
+            # stalls again (another full timeout window of silence). Mark the
+            # model briefly unavailable and rethrow — FluidAgent fails over to
+            # the equivalent-model fallback, and requests in the cooldown window
+            # skip this model entirely via pick_model_with_fallback.
+            if _is_stall_error(e)
+                isempty(model_name) || maybe_mark_stalled!(model_name, e)
+                rethrow(e)
+            end
             if attempt < max_retries && _is_transient_error(e)
                 sleep_time = 2^attempt
                 err_msg = _extract_error_message(e)
@@ -127,6 +168,10 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
                 end
                 sleep(sleep_time)
             else
+                # Pool exhaustion (hours-long provider cooldown) fails fast — record
+                # it globally so subsequent requests fall back to another provider
+                # instead of hitting the same wall (see AIGenerateFallback.jl).
+                isempty(model_name) || maybe_mark_pool_exhausted!(model_name, e)
                 rethrow(e)
             end
         end
@@ -162,7 +207,7 @@ function aigenerate_with_config(config::ModelConfig, prompt;
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
 
-    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing)) do
+    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing), model_name=config.slug) do
         aigen(prompt, config; kwargs...)
     end
 end
@@ -178,7 +223,7 @@ function aigenerate_with_config(model::String, prompt;
     end
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     filtered_kwargs = NamedTuple(k => v for (k, v) in pairs(kwargs) if k != :api_kwargs)
-    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing)) do
+    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing), model_name=model) do
         aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
     end
 end
