@@ -201,6 +201,12 @@ using PromptingTools: AnthropicSchema
         # Client/permanent errors must NOT be retried
         @test !_is_transient_error("status 400 bad request")
         @test !_is_transient_error("invalid api key")
+
+        # CLIProxyAPI pool exhaustion: hours-long upstream cooldown — must NOT
+        # retry even though "(503)"/"status 429" appear in the message.
+        @test !_is_transient_error(
+            """API Error (503): auth_unavailable: no auth available; last upstream error: {"error":{"type":"usage_limit_reached","message":"The usage limit has been reached","plan_type":"prolite","resets_at":1787197022}} (status 429); retry in 42h8m45s (providers=codex, model=gpt-5.6-sol(high))""")
+        @test !_is_transient_error("auth_unavailable: no auth available (providers=claude, model=claude-opus-4-8)")
     end
 
     @testset "Model Name Extraction" begin

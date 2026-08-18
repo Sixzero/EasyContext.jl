@@ -69,9 +69,24 @@ Generate AI response using a ModelConfig with merged defaults, or a model name s
 Optionally uses APIKeyManager for key selection.
 """
 # Transient errors worth retrying (provider hiccups, not client errors)
+#
+# CLIProxyAPI pool exhaustion is explicitly NON-transient: when every OAuth
+# credential for a provider is cooling down it returns e.g.
+#   API Error (503): auth_unavailable: no auth available; last upstream error:
+#   {"error":{"type":"usage_limit_reached","plan_type":"prolite","resets_at":...}}
+#   (status 429); retry in 42h8m45s (providers=codex, model=gpt-5.6-sol(high))
+# The "retry in 42h" cooldown is hours long — the embedded "(503)"/"status 429"
+# would otherwise match the transient patterns and make us retry 3x with seconds
+# of backoff on EVERY request until the cooldown ends. Fail fast instead so the
+# caller surfaces a clear error / falls back to another model.
+_is_pool_exhausted_error(m::AbstractString) =
+    occursin("auth_unavailable", m) || occursin("no auth available", m) ||
+    occursin("usage_limit_reached", m)
+
 _is_transient_error(e) = _is_transient_error(sprint(showerror, e))
 function _is_transient_error(msg::AbstractString)
     m = lowercase(msg)
+    _is_pool_exhausted_error(m) && return false
     any(p -> occursin(p, m), (
         "empty_stream", "upstream stream closed", "stream ended unexpectedly",
         "bad gateway", "service unavailable", "overloaded", "internal server error",
