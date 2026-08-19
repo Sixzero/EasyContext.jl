@@ -71,27 +71,37 @@ Optionally uses APIKeyManager for key selection.
 # Transient errors worth retrying (provider hiccups, not client errors)
 #
 # CLIProxyAPI pool exhaustion is explicitly NON-transient: when every OAuth
-# credential for a provider is cooling down it returns e.g.
+# credential for a provider is cooling down it returns one of two shapes:
 #   API Error (503): auth_unavailable: no auth available; last upstream error:
 #   {"error":{"type":"usage_limit_reached","plan_type":"prolite","resets_at":...}}
 #   (status 429); retry in 42h8m45s (providers=codex, model=gpt-5.6-sol(high))
-# The "retry in 42h" cooldown is hours long — the embedded "(503)"/"status 429"
-# would otherwise match the transient patterns and make us retry 3x with seconds
-# of backoff on EVERY request until the cooldown ends. Fail fast instead so the
-# caller surfaces a clear error / falls back to another model.
+#   API Error (429): {"error":{"code":"model_cooldown","message":"All credentials for
+#   model gpt-5.6-sol(high) are cooling down","reset_time":"42h8m45s","reset_seconds":...}}
+# and our own gateway's sanitized relay of either ("temporarily at capacity").
+# The cooldown is hours long — the embedded "(503)"/"status 429" would otherwise
+# match the transient patterns and make us retry 3x with seconds of backoff on
+# EVERY request until the cooldown ends. Fail fast instead so the caller surfaces
+# a clear error / falls back to another model. Callers lowercase the message.
 _is_pool_exhausted_error(m::AbstractString) =
     occursin("auth_unavailable", m) || occursin("no auth available", m) ||
-    occursin("usage_limit_reached", m)
+    occursin("usage_limit_reached", m) || occursin("model_cooldown", m) ||
+    occursin("temporarily at capacity", m) ||
+    occursin(r"all credentials for model\b.*\bare cooling down"s, m)
 
 """
-Parse the "retry in 42h8m45s" cooldown from a pool-exhaustion error message.
-Returns whole seconds, or `nothing` when absent.
+Parse the cooldown from a pool-exhaustion error message — `retry in 42h8m45s`,
+CLIProxyAPI's `"reset_seconds":151725` / `"reset_time":"42h8m45s"`, or our gateway's
+`Retry after 151725s`. Returns whole seconds, or `nothing` when absent.
 """
 function parse_retry_after_seconds(msg::AbstractString)::Union{Int,Nothing}
-    m = match(r"retry in\s+(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?"i, msg)
+    s = match(r"\"reset_seconds\"\s*:\s*(\d+)"i, msg)
+    s !== nothing && return parse(Int, s[1])
+    a = match(r"retry after\s+(\d+)s"i, msg)
+    a !== nothing && return parse(Int, a[1])
+    m = match(r"(?:retry in|\"reset_time\"\s*:\s*\")\s*(?:(\d+)h)?(?:(\d+)m)?(?:(\d+(?:\.\d+)?)s)?"i, msg)
     (m === nothing || all(isnothing, m.captures)) && return nothing
-    h, mi, s = (c -> c === nothing ? 0.0 : parse(Float64, c)).(m.captures)
-    ceil(Int, h * 3600 + mi * 60 + s)
+    h, mi, sec = (c -> c === nothing ? 0.0 : parse(Float64, c)).(m.captures)
+    ceil(Int, h * 3600 + mi * 60 + sec)
 end
 
 "Format seconds as a compact `2h5m` / `4m10s` / `45s` duration."

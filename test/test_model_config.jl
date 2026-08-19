@@ -207,6 +207,12 @@ using PromptingTools: AnthropicSchema
         @test !_is_transient_error(
             """API Error (503): auth_unavailable: no auth available; last upstream error: {"error":{"type":"usage_limit_reached","message":"The usage limit has been reached","plan_type":"prolite","resets_at":1787197022}} (status 429); retry in 42h8m45s (providers=codex, model=gpt-5.6-sol(high))""")
         @test !_is_transient_error("auth_unavailable: no auth available (providers=claude, model=claude-opus-4-8)")
+        # CLIProxyAPI's other shape (model_cooldown) and our gateway's sanitized relay
+        @test !_is_transient_error(
+            """API Error (429): {"error":{"code":"model_cooldown","message":"All credentials for model claude-fable-5(medium) are cooling down","reset_seconds":151725}}""")
+        @test !_is_transient_error("API Error (429): Model gpt-5.6-sol(high) is temporarily at capacity. Retry after 151725s.")
+        # a genuine user-side rate limit stays transient
+        @test _is_transient_error("API Error (429): rate limit exceeded for your account")
     end
 
     @testset "Pool Exhaustion Cooldown" begin
@@ -218,6 +224,10 @@ using PromptingTools: AnthropicSchema
         @test parse_retry_after_seconds("retry in 30m") == 1800
         @test parse_retry_after_seconds("retry in 12s") == 12
         @test parse_retry_after_seconds("no cooldown mentioned") === nothing
+        # model_cooldown shape + gateway relay
+        @test parse_retry_after_seconds("""{"code":"model_cooldown","reset_seconds":151725}""") == 151725
+        @test parse_retry_after_seconds("""{"reset_time":"1h2m3s"}""") == 3723
+        @test parse_retry_after_seconds("Retry after 3723s.") == 3723
         @test format_duration(151725) == "42h8m"
         @test format_duration(250) == "4m10s"
 
