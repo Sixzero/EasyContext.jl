@@ -70,18 +70,18 @@ Optionally uses APIKeyManager for key selection.
 """
 # Transient errors worth retrying (provider hiccups, not client errors)
 #
-# CLIProxyAPI pool exhaustion is explicitly NON-transient: when every OAuth
-# credential for a provider is cooling down it returns one of two shapes:
+# CLIProxyAPI pool exhaustion (every OAuth credential for a provider cooling down)
+# arrives in one of two shapes:
 #   API Error (503): auth_unavailable: no auth available; last upstream error:
 #   {"error":{"type":"usage_limit_reached","plan_type":"prolite","resets_at":...}}
 #   (status 429); retry in 42h8m45s (providers=codex, model=gpt-5.6-sol(high))
 #   API Error (429): {"error":{"code":"model_cooldown","message":"All credentials for
 #   model gpt-5.6-sol(high) are cooling down","reset_time":"42h8m45s","reset_seconds":...}}
-# and our own gateway's sanitized relay of either ("temporarily at capacity").
-# The cooldown is hours long — the embedded "(503)"/"status 429" would otherwise
-# match the transient patterns and make us retry 3x with seconds of backoff on
-# EVERY request until the cooldown ends. Fail fast instead so the caller surfaces
-# a clear error / falls back to another model. Callers lowercase the message.
+# plus our own gateway's sanitized relay of either ("temporarily at capacity").
+# It stays transient like any other 429 — CLIProxyAPI rotates credentials on its
+# side, so a retry can land on a live one. Detection exists only to replace the
+# raw upstream blob (it carries OUR account internals) with a user-facing message.
+# Callers lowercase the message.
 _is_pool_exhausted_error(m::AbstractString) =
     occursin("auth_unavailable", m) || occursin("no auth available", m) ||
     occursin("usage_limit_reached", m) || occursin("model_cooldown", m) ||
@@ -134,7 +134,6 @@ _is_stall_error(msg::AbstractString) = occursin("stream stalled", lowercase(msg)
 _is_transient_error(e) = _is_transient_error(sprint(showerror, e))
 function _is_transient_error(msg::AbstractString)
     m = lowercase(msg)
-    _is_pool_exhausted_error(m) && return false
     any(p -> occursin(p, m), (
         "empty_stream", "upstream stream closed", "stream ended unexpectedly",
         "bad gateway", "service unavailable", "overloaded", "internal server error",
@@ -179,10 +178,6 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
                 end
                 sleep(sleep_time)
             else
-                # Pool exhaustion (hours-long provider cooldown) fails fast — record
-                # it globally so the user-facing error can include the recovery ETA
-                # instead of retrying into the same wall.
-                isempty(model_name) || maybe_mark_pool_exhausted!(model_name, e)
                 # Stall that survived all retries: short cooldown for logs/ETA.
                 stall && !isempty(model_name) && maybe_mark_stalled!(model_name, e)
                 rethrow(e)

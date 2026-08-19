@@ -202,22 +202,24 @@ using PromptingTools: AnthropicSchema
         @test !_is_transient_error("status 400 bad request")
         @test !_is_transient_error("invalid api key")
 
-        # CLIProxyAPI pool exhaustion: hours-long upstream cooldown — must NOT
-        # retry even though "(503)"/"status 429" appear in the message.
-        @test !_is_transient_error(
+        # CLIProxyAPI pool exhaustion stays retryable like any other 429 — the proxy
+        # rotates credentials, so an attempt can land on a live one.
+        @test _is_transient_error(
             """API Error (503): auth_unavailable: no auth available; last upstream error: {"error":{"type":"usage_limit_reached","message":"The usage limit has been reached","plan_type":"prolite","resets_at":1787197022}} (status 429); retry in 42h8m45s (providers=codex, model=gpt-5.6-sol(high))""")
-        @test !_is_transient_error("auth_unavailable: no auth available (providers=claude, model=claude-opus-4-8)")
-        # CLIProxyAPI's other shape (model_cooldown) and our gateway's sanitized relay
-        @test !_is_transient_error(
+        @test _is_transient_error(
             """API Error (429): {"error":{"code":"model_cooldown","message":"All credentials for model claude-fable-5(medium) are cooling down","reset_seconds":151725}}""")
-        @test !_is_transient_error("API Error (429): Model gpt-5.6-sol(high) is temporarily at capacity. Retry after 151725s.")
-        # a genuine user-side rate limit stays transient
-        @test _is_transient_error("API Error (429): rate limit exceeded for your account")
     end
 
-    @testset "Pool Exhaustion Cooldown" begin
-        using EasyContext: parse_retry_after_seconds, format_duration,
-            maybe_mark_pool_exhausted!, is_model_available, GLOBAL_MODEL_STATES
+    @testset "Pool Exhaustion Messaging" begin
+        using EasyContext: parse_retry_after_seconds, format_duration, _is_pool_exhausted_error
+
+        # Both upstream shapes + our gateway's sanitized relay are recognised, so the
+        # raw blob (it carries OUR account internals) never reaches the user.
+        @test _is_pool_exhausted_error("api error (503): auth_unavailable: no auth available")
+        @test _is_pool_exhausted_error("""{"code":"model_cooldown","reset_seconds":151725}""")
+        @test _is_pool_exhausted_error("all credentials for model claude-fable-5(medium) are cooling down")
+        @test _is_pool_exhausted_error("model gpt-5.6-sol(high) is temporarily at capacity. retry after 151725s.")
+        @test !_is_pool_exhausted_error("api error (429): rate limit exceeded for your account")
 
         # "retry in X" cooldown parsing
         @test parse_retry_after_seconds("(status 429); retry in 42h8m45s (providers=codex)") == 42*3600 + 8*60 + 45
@@ -230,17 +232,6 @@ using PromptingTools: AnthropicSchema
         @test parse_retry_after_seconds("Retry after 3723s.") == 3723
         @test format_duration(151725) == "42h8m"
         @test format_duration(250) == "4m10s"
-
-        test_model = "anthropic:anthropic/test-pool-model"
-        try
-            err = ErrorException("""API Error (503): auth_unavailable: no auth available; (status 429); retry in 2h5m3s""")
-            @test maybe_mark_pool_exhausted!(test_model, err)
-            @test !is_model_available(test_model)
-            # Non-pool errors don't mark
-            @test !maybe_mark_pool_exhausted!("other-model", ErrorException("timeout"))
-        finally
-            delete!(GLOBAL_MODEL_STATES, test_model)
-        end
     end
 
     @testset "Stream Stall Cooldown" begin
@@ -260,8 +251,8 @@ using PromptingTools: AnthropicSchema
             @test !maybe_mark_stalled!("other-stall-model", ErrorException("timeout"))
 
             # A short stall cooldown must not shorten a stronger cooldown
-            # already in force (racing pool-exhaustion mark on the same model)
-            EasyContext.mark_model_unavailable!(test_model, "pool exhausted"; recovery_time=7200)
+            # already in force on the same model
+            EasyContext.mark_model_unavailable!(test_model, "longer cooldown"; recovery_time=7200)
             @test GLOBAL_MODEL_STATES[test_model].recovery_time == 7200
             @test maybe_mark_stalled!(test_model, StreamIdleTimeoutError(60.0))  # detected…
             @test GLOBAL_MODEL_STATES[test_model].recovery_time == 7200          # …but not weakened

@@ -38,20 +38,19 @@ function maybe_recover_model!(state::ModelState, recovery_time::Int=state.recove
     end
 end
 
-# ============ Global model availability (provider pool cooldowns) ============
+# ============ Global model availability (stream-stall cooldowns) ============
 # Process-global registry keyed by model name (as passed to aigenerate_with_config).
-# Records stall / pool-exhaustion cooldowns for logs and user-facing messages —
-# we do NOT silently switch the user onto another provider.
+# Records stall cooldowns for logs — we do NOT silently switch the user onto
+# another provider, and provider quota/pool errors are plain retryable failures.
 const GLOBAL_MODEL_STATES = Dict{String,ModelState}()
 const GLOBAL_MODEL_STATES_LOCK = ReentrantLock()
 
-const POOL_EXHAUSTED_DEFAULT_COOLDOWN = 1800  # when the error carries no parseable "retry in X"
+const DEFAULT_MODEL_COOLDOWN = 1800
 
-function mark_model_unavailable!(model_name::AbstractString, reason::AbstractString; recovery_time::Int=POOL_EXHAUSTED_DEFAULT_COOLDOWN)
+function mark_model_unavailable!(model_name::AbstractString, reason::AbstractString; recovery_time::Int=DEFAULT_MODEL_COOLDOWN)
     lock(GLOBAL_MODEL_STATES_LOCK) do
         state = get!(GLOBAL_MODEL_STATES, String(model_name), ModelState())
-        # Never shorten a stronger cooldown already in force (e.g. a 180s stall
-        # mark racing an hours-long pool-exhaustion cooldown on the same model).
+        # Never shorten a stronger cooldown already in force on the same model.
         if !state.available && state.last_error_time + state.recovery_time > time() + recovery_time
             return
         end
@@ -74,20 +73,6 @@ function model_unavailable_reason(model_name::AbstractString)
         state = get(GLOBAL_MODEL_STATES, String(model_name), nothing)
         state === nothing ? "" : state.reason
     end
-end
-
-"""
-Mark `model_name` unavailable when `e` is a provider pool-exhaustion error
-(auth_unavailable / usage_limit_reached), for the duration parsed from its
-"retry in Xh Ym Zs" cooldown. Returns true if marked.
-"""
-function maybe_mark_pool_exhausted!(model_name::AbstractString, e)
-    msg = sprint(showerror, e)
-    _is_pool_exhausted_error(lowercase(msg)) || return false
-    recovery_time = something(parse_retry_after_seconds(msg), POOL_EXHAUSTED_DEFAULT_COOLDOWN)
-    mark_model_unavailable!(model_name, first(msg, 300); recovery_time)
-    @warn "Provider pool exhausted — model marked unavailable" model=model_name recovery_time
-    true
 end
 
 # Stalls are provider blips, not hours-long quota cooldowns: keep the model out
