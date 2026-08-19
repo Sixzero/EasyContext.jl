@@ -259,20 +259,36 @@ using PromptingTools: AnthropicSchema
             delete!(GLOBAL_MODEL_STATES, test_model)
         end
 
-        # _aigen_with_retry: pre-first-chunk stall marks a cooldown; mid-stream
-        # stall (chunks already received) does NOT.
+        # _aigen_with_retry: pre-first-chunk stall RETRIES (idempotent — zero
+        # bytes received), and only marks the cooldown after the final attempt.
+        # Mid-stream stall (chunks already received) fails fast, no retry, no
+        # cooldown.
         using EasyContext: _aigen_with_retry
         using OpenRouter: HttpStreamHooks, StreamChunk
         pre_model, mid_model = "openai:openai/test-prestall", "openai:openai/test-midstall"
         try
+            # Retryable: second attempt succeeds after a pre-first-chunk stall.
+            calls = Ref(0)
+            result = _aigen_with_retry(; model_name=pre_model) do
+                calls[] += 1
+                calls[] == 1 ? throw(StreamIdleTimeoutError(30.0)) : :ok
+            end
+            @test result == :ok && calls[] == 2
+            @test is_model_available(pre_model)  # no cooldown on recovered stall
+
+            # All attempts stall → rethrown + cooldown marked.
             @test_throws StreamIdleTimeoutError _aigen_with_retry(
-                () -> throw(StreamIdleTimeoutError(30.0)); model_name=pre_model)
+                () -> throw(StreamIdleTimeoutError(30.0)); model_name=pre_model, max_retries=1)
             @test !is_model_available(pre_model)
 
+            # Mid-stream stall: no retry, no cooldown.
             cb = HttpStreamHooks()
             push!(cb, StreamChunk(data="data"))
+            mid_calls = Ref(0)
             @test_throws StreamIdleTimeoutError _aigen_with_retry(
-                () -> throw(StreamIdleTimeoutError(30.0)); model_name=mid_model, streamcallback=cb)
+                () -> (mid_calls[] += 1; throw(StreamIdleTimeoutError(30.0)));
+                model_name=mid_model, streamcallback=cb)
+            @test mid_calls[] == 1
             @test is_model_available(mid_model)
         finally
             delete!(GLOBAL_MODEL_STATES, pre_model)

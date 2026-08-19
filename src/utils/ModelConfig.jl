@@ -103,12 +103,18 @@ function format_duration(seconds::Int)
 end
 
 # Stream stall (StreamIdleTimeoutError): the upstream accepted the request, then
-# went byte-silent until the first-chunk/idle window expired. Empirically (prod
-# 2026-08-18, codex gpt-5.6-sol) the SAME request re-sent to the SAME provider
-# stalls again, so each same-model retry burns another full timeout window.
-# Stalls are therefore NON-retryable here: the model is put on a short cooldown
-# (logs / user-facing ETA) and the error is rethrown instead of paying 3
-# silence windows on the same provider.
+# went byte-silent until the first-chunk/idle window expired.
+#
+# PRE-first-chunk stalls (zero bytes received) are RETRYABLE: nothing was
+# generated, so a resend is idempotent, and each retry opens a fresh TCP
+# connection — which fixes the common causes (dead connection, gateway blip,
+# LB routing to a bad node). Worst case is max_retries × first-chunk window
+# (~30s each) of visibly-narrated waiting via on_retry, then a clear error;
+# the model gets its short cooldown only after the FINAL failed attempt.
+#
+# MID-stream stalls (chunks already received) still fail fast: a retry would
+# re-stream the whole turn after up to another full idle window (300s) of
+# silence, and partial content already reached the user.
 _is_stall_error(e::StreamIdleTimeoutError) = true
 _is_stall_error(e) =
     (hasproperty(e, :error) && _is_stall_error(e.error)) ||  # HTTP.RequestError-style wrappers
@@ -148,17 +154,11 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             e isa InterruptException && rethrow(e)
             # HTTP.RequestError wrapping InterruptException
             hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
-            # Stall fail-fast: retrying a stalled stream on the same model mostly
-            # stalls again (another full timeout window of silence). Mark the
-            # model briefly unavailable (for logs / user-facing messages) and
-            # rethrow. Cooldown only for PRE-FIRST-CHUNK stalls (the observed
-            # prod shape: provider accepts, then byte-silence).
-            if _is_stall_error(e)
-                no_chunks = streamcallback === nothing || isempty(streamcallback)
-                !isempty(model_name) && no_chunks && maybe_mark_stalled!(model_name, e)
-                rethrow(e)
-            end
-            if attempt < max_retries && _is_transient_error(e)
+            # Mid-stream stall: chunks already reached the user; fail fast
+            # (see stall comment above). No cooldown — the stream was healthy.
+            stall = _is_stall_error(e)
+            stall && !(streamcallback === nothing || isempty(streamcallback)) && rethrow(e)
+            if attempt < max_retries && (stall || _is_transient_error(e))
                 sleep_time = 2^attempt
                 err_msg = _extract_error_message(e)
                 @warn "Transient LLM error (attempt $attempt/$max_retries), retrying in $(sleep_time)s" exception=(e, catch_backtrace())
@@ -173,6 +173,8 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
                 # it globally so the user-facing error can include the recovery ETA
                 # instead of retrying into the same wall.
                 isempty(model_name) || maybe_mark_pool_exhausted!(model_name, e)
+                # Stall that survived all retries: short cooldown for logs/ETA.
+                stall && !isempty(model_name) && maybe_mark_stalled!(model_name, e)
                 rethrow(e)
             end
         end
