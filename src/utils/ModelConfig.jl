@@ -118,9 +118,18 @@ end
 # PRE-first-chunk stalls (zero bytes received) are RETRYABLE: nothing was
 # generated, so a resend is idempotent, and each retry opens a fresh TCP
 # connection — which fixes the common causes (dead connection, gateway blip,
-# LB routing to a bad node). Worst case is max_retries × first-chunk window
-# (~30s each) of visibly-narrated waiting via on_retry, then a clear error;
-# the model gets its short cooldown only after the FINAL failed attempt.
+# LB routing to a bad node). The model gets its short cooldown only after the
+# FINAL failed attempt.
+#
+# But a stall retry is expensive: one attempt costs a WHOLE first-chunk window
+# (the caller sets that policy — TODOforAI uses 120s, since on the CLIProxyAPI
+# codex path no byte arrives before the model's first reasoning delta), and it
+# is silent while it burns. Worse, the two failure modes it can hit are both
+# poorly served by three attempts: a dead upstream is fixed by ONE fresh
+# connection, and a model that is simply slow to first token re-hits the same
+# wall with the same prompt every time. So stalls get their own, tighter
+# attempt budget (AIGEN_MAX_STALL_ATTEMPTS) instead of the generic one, which
+# stays as-is for errors that fail fast (429/502/reset/EOF).
 #
 # MID-stream stalls (chunks already received) still fail fast: a retry would
 # re-stream the whole turn after up to another full idle window (300s) of
@@ -149,6 +158,12 @@ end
 
 const AIGEN_MAX_RETRIES = 3
 
+# Total attempts allowed for a pre-first-chunk stall (see the stall comment
+# above): one resend on a fresh connection, then fail. Deliberately below
+# AIGEN_MAX_RETRIES — each stall attempt burns a full, silent first-chunk
+# window, so a third one mostly just delays the error the user must act on.
+const AIGEN_MAX_STALL_ATTEMPTS = 2
+
 function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing, model_name::String="")
     for attempt in 1:max_retries
         try
@@ -167,12 +182,14 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             # (see stall comment above). No cooldown — the stream was healthy.
             stall = _is_stall_error(e)
             stall && !(streamcallback === nothing || isempty(streamcallback)) && rethrow(e)
-            if attempt < max_retries && (stall || _is_transient_error(e))
+            # Stalls run on their own (tighter) budget; everything else on the generic one.
+            budget = stall ? min(max_retries, AIGEN_MAX_STALL_ATTEMPTS) : max_retries
+            if attempt < budget && (stall || _is_transient_error(e))
                 sleep_time = 2^attempt
                 err_msg = _extract_error_message(e)
-                @warn "Transient LLM error (attempt $attempt/$max_retries), retrying in $(sleep_time)s" exception=(e, catch_backtrace())
+                @warn "Transient LLM error (attempt $attempt/$budget), retrying in $(sleep_time)s" exception=(e, catch_backtrace())
                 if !isnothing(on_retry)
-                    try on_retry(attempt, max_retries, sleep_time, err_msg) catch ex
+                    try on_retry(attempt, budget, sleep_time, err_msg) catch ex
                         @warn "on_retry callback failed" exception=(ex, catch_backtrace())
                     end
                 end

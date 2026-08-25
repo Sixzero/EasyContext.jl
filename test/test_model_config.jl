@@ -282,6 +282,22 @@ using PromptingTools: AnthropicSchema
                 () -> throw(StreamIdleTimeoutError(30.0)); model_name=pre_model, max_retries=1)
             @test !is_model_available(pre_model)
 
+            # Stalls use AIGEN_MAX_STALL_ATTEMPTS, not the generic max_retries:
+            # one resend on a fresh connection, then fail — a stall attempt costs
+            # a whole silent first-chunk window, so it must not run 3 of them.
+            stall_calls = Ref(0)
+            @test_throws StreamIdleTimeoutError _aigen_with_retry(
+                () -> (stall_calls[] += 1; throw(StreamIdleTimeoutError(120.0)));
+                model_name=pre_model, max_retries=EasyContext.AIGEN_MAX_RETRIES)
+            @test stall_calls[] == EasyContext.AIGEN_MAX_STALL_ATTEMPTS
+
+            # Non-stall transient errors keep the full generic budget.
+            transient_calls = Ref(0)
+            @test_throws ErrorException _aigen_with_retry(
+                () -> (transient_calls[] += 1; error("API Error (503): service unavailable"));
+                max_retries=EasyContext.AIGEN_MAX_RETRIES)
+            @test transient_calls[] == EasyContext.AIGEN_MAX_RETRIES
+
             # Mid-stream stall: no retry, no cooldown.
             cb = HttpStreamHooks()
             push!(cb, StreamChunk(data="data"))
