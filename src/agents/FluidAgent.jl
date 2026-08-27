@@ -213,13 +213,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Setup for this iteration is done — the request that follows is I/O-bound.
             on_admitted()
 
+            generate(messages) = aigenerate_with_config(agent.model, messages;
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+
             response = try
-                aigenerate_with_config(agent.model, pt_messages;
-                    cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+                generate(pt_messages)
             catch e
                 recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) || rethrow(e)
-                aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
-                    cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+                generate(to_PT_messages(session, sys_msg_content))  # shrunk, so worth one resend
             end
 
             # ── Post-response handling (native API tool calling) ──

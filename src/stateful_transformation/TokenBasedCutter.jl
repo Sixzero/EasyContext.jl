@@ -16,12 +16,12 @@ Always summarizes old messages before cutting.
     context_limit::Int = 0          # 0 = auto from model, >0 = explicit limit
     model::String = ""              # Model name for auto context_limit lookup
 
-    # A limit the provider actually ENFORCED (per-key/per-tier caps are invisible to
-    # our model table, and only a rejected request reveals them). Kept apart from the
-    # configured `context_limit` so it neither overwrites a deliberate override nor
-    # survives a switch to a model it was never observed on.
-    enforced_limit::Int = 0
-    enforced_limit_model::String = ""
+    # `model => limit` the provider actually ENFORCED. Per-key/per-tier caps are
+    # invisible to our model table and only a rejected request reveals them; without
+    # remembering one, a session under such a cap would overflow (and destructively
+    # recover) every few turns instead of compacting normally. Kept apart from the
+    # configured `context_limit`, and paired with its model so a switch drops it.
+    enforced_limit::Pair{String,Int} = "" => 0
 
     # Trigger threshold (ratio of context_limit)
     compact_threshold::Float64 = 0.8    # Start compacting at 80% of limit
@@ -34,10 +34,8 @@ Always summarizes old messages before cutting.
     # Token estimation
     estimation_method::TokenEstimationMethod = CharCountDivTwo
 
-    # Summarization. `summarizer` is the callable so tests can stay offline without
-    # redefining the global one (a redefinition would leak into every later test).
+    # Summarization
     summarizer_model::String = SUMMARIZER_MODEL
-    summarizer::Function = summarize_conversation
     last_summary::String = ""
 
     # Real-usage anchors: the provider's exact context size from API calls, paired
@@ -68,8 +66,8 @@ Returns 0 if not configured (disables token-based cutting).
 function get_effective_limit(cutter::TokenBasedCutter)
     configured = cutter.context_limit > 0 ? cutter.context_limit :
                  isempty(cutter.model) ? 0 : min(get_model_context_limit(cutter.model), CONTEXT_CAP)
-    enforced = cutter.enforced_limit_model == cutter.model ? cutter.enforced_limit : 0
-    enforced > 0 || return configured
+    enforced_model, enforced = cutter.enforced_limit
+    enforced > 0 && enforced_model == cutter.model || return configured
     return configured > 0 ? min(configured, enforced) : enforced
 end
 
@@ -287,55 +285,43 @@ end
 """
     force_shrink!(cutter::TokenBasedCutter, conv, real_tokens::Int, limit::Int) -> Bool
 
-Emergency shrink after the provider rejected the request as too long (see the
-AbstractCutter docstring). Deliberately NOT `maybe_cut!`: that path is gated on
-`should_cut`, which stays false here forever, because it needs a real-usage anchor
-and an anchor is only recorded from a SUCCESSFUL call. A conversation that is too
-big on its first call therefore never self-corrects, and every retry resends the
-same oversized payload. `real_tokens`/`limit` come from the error message — the one
-place those exact numbers exist on a failed call.
+Emergency shrink after the provider rejected the request as too long. Deliberately
+NOT `maybe_cut!`: that path is gated on `should_cut`, which stays false forever
+here, since it needs an anchor and anchors come only from SUCCESSFUL calls.
+`real_tokens`/`limit` come from the error — the one place they exist on a failure.
 
-Two stages, fixing two different failures:
- 1. summarize + cut history — the ordinary "too much conversation";
- 2. truncate a single oversized message — the case cutting CANNOT fix, since one
-    message larger than the window survives every cut and would loop forever.
+Two stages for two different failures: summarize+cut history, then truncate a single
+oversized message — the case cutting CANNOT fix, since a message larger than the
+window survives every cut and would loop forever.
 """
-# Smallest per-message cap worth producing. Below this, truncation keeps too little
-# to be meaningful, so force_shrink! reports failure instead of mangling the message.
-const MIN_FORCED_MSG_CHARS = 2_000
-
 function force_shrink!(cutter::TokenBasedCutter, conv, real_tokens::Int, limit::Int)
     limit > 0 || return false
     tokens_before = estimate_conversation_tokens(cutter, conv)
 
-    # The provider's exact count is an anchor the cutter could not obtain otherwise
-    # (anchors normally come from successful calls), and it makes every later estimate
-    # honest. Remember the enforced limit against the model it was observed on, so
-    # later turns compact early enough — and a model switch drops it.
+    # A rejected call is still a valid real-usage anchor, and remembering the limit
+    # it enforced lets later turns compact before overflowing again.
     real_tokens > 0 && record_real_usage!(cutter, conv, real_tokens)
-    cutter.enforced_limit, cutter.enforced_limit_model = limit, cutter.model
+    cutter.enforced_limit = cutter.model => limit
 
     keep = calculate_keep(cutter, conv)
     would_free_messages(conv, keep) && summarize_and_cut!(cutter, conv; keep)
 
-    # What survives cutting is a message so big it doesn't fit alone — a pasted
-    # document, a huge tool result. Truncating in place is the only operation that
-    # shrinks a conversation which cutting cannot. Cap it at half the post-cut token
-    # target, converted to characters with the fitted slope (estimate = chars/2).
+    # Cutting cannot remove a message that is oversized ON ITS OWN, so truncate those
+    # in place. Cap at half the post-cut token target, converted to chars with the
+    # fitted slope (estimate = chars/2).
     _, slope = context_model(cutter)
     msg_cap_chars = round(Int, limit * cutter.target_ratio / max(slope, 0.05))
-    if msg_cap_chars >= MIN_FORCED_MSG_CHARS
-        for msg in conv.messages
-            chars = length(msg.content)
-            chars <= msg_cap_chars && continue
-            # The result must fit the cap INCLUDING the marker, otherwise a truncated
-            # message stays marginally over it and the next call shaves off a few more
-            # characters — reporting "progress" forever instead of failing honestly.
-            tail = msg_cap_chars ÷ 5
-            marker(dropped) = "\n\n…[$dropped characters dropped — this message alone did not fit the model's context window]…\n\n"
-            head = msg_cap_chars - tail - length(marker(chars))
-            msg.content = string(first(msg.content, head), marker(chars - head - tail), last(msg.content, tail))
-        end
+    marker(dropped) = "\n\n…[$dropped characters dropped — this message alone did not fit the model's context window]…\n\n"
+    for msg in conv.messages
+        chars = length(msg.content)
+        chars <= msg_cap_chars && continue
+        # The marker counts against the cap: leaving the result marginally over it
+        # would let each later call shave off a few more chars, reporting "progress"
+        # forever. Too small a cap to hold both means truncating cannot help here.
+        tail = msg_cap_chars ÷ 5
+        head = msg_cap_chars - tail - length(marker(chars))
+        head > 0 || continue
+        msg.content = string(first(msg.content, head), marker(chars - head - tail), last(msg.content, tail))
     end
 
     tokens_after = estimate_conversation_tokens(cutter, conv)

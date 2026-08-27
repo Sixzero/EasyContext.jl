@@ -7,11 +7,10 @@ using EasyContext: TokenBasedCutter, force_shrink!, should_cut, create_user_mess
                    get_effective_limit, recover_from_overflow!,
                    _is_context_overflow_error, parse_context_overflow
 
-# Keep the emergency path offline: force_shrink! summarizes before cutting. Injected
-# per cutter — redefining EasyContext.summarize_conversation would silently replace
-# the real summarizer for every test file included after this one.
-_fake_summary(msgs; kwargs...) = "SUMMARY of $(length(msgs)) messages"
-_cutter(; kwargs...) = TokenBasedCutter(; model="claude-sonnet-4", summarizer=_fake_summary, kwargs...)
+# Stays offline: every conversation here is short enough that force_shrink! reaches
+# its truncation stage without summarizing. History cutting is covered by
+# test_compaction.jl, which owns that path.
+_cutter(; kwargs...) = TokenBasedCutter(; model="claude-sonnet-4", kwargs...)
 
 _chars(conv) = sum(m -> length(m.content), conv.messages; init=0)
 
@@ -130,13 +129,12 @@ end
         @test get_effective_limit(cutter) > 50_000
     end
 
-    @testset "cuts history when no single message is oversized" begin
-        conv = Session(messages=[create_user_message(repeat("a", 40_000)) for _ in 1:60])
-        before = _chars(conv)
-        @test force_shrink!(_cutter(), conv, 1_400_000, LIMIT)
-        @test _chars(conv) < before
-        @test length(conv.messages) < 60
+    @testset "an explicit context_limit is never clobbered" begin
+        cutter = _cutter(context_limit=150_000)
+        force_shrink!(cutter, Session(messages=[create_user_message(repeat("z", 400_000))]), 0, 900_000)
+        @test cutter.context_limit == 150_000
     end
+
 
     @testset "tool pairing and roles survive truncation" begin
         # Truncation edits content in place; losing a tool_call_id or reordering roles

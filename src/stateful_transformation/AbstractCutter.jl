@@ -94,7 +94,7 @@ function summarize_and_cut!(cutter::AbstractCutter, conv; keep::Int)
     would_free_messages(conv, keep) || return cutter.last_summary
     cut_start = history_cut_start(conv.messages, keep)
     messages_to_cut = conv.messages[1:cut_start-1]
-    cutter.last_summary = cutter.summarizer(messages_to_cut;
+    cutter.last_summary = summarize_conversation(messages_to_cut;
         model=cutter.summarizer_model, previous_summary=cutter.last_summary)
     cut_history!(conv; keep)
     if !isempty(cutter.last_summary)
