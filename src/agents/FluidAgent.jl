@@ -3,7 +3,7 @@ import PromptingTools: aigenerate
 using HTTP: RequestError
 using OpenRouter: Tool
 
-export FluidAgent, work, create_FluidAgent, to_native_tools
+export FluidAgent, work, create_FluidAgent, to_native_tools, recover_from_overflow!
 
 # Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
 is_interrupt(e::InterruptException) = true
@@ -100,6 +100,40 @@ function commit_native_tool_turn!(collect_results::Function, session::Session, a
     tool_msgs
 end
 
+"""
+    recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) -> Bool
+
+True if `e` was a context overflow AND the session was shrunk enough that resending
+the request is worth it; false means the caller must rethrow.
+
+Context overflow is the one 4xx worth handling: the request is unsendable as-is, but
+shrinking the session makes it sendable. The error carries the provider's exact token
+counts — the only place they exist on a failed call — so recovery is precise rather
+than a guess. Without this a session that overflows can never recover: the cutter only
+learns from SUCCESSFUL calls, so `should_cut` stays false and every retry resends the
+same oversized payload.
+"""
+function recover_from_overflow!(e, cutter, session, cb; on_status=noop, on_retry=nothing)
+    (cutter === nothing || is_interrupt(e) || !_is_context_overflow_error(e)) && return false
+    # Overflow is rejected before any content streams. If chunks DID arrive, the user
+    # already saw output from this turn and a resend would duplicate it (and mix two
+    # attempts in the extractor).
+    isempty(cb) || return false
+    info = parse_context_overflow(sprint(showerror, e))
+    real_tokens = info === nothing ? 0 : info.used
+    limit = info === nothing ? get_effective_limit(cutter) : info.limit
+    on_status("COMPACTING")
+    # Nothing left to free ⇒ false: resending the same payload would just loop.
+    shrunk = try force_shrink!(cutter, session, real_tokens, limit) finally on_status("WORKING") end
+    shrunk || return false
+    isnothing(on_retry) || try
+        on_retry(1, 2, 0, "The conversation outgrew the model's context window; it was compacted and the request is being resent.")
+    catch ex
+        @warn "on_retry callback failed" exception=(ex, catch_backtrace())
+    end
+    true
+end
+
 function work(agent::FluidAgent, session::AbstractString; kwargs...)
     conv_ctx = Session(; messages=[create_user_message(session)])
     work(agent, conv_ctx; kwargs...)
@@ -179,8 +213,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Setup for this iteration is done — the request that follows is I/O-bound.
             on_admitted()
 
-            response = aigenerate_with_config(agent.model, pt_messages;
-                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+            response = try
+                aigenerate_with_config(agent.model, pt_messages;
+                    cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+            catch e
+                recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) || rethrow(e)
+                aigenerate_with_config(agent.model, to_PT_messages(session, sys_msg_content);
+                    cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+            end
 
             # ── Post-response handling (native API tool calling) ──
             # Hard read-only boundary: with tool_choice="none" (provider might still return

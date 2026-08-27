@@ -1,4 +1,4 @@
-export AbstractCutter, should_cut, do_cut!, maybe_cut!, get_cache_setting, calculate_keep
+export AbstractCutter, should_cut, do_cut!, maybe_cut!, get_cache_setting, calculate_keep, force_shrink!
 
 """
 AbstractCutter defines the interface for conversation cutters.
@@ -51,6 +51,14 @@ Returns :all or :all_but_last.
 """
 function get_cache_setting end
 
+"""
+    force_shrink!(cutter::AbstractCutter, conv, real_tokens::Int, limit::Int) -> Bool
+
+Emergency shrink after the provider REJECTED the request as too long. Returns true
+if the conversation actually got smaller, i.e. a retry is worth making.
+"""
+function force_shrink! end
+
 # ── Shared compaction primitives ──────────────────────────────────────────────
 # The running summary is carried INSIDE the conversation as a single leading
 # `<prior_context>` user message (the persistence layer reloads it from a message
@@ -86,7 +94,7 @@ function summarize_and_cut!(cutter::AbstractCutter, conv; keep::Int)
     would_free_messages(conv, keep) || return cutter.last_summary
     cut_start = history_cut_start(conv.messages, keep)
     messages_to_cut = conv.messages[1:cut_start-1]
-    cutter.last_summary = summarize_conversation(messages_to_cut;
+    cutter.last_summary = cutter.summarizer(messages_to_cut;
         model=cutter.summarizer_model, previous_summary=cutter.last_summary)
     cut_history!(conv; keep)
     if !isempty(cutter.last_summary)

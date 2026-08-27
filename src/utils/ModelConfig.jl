@@ -1,4 +1,4 @@
-export ModelConfig, aigenerate_with_config
+export ModelConfig, aigenerate_with_config, _is_context_overflow_error, parse_context_overflow
 using OpenRouter: extract_provider_from_model, ModelConfig, StreamIdleTimeoutError
 import PromptingTools: AbstractPromptSchema, OpenAISchema, CerebrasOpenAISchema, MistralOpenAISchema,
     AnthropicSchema, GoogleSchema, GroqOpenAISchema
@@ -163,6 +163,47 @@ const AIGEN_MAX_RETRIES = 3
 # AIGEN_MAX_RETRIES — each stall attempt burns a full, silent first-chunk
 # window, so a third one mostly just delays the error the user must act on.
 const AIGEN_MAX_STALL_ATTEMPTS = 2
+
+# Context overflow: the request was rejected because the prompt exceeds the model's
+# context window (Anthropic "prompt is too long: N tokens > M maximum", OpenAI
+# "maximum context length ... your messages resulted in N tokens", Google/OpenRouter
+# variants). A plain resend is guaranteed to fail identically, so this is NOT a
+# transient error — it is only recoverable by SHRINKING the conversation first, which
+# `_aigen_with_retry` cannot do (it has no session). Detection lives here next to the
+# other error classifiers; the recovery is in FluidAgent.work, which owns the session.
+# Deliberately NARROW: recovery mutates the session (summarize + truncate), so a
+# false positive destroys history to "fix" something else. Generic size complaints
+# ("request too large") are excluded — they are usually request-BYTE or media limits,
+# which shrinking text cannot fix and which have their own failure paths.
+_is_context_overflow_error(e) = _is_context_overflow_error(sprint(showerror, e))
+function _is_context_overflow_error(msg::AbstractString)
+    m = lowercase(msg)
+    any(p -> occursin(p, m), (
+        "prompt is too long", "context_length_exceeded", "maximum context length",
+        "context length exceeded", "reduce the length of the messages",
+    )) && return true
+    # Looser phrasings only count when the message also proves it is about TOKENS.
+    occursin("token", m) && any(p -> occursin(p, m), ("context window", "too many tokens", "input is too long"))
+end
+
+"""
+    parse_context_overflow(msg) -> Union{Nothing,@NamedTuple{used::Int, limit::Int}}
+
+Pull the exact token counts out of a context-overflow error, e.g.
+`prompt is too long: 4210492 tokens > 1000000 maximum`. This is the ONLY place the
+provider's true context size is ever observable on a failed call — the cutter's own
+estimate is chars/2 and it normally learns the real number from a SUCCESSFUL
+response, which by definition never arrives here. Returns `nothing` when the message
+carries no usable pair (the caller then falls back to its configured limit).
+"""
+function parse_context_overflow(msg::AbstractString)
+    m = match(r"(\d[\d,_]*)\s*tokens?\s*>\s*(\d[\d,_]*)"i, msg)
+    m === nothing && (m = match(r"maximum context length is\s*(\d[\d,_]*)\s*tokens.*?resulted in\s*(\d[\d,_]*)"is, msg))
+    m === nothing && return nothing
+    a, b = (c -> parse(Int, replace(c, "," => "", "_" => ""))).(m.captures)
+    used, limit = max(a, b), min(a, b)   # order differs per provider; the bigger one is what we sent
+    limit > 0 ? (; used, limit) : nothing
+end
 
 function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing, model_name::String="")
     for attempt in 1:max_retries
