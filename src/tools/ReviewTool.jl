@@ -24,7 +24,7 @@ ToolCallFormat.get_id(t::ReviewToolCall) = t._id
 ToolCallFormat.toolname(::Type{ReviewToolCall}) = REVIEW_TAG
 LLM_safetorun(::ReviewToolCall) = true
 
-const REVIEW_SYS_PROMPT = """You are a review and advisory agent. Your job is to evaluate whether the original goal was accomplished optimally.
+review_sys_prompt(tools) = """You are a review and advisory agent. Your job is to evaluate whether the original goal was accomplished optimally.
 
 Use git diff, git status, read files, and search to understand what was done. Then:
 - Assess whether the goal was fully and correctly achieved
@@ -34,12 +34,7 @@ Use git diff, git status, read files, and search to understand what was done. Th
 - Question whether the approach taken was the best path
 
 $(opencode_gemini_understand_prompt)
-
-MACHINE ROUTING:
-- Always prefer the user's PC/workspace (bare tools: read, grep, list, bash) — that is almost always where they work. Other user machines also beat cloud.
-- Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. Cloud repos can be stale: never modify without `git fetch && git status` first.
-- Other machines: suffixed aliases (read_<device>, bash_<device>, …). Use webfetch for external docs.
-
+$(machine_routing_block(tools; stale_tail="Cloud repos can be stale: never modify without `git fetch && git status` first."))
 IMPORTANT — THIS IS A REVIEW PASS ONLY: You observe and note things; you NEVER modify anything. You are not here to apply fixes — you find issues and report them, and a later agent will make the corrections based on your findings. You have a real shell, so honoring this is on you: run ONLY non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it. Do not modify, create, or delete any files — just note what should change.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 
@@ -52,7 +47,7 @@ function ToolCallFormat.execute(cmd::ReviewToolCall, ctx::ToolCallFormat.Abstrac
     agent = create_FluidAgent(model;
         tools = cmd.tools,
         extractor_type = ext_type,
-        sys_msg = REVIEW_SYS_PROMPT,
+        sys_msg = review_sys_prompt(cmd.tools),
     )
     response = work(agent, cmd.prompt; io=io, quiet=true, on_meta_ai=on_meta_ai(cmd.stats),
         tool_kwargs=Dict(:ctx => ctx))
@@ -72,7 +67,7 @@ ToolCallFormat.toolname(::ReviewTool) = REVIEW_TAG
 
 const REVIEW_SCHEMA = (
     name = REVIEW_TAG,
-    description = "Launch a read-only sub-agent to evaluate whether a goal was accomplished optimally. It works in its OWN context window (inspects git diff/status, reads files — none of which touch yours) and returns only its final report: its findings on the change. So the check costs little of your own context. When a change is non-trivial enough to be worth a second look, run it before calling the work done. Reviews changes, suggests simplifications, proposes alternative approaches, and identifies issues.",
+    description = "Launch a read-only review sub-agent: it inspects the change (git diff/status, files) in its own context and returns only a findings report — issues, missing pieces, simpler alternatives. Run it on non-trivial changes before calling them done.",
     params = [
         (name = "prompt", type = "string", description = "The review task: include the original goal, context, and what to review", required = true),
     ]

@@ -7,6 +7,25 @@ export ExploreTool
 
 const EXPLORE_TAG = "explore"
 
+# Machine-routing guidance for sub-agent system prompts. Only meaningful when the
+# toolset actually spans machines (suffixed aliases like `bash_<device>` — passed
+# as NamedTuples with an `.alias` field). Single-machine sets get "" — nothing to
+# route, and the alias examples would invite the model to synthesize aliases that
+# don't exist.
+function machine_routing_block(tools; stale_tail::String)::String
+    has_alias = any(t -> t isa NamedTuple && hasproperty(t, :alias) && occursin('_', t.alias), tools)
+    has_alias || return ""
+    # Leading+trailing \n so the `$(...)\n` template line collapses to a
+    # correctly-spaced paragraph either way.
+    """
+
+    MACHINE ROUTING:
+    - Always prefer the user's PC/workspace (bare tools: read, grep, list, bash) — that is almost always where they work. Other user machines also beat cloud.
+    - Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. $stale_tail
+    - Other machines: suffixed aliases (read_<device>, bash_<device>, …). Use webfetch for external docs.
+    """
+end
+
 # --- The actual tool instance created per LLM call ---
 @kwdef mutable struct ExploreToolCall <: ToolCallFormat.AbstractTool
     _id::UUID = uuid4()
@@ -24,17 +43,12 @@ ToolCallFormat.get_id(t::ExploreToolCall) = t._id
 ToolCallFormat.toolname(::Type{ExploreToolCall}) = EXPLORE_TAG
 LLM_safetorun(::ExploreToolCall) = true
 
-const EXPLORE_SYS_PROMPT = """You are an exploration agent: you own the investigation the task asks for — code, files, machines, the web — and you report what you find.
+explore_sys_prompt(tools) = """You are an exploration agent: you own the investigation the task asks for — code, files, machines, the web — and you report what you find.
 
 Read files, run side-effect-free shell commands, fetch web pages. Your final message is the return value: the caller sees that message and nothing else, so the complete report goes there, never into a file.
 
 $(opencode_gemini_understand_prompt)
-
-MACHINE ROUTING:
-- Always prefer the user's PC/workspace (bare tools: read, grep, list, bash) — that is almost always where they work. Other user machines also beat cloud.
-- Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. Cloud repos can be stale; report this rather than refreshing them.
-- Other machines: suffixed aliases (read_<device>, bash_<device>, …). Use webfetch for external docs.
-
+$(machine_routing_block(tools; stale_tail="Cloud repos can be stale; report this rather than refreshing them."))
 IMPORTANT — THIS IS AN EXPLORATION PASS ONLY: Observe and report; never fix. Run only non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it.
 If a tool fails 3 times, stop retrying and report that the tools are faulty."""
 
@@ -47,7 +61,7 @@ function ToolCallFormat.execute(cmd::ExploreToolCall, ctx::ToolCallFormat.Abstra
     agent = create_FluidAgent(model;
         tools = cmd.tools,
         extractor_type = ext_type,
-        sys_msg = EXPLORE_SYS_PROMPT,
+        sys_msg = explore_sys_prompt(cmd.tools),
     )
     response = work(agent, cmd.prompt; io=io, quiet=true, on_meta_ai=on_meta_ai(cmd.stats),
         tool_kwargs=Dict(:ctx => ctx))
