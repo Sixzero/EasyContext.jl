@@ -24,19 +24,21 @@ ToolCallFormat.get_id(t::ReviewToolCall) = t._id
 ToolCallFormat.toolname(::Type{ReviewToolCall}) = REVIEW_TAG
 LLM_safetorun(::ReviewToolCall) = true
 
-review_sys_prompt(tools) = """You are a review and advisory agent. Your job is to evaluate whether the original goal was accomplished optimally.
+review_sys_prompt(tools) = join_prompt_sections(
+    """
+    You are a review and advisory agent. Your job is to evaluate whether the original goal was accomplished optimally.
 
-Use git diff, git status, read files, and search to understand what was done. Then:
-- Assess whether the goal was fully and correctly achieved
-- Identify issues, bugs, or missing pieces
-- Suggest simpler or cleaner approaches that could achieve the same goal
-- Propose alternative solutions or architectural improvements
-- Question whether the approach taken was the best path
-
-$(opencode_gemini_understand_prompt)
-$(machine_routing_block(tools; stale_tail="Cloud repos can be stale: never modify without `git fetch && git status` first."))
-IMPORTANT — THIS IS A REVIEW PASS ONLY: You observe and note things; you NEVER modify anything. You are not here to apply fixes — you find issues and report them, and a later agent will make the corrections based on your findings. You have a real shell, so honoring this is on you: run ONLY non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it. Do not modify, create, or delete any files — just note what should change.
-If a tool fails 3 times, stop retrying and report that the tools are faulty."""
+    Use git diff, git status, read files, and search to understand what was done. Then:
+    - Assess whether the goal was fully and correctly achieved
+    - Identify issues, bugs, or missing pieces
+    - Suggest simpler or cleaner approaches that could achieve the same goal
+    - Propose alternative solutions or architectural improvements
+    - Question whether the approach taken was the best path""",
+    opencode_gemini_understand_prompt,
+    machine_routing_block(tools; stale_tail="Cloud repos can be stale: never modify without `git fetch && git status` first."),
+    """
+    IMPORTANT — THIS IS A REVIEW PASS ONLY: You observe and note things; you NEVER modify anything. You are not here to apply fixes — you find issues and report them, and a later agent will make the corrections based on your findings. You have a real shell, so honoring this is on you: run ONLY non-destructive, side-effect-free commands (e.g. ls, cat, grep, find, tree, git log/blame/show/diff/status, --help, package listings). NEVER run anything that writes, deletes, moves, installs, or mutates state (no rm, mv, >, >>, sed -i, git add/commit/checkout/reset, package installs, service restarts, network writes). Before running a command, confirm it is purely observational; if unsure whether it has side effects, do not run it. Do not modify, create, or delete any files — just note what should change.
+    If a tool fails 3 times, stop retrying and report that the tools are faulty.""")
 
 function ToolCallFormat.execute(cmd::ReviewToolCall, ctx::ToolCallFormat.AbstractContext)
     model = something(cmd.model, "openai:openai/gpt-5.6-sol")
