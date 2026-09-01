@@ -145,7 +145,6 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     quiet::Bool=false,
     highlight_enabled::Bool=true,
     process_enabled::Bool=true,
-    on_error=noop,
     on_done=noop,
     on_finish=noop,
     on_start=noop,
@@ -202,7 +201,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             extractor_fn(text) = extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
 
             cb = create(StreamCallbackTYPE(;
-                io, on_start, on_error, highlight_enabled, process_enabled, quiet,
+                io, on_start, highlight_enabled, process_enabled, quiet,
                 on_meta_ai,
                 on_done = () -> begin
                     process_enabled && extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)

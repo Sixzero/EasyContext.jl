@@ -52,7 +52,6 @@ using UUIDs
                     on_meta_ai = (tokens, cost, elapsed) -> nothing,
                     on_start = config.on_start,
                     on_done = config.on_done,
-                    on_error = config.on_error,
                     on_stop_sequence = _ -> nothing,
                     on_cost = cost -> (io.costs[] += cost)
                 )

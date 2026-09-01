@@ -7,7 +7,6 @@ include("syntax_highlight.jl")
 
 @kwdef struct StreamCallbackConfig
     io::IO=stdout
-    on_error::Function   = noop
     on_done::Function = noop
     on_start::Function = noop
     on_content::Function = noop
@@ -48,9 +47,7 @@ create(config::StreamCallbackConfig) = begin
             on_meta_ai        = on_meta_ai_cb,
             on_start          = config.on_start,
             on_done           = () -> (flush_state(state); config.on_done()),
-            on_error          = e -> ((e isa InterruptException ? rethrow(e) : (println(config.io, e); config.on_error(e)))),
             on_stop_sequence  = stop_sequence -> handle_text(state, stop_sequence),
-            throw_on_error = true
         )
 end
 
