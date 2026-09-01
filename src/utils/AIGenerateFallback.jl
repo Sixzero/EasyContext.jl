@@ -145,6 +145,9 @@ function try_generate(manager::AIGenerateFallback, prompt; condition=nothing, ap
                 attempt_generate(model_or_config, prompt, manager, state; condition, api_kwargs..., kwargs...)
             catch e
                 e isa InterruptException && rethrow(e)
+                # A refusal is the model's verdict on THIS prompt, not a health
+                # problem: don't retry it and don't disable the model for it.
+                e isa ModelRefusalError && rethrow(e)
                 reason = handle_error!(state, e, model_name)
                 
                 if attempt == retries

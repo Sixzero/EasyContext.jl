@@ -1,5 +1,5 @@
 export ModelConfig, aigenerate_with_config, _is_context_overflow_error, parse_context_overflow
-using OpenRouter: extract_provider_from_model, ModelConfig, StreamIdleTimeoutError
+using OpenRouter: extract_provider_from_model, ModelConfig, StreamIdleTimeoutError, ModelRefusalError
 import PromptingTools: AbstractPromptSchema, OpenAISchema, CerebrasOpenAISchema, MistralOpenAISchema,
     AnthropicSchema, GoogleSchema, GroqOpenAISchema
 
@@ -217,6 +217,9 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             return f()
         catch e
             e isa InterruptException && rethrow(e)
+            # Safety refusal: the model decided, deterministically. Retrying just
+            # burns the same prompt against the same policy.
+            e isa ModelRefusalError && rethrow(e)
             # HTTP.RequestError wrapping InterruptException
             hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
             # Mid-stream stall: chunks already reached the user; fail fast
