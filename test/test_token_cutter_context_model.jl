@@ -1,7 +1,7 @@
 using Test
 using EasyContext
 using EasyContext: TokenBasedCutter, record_real_usage!, context_model, current_context_tokens,
-                   estimate_conversation_tokens, create_user_message
+                   estimate_conversation_tokens, create_user_message, reanchor_after_cut!
 
 # Build a conversation whose chars/2 estimate is roughly `est_tokens`.
 struct FakeConv
@@ -80,4 +80,26 @@ fake_conv(est_tokens::Int) = FakeConv([create_user_message("x"^(2 * est_tokens))
         @test overhead >= 0
         @test current_context_tokens(cutter, fake_conv(2_000)) == 1_000
     end
+end
+
+@testset "post-cut re-anchor ignores noisy two-anchor slope" begin
+    cutter = TokenBasedCutter(; context_limit=200_000)
+    # Two close anchors fit a bogus low slope (0.25) → overhead wrongly ~55K, so the
+    # old model reported ~60K after a cut to a 26K-estimate conversation (real: ~23K).
+    record_real_usage!(cutter, fake_conv(159_000), 94_750)
+    record_real_usage!(cutter, fake_conv(160_000), 95_000)
+    @test isapprox(context_model(cutter)[2], 0.25; atol=0.01)
+    conv = fake_conv(26_000)
+    @test current_context_tokens(cutter, conv) > 50_000        # the bug
+    reanchor_after_cut!(cutter, conv)
+    @test current_context_tokens(cutter, conv) == 28_000       # 15K overhead + 0.5·26K
+    @test cutter.prev_real_tokens == 0                          # stale pair dropped
+end
+
+@testset "post-cut re-anchor is a no-op before any anchor" begin
+    cutter = TokenBasedCutter(; context_limit=200_000)
+    conv = fake_conv(5_000)
+    reanchor_after_cut!(cutter, conv)
+    @test cutter.last_real_tokens == 0
+    @test current_context_tokens(cutter, conv) == 5_000
 end

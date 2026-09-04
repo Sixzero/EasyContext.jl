@@ -249,6 +249,29 @@ function calculate_keep(cutter::TokenBasedCutter, conv)
     return n - first_kept + 1
 end
 
+"""
+    reanchor_after_cut!(cutter::TokenBasedCutter, conv)
+
+Re-anchor at the post-cut size. The two-anchor fit is only trusted NEAR the anchor;
+a cut jumps far from it, where a noisy slope misattributes conversation tokens to
+overhead (seen: 60K reported, 23K real). Use the single-anchor model instead:
+`overhead = R − slope·E_before`, `post = overhead + slope·E_after`,
+`slope = min(0.5, R/E_before)`. Only R (main-model units) is absolute — no
+summarizer-tokenizer leakage, so GPT vs Anthropic tokenizers stay consistent.
+No-op before the first real anchor.
+"""
+function reanchor_after_cut!(cutter::TokenBasedCutter, conv)
+    r, e = cutter.last_real_tokens, cutter.last_real_estimate
+    r > 0 && e > 0 || return nothing
+    slope = min(DEFAULT_EST_TO_REAL_RATIO, r / e)
+    overhead = r - slope * e
+    post = round(Int, overhead + slope * estimate_conversation_tokens(cutter, conv))
+    record_real_usage!(cutter, conv, post)
+    # `post` is an estimate, not a measurement: keep it out of any future slope fit.
+    cutter.prev_real_tokens = cutter.prev_real_estimate = 0
+    nothing
+end
+
 function do_cut!(cutter::TokenBasedCutter, conv; keep::Union{Int,Nothing}=nothing)
     keep = something(keep, calculate_keep(cutter, conv))
     n = length(conv.messages)
@@ -257,9 +280,11 @@ function do_cut!(cutter::TokenBasedCutter, conv; keep::Union{Int,Nothing}=nothin
 
     tokens_before = estimate_conversation_tokens(cutter, conv)
     summarize_and_cut!(cutter, conv; keep)
-    tokens_freed = tokens_before - estimate_conversation_tokens(cutter, conv)
+    tokens_after = estimate_conversation_tokens(cutter, conv)
 
-    @info "TokenBasedCutter: cut conversation" kept=length(conv.messages) tokens_freed
+    reanchor_after_cut!(cutter, conv)
+
+    @info "TokenBasedCutter: cut conversation" kept=length(conv.messages) tokens_freed=tokens_before-tokens_after post_tokens=current_context_tokens(cutter, conv)
 
     return cutter.last_summary
 end
