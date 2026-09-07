@@ -35,6 +35,7 @@ message. Pure: callers use the SAME boundary for summarizing the cut prefix and
 for mutating, so the summarized set and the removed set always agree.
 """
 function history_cut_start(messages, keep::Int)
+	keep >= 1 || throw(ArgumentError("keep must be at least 1"))
 	length(messages) <= keep && return 1
 	start_index = max(1, length(messages) - keep + 1)
 	while start_index > 1 && messages[start_index].role == :tool
@@ -44,8 +45,8 @@ function history_cut_start(messages, keep::Int)
 end
 
 function cut_history!(conv::CONV; keep=8) # never cuts between a tool_use and its tool_result
-	length(conv.messages) <= keep && return conv.messages
 	start_index = history_cut_start(conv.messages, keep)
+	length(conv.messages) <= keep && return conv.messages
 	kept = length(conv.messages) - start_index + 1
 	conv.messages = conv.messages[start_index:end]
 	kept

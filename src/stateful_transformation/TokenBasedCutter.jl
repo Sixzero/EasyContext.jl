@@ -37,6 +37,8 @@ Always summarizes old messages before cutting.
     # Summarization
     summarizer_model::String = SUMMARIZER_MODEL
     last_summary::String = ""
+    # Removed source IDs since the host last reset tracking (synthetic summaries excluded).
+    compacted_message_ids::Vector{String} = String[]
 
     # Real-usage anchors: the provider's exact context size from API calls, paired
     # with our char-estimate of the conversation at that same moment. Two anchors let
@@ -192,6 +194,7 @@ function current_context_tokens(cutter::TokenBasedCutter, conv)
 end
 
 function should_cut(cutter::TokenBasedCutter, conv)
+    isempty(conv.messages) && return false
     limit = get_effective_limit(cutter)
     limit <= 0 && return false
 
@@ -272,7 +275,13 @@ function reanchor_after_cut!(cutter::TokenBasedCutter, conv)
     nothing
 end
 
+function record_compacted_messages!(cutter::TokenBasedCutter, messages)
+    append!(cutter.compacted_message_ids, (m.id for m in messages if !is_prior_context(m)))
+end
+
 function do_cut!(cutter::TokenBasedCutter, conv; keep::Union{Int,Nothing}=nothing)
+    # Validate explicit input even for an empty conversation (auto may keep zero).
+    isnothing(keep) || history_cut_start(conv.messages, keep)
     keep = something(keep, calculate_keep(cutter, conv))
     n = length(conv.messages)
 
@@ -290,6 +299,7 @@ function do_cut!(cutter::TokenBasedCutter, conv; keep::Union{Int,Nothing}=nothin
 end
 
 function get_cache_setting(cutter::TokenBasedCutter, conv)
+    isempty(conv.messages) && return :all
     limit = get_effective_limit(cutter)
     limit <= 0 && return :all
 

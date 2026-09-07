@@ -198,22 +198,10 @@ Merge this earlier summary with the new conversation below. The merged summary s
 """ * prompt
     end
 
-    try
-        # Explicit max_tokens: provider defaults can be as low as 2048, which silently
-        # hard-truncates the summary mid-sentence (context loss on every compaction).
-        # 8192 is also reachable for long sessions (the summary spans 9 numbered sections),
-        # so give real headroom to avoid the mid-sentence cutoff.
-        # aigenerate_with_config handles provider slugs, API-key selection and transient retries.
-        result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
-        return strip(String(result.content))
-    catch e
-        # Never swallow an interrupt: it must propagate out of do_cut! BEFORE cut_history!
-        # mutates the conversation, otherwise a stop-during-compaction trims messages with a
-        # stale/empty summary (context loss) and silently drops the stop.
-        is_interrupt(e) && rethrow(e)
-        @warn "Conversation summarization failed" exception=e
-        # Return previous summary if we had one, at least preserve that
-        return previous_summary
-    end
+    # Generate before changing history. Errors (including interrupts) must propagate;
+    # an old or empty summary cannot represent the messages we are about to remove.
+    result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
+    summary = strip(String(result.content))
+    isempty(summary) && error("Compaction returned an empty summary; history was not changed")
+    return summary
 end
-
