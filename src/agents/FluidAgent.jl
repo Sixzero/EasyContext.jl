@@ -177,13 +177,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             i += 1
 
             # Drain any queued user messages before LLM call
-            drained = on_drain_user_queue()
+            on_drain_user_queue()
 
             # A request must never end with an assistant message: providers treat it
             # as prefill and newer models reject it (400). Reached when on_queue_empty
-            # said "pending" but the drain got nothing (stop drained the channel
-            # concurrently, or the payload carried no user content).
-            if !drained && !isempty(session.messages) && session.messages[end].role == :assistant
+            # said "pending" but the drain added nothing to answer: stop drained the
+            # channel concurrently, the payload carried no user content, or it only
+            # re-delivered a tool_result that was already in the session.
+            if !isempty(session.messages) && session.messages[end].role == :assistant
                 completed = true
                 break
             end
