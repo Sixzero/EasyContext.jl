@@ -152,6 +152,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_drain_user_queue=noop,  # Called before each LLM call; pushes queued user messages directly into session. Returns true if messages were drained.
     on_admitted=noop,  # Called right before each LLM request dispatch, after all setup (sys-msg, tools, compaction, payload). Used to release a bounded-admission slot; must be idempotent.
     on_queue_empty=Returns(true),  # Called after no-tool-call response; returns true if queue is empty (break), false if messages pending (continue loop).
+    on_steer=Returns(false),  # Called when the LLM stream was interrupted or returned tool calls; true = a STEER is pending (answer the queue now): what streamed is kept, pending tool calls are recorded as not run, and the loop goes on to drain. false = a real stop (rethrow) / nothing pending.
     on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
     io=stdout,
     tool_kwargs=Dict(),
@@ -226,10 +227,26 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
 
             response = try
-                generate(pt_messages)
+                try
+                    generate(pt_messages)
+                catch e
+                    recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) || rethrow(e)
+                    generate(to_PT_messages(session, sys_msg_content))  # shrunk, so worth one resend
+                end
             catch e
-                recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) || rethrow(e)
-                generate(to_PT_messages(session, sys_msg_content))  # shrunk, so worth one resend
+                is_interrupt(e) && on_steer() || rethrow(e)
+                # Steer: the user wants a queued message answered NOW. Keep what
+                # streamed (closed as a block, saved as a cut-off assistant message
+                # so the model knows it was interrupted) and loop back to the drain.
+                process_enabled && !isnothing(extractor) && extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)
+                partial = hasproperty(extractor, :full_content) ? extractor.full_content : ""
+                if !isempty(strip(partial))
+                    ai_msg = create_AI_message(partial * "\n[cut off here: the user sent a new message]")
+                    hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
+                    push_message!(session, ai_msg)
+                end
+                hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
+                continue
             end
 
             # ── Post-response handling (native API tool calling) ──
@@ -249,10 +266,22 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 else
                     # new assistant message is needed so we don't break
                 end
+            elseif on_steer()
+                # Steer landed while the tool calls streamed: the response is whole
+                # but the user wants the queue answered first. Don't start the tools;
+                # record the calls with a not-run result so the session stays valid
+                # and the model can re-issue them once it has read the new message.
+                push_message!(session, ai_msg)
+                for tc in tool_calls
+                    push_message!(session, ToolMessage(content="[not run: the user sent a new message before this tool call started]", tool_call_id=tc["id"]))
+                end
             else
                 process_native_tool_calls!(extractor, tool_calls, io; kwargs=tool_kwargs)
 
                 # Approval continuations need the tool_use persisted before pausing.
+                # A steer that lands here is NOT honoured: the turn is paused on the
+                # user's own decision, the queue stays intact and is drained when the
+                # approval resumes the turn. The runner resets the steer flags on exit.
                 if any_tool_needs_approval(extractor)
                     push_message!(session, ai_msg)
                     completed = true
