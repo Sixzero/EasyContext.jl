@@ -134,6 +134,11 @@ function recover_from_overflow!(e, cutter, session, cb; on_status=noop, on_retry
     true
 end
 
+"""Cancel flag set and it is a stop, not a steer (io types without the flags never stop)."""
+stop_requested(io) =
+    hasproperty(io, :cancel_flag) && io.cancel_flag !== nothing && io.cancel_flag[] &&
+    !(hasproperty(io, :steering) && io.steering[])
+
 function work(agent::FluidAgent, session::AbstractString; kwargs...)
     conv_ctx = Session(; messages=[create_user_message(session)])
     work(agent, conv_ctx; kwargs...)
@@ -176,6 +181,11 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     try
         while i < MAX_ITERATIONS
             i += 1
+
+            # A stop that landed while the tools ran: end the turn here instead of
+            # spending an LLM call to discover it on the first streamed chunk.
+            # A steer is not a stop — the drain below answers it.
+            stop_requested(io) && throw(InterruptException())
 
             # Drain any queued user messages before LLM call
             on_drain_user_queue()
