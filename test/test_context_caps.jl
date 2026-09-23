@@ -9,7 +9,7 @@ using EasyContext
     # All providers cap at 200K: quality/cost cap, and keeps the 80% compaction
     # threshold (160K) aligned with the frontend indicator's 200K standard cap.
     @test effective("openai:openai/gpt-5.4") == 200_000
-    @test effective("gpt5") == 200_000
+    @test effective("gpt") == 200_000
     @test effective("anthropic:anthropic/claude-opus-4.8") == 200_000
     @test effective("claude") == 200_000
     @test effective("claude(high)") == 200_000
