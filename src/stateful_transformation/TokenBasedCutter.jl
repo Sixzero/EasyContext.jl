@@ -25,7 +25,7 @@ Always summarizes old messages before cutting.
 
     # Trigger threshold (ratio of context_limit)
     compact_threshold::Float64 = 0.8    # Start compacting at 80% of limit
-    target_ratio::Float64 = 0.1         # Post-cut token target (incl. system prompt/tools): keep recent messages worth ~this fraction of limit
+    target_ratio::Float64 = 0.1         # Post-cut target: keep recent conversation worth ~this fraction of limit (system prompt/tools come on top)
 
     # How much to keep
     min_keep_messages::Int = 4          # Budget walk starts with this many; the turn-boundary snap may then keep fewer (down to the last user message)
@@ -230,13 +230,13 @@ function calculate_keep(cutter::TokenBasedCutter, conv)
     # fixed fraction of *messages* frees far fewer tokens than expected — 80% of messages
     # can be only ~40% of tokens, landing post-cut context near 50-60% of the limit.
     #
-    # `target_ratio * limit` is the desired TOTAL post-cut context; the conversation's
-    # share is that minus the fixed overhead (system prompt/tools/skills), converted from
-    # real tokens into estimate space via the affine model's slope. Match should_cut's
-    # units: before any real anchor it reads the raw estimate as-is (overhead 0, slope 1).
+    # `target_ratio * limit` real tokens of conversation are kept; the fixed overhead
+    # (system prompt/tools/skills) comes on top — subtracting it would zero the budget
+    # whenever it alone exceeds the target. Converted into estimate space via the
+    # affine model's slope (raw estimate as-is before any real anchor).
     anchored = cutter.last_real_tokens > 0 && cutter.last_real_estimate > 0
-    overhead, slope = anchored ? context_model(cutter) : (0.0, 1.0)
-    budget_est = max(0.0, (limit * cutter.target_ratio - overhead) / slope)
+    _, slope = anchored ? context_model(cutter) : (0.0, 1.0)
+    budget_est = limit * cutter.target_ratio / slope
 
     # Start from the newest min_keep_messages, then extend backward while the next
     # older message still fits the budget. history_cut_start later aligns the boundary
