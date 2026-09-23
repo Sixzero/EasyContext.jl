@@ -3,9 +3,10 @@ export summarize_conversation, format_messages_for_summary, is_prior_context
 using JSON3
 using OpenRouter: get_arguments
 
-# The summarizer produces the ONLY record of the compacted history — worth a
-# current model, not a legacy one. haiku-4.5: fast, cheap, 200K window.
-const SUMMARIZER_MODEL = "anthropic:anthropic/claude-haiku-4.5"
+# The summarizer produces the ONLY record of the compacted history, so accuracy beats
+# cost: haiku-4.5 misattributed facts and dropped operational details on long tool-heavy
+# sessions. sonnet-5: similar TTFT (benchmarks/ttft), 200K window, compaction is rare.
+const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5"
 
 # The running compaction summary is carried inside the conversation as a single leading
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
@@ -31,32 +32,42 @@ Organize the key information into these categories:
    - Important domain knowledge established
 
 3. **Files and Code Sections**
-   - List files that were created or modified
+   - List files that were created, moved or modified, and commits made (hash + what they contain)
    - Include relevant code snippets that would be needed to continue the work
    - Note specific line numbers or function names when relevant
 
-4. **Errors and Fixes**
+4. **Operational Facts**
+   - Exact identifiers needed to continue: IDs, model names/aliases, URLs, ports, paths, env var and config key names, where credentials live (NEVER the secret values themselves)
+   - How things were run: commands, flags, and workarounds that turned out to be required (and why the naive way failed)
+
+5. **Errors and Fixes**
    - What problems were encountered?
    - How were they resolved?
 
-5. **Problem Solving**
+6. **Problem Solving**
    - Key decisions made and their rationale
    - Alternative approaches that were considered or rejected
 
-6. **All User Messages**
-   - Include the user's messages, preserving their wording to maintain intent and tone
+7. **All User Messages**
+   - Every user message, in chronological order, in the user's original language
+   - Short messages verbatim; longer ones condensed, but without dropping any request, constraint, name or number
 
-7. **Pending Tasks**
-   - What was mentioned but not yet completed?
+8. **Pending Tasks**
+   - What was mentioned but not yet completed? Check later events first — don't list something that was done afterwards.
 
-8. **Current Work**
+9. **Current Work**
    - What was the conversation focused on when it ended?
    - What was the user's last question or request?
 
-9. **Optional Next Step**
+10. **Optional Next Step**
    - What would logically come next based on the conversation flow?
 
 Be specific with file paths, function names, and error messages. Include actual code snippets when they're essential for continuing the work.
+
+Accuracy over brevity:
+- Attribute every fact (error, measurement, limitation) to the exact entity it belongs to; never merge similar items.
+- Keep numbers exact (ranges, counts, units). Don't invent labels, sources or events; if something is unclear, say so.
+- Long sessions need long summaries. A dropped detail can't be recovered, an extra paragraph costs little.
 
 Output ONLY the summary document — no preamble, no commentary, no closing remarks.
 

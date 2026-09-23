@@ -47,6 +47,25 @@ using EasyContext: Session, Message, cut_history!, history_cut_start,
     @test autonomous[cut_start].role != :tool
 end
 
+@testset "calculate_keep cuts on a turn boundary" begin
+    mk(role, n) = Message(timestamp=now(UTC), role=role, content="x"^n)
+    cutter = TokenBasedCutter(; context_limit=100_000, target_ratio=0.2)  # unanchored: budget = 20K estimate
+    # turn 1 (big) | turn 2: user + 4 assistant/tool steps | turn 3: user + 2 steps
+    conv = Session(messages=[mk(:user, 100), mk(:assistant, 200_000),
+        mk(:user, 100), mk(:assistant, 8_000), mk(:tool, 8_000), mk(:assistant, 8_000), mk(:tool, 8_000),
+        mk(:user, 100), mk(:assistant, 8_000), mk(:tool, 8_000)])
+    keep = calculate_keep(cutter, conv)
+    # The budget alone would start mid turn 2; the snap moves it to turn 3's user message.
+    @test conv.messages[end-keep+1].role == :user
+    @test keep == 3
+
+    # Boundary inside the LAST turn (long autonomous run): no user message ahead → cut mid-turn.
+    run = Session(messages=[mk(:user, 100); [mk(r, 8_000) for _ in 1:10 for r in (:assistant, :tool)]])
+    keep = calculate_keep(cutter, run)
+    @test keep < length(run.messages)
+    @test would_free_messages(run, keep)
+end
+
 @testset "should_cut anchor gating" begin
     cutter = TokenBasedCutter(; context_limit=200_000)
     conv = Session()

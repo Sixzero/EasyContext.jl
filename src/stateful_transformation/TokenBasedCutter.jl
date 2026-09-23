@@ -25,10 +25,10 @@ Always summarizes old messages before cutting.
 
     # Trigger threshold (ratio of context_limit)
     compact_threshold::Float64 = 0.8    # Start compacting at 80% of limit
-    target_ratio::Float64 = 0.2         # Post-cut token target: keep recent messages worth ~this fraction of limit
+    target_ratio::Float64 = 0.1         # Post-cut token target (incl. system prompt/tools): keep recent messages worth ~this fraction of limit
 
     # How much to keep
-    min_keep_messages::Int = 4          # Always keep at least this many
+    min_keep_messages::Int = 4          # Budget walk starts with this many; the turn-boundary snap may then keep fewer (down to the last user message)
     max_keep_ratio::Float64 = 0.2       # Fallback message-count fraction when no context limit is set
 
     # Token estimation
@@ -238,7 +238,7 @@ function calculate_keep(cutter::TokenBasedCutter, conv)
     overhead, slope = anchored ? context_model(cutter) : (0.0, 1.0)
     budget_est = max(0.0, (limit * cutter.target_ratio - overhead) / slope)
 
-    # Always keep the newest min_keep_messages, then extend backward while the next
+    # Start from the newest min_keep_messages, then extend backward while the next
     # older message still fits the budget. history_cut_start later aligns the boundary
     # off :tool results, keeping a turn's tool_use/tool_result intact.
     first_kept = n - cutter.min_keep_messages + 1
@@ -249,7 +249,12 @@ function calculate_keep(cutter::TokenBasedCutter, conv)
         first_kept -= 1
         acc += next
     end
-    return n - first_kept + 1
+    # Cut on a turn boundary: move forward to the next user message, so a turn is never
+    # split between the summary and the kept window (the summary would then report work
+    # the kept tail already finished). Only when the boundary falls inside the LAST turn
+    # (one long autonomous run) is there no user message ahead, and we cut mid-turn.
+    turn_start = findnext(m -> m.role == :user && !is_prior_context(m), conv.messages, first_kept)
+    return n - something(turn_start, first_kept) + 1
 end
 
 """
