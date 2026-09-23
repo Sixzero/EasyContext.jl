@@ -19,7 +19,7 @@ function machine_routing_block(tools; stale_tail::String)::String
     end
     has_alias || return ""
     """
-    MACHINE ROUTING:
+    ## Machine routing
     - Always prefer the user's PC/workspace (bare tools: read, grep, list, bash) — that is almost always where they work. Other user machines also beat cloud.
     - Use cloud (`*_cloud`) only when there is no other workspace, or it is clear the user actually worked there. $stale_tail
     - Other machines: suffixed aliases (read_<device>, bash_<device>, …). Use webfetch for external docs."""

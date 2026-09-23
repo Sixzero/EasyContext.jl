@@ -1,17 +1,11 @@
 using EasyContext
-using EasyContext: opencode_gemini_understand_prompt
+using EasyContext: explore_sys_prompt
 using OpenRouterCLIProxyAPI
 
 setup_cli_proxy!(mutate=true)
 
 # --- Create explore agent (native tool calling, read-only tools) ---
-model = "anthropic:anthropic/claude-haiku-4.5"
-explore_prompt = """You are a codebase exploration agent. Read files, run non-destructive shell commands (ls, grep, find, tree), and report findings.
-
-$(opencode_gemini_understand_prompt)
-
-IMPORTANT: Do NOT modify any files. Only read and inspect.
-If a tool fails 3 times, stop retrying and report that the tools are faulty."""
+model = "openai:openai/gpt-6-luna"
 
 tools = [
     ToolGenerator(CatFileTool, (root_path=pwd(),)),
@@ -21,7 +15,7 @@ tools = [
 agent = create_FluidAgent(model;
     tools,
     extractor_type=NativeExtractor,
-    sys_msg=explore_prompt,
+    sys_msg=explore_sys_prompt(tools),
 )
 
 
