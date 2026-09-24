@@ -46,7 +46,7 @@ ToolCallFormat.get_id(t::ExploreToolCall) = t._id
 ToolCallFormat.toolname(::Type{ExploreToolCall}) = EXPLORE_TAG
 LLM_safetorun(::ExploreToolCall) = true
 
-# Kept in sync with api-apps/tfa-explore/src/cli.ts EXPLORE_SYS_PROMPT (explore-bench "explore-v3.1").
+# Kept in sync with api-apps/tfa-explore/src/cli.ts EXPLORE_SYS_PROMPT (agent/bench/explore "explore-v3.1").
 explore_sys_prompt(tools) = join_prompt_sections(
     """
     You are an exploration agent. You investigate what the task asks — code, files, machines, the web — and report what you find. You only observe; you never fix.
