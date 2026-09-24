@@ -213,6 +213,11 @@ Merge this earlier summary with the new conversation below. The merged summary s
     # an old or empty summary cannot represent the messages we are about to remove.
     result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
     summary = strip(String(result.content))
-    isempty(summary) && error("Compaction returned an empty summary; history was not changed")
+    if isempty(summary)
+        # Empty text on an HTTP 200 is otherwise undiagnosable (neither agent nor proxy logs
+        # the response): log stop reason + usage for us; the user gets the short message.
+        @error "Compaction returned an empty summary" model finish_reason=result.finish_reason tokens=result.tokens reasoning_chars=length(something(result.reasoning, "")) prompt_chars=length(prompt) elapsed=result.elapsed
+        error("Compaction returned an empty summary; history was not changed")
+    end
     return summary
 end
