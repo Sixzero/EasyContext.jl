@@ -39,6 +39,12 @@ Always summarizes old messages before cutting.
     last_summary::String = ""
     # Removed source IDs since the host last reset tracking (synthetic summaries excluded).
     compacted_message_ids::Vector{String} = String[]
+    # Monotonic count of cuts that actually rewrote history — bumped in
+    # `summarize_and_cut!`, the single funnel every cut path goes through (auto,
+    # manual, mid-loop, overflow recovery). Hosts watch it to notice a rewrite
+    # without having to hook each call site; unlike `compacted_message_ids` it is
+    # never reset, so a consumer that reads it later still sees the change.
+    cut_revision::Int = 0
 
     # Real-usage anchors: the provider's exact context size from API calls, paired
     # with our char-estimate of the conversation at that same moment. Two anchors let
