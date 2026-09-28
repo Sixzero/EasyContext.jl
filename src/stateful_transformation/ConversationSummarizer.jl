@@ -211,13 +211,14 @@ Merge this earlier summary with the new conversation below. The merged summary s
 
     # Generate before changing history. Errors (including interrupts) must propagate;
     # an old or empty summary cannot represent the messages we are about to remove.
-    result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
-    summary = strip(String(result.content))
-    if isempty(summary)
-        # Empty text on an HTTP 200 is otherwise undiagnosable (neither agent nor proxy logs
-        # the response): log stop reason + usage for us; the user gets the short message.
-        @error "Compaction returned an empty summary" model finish_reason=result.finish_reason tokens=result.tokens reasoning_chars=length(something(result.reasoning, "")) prompt_chars=length(prompt) elapsed=result.elapsed
-        error("Compaction returned an empty summary; history was not changed")
+    # An empty text on HTTP 200 is a transient model glitch (seen once on sonnet-5: end_turn,
+    # 19 output tokens, no text); a plain re-run succeeds, so retry once before giving up.
+    for attempt in 1:2
+        result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
+        summary = strip(String(result.content))
+        isempty(summary) || return summary
+        # OpenRouter.jl already warned with the raw response body; add the compaction context.
+        @error "Compaction returned an empty summary" attempt model finish_reason=result.finish_reason tokens=result.tokens reasoning_chars=length(something(result.reasoning, "")) prompt_chars=length(prompt) elapsed=result.elapsed
     end
-    return summary
+    error("Compaction returned an empty summary; history was not changed")
 end
