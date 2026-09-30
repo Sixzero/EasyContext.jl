@@ -66,13 +66,22 @@ conversation_file(path,conv::Session) = joinpath(conversation_path(path, conv), 
 # Signature: (messages::Vector{AbstractMessage}, session_id::String) -> Vector{AbstractMessage}.
 const request_media_normalizer = Ref{Function}((msgs, _session_id) -> msgs)
 
-function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_messages_supported::Bool=false)
-    
-    messages = Vector{AbstractMessage}(undef, length(session.messages) + 1)
+"""
+    to_PT_messages(session, sys_msg[, imagepaths_in_messages_supported]; prefix=AbstractMessage[])
+
+`prefix`: request-only messages placed right after the system message (e.g. pinned
+reference documents). They live outside `session.messages`, so compaction never cuts
+them and the persisted history never carries their bytes.
+"""
+function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_messages_supported::Bool=false;
+                        prefix::Vector{<:AbstractMessage}=AbstractMessage[])
+    n = length(prefix)
+    messages = Vector{AbstractMessage}(undef, length(session.messages) + 1 + n)
     messages[1] = SystemMessage(content=sys_msg)
+    messages[2:n+1] = prefix
 
     for (i, msg) in enumerate(session.messages)
-        messages[i + 1] = if msg.role == :user
+        messages[i + 1 + n] = if msg.role == :user
             # Extract file paths from content
             image_paths = imagepaths_in_messages_supported ? validate_image_paths(extract_image_paths(msg.content)) : String[]
             

@@ -168,6 +168,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     tool_choice::String="auto",  # "none" forbids tool calls but INVALIDATES the message-level prompt cache (Anthropic docs: "changes to tool_choice ... affect message blocks"). For cache-riding throwaway inferences keep "auto" and set drop_tool_calls=true instead.
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
+    prefix_messages::Function=Returns(AbstractMessage[]),  # () -> request-only messages after the system prompt (pinned reference docs); re-evaluated per LLM call, never stored in the session
     )
     model_name = get_model_name(agent.model)
     api_kwargs = apply_thinking_kwargs(get_api_kwargs_for_model(agent.model, (; top_p=0.7)), model_name, thinking)
@@ -215,7 +216,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 on_status("WORKING")
             end
 
-            pt_messages = to_PT_messages(session, sys_msg_content)
+            pt_messages = to_PT_messages(session, sys_msg_content; prefix=prefix_messages())
 
             # ── Shared: extractor, streaming callback, LLM call ──
             extractor = agent.extractor_type(agent.tools)
@@ -241,7 +242,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     generate(pt_messages)
                 catch e
                     recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) || rethrow(e)
-                    generate(to_PT_messages(session, sys_msg_content))  # shrunk, so worth one resend
+                    generate(to_PT_messages(session, sys_msg_content; prefix=prefix_messages()))  # shrunk, so worth one resend
                 end
             catch e
                 is_interrupt(e) && on_steer() || rethrow(e)
