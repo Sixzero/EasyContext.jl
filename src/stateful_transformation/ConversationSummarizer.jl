@@ -5,8 +5,9 @@ using OpenRouter: get_arguments
 
 # The summarizer produces the ONLY record of the compacted history, so accuracy beats
 # cost: haiku-4.5 misattributed facts and dropped operational details on long tool-heavy
-# sessions. sonnet-5: similar TTFT (benchmarks/ttft), 200K window, compaction is rare.
-const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5"
+# sessions. sonnet-5.5 (agent/bench/compaction r1, 20 real cases): 8.75 vs sonnet-5 7.00,
+# won all 20, ~1.5x faster, same price; gpt-6-sol 9.00 but ~3.3x slower.
+const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5"
 
 # The running compaction summary is carried inside the conversation as a single leading
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
