@@ -7,7 +7,9 @@ using OpenRouter: get_arguments
 # cost: haiku-4.5 misattributed facts and dropped operational details on long tool-heavy
 # sessions. sonnet-5.5 (agent/bench/compaction r1, 20 real cases): 8.75 vs sonnet-5 7.00,
 # won all 20, ~1.5x faster, same price; gpt-6-sol 9.00 but ~3.3x slower.
-const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5"
+# Cap thinking at medium: adaptive default can burn most of max_tokens before any text
+# (bench r1: one sonnet-5 run spent all 16384 tokens and returned 342 chars).
+const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5(medium)"
 
 # The running compaction summary is carried inside the conversation as a single leading
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
