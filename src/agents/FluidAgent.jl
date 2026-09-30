@@ -159,6 +159,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     on_queue_empty=Returns(true),  # Called after no-tool-call response; returns true if queue is empty (break), false if messages pending (continue loop).
     on_steer=Returns(false),  # Called when the LLM stream was interrupted or returned tool calls; true = a STEER is pending (answer the queue now): what streamed is kept, pending tool calls are recorded as not run, and the loop goes on to drain. false = a real stop (rethrow) / nothing pending.
     on_meta_ai=noop,  # Called with (tokens, cost, elapsed) after each LLM response
+    on_images=noop,  # Called with Vector{String} of data URLs when the model itself generated images (e.g. Codex image_generation, Gemini image models)
     io=stdout,
     tool_kwargs=Dict(),
     thinking::Union{Nothing,Int}=nothing,
@@ -265,7 +266,13 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # tool_calls) or drop_tool_calls=true (cache-safe throwaway inference), NEVER
             # execute them. Drop them and treat the response as plain text.
             tool_calls = (tool_choice == "none" || drop_tool_calls) ? nothing : response.tool_calls
-            ai_msg = create_AI_message(response.content; tool_calls)
+            images = hasproperty(response, :image_data) ? response.image_data : nothing
+            has_images = images !== nothing && !isempty(images)
+            has_images && on_images(images)
+            # Image-only reply: leave a trace in history so the model knows it answered.
+            content = has_images && isempty(strip(response.content)) ?
+                "[generated $(length(images)) image(s)]" : response.content
+            ai_msg = create_AI_message(content; tool_calls)
             hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
 
             # No tool calls → persist the assistant response immediately.
