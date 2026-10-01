@@ -1,4 +1,4 @@
-export summarize_conversation, format_messages_for_summary, is_prior_context
+export summarize_conversation, format_messages_for_summary, is_prior_context, prior_context_message
 
 using JSON3
 using OpenRouter: get_arguments
@@ -15,6 +15,9 @@ const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5(medium)"
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
 # message attachment across restarts. Detect it to avoid re-summarizing it as content.
 is_prior_context(msg) = msg.role == :user && startswith(strip(msg.content), "<prior_context>")
+
+"""The single leading user message that carries a running summary (compaction or an imported session)."""
+prior_context_message(summary::AbstractString) = create_user_message("<prior_context>\nThis session is continued from an earlier portion of the conversation that was compacted to save context. The summary below is the only record of it — treat it as what actually happened; the messages after it are newer and take precedence.\n\n$summary\n</prior_context>")
 
 const CONVERSATION_SUMMARY_PROMPT = """You are compacting a conversation that is running out of context. Your summary will replace the older messages and is the ONLY record a future agent will have of them, so it must be self-contained enough to continue the work seamlessly.
 

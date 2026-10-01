@@ -100,8 +100,7 @@ function summarize_and_cut!(cutter::AbstractCutter, conv; keep::Int)
     cut_history!(conv; keep)
     record_compacted_messages!(cutter, messages_to_cut)
     # The sentinel is used to recognize the summary on subsequent cuts.
-    pushfirst!(conv.messages,
-        create_user_message("<prior_context>\nThis session is continued from an earlier portion of the conversation that was compacted to save context. The summary below is the only record of it — treat it as what actually happened; the messages after it are newer and take precedence.\n\n$(cutter.last_summary)\n</prior_context>"))
+    pushfirst!(conv.messages, prior_context_message(cutter.last_summary))
     return cutter.last_summary
 end
 
