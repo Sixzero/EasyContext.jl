@@ -197,6 +197,14 @@ response, which by definition never arrives here. Returns `nothing` when the mes
 carries no usable pair (the caller then falls back to its configured limit).
 """
 function parse_context_overflow(msg::AbstractString)
+    # DeepInfra reports input + reserved output against the total window. Keep the
+    # input count as the anchor and subtract output from the learned INPUT limit.
+    m = match(r"maximum context length is\s*(\d[\d,_]*)\s*tokens.*?requested\s*(\d[\d,_]*)\s*output tokens.*?prompt contains(?: at least)?\s*(\d[\d,_]*)\s*input tokens"is, msg)
+    if m !== nothing
+        window, output, used = (c -> parse(Int, replace(c, "," => "", "_" => ""))).(m.captures)
+        limit = window - output
+        return limit > 0 ? (; used, limit) : nothing
+    end
     m = match(r"(\d[\d,_]*)\s*tokens?\s*>\s*(\d[\d,_]*)"i, msg)
     m === nothing && (m = match(r"maximum context length is\s*(\d[\d,_]*)\s*tokens.*?resulted in\s*(\d[\d,_]*)"is, msg))
     m === nothing && return nothing

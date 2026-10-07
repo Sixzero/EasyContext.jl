@@ -159,3 +159,24 @@ end
         end
     end
 end
+
+@testset "DeepInfra input budget and media overflow recovery" begin
+    error_text = "This model's maximum context length is 262144 tokens. However, you requested 65536 output tokens and your prompt contains at least 196609 input tokens, for a total of at least 262145 tokens."
+    @test parse_context_overflow(error_text) == (used=196_609, limit=196_608)
+    @test parse_context_overflow(replace(error_text, "at least " => "")) == (used=196_609, limit=196_608)
+    @test parse_context_overflow(replace(error_text, "65536" => "262144")) === nothing
+    conv = Session(messages=[create_user_message("Task"),
+        create_tool_message("old.png", "old"; images_base64=["data:image/png;base64,b2xk"]),
+        create_AI_message("Inspect another image"),
+        create_tool_message("current.png", "current"; images_base64=["data:image/png;base64,bmV3"])])
+    cutter = TokenBasedCutter(model="test", context_limit=200_000)
+    cb = PromptingTools.StreamCallback()
+    @test recover_from_overflow!(ErrorException(error_text), cutter, conv, cb)
+    @test cutter.enforced_limit == ("test" => 196_608)
+    @test get_effective_limit(cutter) == 196_608
+    @test isempty(conv.messages[2].context)
+    @test occursin("reread", conv.messages[2].content)
+    @test conv.messages[end].context["base64img_1"] == "data:image/png;base64,bmV3"
+    # No more removable media: do not resend the identical payload forever.
+    @test !recover_from_overflow!(ErrorException(error_text), cutter, conv, cb)
+end

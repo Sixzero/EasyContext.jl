@@ -343,6 +343,7 @@ window survives every cut and would loop forever.
 function force_shrink!(cutter::TokenBasedCutter, conv, real_tokens::Int, limit::Int)
     limit > 0 || return false
     tokens_before = estimate_conversation_tokens(cutter, conv)
+    media_removed = false
 
     # A rejected call is still a valid real-usage anchor, and remembering the limit
     # it enforced lets later turns compact before overflowing again.
@@ -370,9 +371,23 @@ function force_shrink!(cutter::TokenBasedCutter, conv, real_tokens::Int, limit::
         msg.content = string(first(msg.content, head), marker(chars - head - tail), last(msg.content, tail))
     end
 
+    # Media is invisible to the char estimate. Repeated image/PDF reads can alone
+    # overflow even after text compaction. Keep the newest media-bearing message;
+    # release older payloads, leaving their text/path so the agent can reread them.
+    latest_media = findlast(msg -> any(v -> startswith(v, "data:"), values(msg.context)), conv.messages)
+    if latest_media !== nothing
+        for msg in @view conv.messages[1:latest_media-1]
+            keys_to_drop = [k for (k, v) in msg.context if startswith(v, "data:")]
+            isempty(keys_to_drop) && continue
+            foreach(k -> delete!(msg.context, k), keys_to_drop)
+            msg.content *= "\n[Earlier media released to fit the context window; reread the source if needed.]"
+            media_removed = true
+        end
+    end
+
     tokens_after = estimate_conversation_tokens(cutter, conv)
     @warn "force_shrink!: context overflow recovery" real_tokens limit tokens=tokens_before=>tokens_after
-    tokens_after < tokens_before
+    tokens_after < tokens_before || media_removed
 end
 
 """
