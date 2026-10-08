@@ -188,7 +188,14 @@ end
 
 # Per-request image COUNT cap (e.g. DeepInfra/vLLM "Too many images in request: 31 > 30").
 # Unrelated to tokens, so it never triggers compaction: only dropping older images fixes it.
-_is_image_count_error(e) = occursin("too many images", lowercase(sprint(showerror, e)))
+# Returns how many images must go, or nothing. Requires the exact "N > M" shape so a
+# stray mention of the phrase (quoted body, 429 text) never deletes images.
+function image_count_excess(e)
+    m = match(r"too many images in request:\s*(\d+)\s*>\s*(\d+)"i, sprint(showerror, e))
+    m === nothing && return nothing
+    sent, limit = parse.(Int, m.captures)
+    sent > limit ? sent - limit : nothing
+end
 
 """
     parse_context_overflow(msg) -> Union{Nothing,@NamedTuple{used::Int, limit::Int}}

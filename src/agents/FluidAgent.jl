@@ -108,7 +108,9 @@ enough that one resend is worth it (not a guarantee it now fits); false means th
 caller must rethrow.
 
 These are the 4xx errors worth handling: the request is unsendable as-is, but shrinking
-the session makes it sendable. An image-count limit only needs older images released.
+the session makes it sendable. An image-count limit only needs the excess older images
+released. Without a cutter the session is not owned (e.g. a speculative copy sharing
+the real messages), so nothing is mutated.
 For context overflow the error carries the provider's exact token
 counts — the only place they exist on a failed call — so recovery is precise rather
 than a guess. Without this a session that overflows can never recover: the cutter only
@@ -116,17 +118,18 @@ learns from SUCCESSFUL calls, so `should_cut` stays false and every retry resend
 same oversized payload.
 """
 function recover_from_overflow!(e, cutter, session, cb; on_status=noop, on_retry=nothing)
-    is_interrupt(e) && return false
+    (cutter === nothing || is_interrupt(e)) && return false
     # Overflow is rejected before any content streams. If chunks DID arrive, the user
     # already saw output from this turn and a resend would duplicate it (and mix two
     # attempts in the extractor).
     isempty(cb) || return false
-    if _is_image_count_error(e)
-        release_older_media!(session; prefix="data:image/") || return false
+    excess = image_count_excess(e)
+    if excess !== nothing
+        release_older_media!(session; prefix="data:image/", need=excess) || return false
         _notify_retry(on_retry, "The request had more images than the model accepts; older images were released and the request is being resent.")
         return true
     end
-    (cutter === nothing || !_is_context_overflow_error(e)) && return false
+    _is_context_overflow_error(e) || return false
     info = parse_context_overflow(sprint(showerror, e))
     real_tokens = info === nothing ? 0 : info.used
     limit = info === nothing ? get_effective_limit(cutter) : info.limit

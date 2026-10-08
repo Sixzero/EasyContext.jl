@@ -329,25 +329,29 @@ function get_cache_setting(cutter::TokenBasedCutter, conv)
 end
 
 """
-    release_older_media!(conv; prefix="data:") -> Bool
+    release_older_media!(conv; prefix="data:", need=nothing) -> Bool
 
-Keep the newest message carrying matching media; drop older matching payloads, leaving
-their text/path so the agent can reread them. `prefix="data:image/"` limits it to
-images. True if anything was released.
+Keep the newest message carrying matching media; drop older matching payloads (oldest
+first), leaving their text/path so the agent can reread them. `prefix="data:image/"`
+limits it to images. `need` stops once that many payloads are gone, and if the older
+messages cannot supply that many, nothing is touched. True if anything was released.
 """
-function release_older_media!(conv; prefix::AbstractString="data:")
+function release_older_media!(conv; prefix::AbstractString="data:", need::Union{Int,Nothing}=nothing)
     is_media(v) = startswith(v, prefix)
     latest_media = findlast(msg -> any(is_media, values(msg.context)), conv.messages)
     latest_media === nothing && return false
-    released = false
-    for msg in @view conv.messages[1:latest_media-1]
+    older = @view conv.messages[1:latest_media-1]
+    need === nothing || sum(msg -> count(is_media, values(msg.context)), older; init=0) >= need || return false
+    released = 0
+    for msg in older
+        need !== nothing && released >= need && break
         keys_to_drop = [k for (k, v) in msg.context if is_media(v)]
         isempty(keys_to_drop) && continue
         foreach(k -> delete!(msg.context, k), keys_to_drop)
         msg.content *= "\n[Earlier media released to fit the request limits; reread the source if needed.]"
-        released = true
+        released += length(keys_to_drop)
     end
-    released
+    released > 0
 end
 
 """

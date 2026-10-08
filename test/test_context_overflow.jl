@@ -5,7 +5,7 @@ using HTTP
 using EasyContext: TokenBasedCutter, force_shrink!, should_cut, create_user_message,
                    create_AI_message, create_tool_message, Session, estimate_conversation_tokens,
                    get_effective_limit, recover_from_overflow!,
-                   _is_context_overflow_error, parse_context_overflow
+                   _is_context_overflow_error, parse_context_overflow, image_count_excess, release_older_media!
 
 # Stays offline: every conversation here is short enough that force_shrink! reaches
 # its truncation stage without summarizing. History cutting is covered by
@@ -192,9 +192,37 @@ end
         create_AI_message("Inspect another image"),
         create_tool_message("current.png", "current"; images_base64=["data:image/png;base64,bmV3"])])
     cb = PromptingTools.StreamCallback()
-    @test recover_from_overflow!(count_error, nothing, conv, cb)  # needs no cutter
+    cutter = TokenBasedCutter(model="test", context_limit=200_000)
+    @test !recover_from_overflow!(count_error, nothing, conv, cb)  # no cutter = not the owning session
+    @test haskey(conv.messages[2].context, "base64img_1")
+    @test recover_from_overflow!(count_error, cutter, conv, cb)
     @test isempty(conv.messages[2].context)
     @test conv.messages[3].context["base64doc_1"] == pdf  # documents are not images: kept
     @test conv.messages[end].context["base64img_1"] == "data:image/png;base64,bmV3"
-    @test !recover_from_overflow!(count_error, nothing, conv, cb)  # nothing left to release ⇒ rethrow
+    @test !recover_from_overflow!(count_error, cutter, conv, cb)  # nothing left to release ⇒ rethrow
+
+    @testset "releases only the excess, oldest first" begin
+        img(i) = create_tool_message("$i.png", "t$i"; images_base64=["data:image/png;base64,$i"])
+        conv = Session(messages=[create_user_message("Task"), img(1), img(2), img(3), img(4)])
+        @test release_older_media!(conv; prefix="data:image/", need=2)
+        @test isempty(conv.messages[2].context) && isempty(conv.messages[3].context)
+        @test haskey(conv.messages[4].context, "base64img_1")
+    end
+
+    @testset "touches nothing when the excess cannot be released" begin
+        conv = Session(messages=[create_user_message("Task"),
+            create_tool_message("old.png", "old"; images_base64=["data:image/png;base64,b2xk"]),
+            create_tool_message("batch", "new"; images_base64=fill("data:image/png;base64,bmV3", 31))])
+        big = HTTP.RequestError(HTTP.Request("POST", "/"), "API Error (400): Too many images in request: 32 > 30")
+        @test !recover_from_overflow!(big, cutter, conv, cb)
+        @test haskey(conv.messages[2].context, "base64img_1")
+    end
+
+    @testset "only the exact provider shape counts" begin
+        for msg in ("API Error (429): too many images uploaded today", "quoted: too many images in request",
+                    "Too many images in request: 30 > 30")
+            @test image_count_excess(ErrorException(msg)) === nothing
+        end
+        @test image_count_excess(count_error) == 1
+    end
 end
