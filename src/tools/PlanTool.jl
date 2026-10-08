@@ -33,7 +33,7 @@ $(opencode_gemini_understand_prompt)
 IMPORTANT: Do NOT modify any files. Only read, inspect, and plan."""
 
 function ToolCallFormat.execute(cmd::PlanToolCall, ctx::ToolCallFormat.AbstractContext)
-    model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
+    model = something(cmd.model, "anthropic:anthropic/claude-haiku-5.5")
 
     ext_type = something(cmd.extractor_type, tools -> NativeExtractor(tools; no_confirm=true))
     raw_io = cmd.extractor_type !== nothing ? ctx : devnull

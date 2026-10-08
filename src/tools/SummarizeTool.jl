@@ -23,7 +23,7 @@ LLM_safetorun(::SummarizeToolCall) = true
 const SUMMARIZE_SYS_PROMPT = "You summarize file contents. Be concise, accurate, and focus on what the user asks. Output only the summary."
 
 function ToolCallFormat.execute(cmd::SummarizeToolCall, ctx::ToolCallFormat.AbstractContext)
-    model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
+    model = something(cmd.model, "anthropic:anthropic/claude-haiku-5.5")
     path = expand_path(cmd.path, cmd.root_path)
 
     if !isfile(path)

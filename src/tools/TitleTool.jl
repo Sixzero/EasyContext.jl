@@ -30,7 +30,7 @@ function ToolCallFormat.execute(cmd::TitleToolCall, ctx::ToolCallFormat.Abstract
         return cmd
     end
 
-    model = something(cmd.model, "anthropic:anthropic/claude-haiku-4.5")
+    model = something(cmd.model, "anthropic:anthropic/claude-haiku-5.5")
 
     agent = create_FluidAgent(model;
         tools = [],
