@@ -5,7 +5,7 @@ using OpenRouterCLIProxyAPI
 setup_cli_proxy!(mutate=true)
 
 # --- Create explore agent (native tool calling, read-only tools) ---
-model = "openai:openai/gpt-6-luna"
+model = "anthropic:anthropic/claude-haiku-5.5"
 
 tools = [
     ToolGenerator(CatFileTool, (root_path=pwd(),)),
