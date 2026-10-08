@@ -186,6 +186,10 @@ function _is_context_overflow_error(msg::AbstractString)
     occursin("token", m) && any(p -> occursin(p, m), ("context window", "too many tokens", "input is too long"))
 end
 
+# Per-request image COUNT cap (e.g. DeepInfra/vLLM "Too many images in request: 31 > 30").
+# Unrelated to tokens, so it never triggers compaction: only dropping older images fixes it.
+_is_image_count_error(e) = occursin("too many images", lowercase(sprint(showerror, e)))
+
 """
     parse_context_overflow(msg) -> Union{Nothing,@NamedTuple{used::Int, limit::Int}}
 

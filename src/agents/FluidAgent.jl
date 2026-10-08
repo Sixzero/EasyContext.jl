@@ -103,22 +103,30 @@ end
 """
     recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) -> Bool
 
-True if `e` was a context overflow AND the session was shrunk enough that resending
-the request is worth it; false means the caller must rethrow.
+True if `e` was a context overflow or an image-count limit AND the session was changed
+enough that one resend is worth it (not a guarantee it now fits); false means the
+caller must rethrow.
 
-Context overflow is the one 4xx worth handling: the request is unsendable as-is, but
-shrinking the session makes it sendable. The error carries the provider's exact token
+These are the 4xx errors worth handling: the request is unsendable as-is, but shrinking
+the session makes it sendable. An image-count limit only needs older images released.
+For context overflow the error carries the provider's exact token
 counts — the only place they exist on a failed call — so recovery is precise rather
 than a guess. Without this a session that overflows can never recover: the cutter only
 learns from SUCCESSFUL calls, so `should_cut` stays false and every retry resends the
 same oversized payload.
 """
 function recover_from_overflow!(e, cutter, session, cb; on_status=noop, on_retry=nothing)
-    (cutter === nothing || is_interrupt(e) || !_is_context_overflow_error(e)) && return false
+    is_interrupt(e) && return false
     # Overflow is rejected before any content streams. If chunks DID arrive, the user
     # already saw output from this turn and a resend would duplicate it (and mix two
     # attempts in the extractor).
     isempty(cb) || return false
+    if _is_image_count_error(e)
+        release_older_media!(session; prefix="data:image/") || return false
+        _notify_retry(on_retry, "The request had more images than the model accepts; older images were released and the request is being resent.")
+        return true
+    end
+    (cutter === nothing || !_is_context_overflow_error(e)) && return false
     info = parse_context_overflow(sprint(showerror, e))
     real_tokens = info === nothing ? 0 : info.used
     limit = info === nothing ? get_effective_limit(cutter) : info.limit
@@ -126,12 +134,14 @@ function recover_from_overflow!(e, cutter, session, cb; on_status=noop, on_retry
     # Nothing left to free ⇒ false: resending the same payload would just loop.
     shrunk = try force_shrink!(cutter, session, real_tokens, limit) finally on_status("WORKING") end
     shrunk || return false
-    isnothing(on_retry) || try
-        on_retry(1, 2, 0, "The conversation outgrew the model's context window; it was compacted and the request is being resent.")
-    catch ex
-        @warn "on_retry callback failed" exception=(ex, catch_backtrace())
-    end
+    _notify_retry(on_retry, "The conversation outgrew the model's context window; it was compacted and the request is being resent.")
     true
+end
+
+_notify_retry(on_retry, text) = isnothing(on_retry) || try
+    on_retry(1, 2, 0, text)
+catch ex
+    @warn "on_retry callback failed" exception=(ex, catch_backtrace())
 end
 
 """Cancel flag set and it is a stop, not a steer (io types without the flags never stop)."""

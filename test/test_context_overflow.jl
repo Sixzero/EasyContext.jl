@@ -180,3 +180,21 @@ end
     # No more removable media: do not resend the identical payload forever.
     @test !recover_from_overflow!(ErrorException(error_text), cutter, conv, cb)
 end
+
+@testset "image count limit recovery" begin
+    # The shape OpenRouter.jl throws for a non-2xx response.
+    count_error = HTTP.RequestError(HTTP.Request("POST", "/"), "API Error (400): Too many images in request: 31 > 30")
+    @test !_is_context_overflow_error(count_error)
+    pdf = "data:application/pdf;base64,cGRm"
+    conv = Session(messages=[create_user_message("Task"),
+        create_tool_message("old.png", "old"; images_base64=["data:image/png;base64,b2xk"]),
+        create_tool_message("doc.pdf", "doc"; documents_base64=[pdf]),
+        create_AI_message("Inspect another image"),
+        create_tool_message("current.png", "current"; images_base64=["data:image/png;base64,bmV3"])])
+    cb = PromptingTools.StreamCallback()
+    @test recover_from_overflow!(count_error, nothing, conv, cb)  # needs no cutter
+    @test isempty(conv.messages[2].context)
+    @test conv.messages[3].context["base64doc_1"] == pdf  # documents are not images: kept
+    @test conv.messages[end].context["base64img_1"] == "data:image/png;base64,bmV3"
+    @test !recover_from_overflow!(count_error, nothing, conv, cb)  # nothing left to release ⇒ rethrow
+end
