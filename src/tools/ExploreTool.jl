@@ -79,7 +79,7 @@ explore_sys_prompt(tools) = join_prompt_sections(
     If a tool fails 3 times, stop retrying and report that the tools are faulty.""")
 
 function ToolCallFormat.execute(cmd::ExploreToolCall, ctx::ToolCallFormat.AbstractContext)
-    model = something(cmd.model, "openai:openai/gpt-6-luna")
+    model = something(cmd.model, "anthropic:anthropic/claude-haiku-5.5")
 
     ext_type = something(cmd.extractor_type, tools -> NativeExtractor(tools; no_confirm=true))
     raw_io = cmd.extractor_type !== nothing ? ctx : devnull
