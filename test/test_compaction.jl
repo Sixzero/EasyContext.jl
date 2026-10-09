@@ -104,12 +104,13 @@ const compaction_test_result = Ref{Any}("summary")
 function EasyContext.aigenerate_with_config(::CompactionTestModel, prompt; kwargs...)
     result = compaction_test_result[]
     result isa Exception && throw(result)
-    (; content=result)
+    (; content=result, finish_reason="end_turn", tokens=(0, 0), reasoning=nothing, elapsed=0.0)
 end
 Base.@kwdef mutable struct CompactionTestCutter <: EasyContext.AbstractCutter
     summarizer_model::CompactionTestModel = CompactionTestModel()
     last_summary::String = ""
     compacted_message_ids::Vector{String} = String[]
+    cut_revision::Int = 0
 end
 EasyContext.record_compacted_messages!(c::CompactionTestCutter, msgs) =
     append!(c.compacted_message_ids, (m.id for m in msgs if !EasyContext.is_prior_context(m)))
@@ -130,6 +131,7 @@ EasyContext.record_compacted_messages!(c::CompactionTestCutter, msgs) =
         @test conv.messages == before
         @test cutter.last_summary == old
         @test isempty(cutter.compacted_message_ids)
+        @test cutter.cut_revision == 0
     end
 end
 
@@ -142,6 +144,7 @@ end
     @test length(conv.messages) == 3
     @test EasyContext.is_prior_context(first(conv.messages))
     @test cutter.compacted_message_ids == expected
+    @test cutter.cut_revision == 1
     for i in 7:10
         push!(conv.messages, create_user_message("new fact $i"))
     end
@@ -155,10 +158,94 @@ end
     EasyContext.summarize_and_cut!(cutter, conv; keep=2)
     @test conv.messages == before
     @test cutter.compacted_message_ids == expected
+    @test cutter.cut_revision == 2
 
     real_cutter = TokenBasedCutter()
     EasyContext.record_compacted_messages!(real_cutter, conv.messages)
     @test real_cutter.compacted_message_ids == [m.id for m in conv.messages[2:end]]
+end
+
+# Scripted provider responses exercise fallback without network calls or retries.
+struct CompactionFallbackTestModel
+    responses::Vector{Any}
+    prompts::Vector{String}
+    CompactionFallbackTestModel(responses...) = new(Any[responses...], String[])
+end
+function EasyContext.aigenerate_with_config(model::CompactionFallbackTestModel, prompt; kwargs...)
+    push!(model.prompts, prompt)
+    result = popfirst!(model.responses)
+    result isa Exception && throw(result)
+    (; content=result, finish_reason="end_turn", tokens=(0, 0), reasoning=nothing, elapsed=0.0)
+end
+
+@testset "Compaction provider fallback" begin
+    @test TokenBasedCutter().summarizer_model == EasyContext.SUMMARIZER_MODEL
+
+    @test EasyContext.SUMMARIZER_FALLBACK_MODEL != EasyContext.SUMMARIZER_MODEL
+    messages = [create_user_message("fact")]
+    for error in (ErrorException("API Error (503): service unavailable"),
+                  ErrorException("status 429: rate limit"),
+                  ErrorException("stream stalled"),
+                  ErrorException("auth_unavailable: no auth available"))
+        primary = CompactionFallbackTestModel(error)
+        fallback = CompactionFallbackTestModel(" Luna summary ")
+        @test EasyContext.summarize_conversation(messages; model=primary,
+            fallback_model=fallback, previous_summary="earlier facts") == "Luna summary"
+        @test length(primary.prompts) == length(fallback.prompts) == 1
+        @test primary.prompts == fallback.prompts
+        @test occursin("earlier facts", only(fallback.prompts))
+    end
+
+    for result in ("primary summary", "")
+        primary = result == "" ? CompactionFallbackTestModel("", "primary summary") :
+                                 CompactionFallbackTestModel(result)
+        fallback = CompactionFallbackTestModel("fallback summary")
+        @test EasyContext.summarize_conversation(messages; model=primary,
+            fallback_model=fallback) == "primary summary"
+        @test isempty(fallback.prompts)
+        @test length(primary.prompts) == (result == "" ? 2 : 1)
+    end
+
+    primary = CompactionFallbackTestModel("", " ")
+    fallback = CompactionFallbackTestModel("", "Luna summary")
+    @test EasyContext.summarize_conversation(messages; model=primary,
+        fallback_model=fallback) == "Luna summary"
+    @test length(primary.prompts) == length(fallback.prompts) == 2
+
+    for error in (InterruptException(),
+                  EasyContext.HTTP.RequestError("https://test.invalid", InterruptException()),
+                  EasyContext.ModelRefusalError("test", nothing),
+                  ErrorException("status 400: bad request"),
+                  ErrorException("status 401: invalid api key"),
+                  ErrorException("status 429: maximum context length exceeded"))
+        primary = CompactionFallbackTestModel(error)
+        fallback = CompactionFallbackTestModel("must not run")
+        @test_throws typeof(error) EasyContext.summarize_conversation(messages;
+            model=primary, fallback_model=fallback)
+        @test isempty(fallback.prompts)
+    end
+
+    for fallback_result in (ErrorException("status 503: unavailable"), InterruptException(),
+                            EasyContext.ModelRefusalError("test", nothing), "")
+        primary = CompactionFallbackTestModel(ErrorException("status 503: unavailable"))
+        fallback = CompactionFallbackTestModel(fallback_result, fallback_result)
+
+        @test_throws (fallback_result isa Exception ? typeof(fallback_result) : ErrorException) EasyContext.summarize_conversation(messages;
+            model=primary, fallback_model=fallback, previous_summary="earlier facts")
+
+        @test length(primary.prompts) == 1
+        @test length(fallback.prompts) == (fallback_result isa Exception ? 1 : 2)
+    end
+
+    primary = CompactionFallbackTestModel(ErrorException("status 503: unavailable"))
+    @test_throws ErrorException EasyContext.summarize_conversation(messages;
+        model=primary, fallback_model=nothing)
+    @test length(primary.prompts) == 1
+    # Existing custom summarizers must not silently switch providers.
+    primary = CompactionFallbackTestModel(ErrorException("status 503: unavailable"))
+    @test_throws ErrorException EasyContext.summarize_conversation(messages; model=primary)
+    @test length(primary.prompts) == 1
+
 end
 
 @testset "keep validation" begin

@@ -10,6 +10,8 @@ using OpenRouter: get_arguments
 # Cap thinking at medium: adaptive default can burn most of max_tokens before any text
 # (bench r1: one sonnet-5 run spent all 16384 tokens and returned 342 chars).
 const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5(medium)"
+# Independent provider for outages; compaction bench r4: Luna 8.15 vs Sonnet 8.53.
+const SUMMARIZER_FALLBACK_MODEL = "openai:openai/gpt-6-luna"
 
 # The running compaction summary is carried inside the conversation as a single leading
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
@@ -183,11 +185,17 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
 end
 
 """
-    summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL, previous_summary="") -> String
+    summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL,
+                           fallback_model=SUMMARIZER_FALLBACK_MODEL, previous_summary="") -> String
 
-Generate a summary of conversation messages that preserves direction and key context.
+Generate a summary that preserves direction and key context. After the primary's
+bounded retries, use an independent provider for transient failures or empty output.
+Custom primary models require an explicit `fallback_model`; `nothing` disables it.
+Neither model mutates history.
 """
-function summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL, previous_summary="")
+function summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL,
+                                fallback_model=(model == SUMMARIZER_MODEL ? SUMMARIZER_FALLBACK_MODEL : nothing),
+                                previous_summary="")
     # Drop any prior_context message left over from an earlier compaction: its content is
     # the previous summary, already supplied via `previous_summary`. Feeding it back as
     # "conversation" both duplicates it and — when it's the ONLY message in the cut prefix —
@@ -215,10 +223,33 @@ Merge this earlier summary with the new conversation below. The merged summary s
 """ * prompt
     end
 
-    # Generate before changing history. Errors (including interrupts) must propagate;
-    # an old or empty summary cannot represent the messages we are about to remove.
-    # An empty text on HTTP 200 is a transient model glitch (seen once on sonnet-5: end_turn,
-    # 19 output tokens, no text); a plain re-run succeeds, so retry once before giving up.
+    can_fallback = fallback_model !== nothing
+    primary_error = nothing
+    summary = try
+        generate_compaction_summary(model, prompt)
+    catch e
+        # Never turn cancellation, refusals, or invalid/oversized requests into
+        # another provider call. aigenerate_with_config already retried outages.
+        e isa InterruptException && rethrow()
+        e isa ModelRefusalError && rethrow()
+        hasproperty(e, :error) && e.error isa InterruptException && rethrow()
+        _is_context_overflow_error(e) && rethrow()
+        can_fallback && (_is_transient_error(e) || _is_stall_error(e) ||
+            _is_pool_exhausted_error(lowercase(sprint(showerror, e)))) || rethrow()
+        primary_error = (e, catch_backtrace())
+        nothing
+    end
+    summary !== nothing && return summary
+    if can_fallback
+        @warn "Primary compaction summarizer unavailable or empty; using fallback" model fallback_model exception=primary_error
+        summary = generate_compaction_summary(fallback_model, prompt)
+        summary !== nothing && return summary
+    end
+    error("Compaction returned an empty summary; history was not changed")
+end
+
+function generate_compaction_summary(model, prompt)
+    # An empty HTTP 200 is a transient model glitch; retry it once before fallback.
     for attempt in 1:2
         result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
         summary = strip(String(result.content))
@@ -226,5 +257,5 @@ Merge this earlier summary with the new conversation below. The merged summary s
         # OpenRouter.jl already warned with the raw response body; add the compaction context.
         @error "Compaction returned an empty summary" attempt model finish_reason=result.finish_reason tokens=result.tokens reasoning_chars=length(something(result.reasoning, "")) prompt_chars=length(prompt) elapsed=result.elapsed
     end
-    error("Compaction returned an empty summary; history was not changed")
+    nothing
 end

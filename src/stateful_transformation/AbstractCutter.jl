@@ -92,12 +92,12 @@ function summarize_and_cut!(cutter::AbstractCutter, conv; keep::Int)
     # Nothing real to drop: don't re-summarize and don't re-attach a duplicate
     # <prior_context> message. Guards manual/age-based callers that skip should_cut.
     would_free_messages(conv, keep) || return cutter.last_summary
-    cutter.cut_revision += 1
     cut_start = history_cut_start(conv.messages, keep)
     messages_to_cut = conv.messages[1:cut_start-1]
     cutter.last_summary = summarize_conversation(messages_to_cut;
         model=cutter.summarizer_model, previous_summary=cutter.last_summary)
     cut_history!(conv; keep)
+    cutter.cut_revision += 1
     record_compacted_messages!(cutter, messages_to_cut)
     # The sentinel is used to recognize the summary on subsequent cuts.
     pushfirst!(conv.messages, prior_context_message(cutter.last_summary))
