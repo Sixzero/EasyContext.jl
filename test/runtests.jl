@@ -20,6 +20,7 @@ using Test
     include("test_token_cutter_context_model.jl")
     include("test_context_overflow.jl")
     include("test_tool_pairing.jl")
+    include("test_reasoning_replay.jl")
     include("test_subagent_prompts.jl")
     include("test_compaction.jl")
 end
