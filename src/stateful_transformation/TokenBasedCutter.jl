@@ -23,6 +23,11 @@ Always summarizes old messages before cutting.
     # configured `context_limit`, and paired with its model so a switch drops it.
     enforced_limit::Pair{String,Int} = "" => 0
 
+    # Policy, not session state: hosts re-apply it from settings on every run.
+    # false = no automatic compaction (`should_cut` stays false); manual `do_cut!`
+    # and overflow recovery (`force_shrink!`) still work.
+    auto_compact::Bool = true
+
     # Trigger threshold (ratio of context_limit)
     compact_threshold::Float64 = 0.8    # Start compacting at 80% of limit
     target_ratio::Float64 = 0.1         # Post-cut target: keep recent conversation worth ~this fraction of limit (system prompt/tools come on top)
@@ -200,6 +205,7 @@ function current_context_tokens(cutter::TokenBasedCutter, conv)
 end
 
 function should_cut(cutter::TokenBasedCutter, conv)
+    cutter.auto_compact || return false
     isempty(conv.messages) && return false
     limit = get_effective_limit(cutter)
     limit <= 0 && return false
