@@ -47,23 +47,31 @@ using EasyContext: Session, Message, cut_history!, history_cut_start,
     @test autonomous[cut_start].role != :tool
 end
 
-@testset "calculate_keep cuts on a turn boundary" begin
+@testset "calculate_keep keeps the last user turn" begin
     mk(role, n) = Message(timestamp=now(UTC), role=role, content="x"^n)
-    cutter = TokenBasedCutter(; context_limit=100_000, target_ratio=0.2)  # unanchored: budget = 20K estimate
+    cutter = TokenBasedCutter(; context_limit=100_000, target_ratio=0.2)  # budget = 20K real = 40K estimate
     # turn 1 (big) | turn 2: user + 4 assistant/tool steps | turn 3: user + 2 steps
     conv = Session(messages=[mk(:user, 100), mk(:assistant, 200_000),
         mk(:user, 100), mk(:assistant, 8_000), mk(:tool, 8_000), mk(:assistant, 8_000), mk(:tool, 8_000),
         mk(:user, 100), mk(:assistant, 8_000), mk(:tool, 8_000)])
-    keep = calculate_keep(cutter, conv)
-    # The budget alone would start mid turn 2; the snap moves it to turn 3's user message.
-    @test conv.messages[end-keep+1].role == :user
-    @test keep == 3
+    @test calculate_keep(cutter, conv) == 3
+    @test conv.messages[end-2].role == :user
 
-    # Boundary inside the LAST turn (long autonomous run): no user message ahead → cut mid-turn.
+    # Last turn over budget (long autonomous run): keep only what fits, cut mid-turn.
     run = Session(messages=[mk(:user, 100); [mk(r, 8_000) for _ in 1:10 for r in (:assistant, :tool)]])
     keep = calculate_keep(cutter, run)
-    @test keep < length(run.messages)
+    @test 1 <= keep < length(run.messages)
     @test would_free_messages(run, keep)
+
+    # Even an oversized single last message is kept (nothing smaller to keep).
+    @test calculate_keep(cutter, Session(messages=[mk(:user, 100), mk(:assistant, 500_000)])) == 1
+
+    # Only a prior summary and no real user message: nothing to cut...
+    summary_only = Session(messages=[EasyContext.prior_context_message("s"), mk(:assistant, 10)])
+    @test !would_free_messages(summary_only, calculate_keep(cutter, summary_only))
+    # ...until the user-less tail outgrows the budget again (turn already cut mid-way).
+    tail = Session(messages=[EasyContext.prior_context_message("s"); [mk(r, 8_000) for _ in 1:10 for r in (:assistant, :tool)]])
+    @test would_free_messages(tail, calculate_keep(cutter, tail))
 end
 
 @testset "should_cut anchor gating" begin
@@ -88,10 +96,10 @@ end
     @test !should_cut(cutter2, conv)
 
     # Churn guard: when a cut would free nothing real, should_cut stays false even
-    # above threshold (e.g. the kept window alone exceeds it).
+    # above threshold (e.g. an already-compacted tail that alone exceeds it).
     small = Session()
-    push!(small.messages, create_user_message("u"^1_000_000))
-    push!(small.messages, create_AI_message("a"))
+    push!(small.messages, EasyContext.prior_context_message("earlier"))
+    push!(small.messages, create_AI_message("a"^1_000_000))
     cutter3 = TokenBasedCutter(; context_limit=200_000)
     record_real_usage!(cutter3, small, 190_000)
     @test !would_free_messages(small, calculate_keep(cutter3, small))
@@ -171,11 +179,13 @@ struct CompactionFallbackTestModel
     prompts::Vector{String}
     CompactionFallbackTestModel(responses...) = new(Any[responses...], String[])
 end
+# A `(content, finish_reason)` pair scripts a specific stop reason.
 function EasyContext.aigenerate_with_config(model::CompactionFallbackTestModel, prompt; kwargs...)
     push!(model.prompts, prompt)
     result = popfirst!(model.responses)
     result isa Exception && throw(result)
-    (; content=result, finish_reason="end_turn", tokens=(0, 0), reasoning=nothing, elapsed=0.0)
+    content, finish = result isa Tuple ? result : (result, "end_turn")
+    (; content, finish_reason=finish, tokens=(0, 0), reasoning=nothing, elapsed=0.0)
 end
 
 @testset "Compaction provider fallback" begin
@@ -266,4 +276,31 @@ end
     @test !should_cut(cutter, conv)
     @test EasyContext.get_cache_setting(cutter, conv) == :all
     @test !EasyContext.token_usage_stats(cutter, conv).will_cut
+end
+
+@testset "Truncated summaries are retried, never accepted" begin
+    messages = [create_user_message("fact")]
+    primary = CompactionFallbackTestModel(("cut off mid", "max_tokens"), "complete summary")
+    @test EasyContext.summarize_conversation(messages; model=primary, fallback_model=nothing) == "complete summary"
+    @test length(primary.prompts) == 2
+
+    primary = CompactionFallbackTestModel(("cut", "length"), ("cut again", "MAX_TOKENS"))
+    fallback = CompactionFallbackTestModel("fallback summary")
+    @test EasyContext.summarize_conversation(messages; model=primary, fallback_model=fallback) == "fallback summary"
+    @test occursin("$(EasyContext.SUMMARY_TARGET_WORDS) words", only(fallback.prompts))
+end
+
+@testset "Summarizer input carries attachments, not media" begin
+    msgs = [create_user_message("see attached", Dict("file.txt" => "ATTACHED BODY", "img" => "data:image/png;base64,AAAA")),
+            Message(timestamp=now(UTC), role=:assistant, content="noted", context=Dict("notes.md" => "AI DOC")),
+            Message(timestamp=now(UTC), role=:tool, content="ok", tool_call_id="t1", context=Dict("doc" => "TOOL DOC"))]
+    text = EasyContext.format_messages_for_summary(msgs)
+    @test occursin("[Attachment: file.txt]\nATTACHED BODY", text)
+    @test occursin("AI DOC", text) && occursin("TOOL DOC", text)
+    @test !occursin("base64,AAAA", text)
+    # Over budget: oldest dropped with a marker, newest kept.
+    many = [create_user_message("m$i " * "x"^1000) for i in 1:10]
+    small = EasyContext.format_messages_for_summary(many; char_budget=3_000)
+    @test occursin("earlier messages omitted", small)
+    @test occursin("m10 ", small) && !occursin("m1 ", small)
 end

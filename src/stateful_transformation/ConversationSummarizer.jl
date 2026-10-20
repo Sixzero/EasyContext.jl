@@ -13,13 +13,21 @@ const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5(medium)"
 # Independent provider for outages; compaction bench r4: Luna 8.15 vs Sonnet 8.53.
 const SUMMARIZER_FALLBACK_MODEL = "openai:openai/gpt-6-luna"
 
+# The summary is re-merged on every later cut, so its size must be bounded or it only
+# ever grows: the word target is the budget; SUMMARY_MAX_TOKENS (which for Anthropic
+# also covers thinking) leaves room for a model that overshoots. A summary cut off by
+# the cap is NOT accepted (finish reason) — the tail (pending tasks, current work) is
+# the part that matters most.
+const SUMMARY_TARGET_WORDS = 4000
+const SUMMARY_MAX_TOKENS = 16_384
+
 # The running compaction summary is carried inside the conversation as a single leading
 # user message wrapped in this sentinel, so the persistence layer can reload it from a
 # message attachment across restarts. Detect it to avoid re-summarizing it as content.
 is_prior_context(msg) = msg.role == :user && startswith(strip(msg.content), "<prior_context>")
 
 """The single leading user message that carries a running summary (compaction or an imported session)."""
-prior_context_message(summary::AbstractString) = create_user_message("<prior_context>\nThis session is continued from an earlier portion of the conversation that was compacted to save context. The summary below is the only record of it — treat it as what actually happened; the messages after it are newer and take precedence.\n\n$summary\n</prior_context>")
+prior_context_message(summary::AbstractString) = create_user_message("<prior_context>\nThis session is continued from an earlier portion of the conversation that was compacted to save context. The summary below is the only record of it — treat it as what actually happened; the messages after it are the live continuation. Keep working on the task from where it left off, without replaying completed steps or asking the user to repeat what is captured here.\n\n$summary\n</prior_context>")
 
 const CONVERSATION_SUMMARY_PROMPT = """You are compacting a conversation that is running out of context. Your summary will replace the older messages and is the ONLY record a future agent will have of them, so it must be self-contained enough to continue the work seamlessly.
 
@@ -75,7 +83,8 @@ Be specific with file paths, function names, and error messages. Include actual 
 Accuracy over brevity:
 - Attribute every fact (error, measurement, limitation) to the exact entity it belongs to; never merge similar items.
 - Keep numbers exact (ranges, counts, units). Don't invent labels, sources or events; if something is unclear, say so.
-- Long sessions need long summaries. A dropped detail can't be recovered, an extra paragraph costs little.
+
+Stay under $SUMMARY_TARGET_WORDS words. This summary will itself be compacted again later, so when merging an earlier summary, condense resolved history (finished tasks, fixed errors, superseded decisions) into a line each and spend the space on what is still needed to continue.
 
 Output ONLY the summary document — no preamble, no commentary, no closing remarks.
 
@@ -106,31 +115,39 @@ function _format_tool_calls(tool_calls)
     join(parts, "\n")
 end
 
-# Per-message head/tail caps for the serialized conversation. Generous by default —
-# with incremental cuts the total budget is rarely hit, and detail lost here is
-# unrecoverable (the summary replaces the messages).
+# Per-message head/tail caps for the serialized conversation. Detail lost here is
+# unrecoverable (the summary replaces the messages), so generous.
 const SUMMARY_MSG_HEAD = 5000
 const SUMMARY_MSG_TAIL = 5000
 
+# Message `context` holds attachments (pasted files, tool-injected documents) that the
+# model saw alongside the text; render them too or they vanish from the summary.
+# Base64 media cannot be summarized as text and is skipped.
+function _format_context(msg, head, tail)
+    parts = ["[Attachment: $k]\n$v" for (k, v) in msg.context if !startswith(v, "data:")]
+    isempty(parts) ? "" : "\n" * _truncate_middle(join(parts, "\n"), head, tail)
+end
+
 function _format_one(msg, call_names; head::Int, tail::Int)
-    if msg.role == :tool
+    body = _truncate_middle(msg.content, head, tail)
+    text = if msg.role == :tool
         tname = get(call_names, msg.tool_call_id, "")
-        header = isempty(tname) ? "[Tool result]" : "[Tool result: $tname]"
-        return "$header\n$(_truncate_middle(msg.content, head, tail))"
+        (isempty(tname) ? "[Tool result]" : "[Tool result: $tname]") * "\n$body"
     elseif msg.role == :user
-        return "[User]\n$(_truncate_middle(msg.content, head, tail))"
+        "[User]\n$body"
     else
         segs = String[]
-        !isempty(strip(msg.content)) && push!(segs, _truncate_middle(msg.content, head, tail))
+        !isempty(strip(msg.content)) && push!(segs, body)
         tcs = msg.tool_calls
         tcs !== nothing && !isempty(tcs) && push!(segs, _format_tool_calls(tcs))
-        return "[Assistant]\n" * (isempty(segs) ? "(no text)" : join(segs, "\n"))
+        "[Assistant]\n" * (isempty(segs) ? "(no text)" : join(segs, "\n"))
     end
+    text * _format_context(msg, head, tail)
 end
 
 # The summarizer model's context must be respected too: budget the serialized conversation
 # to ~160K tokens (chars/2 estimate → 320K chars), leaving headroom in the summarizer's
-# 200K window for the instructions, the previous summary, and the 16K-token summary output.
+# 200K window for the instructions, the previous summary, and the summary output.
 const SUMMARY_INPUT_CHAR_BUDGET = 320_000
 
 """
@@ -140,9 +157,8 @@ Format messages into a simple string for summarization. Assistant tool_calls and
 name behind each tool result are rendered explicitly — otherwise tool-driven turns collapse
 into empty "[Assistant]" / unlabeled "[Tool]" blocks and the summarizer loses all context.
 
-The total output is bounded by `char_budget`: first per-message head/tail caps shrink
-proportionally (floor 500+500), then — if still over — the OLDEST messages are dropped with
-an explicit omission marker (the previous compaction summary already covers earlier history).
+If the total exceeds `char_budget`, the OLDEST messages are dropped with an explicit
+omission marker — the newest ones carry the state needed to continue.
 """
 function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=SUMMARY_INPUT_CHAR_BUDGET)
     # Map tool_call_id -> tool name so each tool RESULT can be labeled with what produced it.
@@ -157,19 +173,7 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
         end
     end
 
-    render(head, tail) = [_format_one(msg, call_names; head, tail) for msg in messages]
-    parts = render(SUMMARY_MSG_HEAD, SUMMARY_MSG_TAIL)
-    total = sum(length, parts; init=0)
-
-    if total > char_budget
-        # Stage 1: shrink per-message caps proportionally (floor 500+500).
-        scale = char_budget / total
-        head = max(500, round(Int, SUMMARY_MSG_HEAD * scale))
-        tail = max(500, round(Int, SUMMARY_MSG_TAIL * scale))
-        parts = render(head, tail)
-    end
-
-    # Stage 2: still over (pathological message count) — drop oldest messages.
+    parts = [_format_one(msg, call_names; head=SUMMARY_MSG_HEAD, tail=SUMMARY_MSG_TAIL) for msg in messages]
     total = sum(length, parts; init=0)
     dropped = 0
     while total > char_budget && length(parts) - dropped > 1
@@ -180,7 +184,6 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
         parts = parts[dropped+1:end]
         pushfirst!(parts, "[... $dropped earlier messages omitted to fit the summarizer's context ...]")
     end
-
     join(parts, "\n\n---\n\n")
 end
 
@@ -228,11 +231,7 @@ Merge this earlier summary with the new conversation below. The merged summary s
     summary = try
         generate_compaction_summary(model, prompt)
     catch e
-        # Never turn cancellation, refusals, or invalid/oversized requests into
-        # another provider call. aigenerate_with_config already retried outages.
-        e isa InterruptException && rethrow()
-        e isa ModelRefusalError && rethrow()
-        hasproperty(e, :error) && e.error isa InterruptException && rethrow()
+        is_interrupt(e) && rethrow()
         _is_context_overflow_error(e) && rethrow()
         can_fallback && (_is_transient_error(e) || _is_stall_error(e) ||
             _is_pool_exhausted_error(lowercase(sprint(showerror, e)))) || rethrow()
@@ -245,17 +244,21 @@ Merge this earlier summary with the new conversation below. The merged summary s
         summary = generate_compaction_summary(fallback_model, prompt)
         summary !== nothing && return summary
     end
-    error("Compaction returned an empty summary; history was not changed")
+    error("Compaction returned an empty or truncated summary; history was not changed")
 end
 
+# Provider spellings of "stopped because max_tokens was reached".
+const TRUNCATED_FINISH_REASONS = ("length", "max_tokens", "MAX_TOKENS")
+
 function generate_compaction_summary(model, prompt)
-    # An empty HTTP 200 is a transient model glitch; retry it once before fallback.
+    # An empty HTTP 200 is a transient model glitch, a truncated summary lost its most
+    # important tail (pending tasks, current work): retry each once before fallback.
     for attempt in 1:2
-        result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=16384))
+        result = aigenerate_with_config(model, prompt; api_kwargs=(; max_tokens=SUMMARY_MAX_TOKENS))
         summary = strip(String(result.content))
-        isempty(summary) || return summary
-        # OpenRouter.jl already warned with the raw response body; add the compaction context.
-        @error "Compaction returned an empty summary" attempt model finish_reason=result.finish_reason tokens=result.tokens reasoning_chars=length(something(result.reasoning, "")) prompt_chars=length(prompt) elapsed=result.elapsed
+        truncated = result.finish_reason in TRUNCATED_FINISH_REASONS
+        isempty(summary) || truncated || return summary
+        @error "Compaction summary unusable" attempt model truncated finish_reason=result.finish_reason tokens=result.tokens reasoning_chars=length(something(result.reasoning, "")) prompt_chars=length(prompt) summary_chars=length(summary) elapsed=result.elapsed
     end
     nothing
 end

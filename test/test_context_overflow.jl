@@ -7,9 +7,9 @@ using EasyContext: TokenBasedCutter, force_shrink!, should_cut, create_user_mess
                    get_effective_limit, recover_from_overflow!,
                    _is_context_overflow_error, parse_context_overflow, image_count_excess, release_older_media!
 
-# Stays offline: every conversation here is short enough that force_shrink! reaches
-# its truncation stage without summarizing. History cutting is covered by
-# test_compaction.jl, which owns that path.
+# Stays offline: every conversation here is a single user turn, so force_shrink! has
+# no earlier history to summarize and goes straight to truncation. History cutting
+# is covered by test_compaction.jl, which owns that path.
 _cutter(; kwargs...) = TokenBasedCutter(; model="claude-sonnet-4", kwargs...)
 
 _chars(conv) = sum(m -> length(m.content), conv.messages; init=0)
@@ -97,8 +97,7 @@ end
     LIMIT = 1_000_000
 
     @testset "recovers a first-call overflow the normal path cannot" begin
-        conv = Session(messages=[create_user_message("hi"), create_AI_message("hello"),
-                                 create_user_message(repeat("x", 5_400_000))])  # a pasted paper
+        conv = Session(messages=[create_user_message(repeat("x", 5_400_000))])  # a pasted paper
         cutter = _cutter()
         # Precondition: should_cut needs a real-usage anchor, and anchors only come
         # from SUCCESSFUL calls — so auto-compaction can never fire here.
@@ -141,9 +140,10 @@ end
         # would turn the overflow 400 into a permanent malformed-request 400.
         conv = Session(messages=[create_user_message("go"),
                                  create_AI_message("calling"; tool_calls=[Dict{String,Any}("id" => "call_1")]),
-                                 create_tool_message(repeat("R", 3_000_000), "call_1")])
+                                 create_tool_message(repeat("R", 300_000), "call_1")])
         before = length(conv.messages[3].content)
-        @test force_shrink!(_cutter(), conv, 4_000_000, LIMIT)
+        # The turn fits the kept window at this limit (no cut); only the message cap bites.
+        @test force_shrink!(_cutter(context_limit=LIMIT), conv, 4_000_000, LIMIT)
         @test length(conv.messages[3].content) < before     # the truncation did happen
         @test occursin("characters dropped", conv.messages[3].content)
         @test [m.role for m in conv.messages] == [:user, :assistant, :tool]

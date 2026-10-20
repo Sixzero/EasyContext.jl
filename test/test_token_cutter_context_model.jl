@@ -1,7 +1,7 @@
 using Test
 using EasyContext
-using EasyContext: TokenBasedCutter, record_real_usage!, context_model, current_context_tokens,
-                   estimate_conversation_tokens, create_user_message, reanchor_after_cut!
+using EasyContext: TokenBasedCutter, record_real_usage!, current_context_tokens,
+                   estimate_conversation_tokens, create_user_message
 
 # Build a conversation whose chars/2 estimate is roughly `est_tokens`.
 struct FakeConv
@@ -18,88 +18,31 @@ fake_conv(est_tokens::Int) = FakeConv([create_user_message("x"^(2 * est_tokens))
         @test current_context_tokens(cutter, conv) == estimate_conversation_tokens(cutter, conv)
     end
 
-    @testset "single anchor: overhead absorbed, exact at anchor, delta at 0.5" begin
+    @testset "exact at the anchor, only the delta is scaled" begin
         cutter = TokenBasedCutter(; context_limit=limit)
-        conv = fake_conv(2_000)
         # Real API usage 30K (system prompt/tools/skills) vs conversation estimate ~2K.
-        record_real_usage!(cutter, conv, 30_000)
-        @test current_context_tokens(cutter, conv) == 30_000     # exact at the anchor
-
-        # Conversation grows to est 16K: must NOT extrapolate proportionally (old bug
-        # read this as 15×16K = 240K and fired compaction); only the delta is scaled.
-        grown = fake_conv(16_000)
-        cur = current_context_tokens(cutter, grown)
-        @test 30_000 < cur < 45_000
+        record_real_usage!(cutter, fake_conv(2_000), 30_000)
+        @test current_context_tokens(cutter, fake_conv(2_000)) == 30_000
+        # Grown to est 16K: +14K estimate → +7K real, never a proportional 15× blow-up.
+        @test current_context_tokens(cutter, fake_conv(16_000)) == 37_000
+        # Shrunk (a cut): the removed estimate drops out.
+        @test current_context_tokens(cutter, fake_conv(1_000)) == 29_500
+        @test current_context_tokens(cutter, fake_conv(0)) == 29_000
     end
 
-    @testset "single anchor with real < 0.5·estimate stays exact at anchor" begin
+    @testset "a cut never extrapolates below zero" begin
         cutter = TokenBasedCutter(; context_limit=limit)
-        conv = fake_conv(100_000)
-        record_real_usage!(cutter, conv, 30_000)   # slope capped to real/est, overhead 0
-        overhead, slope = context_model(cutter)
-        @test overhead >= 0
-        @test current_context_tokens(cutter, conv) == 30_000
+        # Real 170K on a 400K estimate (dense ASCII): slope caps at 170/400, not 0.5.
+        record_real_usage!(cutter, fake_conv(400_000), 170_000)
+        @test current_context_tokens(cutter, fake_conv(400_000)) == 170_000
+        @test current_context_tokens(cutter, fake_conv(40_000)) == 17_000
+        @test current_context_tokens(cutter, fake_conv(0)) == 0
     end
 
-    @testset "near-identical anchors don't fit a runaway slope" begin
+    @testset "an image-only jump between calls just moves the anchor" begin
         cutter = TokenBasedCutter(; context_limit=limit)
         record_real_usage!(cutter, fake_conv(5_000), 40_000)
-        # +2K real tokens (e.g. image) but only +10 estimate tokens: old code fit slope 8+.
         record_real_usage!(cutter, fake_conv(5_010), 42_000)
-        _, slope = context_model(cutter)
-        @test slope <= 2.5
-        cur = current_context_tokens(cutter, fake_conv(20_000))
-        @test cur < 60_000                          # old model said 167K here
+        @test current_context_tokens(cutter, fake_conv(20_000)) == 42_000 + round(Int, 0.5 * 14_990)
     end
-
-    @testset "gradual growth still reaches a two-anchor fit" begin
-        cutter = TokenBasedCutter(; context_limit=limit)
-        # overhead 25K, true slope 1.0; grow 100 est-tokens per turn.
-        for est in 1_000:100:2_000
-            record_real_usage!(cutter, fake_conv(est), 25_000 + est)
-        end
-        overhead, slope = context_model(cutter)
-        @test 0.8 <= slope <= 1.2                   # fitted, not stuck at default 0.5
-        @test 20_000 <= overhead <= 30_000
-    end
-
-    @testset "well-separated anchors fit overhead + slope" begin
-        cutter = TokenBasedCutter(; context_limit=limit)
-        record_real_usage!(cutter, fake_conv(40_000), 50_000)   # 26K + 0.6·40K
-        record_real_usage!(cutter, fake_conv(90_000), 80_000)   # 26K + 0.6·90K
-        overhead, slope = context_model(cutter)
-        @test isapprox(slope, 0.6; atol=0.01)
-        @test isapprox(overhead, 26_000; atol=500)
-    end
-
-    @testset "negative-intercept fit is rejected, model stays exact at anchor" begin
-        cutter = TokenBasedCutter(; context_limit=limit)
-        record_real_usage!(cutter, fake_conv(1_000), 400)
-        record_real_usage!(cutter, fake_conv(2_000), 1_000)     # slope 0.6, intercept −200
-        overhead, slope = context_model(cutter)
-        @test overhead >= 0
-        @test current_context_tokens(cutter, fake_conv(2_000)) == 1_000
-    end
-end
-
-@testset "post-cut re-anchor ignores noisy two-anchor slope" begin
-    cutter = TokenBasedCutter(; context_limit=200_000)
-    # Two close anchors fit a bogus low slope (0.25) → overhead wrongly ~55K, so the
-    # old model reported ~60K after a cut to a 26K-estimate conversation (real: ~23K).
-    record_real_usage!(cutter, fake_conv(159_000), 94_750)
-    record_real_usage!(cutter, fake_conv(160_000), 95_000)
-    @test isapprox(context_model(cutter)[2], 0.25; atol=0.01)
-    conv = fake_conv(26_000)
-    @test current_context_tokens(cutter, conv) > 50_000        # the bug
-    reanchor_after_cut!(cutter, conv)
-    @test current_context_tokens(cutter, conv) == 28_000       # 15K overhead + 0.5·26K
-    @test cutter.prev_real_tokens == 0                          # stale pair dropped
-end
-
-@testset "post-cut re-anchor is a no-op before any anchor" begin
-    cutter = TokenBasedCutter(; context_limit=200_000)
-    conv = fake_conv(5_000)
-    reanchor_after_cut!(cutter, conv)
-    @test cutter.last_real_tokens == 0
-    @test current_context_tokens(cutter, conv) == 5_000
 end
