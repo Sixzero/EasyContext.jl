@@ -233,7 +233,9 @@ Merge this earlier summary with the new conversation below. The merged summary s
     catch e
         is_interrupt(e) && rethrow()
         _is_context_overflow_error(e) && rethrow()
-        can_fallback && (_is_transient_error(e) || _is_stall_error(e) ||
+        # A refusal (e.g. Anthropic's reasoning_extraction false positive on agent
+        # narration) is deterministic for this model, but another provider may answer.
+        can_fallback && (e isa ModelRefusalError || _is_transient_error(e) || _is_stall_error(e) ||
             _is_pool_exhausted_error(lowercase(sprint(showerror, e)))) || rethrow()
         primary_error = (e, catch_backtrace())
         nothing
