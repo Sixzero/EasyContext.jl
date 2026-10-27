@@ -21,6 +21,10 @@ FluidAgent manages a set of tools and executes them using LLM guidance.
     workspace::String = pwd()
     extractor_type  # Required - provide NativeCallExtractor or other AbstractExtractor implementation
     sys_msg::AbstractSysMessage=SysMessageV1()
+    # Optional post-processors applied right before each LLM call (e.g. per-agent prompt/schema overrides):
+    # sysmsg_patch(content::String)::String, native_tools_patch(tools::Vector{Tool})::Vector{Tool}.
+    sysmsg_patch::Union{Nothing,Function} = nothing
+    native_tools_patch::Union{Nothing,Function} = nothing
 end
 
 # create_FluidAgent to prevent conflict with the constructor
@@ -49,7 +53,7 @@ function get_native_tools(agent::FluidAgent)
     for tool in agent.tools
         append!(tools, to_native_tools(tool))
     end
-    tools
+    agent.native_tools_patch === nothing ? tools : agent.native_tools_patch(tools)
 end
 """
 Apply thinking API parameters for Claude models
@@ -219,6 +223,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # (content = "") when settings/devices changed (e.g. rotated CDP token).
             # No-op when content is already built.
             sys_msg_content = initialize!(agent.sys_msg, agent)
+            agent.sysmsg_patch === nothing || (sys_msg_content = agent.sysmsg_patch(sys_msg_content))
 
             # Recompute native tools after drain (tools may be populated/updated by drain)
             native_tools = get_native_tools(agent)
