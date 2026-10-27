@@ -3,16 +3,15 @@
 
 using JLD2
 
-# FluidAgent compatibility for parameterized types from 0.6.0
-function Base.convert(::Type{FluidAgent}, x::JLD2.ReconstructedMutable{Symbol("EasyContext.FluidAgent{EasyContext.SysMessageV2}")})
-    FluidAgent(
-        tools = x.tools,
-        model = x.model,
-        workspace = x.workspace,
-        extractor_type = x.extractor_type,
-        sys_msg = x.sys_msg
-    )
-end
+# FluidAgent saved with an older field layout: parameterized FluidAgent{SysMessageV2} (0.6.0),
+# or before sysmsg_patch/native_tools_patch were added. Copy known fields; the rest use defaults.
+const LegacyFluidAgent = Union{
+    JLD2.ReconstructedMutable{Symbol("EasyContext.FluidAgent")},
+    JLD2.ReconstructedMutable{Symbol("EasyContext.FluidAgent{EasyContext.SysMessageV2}")},
+}
+saved_fields(::JLD2.ReconstructedMutable{N,FN}) where {N,FN} = FN
+Base.convert(::Type{FluidAgent}, x::LegacyFluidAgent) =
+    FluidAgent(; (f => getproperty(x, f) for f in saved_fields(x) if f in fieldnames(FluidAgent))...)
 
 # Closures/anonymous functions can't survive JLD2 roundtrips across code changes.
 # Tools containing Function fields are rebuilt from agent_settings on restore via
