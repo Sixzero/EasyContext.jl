@@ -34,7 +34,7 @@ const CONVERSATION_SUMMARY_PROMPT = """You are compacting a conversation that is
 Create a summary with two sections:
 
 ## Analysis
-Write a chronological narrative of what happened in the conversation. Walk through the key events in order - what the user asked, what was tried, what worked or didn't, and how the conversation evolved. This helps understand the context and reasoning behind decisions.
+Write a chronological account of what happened in the conversation. Walk through the key events in order - what the user asked, what was tried, what worked or didn't, and how the conversation evolved. Report actions and outcomes; do not reproduce the assistant's internal deliberation.
 
 ## Summary
 Organize the key information into these categories:
@@ -136,6 +136,9 @@ function _format_one(msg, call_names; head::Int, tail::Int)
     elseif msg.role == :user
         "[User]\n$body"
     else
+        # Only visible text and tool calls: msg.reasoning (model thinking) is never sent —
+        # asking a model to restate another model's thinking trips Anthropic's
+        # reasoning_extraction refusal.
         segs = String[]
         !isempty(strip(msg.content)) && push!(segs, body)
         tcs = msg.tool_calls
