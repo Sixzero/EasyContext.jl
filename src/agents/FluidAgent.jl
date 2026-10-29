@@ -190,6 +190,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     prefix_messages::Function=Returns(AbstractMessage[]),  # () -> request-only messages after the system prompt (pinned reference docs); re-evaluated per LLM call, never stored in the session
     )
+    model_kwargs(model) = apply_thinking_kwargs(get_api_kwargs_for_model(model, (; top_p=0.7)), get_model_name(model), thinking)
+    api_kwargs = model_kwargs(agent.model)
 
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
@@ -254,10 +256,8 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Setup for this iteration is done — the request that follows is I/O-bound.
             on_admitted()
 
-            # Recompute provider-specific kwargs after a model switch/drained settings.
             generate(messages) = aigenerate_with_config(agent.model, messages;
-                cache, api_kwargs=apply_thinking_kwargs(get_api_kwargs_for_model(agent.model, (; top_p=0.7)), get_model_name(agent.model), thinking),
-                streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry, capacity_cooldown)
+                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry, capacity_cooldown)
 
             response = try
                 try
@@ -274,6 +274,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                         stop_requested(io) && throw(InterruptException())
                         capacity_switched = true
                         agent.model = replacement
+                        api_kwargs = model_kwargs(replacement)
                         generate(pt_messages)  # Failure here propagates; no fallback recursion.
                     end
                 end

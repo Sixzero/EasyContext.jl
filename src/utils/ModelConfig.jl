@@ -244,6 +244,7 @@ struct CapacityCooldownError <: Exception end
 Base.showerror(io::IO, ::CapacityCooldownError) = print(io, "Model temporarily at capacity (five-minute retry cooldown)")
 const CAPACITY_RETRY_LOCK = ReentrantLock()
 const CAPACITY_RETRY_STATE = Dict{String,Tuple{Float64,Union{Task,Nothing}}}()
+const CAPACITY_RETRY_ACTIVE = Threads.Atomic{Int}(0)  # == length(CAPACITY_RETRY_STATE); normal calls skip the lock while 0
 const CAPACITY_RETRY_SECONDS = 300.0
 capacity_retry_key(model) = replace(get_model_name(model), r"\([^()]*\)$" => "")
 capacity_clock() = time_ns() / 1e9
@@ -251,10 +252,14 @@ capacity_clock() = time_ns() / 1e9
 # With no known outage, ordinary calls remain concurrent. Once an outage is
 # observed, one task owns the retry/probe; all others fail fast into fallback.
 function capacity_retry_enter!(key; failure=false, now=capacity_clock())
+    !failure && CAPACITY_RETRY_ACTIVE[] == 0 && return
     lock(CAPACITY_RETRY_LOCK) do
         state = get(CAPACITY_RETRY_STATE, key, nothing)
         if state === nothing
-            failure && (CAPACITY_RETRY_STATE[key] = (now + CAPACITY_RETRY_SECONDS, current_task()))
+            if failure
+                CAPACITY_RETRY_STATE[key] = (now + CAPACITY_RETRY_SECONDS, current_task())
+                Threads.atomic_add!(CAPACITY_RETRY_ACTIVE, 1)
+            end
             return
         end
         until, owner = state
@@ -265,6 +270,7 @@ function capacity_retry_enter!(key; failure=false, now=capacity_clock())
 end
 
 function capacity_retry_finish!(key; failed=false, now=capacity_clock())
+    CAPACITY_RETRY_ACTIVE[] == 0 && return
     lock(CAPACITY_RETRY_LOCK) do
         state = get(CAPACITY_RETRY_STATE, key, nothing)
         state === nothing && return
@@ -273,6 +279,7 @@ function capacity_retry_finish!(key; failed=false, now=capacity_clock())
             CAPACITY_RETRY_STATE[key] = (now + CAPACITY_RETRY_SECONDS, nothing)
         else
             delete!(CAPACITY_RETRY_STATE, key)
+            Threads.atomic_sub!(CAPACITY_RETRY_ACTIVE, 1)
         end
     end
 end
