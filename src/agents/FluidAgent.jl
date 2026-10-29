@@ -182,6 +182,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     thinking::Union{Nothing,Int}=nothing,
     MAX_ITERATIONS=500,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
+    capacity_cooldown::Bool=false,
     on_capacity_error::Function=(_e, _model) -> nothing,  # Return authorized replacement or nothing; before any streamed chunk only.
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
@@ -256,7 +257,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Recompute provider-specific kwargs after a model switch/drained settings.
             generate(messages) = aigenerate_with_config(agent.model, messages;
                 cache, api_kwargs=apply_thinking_kwargs(get_api_kwargs_for_model(agent.model, (; top_p=0.7)), get_model_name(agent.model), thinking),
-                streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+                streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry, capacity_cooldown)
 
             response = try
                 try
@@ -270,6 +271,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                         (!capacity_switched && isempty(cb) && !stop_requested(io) && _is_capacity_fallback_error(e)) || rethrow(e)
                         replacement = on_capacity_error(e, agent.model)
                         replacement === nothing && rethrow(e)
+                        stop_requested(io) && throw(InterruptException())
                         capacity_switched = true
                         agent.model = replacement
                         generate(pt_messages)  # Failure here propagates; no fallback recursion.

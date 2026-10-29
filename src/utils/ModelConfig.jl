@@ -238,7 +238,50 @@ function parse_context_overflow(msg::AbstractString)
     limit > 0 ? (; used, limit) : nothing
 end
 
-function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing, model_name::String="")
+# Process-local circuit breaker. Keys retain provider + model, strip thinking:
+# pool exhaustion can be model-specific; never disable a whole provider by guess.
+struct CapacityCooldownError <: Exception end
+Base.showerror(io::IO, ::CapacityCooldownError) = print(io, "Model temporarily at capacity (five-minute retry cooldown)")
+const CAPACITY_RETRY_LOCK = ReentrantLock()
+const CAPACITY_RETRY_STATE = Dict{String,Tuple{Float64,Union{Task,Nothing}}}()
+const CAPACITY_RETRY_SECONDS = 300.0
+capacity_retry_key(model) = replace(get_model_name(model), r"\([^()]*\)$" => "")
+capacity_clock() = time_ns() / 1e9
+
+# With no known outage, ordinary calls remain concurrent. Once an outage is
+# observed, one task owns the retry/probe; all others fail fast into fallback.
+function capacity_retry_enter!(key; failure=false, now=capacity_clock())
+    lock(CAPACITY_RETRY_LOCK) do
+        state = get(CAPACITY_RETRY_STATE, key, nothing)
+        if state === nothing
+            failure && (CAPACITY_RETRY_STATE[key] = (now + CAPACITY_RETRY_SECONDS, current_task()))
+            return
+        end
+        until, owner = state
+        owner === current_task() && failure && return
+        (owner !== nothing || now < until) && throw(CapacityCooldownError())
+        CAPACITY_RETRY_STATE[key] = (now + CAPACITY_RETRY_SECONDS, current_task())
+    end
+end
+
+function capacity_retry_finish!(key; failed=false, now=capacity_clock())
+    lock(CAPACITY_RETRY_LOCK) do
+        state = get(CAPACITY_RETRY_STATE, key, nothing)
+        state === nothing && return
+        state[2] === current_task() || return
+        if failed
+            CAPACITY_RETRY_STATE[key] = (now + CAPACITY_RETRY_SECONDS, nothing)
+        else
+            delete!(CAPACITY_RETRY_STATE, key)
+        end
+    end
+end
+
+function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=nothing, streamcallback=nothing, model_name::String="", capacity_cooldown::Bool=false)
+    key = capacity_retry_key(model_name)
+    capacity_cooldown && capacity_retry_enter!(key)
+    succeeded = false
+    try
     for attempt in 1:max_retries
         try
             # A stream callback accumulates chunks in-place across the whole
@@ -247,7 +290,9 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             # them — duplicating or corrupting tool_calls (e.g. the same question
             # asked twice). Reset it so each attempt starts from a clean slate.
             attempt > 1 && streamcallback !== nothing && empty!(streamcallback)
-            return f()
+            result = f()
+            succeeded = true
+            return result
         catch e
             e isa InterruptException && rethrow(e)
             # Safety refusal: the model decided, deterministically. Retrying just
@@ -259,9 +304,12 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             # reached the user. Fail fast: clearing chunks cannot undo effects.
             stall = _is_stall_error(e)
             !(streamcallback === nothing || isempty(streamcallback)) && rethrow(e)
+            if capacity_cooldown && _is_capacity_fallback_error(e)
+                capacity_retry_enter!(key; failure=true)
+            end
             # Stalls run on their own (tighter) budget; everything else on the generic one.
             budget = stall ? min(max_retries, AIGEN_MAX_STALL_ATTEMPTS) : max_retries
-            if attempt < budget && (stall || _is_transient_error(e))
+            if attempt < budget && (stall || _is_transient_error(e) || (capacity_cooldown && _is_capacity_fallback_error(e)))
                 sleep_time = 2^attempt
                 err_msg = _extract_error_message(e)
                 @warn "Transient LLM error (attempt $attempt/$budget), retrying in $(sleep_time)s" exception=(e, catch_backtrace())
@@ -277,6 +325,9 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
                 rethrow(e)
             end
         end
+    end
+    finally
+        capacity_cooldown && capacity_retry_finish!(key; failed=!succeeded)
     end
 end
 
@@ -301,6 +352,7 @@ end
 function aigenerate_with_config(config::ModelConfig, prompt; 
                                request_id::Union{String, Nothing} = nothing,
                                on_retry=nothing,
+                               capacity_cooldown::Bool=false,
                                kwargs...)
     # Get API key from global manager
     if !haskey(kwargs, :api_key)
@@ -309,7 +361,7 @@ function aigenerate_with_config(config::ModelConfig, prompt;
         !isnothing(api_key) && (kwargs = (;kwargs..., api_key))
     end
 
-    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing), model_name=config.slug) do
+    _aigen_with_retry(; on_retry, capacity_cooldown, streamcallback=get(kwargs, :streamcallback, nothing), model_name=config.slug) do
         aigen(prompt, config; kwargs...)
     end
 end
@@ -317,6 +369,7 @@ end
 function aigenerate_with_config(model::String, prompt; 
                                request_id::Union{String, Nothing} = nothing,
                                on_retry=nothing,
+                               capacity_cooldown::Bool=false,
                                kwargs...)
     if !haskey(kwargs, :api_key)
         # Get API key from global manager
@@ -325,7 +378,7 @@ function aigenerate_with_config(model::String, prompt;
     end
     base_api_kwargs = get(kwargs, :api_kwargs, NamedTuple())
     filtered_kwargs = NamedTuple(k => v for (k, v) in pairs(kwargs) if k != :api_kwargs)
-    _aigen_with_retry(; on_retry, streamcallback=get(kwargs, :streamcallback, nothing), model_name=model) do
+    _aigen_with_retry(; on_retry, capacity_cooldown, streamcallback=get(kwargs, :streamcallback, nothing), model_name=model) do
         aigen(prompt, model; filtered_kwargs..., base_api_kwargs...)
     end
 end
