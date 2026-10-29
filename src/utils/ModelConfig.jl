@@ -156,6 +156,20 @@ function _is_transient_error(msg::AbstractString)
     ))
 end
 
+# Deliberate allowlist for model switching, not the broader same-model retry rule.
+# Called ONLY around inference, never around a tool or a whole work loop.
+_is_capacity_fallback_error(e) = !(e isa ModelRefusalError) && _is_capacity_fallback_error(sprint(showerror, e))
+function _is_capacity_fallback_error(msg::AbstractString)
+    m = lowercase(msg)
+    any(p -> occursin(p, m), ("invalid_request", "invalid request", "invalid_api_key",
+        "authentication", "unauthorized", "permission_denied", "permission denied",
+        "insufficient", "billing", "payment", "balance", "quota", "credit balance",
+        "context_length", "prompt is too long", "tool", "content_filter")) && return false
+    occursin(r"(?:status\s+|\()(?:400|401|402|403|404|422)\b", m) && return false
+    _is_pool_exhausted_error(m) || occursin(r"\boverloaded_error\b", m) ||
+        occursin(r"(?:status\s+|\()(?:502|503|504|529)\b", m)
+end
+
 const AIGEN_MAX_RETRIES = 3
 
 # Total attempts allowed for a pre-first-chunk stall (see the stall comment
@@ -241,10 +255,10 @@ function _aigen_with_retry(f::Function; max_retries=AIGEN_MAX_RETRIES, on_retry=
             e isa ModelRefusalError && rethrow(e)
             # HTTP.RequestError wrapping InterruptException
             hasproperty(e, :error) && e.error isa InterruptException && rethrow(e)
-            # Mid-stream stall: chunks already reached the user; fail fast
-            # (see stall comment above). No cooldown — the stream was healthy.
+            # Any partial stream may already have executed textual tools or
+            # reached the user. Fail fast: clearing chunks cannot undo effects.
             stall = _is_stall_error(e)
-            stall && !(streamcallback === nothing || isempty(streamcallback)) && rethrow(e)
+            !(streamcallback === nothing || isempty(streamcallback)) && rethrow(e)
             # Stalls run on their own (tighter) budget; everything else on the generic one.
             budget = stall ? min(max_retries, AIGEN_MAX_STALL_ATTEMPTS) : max_retries
             if attempt < budget && (stall || _is_transient_error(e))

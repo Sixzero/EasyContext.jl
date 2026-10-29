@@ -182,19 +182,19 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     thinking::Union{Nothing,Int}=nothing,
     MAX_ITERATIONS=500,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
+    on_capacity_error::Function=(_e, _model) -> nothing,  # Return authorized replacement or nothing; before any streamed chunk only.
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     tool_choice::String="auto",  # "none" forbids tool calls but INVALIDATES the message-level prompt cache (Anthropic docs: "changes to tool_choice ... affect message blocks"). For cache-riding throwaway inferences keep "auto" and set drop_tool_calls=true instead.
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     prefix_messages::Function=Returns(AbstractMessage[]),  # () -> request-only messages after the system prompt (pinned reference docs); re-evaluated per LLM call, never stored in the session
     )
-    model_name = get_model_name(agent.model)
-    api_kwargs = apply_thinking_kwargs(get_api_kwargs_for_model(agent.model, (; top_p=0.7)), model_name, thinking)
 
     StreamCallbackTYPE = pickStreamCallbackforIO(io)
     response = nothing
     extractor = nothing  # Declare here so it's accessible in catch block
     i = 0
+    capacity_switched = false  # At most one replacement per work invocation.
     completed = false  # Distinguish natural completion from iteration-limit exhaustion
 
     try
@@ -253,15 +253,27 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Setup for this iteration is done — the request that follows is I/O-bound.
             on_admitted()
 
+            # Recompute provider-specific kwargs after a model switch/drained settings.
             generate(messages) = aigenerate_with_config(agent.model, messages;
-                cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
+                cache, api_kwargs=apply_thinking_kwargs(get_api_kwargs_for_model(agent.model, (; top_p=0.7)), get_model_name(agent.model), thinking),
+                streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry)
 
             response = try
                 try
                     generate(pt_messages)
                 catch e
-                    recover_from_overflow!(e, cutter, session, cb; on_status, on_retry) || rethrow(e)
-                    generate(to_PT_messages(session, sys_msg_content; prefix=prefix_messages()))  # shrunk, so worth one resend
+                    if recover_from_overflow!(e, cutter, session, cb; on_status, on_retry)
+                        generate(to_PT_messages(session, sys_msg_content; prefix=prefix_messages()))
+                    else
+                        # No output means no textual or native tool could have run.
+                        # Preserve the exact messages and native tool schema; never rerun work().
+                        (!capacity_switched && isempty(cb) && !stop_requested(io) && _is_capacity_fallback_error(e)) || rethrow(e)
+                        replacement = on_capacity_error(e, agent.model)
+                        replacement === nothing && rethrow(e)
+                        capacity_switched = true
+                        agent.model = replacement
+                        generate(pt_messages)  # Failure here propagates; no fallback recursion.
+                    end
                 end
             catch e
                 is_interrupt(e) && on_steer() || rethrow(e)
