@@ -39,8 +39,12 @@ function run_turn(stops)
         agent = create_FluidAgent("echo_anthropic:test"; tools=Any[], extractor_type=NativeExtractor, sys_msg="sys")
         session = Session()
         push_message!(session, UserMessage(content="route it"))
-        work(agent, session; io=devnull, quiet=true)
-        return calls[], session
+        err = try
+            work(agent, session; io=devnull, quiet=true); nothing
+        catch e
+            e
+        end
+        return calls[], session, err
     finally
         swap_echo_port!(port, 8787)
         close(server)
@@ -48,19 +52,23 @@ function run_turn(stops)
 end
 
 @testset "max_tokens with nothing to run continues the turn" begin
-    calls, session = run_turn(["max_tokens", "end_turn"])
+    calls, session, err = run_turn(["max_tokens", "end_turn"])
     @test calls == 2
+    @test err === nothing
     @test any(m -> m.role == :user && m.content == TRUNCATION_NUDGE, session.messages)
     @test session.messages[end].role == :assistant
     @test session.messages[end].content == "done"
 end
 
-@testset "repeated truncation is bounded" begin
-    calls, _ = run_turn(["max_tokens"])
+@testset "repeated truncation is bounded and fails visibly" begin
+    calls, session, err = run_turn(["max_tokens"])
     @test calls == MAX_TRUNCATIONS + 1
+    @test err isa ErrorException && occursin("output-token limit", err.msg)
+    @test session.messages[end].role == :assistant   # history stays valid for the next message
 end
 
 @testset "a normal end_turn ends after one call" begin
-    calls, _ = run_turn(["end_turn"])
+    calls, _, err = run_turn(["end_turn"])
     @test calls == 1
+    @test err === nothing
 end

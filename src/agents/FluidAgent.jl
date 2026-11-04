@@ -319,11 +319,11 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 # Output-token limit hit with no tool call (typically one endless thinking
                 # block): not a finished turn. Say so and go on, a bounded number of times,
                 # instead of ending silently with nothing done.
-                if tool_choice != "none" && !drop_tool_calls &&
-                   response.finish_reason in TRUNCATED_FINISH_REASONS && truncations < MAX_TRUNCATIONS
-                    truncations += 1
+                if tool_choice != "none" && !drop_tool_calls && response.finish_reason in TRUNCATED_FINISH_REASONS
                     isempty(strip(ai_msg.content)) && (ai_msg.content = "[cut off: output-token limit reached]")
                     push_message!(session, ai_msg)
+                    truncations < MAX_TRUNCATIONS || error("The model hit its output-token limit $(truncations + 1) times in a row without calling a tool, so this turn was stopped unfinished. Send a message to continue, ideally asking for smaller steps.")
+                    truncations += 1
                     push_message!(session, create_user_message(TRUNCATION_NUDGE))
                     hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
                     continue
