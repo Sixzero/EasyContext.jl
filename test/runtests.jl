@@ -23,4 +23,5 @@ using Test
     include("test_reasoning_replay.jl")
     include("test_subagent_prompts.jl")
     include("test_compaction.jl")
+    include("agents/test_truncated_turn.jl")
 end

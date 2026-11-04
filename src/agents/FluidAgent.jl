@@ -12,6 +12,11 @@ is_interrupt(e) = false
 
 abstract type AbstractAgent end
 
+# A reply cut off by the output-token limit with no tool call is unfinished work, not an
+# answer. Thinking is not replayed to the provider, so the nudge asks for smaller steps.
+const MAX_TRUNCATIONS = 2
+const TRUNCATION_NUDGE = "[SYSTEM] Your last reply was cut off by the output-token limit before you called a tool, so nothing was run and its reasoning is lost. Work in smaller steps: call a tool now (write a draft, run a check) instead of reasoning everything through in one reply."
+
 """
 FluidAgent manages a set of tools and executes them using LLM guidance.
 """
@@ -199,6 +204,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     i = 0
     capacity_switched = false  # At most one replacement per work invocation.
     completed = false  # Distinguish natural completion from iteration-limit exhaustion
+    truncations = 0    # Responses cut off by the output-token limit with nothing to run
 
     try
         while i < MAX_ITERATIONS
@@ -310,6 +316,18 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # No tool calls → persist the assistant response immediately.
             if tool_calls === nothing || isempty(tool_calls)
+                # Output-token limit hit with no tool call (typically one endless thinking
+                # block): not a finished turn. Say so and go on, a bounded number of times,
+                # instead of ending silently with nothing done.
+                if tool_choice != "none" && !drop_tool_calls &&
+                   response.finish_reason in TRUNCATED_FINISH_REASONS && truncations < MAX_TRUNCATIONS
+                    truncations += 1
+                    isempty(strip(ai_msg.content)) && (ai_msg.content = "[cut off: output-token limit reached]")
+                    push_message!(session, ai_msg)
+                    push_message!(session, create_user_message(TRUNCATION_NUDGE))
+                    hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
+                    continue
+                end
                 push_message!(session, ai_msg)
                 if on_queue_empty()
                     completed = true
