@@ -24,4 +24,5 @@ using Test
     include("test_subagent_prompts.jl")
     include("test_compaction.jl")
     include("agents/test_truncated_turn.jl")
+    include("agents/test_midstream_resume.jl")
 end
