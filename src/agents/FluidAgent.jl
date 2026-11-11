@@ -19,8 +19,10 @@ const TRUNCATION_NUDGE = "[SYSTEM] Your last reply was cut off by the output-tok
 
 # The provider (or the proxy in front of it) can drop a stream mid-reply (EOF, reset,
 # overloaded mid-stream). `_aigen_with_retry` can't resend once chunks streamed, but
-# nothing has run yet (tools start only after a complete response), so the loop keeps
-# the partial reply and asks the model to go on — what a user typing "continue" did.
+# nothing has run yet (tools start only after a complete response), so the loop retries:
+# `midstream=:continue` keeps the partial reply and asks the model to go on (a chat, where
+# the user already saw it); `:resend` drops it and asks again (callers that only read the
+# returned response — a continuation would hand them just the tail of the answer).
 const MAX_MIDSTREAM_RESUMES = 2
 const MIDSTREAM_NUDGE = "[SYSTEM] The connection to the model dropped in the middle of your last reply: the cut-off text above is all that arrived, and no tool call from it ran. Continue from where it stopped, without repeating what is already there."
 
@@ -214,6 +216,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     tool_choice::String="auto",  # "none" forbids tool calls but INVALIDATES the message-level prompt cache (Anthropic docs: "changes to tool_choice ... affect message blocks"). For cache-riding throwaway inferences keep "auto" and set drop_tool_calls=true instead.
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     prefix_messages::Function=Returns(AbstractMessage[]),  # () -> request-only messages after the system prompt (pinned reference docs); re-evaluated per LLM call, never stored in the session
+    midstream::Symbol=:resend,  # Stream dropped mid-reply: :continue (keep partial, nudge) or :resend. See MIDSTREAM_NUDGE.
     )
     model_kwargs(model) = apply_thinking_kwargs(get_api_kwargs_for_model(model, (; top_p=0.7)), get_model_name(model), thinking)
     api_kwargs = model_kwargs(agent.model)
@@ -226,6 +229,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     completed = false  # Distinguish natural completion from iteration-limit exhaustion
     truncations = 0    # Responses cut off by the output-token limit with nothing to run
     resumes = 0        # Consecutive mid-stream drops resumed automatically
+    committed = false  # The current extractor's text is already in the session
 
     try
         while i < MAX_ITERATIONS
@@ -269,6 +273,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # ── Shared: extractor, streaming callback, LLM call ──
             extractor = agent.extractor_type(agent.tools)
+            committed = false
             extractor_fn(text) = extract_tool_calls(text, extractor, io; kwargs=tool_kwargs)
 
             cb = create(StreamCallbackTYPE(;
@@ -309,24 +314,27 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 if is_midstream_drop(e, cb)
                     # A Stop racing the drop is a cancel (outer catch flushes + saves).
                     stop_requested(io) && throw(InterruptException())
-                    # The dead stream never fires on_done: close its open block, and keep
-                    # what the user saw so a resume (automatic or manual) starts from it.
+                    # The dead stream never fires on_done: close its open block.
                     process_enabled && extract_tool_calls("", extractor, io; kwargs=tool_kwargs, is_flush=true)
                     partial = hasproperty(extractor, :full_content) ? extractor.full_content : ""
-                    extractor = nothing  # saved here; a later interrupt must not save it again
-                    kept = !isempty(strip(partial))
+                    committed = true  # handled here; a later interrupt must not save it again
+                    # Keep what the user saw (also on the final failure, so a manual
+                    # Continue resumes from it). :resend callers start over instead.
+                    kept = midstream == :continue && !isempty(strip(partial))
                     if kept
                         ai_msg = create_AI_message(partial * "\n[cut off: connection dropped]")
                         hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
                         push_message!(session, ai_msg)
                     end
+                    stop_requested(io) && throw(InterruptException())
                     resumes < MAX_MIDSTREAM_RESUMES || throw(StreamDroppedError(e, resumes))
                     resumes += 1
-                    @warn "LLM stream dropped mid-reply, resuming ($resumes/$MAX_MIDSTREAM_RESUMES)" exception=(e, catch_backtrace())
+                    @warn "LLM stream dropped mid-reply, retrying ($resumes/$MAX_MIDSTREAM_RESUMES, $midstream)" exception=(e, catch_backtrace())
                     kept && push_message!(session, create_user_message(MIDSTREAM_NUDGE))  # else: plain resend
                     wait = 2^resumes
                     _notify_retry(on_retry, "The connection to the model dropped mid-reply. Continuing automatically."; attempt=resumes, of=MAX_MIDSTREAM_RESUMES, wait)
                     hasproperty(io, :message_id) && (io.message_id = string(uuid4()))
+                    i -= 1  # a retry of the same step, not a new one (MAX_ITERATIONS=1 callers too)
                     # Backoff that a Stop or steer cuts short: the loop top handles both.
                     deadline = time() + wait
                     while time() < deadline && !stop_requested(io) && !on_steer()
@@ -334,6 +342,10 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     end
                     continue
                 end
+                # The retry after a drop failed before streaming anything (its own HTTP
+                # retries exhausted): still the same unstable connection, not a new error.
+                resumes > 0 && !is_interrupt(e) && !(e isa ModelRefusalError) &&
+                    _is_transient_error(e) && !_is_stall_error(e) && throw(StreamDroppedError(e, resumes))
                 is_interrupt(e) && on_steer() || rethrow(e)
                 # Steer: the user wants a queued message answered NOW. Keep what
                 # streamed (closed as a block, saved as a cut-off assistant message
@@ -434,7 +446,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     @warn "Failed to flush open block on interrupt" exception=flush_err
                 end
             end
-            save_interrupted_content!(session, extractor)
+            save_interrupted_content!(session, committed ? nothing : extractor)
             on_finish()
             if rethrow_on_interrupt
                 rethrow(e)
