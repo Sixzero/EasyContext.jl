@@ -217,6 +217,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     drop_tool_calls::Bool=false,  # Discard returned tool_calls unexecuted (dropped from session; response object untouched). Unlike tool_choice="none", does NOT alter the outbound request — for read-only inferences that must preserve the cached prefix.
     prefix_messages::Function=Returns(AbstractMessage[]),  # () -> request-only messages after the system prompt (pinned reference docs); re-evaluated per LLM call, never stored in the session
     midstream::Symbol=:resend,  # Stream dropped mid-reply: :continue (keep partial, nudge) or :resend. See MIDSTREAM_NUDGE.
+    on_refusal::Function=(_e, _model) -> nothing,  # ModelRefusalError: return the model to redo this step on, or nothing to rethrow.
     )
     model_kwargs(model) = apply_thinking_kwargs(get_api_kwargs_for_model(model, (; top_p=0.7)), get_model_name(model), thinking)
     api_kwargs = model_kwargs(agent.model)
@@ -261,6 +262,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
 
             # Recompute native tools after drain (tools may be populated/updated by drain)
             native_tools = get_native_tools(agent)
+            # The drain or on_refusal may have switched agent.model: the request kwargs
+            # must follow the model actually called.
+            api_kwargs = model_kwargs(agent.model)
 
             # Check if compaction is needed before LLM call
             if cutter !== nothing && should_cut(cutter, session)
@@ -346,6 +350,14 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 # retries exhausted): still the same unstable connection, not a new error.
                 resumes > 0 && !is_interrupt(e) && !(e isa ModelRefusalError) &&
                     _is_transient_error(e) && !_is_stall_error(e) && throw(StreamDroppedError(e, resumes))
+                if e isa ModelRefusalError
+                    # Redo the step on the caller's replacement: the refused reply added
+                    # nothing to the session, and the loop top handles a pending stop.
+                    replacement = on_refusal(e, agent.model)
+                    replacement === nothing && rethrow(e)
+                    agent.model = replacement
+                    continue
+                end
                 is_interrupt(e) && on_steer() || rethrow(e)
                 # Steer: the user wants a queued message answered NOW. Keep what
                 # streamed (closed as a block, saved as a cut-off assistant message
