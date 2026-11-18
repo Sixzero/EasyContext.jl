@@ -142,6 +142,7 @@ _is_stall_error(msg::AbstractString) = occursin("stream stalled", lowercase(msg)
 
 _is_transient_error(e) = _is_transient_error(sprint(showerror, e))
 function _is_transient_error(msg::AbstractString)
+    _is_route_unavailable_error(msg) && return false
     m = lowercase(msg)
     any(p -> occursin(p, m), (
         "empty_stream", "upstream stream closed", "stream ended unexpectedly",
@@ -160,6 +161,7 @@ end
 # Called ONLY around inference, never around a tool or a whole work loop.
 _is_capacity_fallback_error(e) = !(e isa ModelRefusalError) && _is_capacity_fallback_error(sprint(showerror, e))
 function _is_capacity_fallback_error(msg::AbstractString)
+    _is_route_unavailable_error(msg) && return false
     m = lowercase(msg)
     any(p -> occursin(p, m), ("invalid_request", "invalid request", "invalid_api_key",
         "authentication", "unauthorized", "permission_denied", "permission denied",
@@ -170,15 +172,17 @@ function _is_capacity_fallback_error(msg::AbstractString)
         occursin(r"(?:status\s+|\()(?:502|503|504|529)\b", m)
 end
 
-# The chosen provider route cannot serve this model at all (not a capacity blip):
-# OpenCode Go "isn't included in", CLIProxyAPI "unknown provider for model", a provider
-# missing from OpenRouter.jl or its key, or a 404 model_not_found. Same model elsewhere works.
+# The chosen provider route cannot serve this model at all (not a capacity blip): exact
+# phrasings of OpenCode Go ("Model x isn't included in"), CLIProxyAPI ("unknown provider for
+# model"), OpenRouter.jl ("Unknown provider: x", missing key) and a model_not_found code.
+# Never retried in place or put on capacity cooldown: the same model on another route works.
 _is_route_unavailable_error(e) = !(e isa ModelRefusalError) && _is_route_unavailable_error(sprint(showerror, e))
 function _is_route_unavailable_error(msg::AbstractString)
     m = lowercase(msg)
-    any(p -> occursin(p, m), ("isn't included in", "unknown provider", "api key not found in environment",
-        "model_not_found", "model not found")) ||
-        (occursin(r"(?:status\s+|\()404\b", m) && occursin("model", m))
+    occursin(r"\bmodel \S+ isn't included in\b", m) || occursin("unknown provider for model", m) ||
+        occursin(r"^(?:argumenterror: )?unknown provider: ", m) ||
+        occursin(r"^(?:argumenterror: )?api key not found in environment variable", m) ||
+        occursin(r"\bmodel_not_found\b", m)
 end
 
 const AIGEN_MAX_RETRIES = 3
