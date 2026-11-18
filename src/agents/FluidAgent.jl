@@ -210,7 +210,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
     MAX_ITERATIONS=500,
     cutter::Union{AbstractCutter, Nothing}=nothing,  # Optional cutter for mid-session compaction
     capacity_cooldown::Bool=false,
-    on_capacity_error::Function=(_e, _model) -> nothing,  # Return authorized replacement or nothing; before any streamed chunk only.
+    on_capacity_error::Function=(_e, _model) -> nothing,  # Capacity or route-unavailable error: return authorized replacement or nothing; before any streamed chunk only.
     on_retry=nothing,  # Called with (attempt, max_retries, sleep_time, error_msg) on transient LLM errors
     rethrow_on_interrupt::Bool=true,  # If false, return partial content instead of rethrowing on interrupt
     tool_choice::String="auto",  # "none" forbids tool calls but INVALIDATES the message-level prompt cache (Anthropic docs: "changes to tool_choice ... affect message blocks"). For cache-riding throwaway inferences keep "auto" and set drop_tool_calls=true instead.
@@ -304,7 +304,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     else
                         # No output means no textual or native tool could have run.
                         # Preserve the exact messages and native tool schema; never rerun work().
-                        (!capacity_switched && isempty(cb) && !stop_requested(io) && _is_capacity_fallback_error(e)) || rethrow(e)
+                        (!capacity_switched && isempty(cb) && !stop_requested(io) && (_is_capacity_fallback_error(e) || _is_route_unavailable_error(e))) || rethrow(e)
                         replacement = on_capacity_error(e, agent.model)
                         replacement === nothing && rethrow(e)
                         stop_requested(io) && throw(InterruptException())

@@ -170,6 +170,17 @@ function _is_capacity_fallback_error(msg::AbstractString)
         occursin(r"(?:status\s+|\()(?:502|503|504|529)\b", m)
 end
 
+# The chosen provider route cannot serve this model at all (not a capacity blip):
+# OpenCode Go "isn't included in", CLIProxyAPI "unknown provider for model", a provider
+# missing from OpenRouter.jl or its key, or a 404 model_not_found. Same model elsewhere works.
+_is_route_unavailable_error(e) = !(e isa ModelRefusalError) && _is_route_unavailable_error(sprint(showerror, e))
+function _is_route_unavailable_error(msg::AbstractString)
+    m = lowercase(msg)
+    any(p -> occursin(p, m), ("isn't included in", "unknown provider", "api key not found in environment",
+        "model_not_found", "model not found")) ||
+        (occursin(r"(?:status\s+|\()404\b", m) && occursin("model", m))
+end
+
 const AIGEN_MAX_RETRIES = 3
 
 # Total attempts allowed for a pre-first-chunk stall (see the stall comment
