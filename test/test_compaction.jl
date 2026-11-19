@@ -189,7 +189,7 @@ function EasyContext.aigenerate_with_config(model::CompactionFallbackTestModel, 
 end
 
 @testset "Compaction provider fallback" begin
-    @test TokenBasedCutter().summarizer_model == EasyContext.default_summarizer_model()
+    @test TokenBasedCutter().summarizer_model == ""  # resolved per cut: follows a family bump
 
     @test EasyContext.default_summarizer_fallback_model() != EasyContext.default_summarizer_model()
     messages = [create_user_message("fact")]
