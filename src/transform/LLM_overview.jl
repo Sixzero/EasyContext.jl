@@ -11,6 +11,6 @@ LLM_overview(question; max_token, extra="") = begin
 	
 	The question that has to be summarized is:
 	$(question)
-	""", model="gem15f", verbose=false) # gpt4om
+	""", model=family_model("claude-haiku"), verbose=false)
 	return String(aigenerated.content)
 end
