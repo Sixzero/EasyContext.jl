@@ -10,6 +10,16 @@ is_interrupt(e::InterruptException) = true
 is_interrupt(e::RequestError) = e.error isa InterruptException
 is_interrupt(e) = false
 
+# Metadata and reasoning-only chunks don't commit an answer. Text can already
+# have run textual tools; tool deltas can already be visible in the UI.
+function has_partial_answer(cb)
+    cb.schema === nothing && return !isempty(cb)
+    any(cb.chunks) do chunk
+        text = OpenRouter.extract_content(cb.schema, chunk; include_thinking=false)
+        (text !== nothing && !isempty(text)) || !isempty(OpenRouter.extract_tool_deltas(cb.schema, chunk))
+    end
+end
+
 abstract type AbstractAgent end
 
 # A reply cut off by the output-token limit with no tool call is unfinished work, not an
@@ -299,6 +309,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 try
                     generate(pt_messages)
                 catch e
+                    e isa ModelRefusalError && rethrow()
                     if recover_from_overflow!(e, cutter, session, cb; on_status, on_retry)
                         generate(to_PT_messages(session, sys_msg_content; prefix=prefix_messages()))
                     else
@@ -351,8 +362,9 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                 resumes > 0 && !is_interrupt(e) && !(e isa ModelRefusalError) &&
                     _is_transient_error(e) && !_is_stall_error(e) && throw(StreamDroppedError(e, resumes))
                 if e isa ModelRefusalError
-                    # Redo the step on the caller's replacement: the refused reply added
-                    # nothing to the session, and the loop top handles a pending stop.
+                    # Don't replay a partial answer: text may already have executed tools.
+                    has_partial_answer(cb) && rethrow()
+                    # No reply to replay. Retry this same step on the caller's replacement.
                     replacement = on_refusal(e, agent.model)
                     replacement === nothing && rethrow(e)
                     agent.model = replacement
