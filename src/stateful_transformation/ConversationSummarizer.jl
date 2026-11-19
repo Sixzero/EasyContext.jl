@@ -9,9 +9,10 @@ using OpenRouter: get_arguments
 # won all 20, ~1.5x faster, same price; gpt-6-sol 9.00 but ~3.3x slower.
 # Cap thinking at medium: adaptive default can burn most of max_tokens before any text
 # (bench r1: one sonnet-5 run spent all 16384 tokens and returned 342 chars).
-const SUMMARIZER_MODEL = "anthropic:anthropic/claude-sonnet-5.5(medium)"
+# Functions, not consts: they follow the families' current version (ModelFamilies.jl).
+default_summarizer_model() = family_model("claude-sonnet") * "(medium)"
 # Independent provider for outages; compaction bench r4: Luna 8.15 vs Sonnet 8.53.
-const SUMMARIZER_FALLBACK_MODEL = "openai:openai/gpt-6-luna"
+default_summarizer_fallback_model() = family_model("gpt-luna")
 
 # The summary is re-merged on every later cut, so its size must be bounded or it only
 # ever grows: the word target is the budget; SUMMARY_MAX_TOKENS (which for Anthropic
@@ -191,16 +192,16 @@ function format_messages_for_summary(messages::Vector{<:MSG}; char_budget::Int=S
 end
 
 """
-    summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL,
-                           fallback_model=SUMMARIZER_FALLBACK_MODEL, previous_summary="") -> String
+    summarize_conversation(messages::Vector{<:MSG}; model=default_summarizer_model(),
+                           fallback_model=default_summarizer_fallback_model(), previous_summary="") -> String
 
 Generate a summary that preserves direction and key context. After the primary's
 bounded retries, use an independent provider for transient failures or empty output.
 Custom primary models require an explicit `fallback_model`; `nothing` disables it.
 Neither model mutates history.
 """
-function summarize_conversation(messages::Vector{<:MSG}; model=SUMMARIZER_MODEL,
-                                fallback_model=(model == SUMMARIZER_MODEL ? SUMMARIZER_FALLBACK_MODEL : nothing),
+function summarize_conversation(messages::Vector{<:MSG}; model=default_summarizer_model(),
+                                fallback_model=(model == default_summarizer_model() ? default_summarizer_fallback_model() : nothing),
                                 previous_summary="")
     # Drop any prior_context message left over from an earlier compaction: its content is
     # the previous summary, already supplied via `previous_summary`. Feeding it back as

@@ -26,7 +26,7 @@ before the last user turn and keep that turn verbatim. If the last turn alone ex
 
     estimation_method::TokenEstimationMethod = CharCountDivTwo
 
-    summarizer_model::String = SUMMARIZER_MODEL
+    summarizer_model::String = default_summarizer_model()
     last_summary::String = ""
     # Removed source IDs since the host last reset tracking (synthetic summaries excluded).
     compacted_message_ids::Vector{String} = String[]

@@ -189,9 +189,9 @@ function EasyContext.aigenerate_with_config(model::CompactionFallbackTestModel, 
 end
 
 @testset "Compaction provider fallback" begin
-    @test TokenBasedCutter().summarizer_model == EasyContext.SUMMARIZER_MODEL
+    @test TokenBasedCutter().summarizer_model == EasyContext.default_summarizer_model()
 
-    @test EasyContext.SUMMARIZER_FALLBACK_MODEL != EasyContext.SUMMARIZER_MODEL
+    @test EasyContext.default_summarizer_fallback_model() != EasyContext.default_summarizer_model()
     messages = [create_user_message("fact")]
     for error in (ErrorException("API Error (503): service unavailable"),
                   ErrorException("status 429: rate limit"),
