@@ -142,7 +142,7 @@ _is_stall_error(msg::AbstractString) = occursin("stream stalled", lowercase(msg)
 
 _is_transient_error(e) = _is_transient_error(sprint(showerror, e))
 function _is_transient_error(msg::AbstractString)
-    _is_route_unavailable_error(msg) && return false
+    (_is_route_unavailable_error(msg) || _is_quota_exhausted_error(msg)) && return false
     m = lowercase(msg)
     any(p -> occursin(p, m), (
         "empty_stream", "upstream stream closed", "stream ended unexpectedly",
@@ -183,6 +183,17 @@ function _is_route_unavailable_error(msg::AbstractString)
         occursin(r"^(?:argumenterror: )?unknown provider: ", m) ||
         occursin(r"^(?:argumenterror: )?api key not found in environment variable", m) ||
         occursin(r"\bmodel_not_found\b", m)
+end
+
+# A subscription account's quota is used up for hours (Google/Antigravity: 429
+# RESOURCE_EXHAUSTED "Individual quota reached … Resets in 35h…", reason QUOTA_EXHAUSTED;
+# CLIProxyAPI then answers model_cooldown with that as last error). Never retried in place;
+# the caller decides whether another route may serve it (and alerts ops).
+_is_quota_exhausted_error(e) = !(e isa ModelRefusalError) && _is_quota_exhausted_error(sprint(showerror, e))
+function _is_quota_exhausted_error(msg::AbstractString)
+    m = lowercase(msg)
+    occursin("quota_exhausted", m) || occursin("individual quota reached", m) ||
+        (occursin("resource_exhausted", m) && occursin("quota", m))
 end
 
 const AIGEN_MAX_RETRIES = 3
