@@ -28,6 +28,14 @@ _chars(conv) = sum(m -> length(m.content), conv.messages; init=0)
 
         @test parse_context_overflow("prompt is too long: 1,210,492 tokens > 200,000 maximum") ==
               (used=1_210_492, limit=200_000)
+
+        google = "API Error (400): The input token count (1234567) exceeds the maximum number of tokens allowed (1048576)."
+        @test _is_context_overflow_error(google)
+        @test parse_context_overflow(google) == (used=1_234_567, limit=1_048_576)
+
+        google_no_used = "API Error (400): The input token count exceeds the maximum number of tokens allowed (1048576)."
+        @test _is_context_overflow_error(google_no_used)
+        @test parse_context_overflow(google_no_used) == (used=0, limit=1_048_576)
     end
 
     @testset "does not claim unrelated errors" begin
@@ -35,7 +43,9 @@ _chars(conv) = sum(m -> length(m.content), conv.messages; init=0)
         # shrinking cannot fix — including byte/media size limits.
         for msg in ("API Error (429): rate_limit exceeded", "API Error (503): service unavailable",
                     "stream stalled", "econnreset", "invalid api key",
-                    "API Error (413): request too large: image exceeds 5MB")
+                    "API Error (413): request too large: image exceeds 5MB",
+                    "API Error (400): Request payload size exceeds the limit: 20971520 bytes.",
+                    "API Error (400): The output token count (4000) exceeds the maximum number of tokens allowed (1000).")
             @test !_is_context_overflow_error(msg)
         end
     end

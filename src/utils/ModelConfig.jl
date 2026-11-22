@@ -215,6 +215,8 @@ const AIGEN_MAX_STALL_ATTEMPTS = 2
 # false positive destroys history to "fix" something else. Generic size complaints
 # ("request too large") are excluded — they are usually request-BYTE or media limits,
 # which shrinking text cannot fix and which have their own failure paths.
+const INPUT_TOKEN_OVERFLOW = r"\binput token count(?:\s+\(?(\d[\d,_]*)\)?)?\s+exceeds the maximum number of tokens allowed(?:\s+\(?(\d[\d,_]*)\)?)?"i
+
 _is_context_overflow_error(e) = _is_context_overflow_error(sprint(showerror, e))
 function _is_context_overflow_error(msg::AbstractString)
     m = lowercase(msg)
@@ -222,6 +224,7 @@ function _is_context_overflow_error(msg::AbstractString)
         "prompt is too long", "context_length_exceeded", "maximum context length",
         "context length exceeded", "reduce the length of the messages",
     )) && return true
+    occursin(INPUT_TOKEN_OVERFLOW, m) && return true
     # Looser phrasings only count when the message also proves it is about TOKENS.
     occursin("token", m) && any(p -> occursin(p, m), ("context window", "too many tokens", "input is too long"))
 end
@@ -245,9 +248,18 @@ Pull the exact token counts out of a context-overflow error, e.g.
 provider's true context size is ever observable on a failed call — the cutter's own
 estimate is chars/2 and it normally learns the real number from a SUCCESSFUL
 response, which by definition never arrives here. Returns `nothing` when the message
-carries no usable pair (the caller then falls back to its configured limit).
+carries no usable limit (the caller then falls back to its configured limit).
+If only the limit is known, `used` is 0 and no real-usage anchor is set.
 """
 function parse_context_overflow(msg::AbstractString)
+    if (m = match(INPUT_TOKEN_OVERFLOW, msg)) !== nothing
+        used, limit = map(m.captures) do count
+            count === nothing ? nothing : tryparse(Int, replace(count, "," => "", "_" => ""))
+        end
+        limit === nothing && return nothing
+        used = something(used, 0)
+        return (0 < limit && (used == 0 || used > limit)) ? (; used, limit) : nothing
+    end
     # DeepInfra reports input + reserved output against the total window. Keep the
     # input count as the anchor and subtract output from the learned INPUT limit.
     m = match(r"maximum context length is\s*(\d[\d,_]*)\s*tokens.*?requested\s*(\d[\d,_]*)\s*output tokens.*?prompt contains(?: at least)?\s*(\d[\d,_]*)\s*input tokens"is, msg)

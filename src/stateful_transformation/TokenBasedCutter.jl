@@ -131,7 +131,7 @@ function should_cut(cutter::TokenBasedCutter, conv)
 
     # No real-usage anchor yet (fresh flow, or one deserialized from a pre-anchor
     # blob): the raw chars/2 estimate overruns real tokens ~1.5-2x for ASCII and would
-    # fire compaction way too early. The first LLM call always records an anchor.
+    # fire compaction way too early. Wait for a completed call with measurable usage.
     cutter.last_real_tokens > 0 || return false
 
     current_context_tokens(cutter, conv) < limit * cutter.compact_threshold && return false
