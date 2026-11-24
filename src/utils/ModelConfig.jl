@@ -188,12 +188,15 @@ end
 # A subscription account's quota is used up for hours (Google/Antigravity: 429
 # RESOURCE_EXHAUSTED "Individual quota reached … Resets in 35h…", reason QUOTA_EXHAUSTED;
 # CLIProxyAPI then answers model_cooldown with that as last error). Never retried in place;
+# OpenCode Go: 429 "OpenCode Go usage limit reached (5-hour, resets in 3h 19m). To keep
+# going now, turn on Extra Usage or upgrade to Go Plus …".
 # the caller decides whether another route may serve it (and alerts ops).
 _is_quota_exhausted_error(e) = !(e isa ModelRefusalError) && _is_quota_exhausted_error(sprint(showerror, e))
 function _is_quota_exhausted_error(msg::AbstractString)
     m = lowercase(msg)
     occursin("quota_exhausted", m) || occursin("individual quota reached", m) ||
-        (occursin("resource_exhausted", m) && occursin("quota", m))
+        (occursin("resource_exhausted", m) && occursin("quota", m)) ||
+        occursin(r"usage limit reached \([^)]*resets in", m)
 end
 
 const AIGEN_MAX_RETRIES = 3
