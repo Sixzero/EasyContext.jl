@@ -220,6 +220,22 @@ const AIGEN_MAX_STALL_ATTEMPTS = 2
 # which shrinking text cannot fix and which have their own failure paths.
 const INPUT_TOKEN_OVERFLOW = r"\binput token count(?:\s+\(?(\d[\d,_]*)\)?)?\s+exceeds the maximum number of tokens allowed(?:\s+\(?(\d[\d,_]*)\)?)?"i
 
+# The provider refused replayed reasoning state (`Message.reasoning_items`): a signature bound to
+# another conversation prefix (changed system prompt / tools), another account's encryption key,
+# or an expired blob. The state is an optimization, so the fix is to resend without it.
+_is_reasoning_replay_error(e) = !(e isa ModelRefusalError) && _is_reasoning_replay_error(sprint(showerror, e))
+function _is_reasoning_replay_error(msg::AbstractString)
+    m = lowercase(msg)
+    # OpenAI error code / CLIProxyAPI's classification of both providers' rejections.
+    occursin("invalid_encrypted_content", m) || occursin("thinking_signature_invalid", m) ||
+        # OpenAI message (the stream error path keeps only `error.message`, not the code).
+        occursin(r"encrypted content .{0,400}could not be (verified|decrypted|parsed)", m) ||
+        # Anthropic: "Invalid `signature` in `thinking` block", "`thinking` or `redacted_thinking`
+        # blocks in the latest assistant message cannot be modified".
+        occursin(r"invalid `?signature`? in `?thinking`? block", m) ||
+        occursin(r"thinking`? blocks? .{0,80}cannot be modified", m)
+end
+
 _is_context_overflow_error(e) = _is_context_overflow_error(sprint(showerror, e))
 function _is_context_overflow_error(msg::AbstractString)
     m = lowercase(msg)

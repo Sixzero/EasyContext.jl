@@ -236,3 +236,37 @@ end
         @test image_count_excess(count_error) == 1
     end
 end
+
+@testset "recover_from_rejected_reasoning!" begin
+    using EasyContext: recover_from_rejected_reasoning!, _is_reasoning_replay_error
+    _cb(chunks...) = (c = PromptingTools.StreamCallback();
+                      for t in chunks; push!(c.chunks, PromptingTools.StreamChunk(nothing, t, nothing)) end; c)
+    SIG = ErrorException("API Error (400): messages.1.content.0: Invalid `signature` in `thinking` block. The block is bound to a different conversation.")
+    ENC = ErrorException("API Error (400): {\"error\":{\"code\":\"invalid_encrypted_content\",\"message\":\"The encrypted content gAAA could not be verified.\"}}")
+    _conv() = Session(messages=[create_user_message("hi"),
+        create_AI_message("ok"; reasoning="think", reasoning_model="m",
+            reasoning_items=Any[Dict{String,Any}("type" => "thinking", "thinking" => "think", "signature" => "s")])])
+
+    @test _is_reasoning_replay_error(SIG) && _is_reasoning_replay_error(ENC)
+    @test _is_reasoning_replay_error("thinking_signature_invalid")
+    @test _is_reasoning_replay_error("API Error (400): The encrypted content gAAAAAB...xyz could not be verified.")
+    @test !_is_reasoning_replay_error("API Error (400): prompt is too long: 5 tokens > 4 maximum")
+    @test !_is_reasoning_replay_error("API Error (429): rate limit")
+    @test _is_reasoning_replay_error("API Error (400): `thinking` or `redacted_thinking` blocks in the latest assistant message cannot be modified.")
+    @test !_is_reasoning_replay_error("API Error (400): Invalid thinking configuration: budget cannot be modified")
+    @test !_is_reasoning_replay_error("API Error (401): invalid signature on request")
+
+    for e in (SIG, ENC)
+        conv = _conv()
+        shared = conv.messages[2]                                        # e.g. held by the real session
+        @test recover_from_rejected_reasoning!(e, conv, _cb())
+        @test shared.reasoning_items !== nothing                         # replaced, not mutated
+        @test conv.messages[2].reasoning_items === nothing && conv.messages[2].reasoning_model === nothing
+        @test conv.messages[2].reasoning == "think"                      # readable text survives
+        @test !recover_from_rejected_reasoning!(e, conv, _cb())          # nothing left to drop: no resend loop
+    end
+    conv = _conv()
+    @test !recover_from_rejected_reasoning!(SIG, conv, _cb("partial"))  # output already streamed
+    @test !recover_from_rejected_reasoning!(ErrorException("API Error (500): boom"), conv, _cb())
+    @test conv.messages[2].reasoning_items !== nothing
+end

@@ -25,4 +25,5 @@ using Test
     include("test_compaction.jl")
     include("agents/test_truncated_turn.jl")
     include("agents/test_midstream_resume.jl")
+    include("agents/test_rejected_reasoning.jl")
 end

@@ -134,7 +134,7 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
             ToolMessage(content=msg.content, tool_call_id=msg.tool_call_id, image_data=image_data, document_data=document_data)
         elseif msg.role == :assistant
             full_content = context_combiner!(msg.content, msg.context)
-            AIMessage(content=full_content, tool_calls=msg.tool_calls,
+            AIMessage(; content=full_content, tool_calls=msg.tool_calls,
                 reasoning=isempty(msg.reasoning) ? nothing : msg.reasoning,
                 msg.reasoning_items, msg.reasoning_model)
         else

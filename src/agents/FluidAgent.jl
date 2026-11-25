@@ -3,7 +3,7 @@ import PromptingTools: aigenerate
 using HTTP: RequestError
 using OpenRouter: Tool
 
-export FluidAgent, work, create_FluidAgent, to_native_tools, recover_from_overflow!, StreamDroppedError
+export FluidAgent, work, create_FluidAgent, to_native_tools, recover_from_overflow!, recover_from_rejected_reasoning!, StreamDroppedError
 
 # Check if exception is InterruptException (direct or wrapped in HTTP.RequestError)
 is_interrupt(e::InterruptException) = true
@@ -182,6 +182,27 @@ function recover_from_overflow!(e, cutter, session, cb; on_status=noop, on_retry
     true
 end
 
+"""
+    recover_from_rejected_reasoning!(e, session, cb) -> Bool
+
+True if the provider rejected replayed reasoning state and the session held some: it is
+dropped (the readable `reasoning` text stays), so one resend is worth it. Nothing streamed
+yet is required, as for overflow: such a rejection happens before any output.
+"""
+function recover_from_rejected_reasoning!(e, session, cb)
+    (is_interrupt(e) || !isempty(cb) || !_is_reasoning_replay_error(e)) && return false
+    dropped = false
+    for (i, m) in pairs(session.messages)
+        m.reasoning_items === nothing && continue
+        # Replace, never mutate: a speculative session shares these Message objects with the real one.
+        session.messages[i] = Message(; (f => getfield(m, f) for f in fieldnames(Message))...,
+            reasoning_items=nothing, reasoning_model=nothing)
+        dropped = true
+    end
+    dropped && @warn "Provider rejected replayed reasoning state; resending without it" error=first(sprint(showerror, e), 300)
+    dropped
+end
+
 _notify_retry(on_retry, text; attempt=1, of=2, wait=0) = isnothing(on_retry) || try
     on_retry(attempt, of, wait, text)
 catch ex
@@ -305,13 +326,24 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             generate(messages) = aigenerate_with_config(agent.model, messages;
                 cache, api_kwargs, streamcallback=cb, verbose=false, tools=native_tools, tool_choice, on_retry, capacity_cooldown)
 
+            rebuilt() = to_PT_messages(session, sys_msg_content; prefix=prefix_messages())
+            # One resend without replayed reasoning state if the provider rejects it; composes with
+            # the recoveries below (each send gets it, and it cannot loop: nothing is left to drop).
+            # `pt_messages` is rebound so a later capacity fallback resends the cleaned request.
+            send(msgs) = try generate(msgs) catch e
+                (!stop_requested(io) && recover_from_rejected_reasoning!(e, session, cb)) || rethrow()
+                pt_messages = rebuilt()
+                generate(pt_messages)
+            end
+
             response = try
                 try
-                    generate(pt_messages)
+                    send(pt_messages)
                 catch e
                     e isa ModelRefusalError && rethrow()
                     if recover_from_overflow!(e, cutter, session, cb; on_status, on_retry)
-                        generate(to_PT_messages(session, sys_msg_content; prefix=prefix_messages()))
+                        pt_messages = rebuilt()
+                        send(pt_messages)
                     else
                         # No output means no textual or native tool could have run.
                         # Preserve the exact messages and native tool schema; never rerun work().
@@ -322,7 +354,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                         capacity_switched = true
                         agent.model = replacement
                         api_kwargs = model_kwargs(replacement)
-                        generate(pt_messages)  # Failure here propagates; no fallback recursion.
+                        send(pt_messages)  # Failure here propagates; no fallback recursion.
                     end
                 end
             catch e
