@@ -397,7 +397,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
             # Image-only reply: leave a trace in history so the model knows it answered.
             content = has_images && isempty(strip(response.content)) ?
                 "[generated $(length(images)) image(s)]" : response.content
-            ai_msg = create_AI_message(content; tool_calls, response.reasoning)
+            ai_msg = create_AI_message(content; tool_calls, response.reasoning, response.reasoning_items, response.reasoning_model)
             hasproperty(io, :message_id) && (ai_msg.id = io.message_id)
 
             # No tool calls → persist the assistant response immediately.

@@ -12,9 +12,14 @@ end
 # Session(c::Conversation) = Session(uuid4(), now(), c.messages, :UNSTARTED)
 initSession(messages::Vector{M}; kwargs...) where M <: Message = Session(; messages)
 
-function merge_assistant!(prev::Message, content, reasoning)
+function merge_assistant!(prev::Message, content, reasoning, items=nothing, items_model=nothing)
     prev.content *= "\n" * content
     isempty(reasoning) || (prev.reasoning = isempty(prev.reasoning) ? reasoning : prev.reasoning * "\n" * reasoning)
+    if items !== nothing && !isempty(items)
+        same = prev.reasoning_items !== nothing && prev.reasoning_model == items_model
+        prev.reasoning_items = same ? vcat(prev.reasoning_items, items) : collect(Any, items)
+        prev.reasoning_model = items_model
+    end
     prev
 end
 
@@ -24,9 +29,10 @@ function push_message!(conv::Session, msg::AIMessage)
     # would be silently dropped and orphan its tool_result (API 400).
     if !isempty(conv.messages) && conv.messages[end].role == :assistant &&
        conv.messages[end].tool_calls === nothing && msg.tool_calls === nothing
-        merge_assistant!(conv.messages[end], msg.content, something(msg.reasoning, ""))
+        merge_assistant!(conv.messages[end], msg.content, something(msg.reasoning, ""), msg.reasoning_items, msg.reasoning_model)
     else
-        push!(conv.messages, create_AI_message(String(msg.content); tool_calls=msg.tool_calls, msg.reasoning))
+        push!(conv.messages, create_AI_message(String(msg.content); tool_calls=msg.tool_calls, msg.reasoning,
+            msg.reasoning_items, msg.reasoning_model))
     end
     conv
 end
@@ -53,7 +59,7 @@ function push_message!(conv::Session, msg::Message)
     # Never merge assistant messages that carry tool_calls (would drop a tool_use).
     if !isempty(conv.messages) && conv.messages[end].role == :assistant && msg.role == :assistant &&
        conv.messages[end].tool_calls === nothing && msg.tool_calls === nothing
-        merge_assistant!(conv.messages[end], msg.content, msg.reasoning)
+        merge_assistant!(conv.messages[end], msg.content, msg.reasoning, msg.reasoning_items, msg.reasoning_model)
     else
         push!(conv.messages, msg)
     end
@@ -129,7 +135,8 @@ function to_PT_messages(session::Session, sys_msg::String, imagepaths_in_message
         elseif msg.role == :assistant
             full_content = context_combiner!(msg.content, msg.context)
             AIMessage(content=full_content, tool_calls=msg.tool_calls,
-                reasoning=isempty(msg.reasoning) ? nothing : msg.reasoning)
+                reasoning=isempty(msg.reasoning) ? nothing : msg.reasoning,
+                msg.reasoning_items, msg.reasoning_model)
         else
             full_content = context_combiner!(msg.content, msg.context)
             UserMessage(content=full_content)

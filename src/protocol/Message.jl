@@ -16,6 +16,10 @@
 	tool_call_id::String=""
 	tool_calls::Union{Nothing, Vector{Dict{String,Any}}} = nothing
 	reasoning::String = ""  # the model's thinking, replayed so it keeps its chain of thought across tool steps
+	# Opaque provider reasoning state (Anthropic signed thinking, OpenAI encrypted_content), replayed
+	# verbatim only to `reasoning_model`: see OpenRouter.AIMessage.reasoning_items.
+	reasoning_items::Union{Nothing, Vector{Any}} = nothing
+	reasoning_model::Union{Nothing, String} = nothing
 end
 
 UndefMessage() = Message(timestamp=now(UTC), role=:UNKNOWN, content="")
@@ -24,8 +28,10 @@ function create_AI_message(ai_message::AbstractString, meta::Dict, context::Dict
     Message(timestamp=now(UTC), role=:assistant, content=ai_message, context=context, itok=meta["input_tokens"], otok=meta["output_tokens"], cached=meta["cache_creation_input_tokens"], cache_read=meta["cache_read_input_tokens"], price=meta["price"], elapsed=meta["elapsed"], stop_sequence=get(meta, "stop_sequence", ""))
 end
 
-function create_AI_message(ai_message::AbstractString; tool_calls::Union{Nothing, Vector{Dict{String,Any}}}=nothing, reasoning=nothing)
-	Message(timestamp=now(UTC), role=:assistant, content=ai_message, tool_calls=tool_calls, reasoning=something(reasoning, ""))
+function create_AI_message(ai_message::AbstractString; tool_calls::Union{Nothing, Vector{Dict{String,Any}}}=nothing, reasoning=nothing,
+                           reasoning_items=nothing, reasoning_model=nothing)
+	Message(timestamp=now(UTC), role=:assistant, content=ai_message, tool_calls=tool_calls, reasoning=something(reasoning, ""),
+		reasoning_items=reasoning_items, reasoning_model=reasoning_model)
 end
 
 function create_user_message(user_query, context::Dict{String,String}=Dict{String,String}())
