@@ -463,6 +463,7 @@ function work(agent::FluidAgent, session::Session; cache=nothing,
                     push_message!(session, ToolMessage(content="[not run: the user sent a new message before this tool call started]", tool_call_id=tc["id"]))
                 end
             else
+                truncations = 0  # a tool call is progress: the limit counts truncations in a row
                 process_native_tool_calls!(extractor, tool_calls, io; kwargs=tool_kwargs)
 
                 # Approval continuations need the tool_use persisted before pausing.
