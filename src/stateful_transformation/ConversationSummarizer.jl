@@ -254,7 +254,7 @@ Merge this earlier summary with the new conversation below. The merged summary s
 end
 
 # Provider spellings of "stopped because max_tokens was reached".
-const TRUNCATED_FINISH_REASONS = ("length", "max_tokens", "MAX_TOKENS")
+const TRUNCATED_FINISH_REASONS = ("length", "max_tokens", "MAX_TOKENS", "max_output_tokens")
 
 function generate_compaction_summary(model, prompt)
     # An empty HTTP 200 is a transient model glitch, a truncated summary lost its most
